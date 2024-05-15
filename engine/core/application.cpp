@@ -5,7 +5,7 @@
 
 Application* Application::s_instance = nullptr;
 
-Application::Application(const ApplicationCreateInfo& info) : render_ctx() {
+Application::Application(const ApplicationCreateInfo& info) {
 	GL_ASSERT(!s_instance, "Only on instance can exists at a time!");
 	s_instance = this;
 
@@ -17,11 +17,11 @@ Application::Application(const ApplicationCreateInfo& info) : render_ctx() {
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	render_ctx.backend = find_proper_backend();
-	render_ctx.init(window);
+	auto backend = find_proper_backend();
+	renderer = IRenderer::create(backend, window);
 }
 
-Application::~Application() { render_ctx.destroy(); }
+Application::~Application() {}
 
 void Application::run() {
 	_on_start();

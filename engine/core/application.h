@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/window.h"
-#include "renderer/render_context.h"
+#include "renderer/renderer.h"
 
 struct ApplicationCreateInfo {
 	const char* name;
@@ -46,7 +46,7 @@ private:
 	bool running = true;
 
 	Ref<Window> window;
-	RenderContext render_ctx;
+	Ref<IRenderer> renderer;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

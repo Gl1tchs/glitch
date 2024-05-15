@@ -19,8 +19,7 @@ Window::Window(WindowCreateInfo info) {
 #endif
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	// not resizable at the moment
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
 	window = glfwCreateWindow(info.w, info.h, info.title, nullptr, nullptr);
@@ -44,14 +43,14 @@ void Window::poll_events() const { glfwPollEvents(); }
 
 bool Window::is_open() const { return !glfwWindowShouldClose(window); }
 
-Vector2i Window::get_size() const {
-	Vector2i s{};
-	glfwGetWindowSize(window, &s.x, &s.y);
+Vector2u Window::get_size() const {
+	Vector2u s{};
+	glfwGetWindowSize(window, (int*)&s.x, (int*)&s.y);
 	return s;
 }
 
 float Window::get_aspect_ratio() const {
-	const Vector2i s = get_size();
+	const Vector2u s = get_size();
 	return static_cast<float>(s.x) / static_cast<float>(s.y);
 }
 
