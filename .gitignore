@@ -45,5 +45,5 @@
 *.VC.db
 *.VC.opendb
 
-[Bb]uild/*
-
+[Bb]uild/
+[Bb]in/
