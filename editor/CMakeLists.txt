@@ -10,7 +10,8 @@ target_include_directories(gled PRIVATE
 )
 
 target_link_libraries(gled PRIVATE
-    core    
+    gl-core
+    gl-renderer
 )
 
 target_precompile_headers(gled PUBLIC ${ENGINE_DIR}/pch.h)

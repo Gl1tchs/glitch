@@ -46,7 +46,7 @@ private:
 	bool running = true;
 
 	Ref<Window> window;
-	Ref<IRenderer> renderer;
+	Ref<Renderer> renderer;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

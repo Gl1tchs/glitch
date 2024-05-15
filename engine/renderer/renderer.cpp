@@ -1,12 +1,12 @@
 #include "renderer/renderer.h"
 
-#include "renderer/vulkan/vk_renderer.h"
+#include "platform/vulkan/vk_renderer.h"
 
 [[nodiscard]] RenderBackend find_proper_backend() noexcept {
 	return RenderBackend::Vulkan;
 }
 
-Ref<IRenderer> IRenderer::create(RenderBackend backend, Ref<Window> window) {
+Ref<Renderer> Renderer::create(RenderBackend backend, Ref<Window> window) {
 	switch (backend) {
 		case RenderBackend::Vulkan: {
 			// create and initialize vulkan renderer

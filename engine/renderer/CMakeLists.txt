@@ -5,23 +5,18 @@ file(GLOB_RECURSE RENDERER_SOURCES
     "${ENGINE_DIR}/renderer/*.h"
 )
 
-add_library(renderer ${RENDERER_SOURCES})
+add_library(gl-renderer ${RENDERER_SOURCES})
 
-target_include_directories(renderer PRIVATE
+target_include_directories(gl-renderer PRIVATE
     ${ENGINE_DIR}
-    ${VMA_INCLUDES}
     ${GLM_INCLUDES}
-    ${VK_BOOTSTRAP_INCLUDES}
-    ${Vulkan_INCLUDE_DIRS}
+    ${gl-vulkan_INCLUDE_DIRS}
 )
 
-target_link_libraries(renderer PRIVATE
-    core
-    ${VMA_LIBRARIES}
-    ${GLM_LIBRARIES}
-    ${VK_BOOTSTRAP_LIBRARIES}
-    ${Vulkan_LIBRARIES}
+target_link_libraries(gl-renderer PRIVATE
+    gl-core
+    gl-vulkan
 )
 
-target_precompile_headers(renderer PUBLIC ${ENGINE_DIR}/pch.h)
+target_precompile_headers(gl-renderer PUBLIC ${ENGINE_DIR}/pch.h)
 

@@ -18,7 +18,7 @@ Application::Application(const ApplicationCreateInfo& info) {
 
 	// initialize render backend
 	auto backend = find_proper_backend();
-	renderer = IRenderer::create(backend, window);
+	renderer = Renderer::create(backend, window);
 }
 
 Application::~Application() {}

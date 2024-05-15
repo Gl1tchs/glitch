@@ -9,9 +9,9 @@ enum class RenderBackend {
 
 [[nodiscard]] RenderBackend find_proper_backend() noexcept;
 
-class IRenderer {
+class Renderer {
 public:
-	virtual ~IRenderer() = default;
+	virtual ~Renderer() = default;
 
-	static Ref<IRenderer> create(RenderBackend backend, Ref<Window> window);
+	static Ref<Renderer> create(RenderBackend backend, Ref<Window> window);
 };
