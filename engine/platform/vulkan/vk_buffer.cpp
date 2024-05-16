@@ -1,6 +1,6 @@
 #include "platform/vulkan/vk_buffer.h"
 
-VulkanBuffer vk_create_buffer(VmaAllocator allocator, size_t alloc_size,
+VulkanBuffer VulkanBuffer::create(VmaAllocator allocator, size_t alloc_size,
 		VkBufferUsageFlags usage, VmaMemoryUsage memory_usage) {
 	VkBufferCreateInfo info = {
 		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -22,6 +22,6 @@ VulkanBuffer vk_create_buffer(VmaAllocator allocator, size_t alloc_size,
 	return buffer;
 }
 
-void vk_destroy_buffer(VmaAllocator allocator, const VulkanBuffer& buffer) {
+void VulkanBuffer::destroy(VmaAllocator allocator, const VulkanBuffer& buffer) {
 	vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
 }

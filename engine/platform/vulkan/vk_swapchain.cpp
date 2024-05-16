@@ -9,7 +9,9 @@ VulkanSwapchain::VulkanSwapchain(VkDevice device, VkPhysicalDevice chosen_gpu,
 		surface(surface),
 		swapchain(VK_NULL_HANDLE),
 		swapchain_format(VK_FORMAT_R16G16B16A16_SFLOAT),
-		swapchain_extent(VkExtent2D{ size.x, size.y }) {}
+		swapchain_extent(VkExtent2D{ size.x, size.y }) {
+    _create(size);
+}
 
 VulkanSwapchain::~VulkanSwapchain() { _destroy(); }
 

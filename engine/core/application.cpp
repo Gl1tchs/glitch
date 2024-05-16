@@ -52,6 +52,8 @@ void Application::_event_loop(float dt) {
 	_process_main_thread_queue();
 
 	_on_update(dt);
+
+    renderer->draw();
 }
 
 void Application::_process_main_thread_queue() {

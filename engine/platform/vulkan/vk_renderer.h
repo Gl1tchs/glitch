@@ -1,11 +1,14 @@
 #pragma once
 
+#include "platform/vulkan/vk_descriptors.h"
 #include "renderer/renderer.h"
 
 #include "core/deletion_queue.h"
 #include "core/window.h"
 
+#include "platform/vulkan/vk_buffer.h"
 #include "platform/vulkan/vk_image.h"
+#include "platform/vulkan/vk_pipeline.h"
 #include "platform/vulkan/vk_swapchain.h"
 
 constexpr uint32_t FRAME_OVERLAP = 2;
@@ -18,7 +21,7 @@ struct VulkanFrameData {
 	VkFence render_fence;
 
 	DeletionQueue deletion_queue;
-	// DescriptorAllocatorGrowable frame_descriptors;
+	// DescriptorAllocator frame_descriptors;
 };
 
 class VulkanRenderer : public Renderer {
@@ -31,9 +34,17 @@ public:
 	// TODO add a renderable tree ex.:
 	// void push_renderable();
 
-	void draw();
+	void draw() override;
 
 	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+
+private:
+	void _clear_render_image(
+			VkCommandBuffer cmd, VkClearColorValue clear_color);
+
+	void _geometry_pass(VkCommandBuffer cmd);
+
+	void _present_image(VkCommandBuffer cmd, uint32_t swapchain_image_index);
 
 private:
 	static VulkanRenderer* s_instance;
@@ -68,6 +79,27 @@ private:
 	VkFence imm_fence;
 	VkCommandBuffer imm_command_buffer;
 	VkCommandPool imm_command_pool;
+
+	// temp
+	VulkanPipelineLayout* layout;
+	VulkanPipeline* pipeline;
+
+	VulkanBuffer vertex_buffer;
+	VulkanBuffer index_buffer;
+	VkDeviceAddress vertex_buffer_address;
+
+	struct Vertex {
+		Vector3f position;
+		float uv_x;
+		Vector3f normal;
+		float uv_y;
+		Vector4f color;
+	};
+
+    struct PushConstants {
+        VkDeviceAddress vertex_buffer;
+    };
+	// end temp
 
 	DeletionQueue deletion_queue;
 

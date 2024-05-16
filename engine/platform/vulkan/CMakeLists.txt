@@ -9,6 +9,8 @@ add_library(gl-vulkan ${VULKAN_SOURCES})
 
 target_include_directories(gl-vulkan PUBLIC
     ${ENGINE_DIR}
+    # for the generated shader
+    ${CMAKE_BINARY_DIR}/include
     ${VMA_INCLUDES}
     ${GLM_INCLUDES}
     ${VK_BOOTSTRAP_INCLUDES}

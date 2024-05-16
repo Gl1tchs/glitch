@@ -13,6 +13,18 @@ public:
 
 	void resize(Vector2u size);
 
+	VkImage get_image(uint32_t image_index) {
+		return swapchain_images[image_index];
+	}
+
+	VkImageView get_image_view(uint32_t image_index) {
+		return swapchain_image_views[image_index];
+	}
+
+	VkSwapchainKHR* get_swapchain() { return &swapchain; }
+
+	VkExtent2D get_extent() { return swapchain_extent; }
+
 private:
 	void _create(Vector2u size);
 

@@ -52,7 +52,7 @@ VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
 		void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
 		bool mipmapped) {
 	size_t data_size = size.depth * size.width * size.height * 4;
-	VulkanBuffer staging_buffer = vk_create_buffer(allocator, data_size,
+	VulkanBuffer staging_buffer = VulkanBuffer::create(allocator, data_size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 	memcpy(staging_buffer.info.pMappedData, data, data_size);
@@ -89,7 +89,7 @@ VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	});
 
-	vk_destroy_buffer(allocator, staging_buffer);
+	VulkanBuffer::destroy(allocator, staging_buffer);
 
 	return new_image;
 }
