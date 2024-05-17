@@ -106,10 +106,9 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 			.size = sizeof(PushConstants),
 		};
 
-		std::vector<VkPushConstantRange> push_constants = { push_constant };
-
 		VulkanPipelineLayoutCreateInfo layout_info = {
-			.push_constants = push_constants,
+			.push_constant_count = 1,
+			.push_constants = &push_constant,
 		};
 		layout = new VulkanPipelineLayout(device, &layout_info);
 

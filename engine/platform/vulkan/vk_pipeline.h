@@ -8,8 +8,10 @@ enum class VulkanBlendingMode {
 };
 
 struct VulkanPipelineLayoutCreateInfo {
-	std::span<VkPushConstantRange> push_constants{};
-	std::span<VkDescriptorSetLayout> descriptor_sets{};
+	uint32_t push_constant_count = 0;
+	VkPushConstantRange* push_constants = nullptr;
+	uint32_t descriptor_set_count = 0;
+	VkDescriptorSetLayout* descriptor_sets = nullptr;
 };
 
 struct VulkanPipelineLayout {

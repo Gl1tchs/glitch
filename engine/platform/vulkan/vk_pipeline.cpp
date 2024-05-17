@@ -10,10 +10,10 @@ VulkanPipelineLayout::VulkanPipelineLayout(
 		device(device) {
 	VkPipelineLayoutCreateInfo pipeline_layout_info =
 			vkinit::pipeline_layout_create_info();
-	pipeline_layout_info.pushConstantRangeCount = info->push_constants.size();
-	pipeline_layout_info.pPushConstantRanges = info->push_constants.data();
-	pipeline_layout_info.setLayoutCount = info->descriptor_sets.size();
-	pipeline_layout_info.pSetLayouts = info->descriptor_sets.data();
+	pipeline_layout_info.pushConstantRangeCount = info->push_constant_count;
+	pipeline_layout_info.pPushConstantRanges = info->push_constants;
+	pipeline_layout_info.setLayoutCount = info->descriptor_set_count;
+	pipeline_layout_info.pSetLayouts = info->descriptor_sets;
 
 	VK_CHECK(vkCreatePipelineLayout(
 			device, &pipeline_layout_info, nullptr, &layout));
