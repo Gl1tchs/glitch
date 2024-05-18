@@ -14,6 +14,7 @@ target_include_directories(gl-vulkan PUBLIC
     ${VMA_INCLUDES}
     ${GLM_INCLUDES}
     ${VK_BOOTSTRAP_INCLUDES}
+    ${STB_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
 )
 

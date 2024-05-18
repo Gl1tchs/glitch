@@ -6,7 +6,8 @@ layout(location = 1) in vec2 in_uv;
 // output write
 layout(location = 0) out vec4 out_color;
 
+layout(set = 0, binding = 0) uniform sampler2D color_texture;
+
 void main() {
-    // return red
-    out_color = vec4(in_color, 1.0f);
+    out_color = vec4(texture(color_texture, in_uv).xyz, 1.0f);
 }

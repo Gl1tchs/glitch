@@ -1,5 +1,6 @@
 #pragma once
 
+#include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "renderer/renderer.h"
 
@@ -51,20 +52,10 @@ private:
 
 	Ref<Window> window;
 
-	// vulkan context resources
-
-	VkInstance instance;
-	VkDevice device;
-	VkPhysicalDevice chosen_gpu;
-	VkSurfaceKHR surface;
-	VmaAllocator allocator;
-	VkDebugUtilsMessengerEXT debug_messenger;
-
-	VkQueue graphics_queue;
-	uint32_t graphics_queue_family;
+	// vulkan context
+	VulkanContext context;
 
 	// drawing resources
-
 	Ref<VulkanSwapchain> swapchain;
 
 	VulkanImage draw_image{};
@@ -81,6 +72,13 @@ private:
 	VkCommandPool imm_command_pool;
 
 	// temp
+	VulkanImage texture_image{};
+	VkSampler sampler_linear;
+
+	VkDescriptorSetLayout descriptor_layout;
+	VkDescriptorSet descriptor_set;
+	VulkanDescriptorAllocator descriptor_allocator;
+
 	VulkanPipelineLayout* layout;
 	VulkanPipeline* pipeline;
 
@@ -96,9 +94,9 @@ private:
 		Vector4f color;
 	};
 
-    struct PushConstants {
-        VkDeviceAddress vertex_buffer;
-    };
+	struct PushConstants {
+		VkDeviceAddress vertex_buffer;
+	};
 	// end temp
 
 	DeletionQueue deletion_queue;

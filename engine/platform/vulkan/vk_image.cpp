@@ -6,11 +6,8 @@
 
 #include <vulkan/vulkan_core.h>
 
-static uint32_t get_channel_count_from_format(VkFormat format);
-
-VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
-		VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
-		bool mipmapped) {
+VulkanImage VulkanImage::create(const VulkanContext& context, VkExtent3D size,
+		VkFormat format, VkImageUsageFlags usage, bool mipmapped) {
 	VulkanImage new_image = {
 		.image_extent = size,
 		.image_format = format,
@@ -31,8 +28,8 @@ VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
 	};
 
 	// allocate and create the image
-	VK_CHECK(vmaCreateImage(allocator, &img_info, &alloc_info, &new_image.image,
-			&new_image.allocation, nullptr));
+	VK_CHECK(vmaCreateImage(context.allocator, &img_info, &alloc_info,
+			&new_image.image, &new_image.allocation, nullptr));
 
 	// if the format is a depth format, we will need to have it use the correct
 	// aspect flag
@@ -47,22 +44,22 @@ VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
 	view_info.subresourceRange.levelCount = img_info.mipLevels;
 
 	VK_CHECK(vkCreateImageView(
-			device, &view_info, nullptr, &new_image.image_view));
+			context.device, &view_info, nullptr, &new_image.image_view));
 
 	return new_image;
 }
 
-VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
-		void* data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
+VulkanImage VulkanImage::create(const VulkanContext& context, const void* data,
+		VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
 		bool mipmapped) {
-	const size_t data_size = size.depth * size.width * size.height *
-			get_channel_count_from_format(format);
-	VulkanBuffer staging_buffer = VulkanBuffer::create(allocator, data_size,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+	const size_t data_size = size.depth * size.width * size.height * 4;
+	VulkanBuffer staging_buffer = VulkanBuffer::create(context.allocator,
+			data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 	memcpy(staging_buffer.info.pMappedData, data, data_size);
 
-	VulkanImage new_image = VulkanImage::create(device, allocator, size, format,
+	VulkanImage new_image = VulkanImage::create(context, size, format,
 			usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 					VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			mipmapped);
@@ -94,15 +91,15 @@ VulkanImage VulkanImage::create(VkDevice device, VmaAllocator allocator,
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	});
 
-	VulkanBuffer::destroy(allocator, staging_buffer);
+	VulkanBuffer::destroy(context.allocator, staging_buffer);
 
 	return new_image;
 }
 
 void VulkanImage::destroy(
-		VkDevice device, VmaAllocator allocator, const VulkanImage& img) {
-	vkDestroyImageView(device, img.image_view, nullptr);
-	vmaDestroyImage(allocator, img.image, img.allocation);
+		const VulkanContext& context, const VulkanImage& img) {
+	vkDestroyImageView(context.device, img.image_view, nullptr);
+	vmaDestroyImage(context.allocator, img.image, img.allocation);
 }
 
 void VulkanImage::transition_image(VkCommandBuffer cmd, VkImage image,
@@ -172,72 +169,4 @@ void VulkanImage::copy_image_to_image(VkCommandBuffer cmd, VkImage source,
 	blit_info.pRegions = &blit_region;
 
 	vkCmdBlitImage2(cmd, &blit_info);
-}
-
-static uint32_t get_channel_count_from_format(VkFormat format) {
-	switch (format) {
-			// 1 channel
-		case VK_FORMAT_R8_UNORM:
-		case VK_FORMAT_R8_SNORM:
-		case VK_FORMAT_R8_UINT:
-		case VK_FORMAT_R8_SINT:
-		case VK_FORMAT_R16_UNORM:
-		case VK_FORMAT_R16_SNORM:
-		case VK_FORMAT_R16_UINT:
-		case VK_FORMAT_R16_SINT:
-		case VK_FORMAT_R16_SFLOAT:
-		case VK_FORMAT_R32_UINT:
-		case VK_FORMAT_R32_SINT:
-		case VK_FORMAT_R32_SFLOAT:
-			return 1;
-
-		// 2 channels
-		case VK_FORMAT_R8G8_UNORM:
-		case VK_FORMAT_R8G8_SNORM:
-		case VK_FORMAT_R8G8_UINT:
-		case VK_FORMAT_R8G8_SINT:
-		case VK_FORMAT_R16G16_UNORM:
-		case VK_FORMAT_R16G16_SNORM:
-		case VK_FORMAT_R16G16_UINT:
-		case VK_FORMAT_R16G16_SINT:
-		case VK_FORMAT_R16G16_SFLOAT:
-		case VK_FORMAT_R32G32_UINT:
-		case VK_FORMAT_R32G32_SINT:
-		case VK_FORMAT_R32G32_SFLOAT:
-			return 2;
-
-		// 3 channels
-		case VK_FORMAT_R8G8B8_UNORM:
-		case VK_FORMAT_R8G8B8_SNORM:
-		case VK_FORMAT_R8G8B8_UINT:
-		case VK_FORMAT_R8G8B8_SINT:
-		case VK_FORMAT_R16G16B16_UNORM:
-		case VK_FORMAT_R16G16B16_SNORM:
-		case VK_FORMAT_R16G16B16_UINT:
-		case VK_FORMAT_R16G16B16_SINT:
-		case VK_FORMAT_R16G16B16_SFLOAT:
-		case VK_FORMAT_R32G32B32_UINT:
-		case VK_FORMAT_R32G32B32_SINT:
-		case VK_FORMAT_R32G32B32_SFLOAT:
-			return 3;
-
-		// 4 channels
-		case VK_FORMAT_R8G8B8A8_UNORM:
-		case VK_FORMAT_R8G8B8A8_SNORM:
-		case VK_FORMAT_R8G8B8A8_UINT:
-		case VK_FORMAT_R8G8B8A8_SINT:
-		case VK_FORMAT_R16G16B16A16_UNORM:
-		case VK_FORMAT_R16G16B16A16_SNORM:
-		case VK_FORMAT_R16G16B16A16_UINT:
-		case VK_FORMAT_R16G16B16A16_SINT:
-		case VK_FORMAT_R16G16B16A16_SFLOAT:
-		case VK_FORMAT_R32G32B32A32_UINT:
-		case VK_FORMAT_R32G32B32A32_SINT:
-		case VK_FORMAT_R32G32B32A32_SFLOAT:
-			return 4;
-
-		default:
-			// Unknown or unsupported format
-			return 0;
-	}
 }
