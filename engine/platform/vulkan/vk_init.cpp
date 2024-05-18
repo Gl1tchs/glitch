@@ -1,11 +1,11 @@
 #include "platform/vulkan/vk_init.h"
 
 VkCommandPoolCreateInfo vkinit::command_pool_create_info(
-		uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags /*= 0*/) {
+		uint32_t queue_family_index, VkCommandPoolCreateFlags flags /*= 0*/) {
 	VkCommandPoolCreateInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	info.pNext = nullptr;
-	info.queueFamilyIndex = queueFamilyIndex;
+	info.queueFamilyIndex = queue_family_index;
 	info.flags = flags;
 	return info;
 }
@@ -89,8 +89,8 @@ VkCommandBufferSubmitInfo vkinit::command_buffer_submit_info(
 }
 
 VkSubmitInfo2 vkinit::submit_info(VkCommandBufferSubmitInfo* cmd,
-		VkSemaphoreSubmitInfo* signal_semaphore_info,
-		VkSemaphoreSubmitInfo* wait_semaphore_info) {
+		const VkSemaphoreSubmitInfo* wait_semaphore_info,
+		const VkSemaphoreSubmitInfo* signal_semaphore_info) {
 	VkSubmitInfo2 info = {};
 	info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
 	info.pNext = nullptr;
@@ -186,8 +186,8 @@ VkRenderingAttachmentInfo vkinit::attachment_info(VkImageView view,
 }
 
 VkRenderingInfo vkinit::rendering_info(VkExtent2D render_extent,
-		VkRenderingAttachmentInfo* color_attachment,
-		VkRenderingAttachmentInfo* depth_attachment) {
+		const VkRenderingAttachmentInfo* color_attachment,
+		const VkRenderingAttachmentInfo* depth_attachment) {
 	VkRenderingInfo render_info{};
 	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 	render_info.pNext = nullptr;

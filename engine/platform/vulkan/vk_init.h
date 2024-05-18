@@ -25,8 +25,8 @@ VkSemaphoreSubmitInfo semaphore_submit_info(
 VkCommandBufferSubmitInfo command_buffer_submit_info(VkCommandBuffer cmd);
 
 VkSubmitInfo2 submit_info(VkCommandBufferSubmitInfo* cmd,
-		VkSemaphoreSubmitInfo* signal_semaphore_info,
-		VkSemaphoreSubmitInfo* wait_semaphore_info);
+		const VkSemaphoreSubmitInfo* wait_semaphore_info = nullptr,
+		const VkSemaphoreSubmitInfo* signal_semaphore_info = nullptr);
 
 VkImageCreateInfo image_create_info(
 		VkFormat format, VkImageUsageFlags usage_flags, VkExtent3D extent);
@@ -41,8 +41,8 @@ VkRenderingAttachmentInfo attachment_info(VkImageView view, VkClearValue* clear,
 		VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 VkRenderingInfo rendering_info(VkExtent2D render_extent,
-		VkRenderingAttachmentInfo* color_attachment,
-		VkRenderingAttachmentInfo* depth_attachment);
+		const VkRenderingAttachmentInfo* color_attachment,
+		const VkRenderingAttachmentInfo* depth_attachment);
 
 VkPipelineLayoutCreateInfo pipeline_layout_create_info();
 

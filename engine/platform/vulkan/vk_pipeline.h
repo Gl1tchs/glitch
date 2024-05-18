@@ -14,15 +14,15 @@ struct VulkanPipelineLayoutCreateInfo {
 	VkDescriptorSetLayout* descriptor_sets = nullptr;
 };
 
+/**
+ * @brief thin wrapper around VkPipelineLayout
+ */
 struct VulkanPipelineLayout {
 	VkPipelineLayout layout;
 
-	VulkanPipelineLayout(
+	static VulkanPipelineLayout create(
 			VkDevice device, const VulkanPipelineLayoutCreateInfo* info);
-	~VulkanPipelineLayout();
-
-private:
-	VkDevice device;
+	static void destroy(VkDevice device, VulkanPipelineLayout& layout);
 };
 
 struct VulkanPipelineCreateInfo {
@@ -64,20 +64,13 @@ struct VulkanPipelineCreateInfo {
 	void disable_depthtest();
 };
 
-class VulkanPipeline {
-public:
-	VulkanPipeline(VkDevice device, const VulkanPipelineCreateInfo* info,
-			const VulkanPipelineLayout* layout);
-	~VulkanPipeline();
-
-	void bind(VkCommandBuffer cmd);
-
-private:
-	VkDevice device;
-
+struct VulkanPipeline {
 	VkPipeline pipeline;
 
-	friend struct VulkanPipelineCreateInfo;
+	static VulkanPipeline create(VkDevice device,
+			const VulkanPipelineCreateInfo* info,
+			const VulkanPipelineLayout* layout);
+	static void destroy(VkDevice device, VulkanPipeline& pipeline);
 };
 
 bool vk_load_shader_module(VkDevice device, const char* file_path,

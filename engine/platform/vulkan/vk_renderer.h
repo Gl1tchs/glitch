@@ -1,5 +1,6 @@
 #pragma once
 
+#include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "renderer/renderer.h"
@@ -15,8 +16,8 @@
 constexpr uint32_t FRAME_OVERLAP = 2;
 
 struct VulkanFrameData {
-	VkCommandPool command_pool;
-	VkCommandBuffer main_command_buffer;
+	VulkanCommandPool command_pool;
+	VulkanCommandBuffer main_command_buffer;
 
 	VkSemaphore swapchain_semaphore, render_semaphore;
 	VkFence render_fence;
@@ -37,15 +38,14 @@ public:
 
 	void draw() override;
 
-	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+	void immediate_submit(
+			std::function<void(VulkanCommandBuffer& cmd)>&& function);
 
 private:
-	void _clear_render_image(
-			VkCommandBuffer cmd, VkClearColorValue clear_color);
+	void _geometry_pass(VulkanCommandBuffer& cmd);
 
-	void _geometry_pass(VkCommandBuffer cmd);
-
-	void _present_image(VkCommandBuffer cmd, uint32_t swapchain_image_index);
+	void _present_image(
+			VulkanCommandBuffer& cmd, uint32_t swapchain_image_index);
 
 private:
 	static VulkanRenderer* s_instance;
@@ -68,8 +68,8 @@ private:
 
 	// immediate commands
 	VkFence imm_fence;
-	VkCommandBuffer imm_command_buffer;
-	VkCommandPool imm_command_pool;
+	VulkanCommandBuffer imm_command_buffer;
+	VulkanCommandPool imm_command_pool;
 
 	// temp
 	VulkanImage texture_image{};
@@ -79,8 +79,8 @@ private:
 	VkDescriptorSet descriptor_set;
 	VulkanDescriptorAllocator descriptor_allocator;
 
-	VulkanPipelineLayout* layout;
-	VulkanPipeline* pipeline;
+	VulkanPipelineLayout layout;
+	VulkanPipeline pipeline;
 
 	VulkanBuffer vertex_buffer;
 	VulkanBuffer index_buffer;

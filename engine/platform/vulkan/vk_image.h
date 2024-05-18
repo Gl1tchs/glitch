@@ -17,10 +17,4 @@ struct VulkanImage {
 			bool mipmapped = false);
 
 	static void destroy(const VulkanContext& context, const VulkanImage& img);
-
-	static void transition_image(VkCommandBuffer cmd, VkImage image,
-			VkImageLayout current_layout, VkImageLayout new_layout);
-
-	static void copy_image_to_image(VkCommandBuffer cmd, VkImage source,
-			VkImage destination, VkExtent2D src_size, VkExtent2D dst_size);
 };

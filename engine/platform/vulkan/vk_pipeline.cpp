@@ -5,9 +5,8 @@
 
 #include <vulkan/vulkan_core.h>
 
-VulkanPipelineLayout::VulkanPipelineLayout(
-		VkDevice device, const VulkanPipelineLayoutCreateInfo* info) :
-		device(device) {
+VulkanPipelineLayout VulkanPipelineLayout::create(
+		VkDevice device, const VulkanPipelineLayoutCreateInfo* info) {
 	VkPipelineLayoutCreateInfo pipeline_layout_info =
 			vkinit::pipeline_layout_create_info();
 	pipeline_layout_info.pushConstantRangeCount = info->push_constant_count;
@@ -15,12 +14,16 @@ VulkanPipelineLayout::VulkanPipelineLayout(
 	pipeline_layout_info.setLayoutCount = info->descriptor_set_count;
 	pipeline_layout_info.pSetLayouts = info->descriptor_sets;
 
+	VulkanPipelineLayout layout{ VK_NULL_HANDLE };
 	VK_CHECK(vkCreatePipelineLayout(
-			device, &pipeline_layout_info, nullptr, &layout));
+			device, &pipeline_layout_info, nullptr, &layout.layout));
+
+	return layout;
 }
 
-VulkanPipelineLayout::~VulkanPipelineLayout() {
-	vkDestroyPipelineLayout(device, layout, nullptr);
+void VulkanPipelineLayout::destroy(
+		VkDevice device, VulkanPipelineLayout& layout) {
+	vkDestroyPipelineLayout(device, layout.layout, nullptr);
 }
 
 VulkanPipelineCreateInfo::VulkanPipelineCreateInfo() { reset(); }
@@ -163,10 +166,9 @@ void VulkanPipelineCreateInfo::disable_depthtest() {
 	depth_stencil.maxDepthBounds = 1.0f;
 }
 
-VulkanPipeline::VulkanPipeline(VkDevice device,
+VulkanPipeline VulkanPipeline::create(VkDevice device,
 		const VulkanPipelineCreateInfo* info,
-		const VulkanPipelineLayout* layout) :
-		device(device), pipeline(VK_NULL_HANDLE) {
+		const VulkanPipelineLayout* layout) {
 	// make viewport state from our stored viewport and scissor.
 	// at the moment we wont support multiple viewports or scissors
 	VkPipelineViewportStateCreateInfo viewport_state = {
@@ -224,20 +226,20 @@ VulkanPipeline::VulkanPipeline(VkDevice device,
 		.layout = layout->layout,
 	};
 
+	VulkanPipeline pipeline{ VK_NULL_HANDLE };
+
 	// its easy to error out on create graphics pipeline, so we handle
 	// it a bit better than the common VK_CHECK case
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info,
-				nullptr, &pipeline) != VK_SUCCESS) {
+				nullptr, &pipeline.pipeline) != VK_SUCCESS) {
 		GL_LOG_ERROR("Failed to create pipeline!");
 	}
+
+	return pipeline;
 }
 
-VulkanPipeline::~VulkanPipeline() {
-	vkDestroyPipeline(device, pipeline, nullptr);
-}
-
-void VulkanPipeline::bind(VkCommandBuffer cmd) {
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+void VulkanPipeline::destroy(VkDevice device, VulkanPipeline& pipeline) {
+	vkDestroyPipeline(device, pipeline.pipeline, nullptr);
 }
 
 bool vk_load_shader_module(VkDevice device, const char* file_path,
