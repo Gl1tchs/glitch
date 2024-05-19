@@ -3,6 +3,9 @@
 #include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
+#include "platform/vulkan/vk_material.h"
+#include "platform/vulkan/vk_mesh.h"
+#include "renderer/mesh.h"
 #include "renderer/renderer.h"
 
 #include "core/deletion_queue.h"
@@ -33,13 +36,14 @@ public:
 
 	static VulkanRenderer* get_instance();
 
-	// TODO add a renderable tree ex.:
-	// void push_renderable();
+	void submit_mesh(Ref<Mesh> mesh /*, Ref<Material> material */) override;
 
 	void draw() override;
 
 	void immediate_submit(
 			std::function<void(VulkanCommandBuffer& cmd)>&& function);
+
+	static const VulkanContext& get_context();
 
 private:
 	void _geometry_pass(VulkanCommandBuffer& cmd);
@@ -71,32 +75,17 @@ private:
 	VulkanCommandBuffer imm_command_buffer;
 	VulkanCommandPool imm_command_pool;
 
-	// temp
-	VulkanImage texture_image{};
-	VkSampler sampler_linear;
-
-	VkDescriptorSetLayout descriptor_layout;
-	VkDescriptorSet descriptor_set;
 	VulkanDescriptorAllocator descriptor_allocator;
 
-	VulkanPipelineLayout layout;
-	VulkanPipeline pipeline;
+	std::vector<VulkanMesh*> meshes_to_draw;
 
-	VulkanBuffer vertex_buffer;
-	VulkanBuffer index_buffer;
-	VkDeviceAddress vertex_buffer_address;
+	// temp
+	VulkanMetallicRoughnessMaterial metallic_roughness;
+	VulkanMaterialInstance metallic_instance;
 
-	struct Vertex {
-		Vector3f position;
-		float uv_x;
-		Vector3f normal;
-		float uv_y;
-		Vector4f color;
-	};
-
-	struct PushConstants {
-		VkDeviceAddress vertex_buffer;
-	};
+	VulkanImage white_image;
+	VulkanImage texture_image;
+	VkSampler sampler_linear;
 	// end temp
 
 	DeletionQueue deletion_queue;

@@ -1,6 +1,8 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 
+#include "input_structures.glsl"
+
 layout(location = 0) out vec3 out_color;
 layout(location = 1) out vec2 out_uv;
 
@@ -27,6 +29,6 @@ void main() {
     // output the position of each vertex
     gl_Position = vec4(v.position, 1.0f);
 
-    out_color = v.color.xyz;
+    out_color = v.color.xyz * material_data.color_factors.xyz;
     out_uv = vec2(v.uv_x, v.uv_y);
 }

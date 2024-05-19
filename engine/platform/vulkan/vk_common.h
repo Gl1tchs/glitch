@@ -6,6 +6,8 @@
 
 #include "platform/vulkan/vk_context.h"
 
+#include "renderer/vertex.h"
+
 #define VK_CHECK(x)                                                            \
 	do {                                                                       \
 		VkResult err = x;                                                      \
@@ -14,3 +16,8 @@
 			GL_ASSERT(false);                                                  \
 		}                                                                      \
 	} while (false)
+
+struct DrawPushConstants {
+	// Mat4f world_matrix;
+	VkDeviceAddress vertex_buffer;
+};

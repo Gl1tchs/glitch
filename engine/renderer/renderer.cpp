@@ -6,7 +6,11 @@
 	return RenderBackend::Vulkan;
 }
 
+static RenderBackend s_backend;
+
 Ref<Renderer> Renderer::create(RenderBackend backend, Ref<Window> window) {
+	s_backend = backend;
+
 	switch (backend) {
 		case RenderBackend::Vulkan: {
 			// create and initialize vulkan renderer
@@ -14,7 +18,10 @@ Ref<Renderer> Renderer::create(RenderBackend backend, Ref<Window> window) {
 
 			return context;
 		}
-		default:
+		default: {
 			return nullptr;
+		}
 	}
 }
+
+RenderBackend Renderer::get_backend() { return s_backend; }

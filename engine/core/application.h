@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/window.h"
+#include "renderer/mesh.h"
 #include "renderer/renderer.h"
 
 struct ApplicationCreateInfo {
@@ -47,6 +48,9 @@ private:
 
 	Ref<Window> window;
 	Ref<Renderer> renderer;
+
+	// TEMP
+	Ref<Mesh> mesh;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

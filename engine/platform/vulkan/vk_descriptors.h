@@ -59,5 +59,6 @@ struct DescriptorWriter {
 			VkDescriptorType type);
 
 	void clear();
+
 	void update_set(VkDevice device, VkDescriptorSet set);
 };

@@ -19,6 +19,21 @@ Application::Application(const ApplicationCreateInfo& info) {
 	// initialize render backend
 	auto backend = find_proper_backend();
 	renderer = Renderer::create(backend, window);
+
+	std::vector<Vertex> vertices = {
+		{ { 0.5f, 0.5f, 0.0f }, 1.0f, { 0.0f, 0.0f, 0.0f }, 1.0f,
+				{ 0.9f, 0.6f, 0.34f, 1.0f } },
+		{ { 0.5f, -0.5f, 0.0f }, 1.0f, { 0.0f, 0.0f, 0.0f }, 0.0f,
+				{ 0.2f, 0.4f, 0.8f, 1.0f } },
+		{ { -0.5f, -0.5f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 0.0f,
+				{ 0.4f, 0.8f, 0.6f, 1.0f } },
+		{ { -0.5f, 0.5f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 1.0f,
+				{ 0.8f, 0.2f, 0.4f, 1.0f } },
+	};
+
+	std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
+
+	mesh = Mesh::create(vertices, indices);
 }
 
 Application::~Application() {}
@@ -53,7 +68,9 @@ void Application::_event_loop(float dt) {
 
 	_on_update(dt);
 
-    renderer->draw();
+	renderer->submit_mesh(mesh);
+
+	renderer->draw();
 }
 
 void Application::_process_main_thread_queue() {

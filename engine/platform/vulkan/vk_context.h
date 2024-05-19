@@ -13,4 +13,7 @@ struct VulkanContext {
 
 	VkQueue graphics_queue;
 	uint32_t graphics_queue_family;
+
+	VkFormat color_attachment_format;
+	VkFormat depth_attachment_format;
 };
