@@ -64,7 +64,7 @@ Ref<VulkanMesh> VulkanMesh::create(const VulkanContext& context,
 	return mesh;
 }
 
-void VulkanMesh::destroy(const VulkanContext& context, VulkanMesh& mesh) {
-	VulkanBuffer::destroy(context.allocator, mesh.vertex_buffer);
-	VulkanBuffer::destroy(context.allocator, mesh.index_buffer);
+void VulkanMesh::destroy(const VulkanContext& context, const VulkanMesh* mesh) {
+	VulkanBuffer::destroy(context.allocator, mesh->vertex_buffer);
+	VulkanBuffer::destroy(context.allocator, mesh->index_buffer);
 }

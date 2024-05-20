@@ -46,7 +46,7 @@ void Logger::log(LogLevel level, const std::string& fmt) {
 	const std::string time_stamp = get_timestamp();
 
 	const std::string message = std::format(
-			"[{}] [{}]: \"{}\"", time_stamp, deserialize_log_level(level), fmt);
+			"[{}] [{}]: {}", time_stamp, deserialize_log_level(level), fmt);
 
 	const std::string colored_messages = _get_colored_message(message, level);
 

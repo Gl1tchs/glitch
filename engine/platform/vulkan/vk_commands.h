@@ -74,16 +74,16 @@ struct VulkanCommandBuffer {
 			uint32_t region_count, const VkBufferCopy* regions);
 
 	void copy_buffer_to_image(const VulkanBuffer& src_buffer,
-			VulkanImage& dst_image, VkImageLayout image_layout,
+			Ref<VulkanImage> dst_image, VkImageLayout image_layout,
 			uint32_t region_count, const VkBufferImageCopy* regions);
 
 	void copy_image_to_image(
-			const VulkanImage& src_image, VulkanImage& dst_image);
+			Ref<VulkanImage> src_image, Ref<VulkanImage> dst_image);
 	void copy_image_to_image(VkImage src_image, VkImage dst_image,
 			const VkExtent2D& src_extent, const VkExtent2D& dst_extent);
 
-	void transition_image(const VulkanImage& image,
-			VkImageLayout current_layout, VkImageLayout new_layout);
+	void transition_image(Ref<VulkanImage> image, VkImageLayout current_layout,
+			VkImageLayout new_layout);
 	void transition_image(VkImage image, VkImageLayout current_layout,
 			VkImageLayout new_layout);
 };

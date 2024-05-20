@@ -7,12 +7,15 @@ add_library(gl-core ${CORE_SOURCES})
 
 target_include_directories(gl-core PRIVATE
     ${ENGINE_DIR}
+    ${GLM_INCLUDES}
     ${GLFW_INCLUDES}
     ${FMT_INCLUDES}
+    ${STB_INCLUDES}
 )
 
 target_link_libraries(gl-core PRIVATE
     gl-renderer
+    ${GLM_LIBRARIES}
     ${GLFW_LIBRARIES}
     ${FMT_LIBRARIES}
 )

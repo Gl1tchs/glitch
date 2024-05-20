@@ -1,8 +1,6 @@
 #pragma once
 
-#include "platform/vulkan/vk_common.h"
-
-#include <span>
+#include <vulkan/vulkan.h>
 
 struct DescriptorLayoutBuilder {
 	std::vector<VkDescriptorSetLayoutBinding> bindings;

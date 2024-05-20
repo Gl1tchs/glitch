@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/window.h"
+#include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/renderer.h"
 
@@ -51,6 +52,17 @@ private:
 
 	// TEMP
 	Ref<Mesh> mesh;
+	Ref<MetallicRoughnessMaterial> material;
+
+	Ref<MaterialInstance> material_instance;
+	Ref<MaterialInstance> material_instance2;
+
+	Ref<MaterialInstance> current_material;
+	bool space_pressed = false;
+
+	Ref<Image> color_image;
+	Ref<Image> color_image2;
+	Ref<Image> white_image;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

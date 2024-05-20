@@ -6,10 +6,12 @@ struct Mesh {
 	std::span<Vertex> vertices;
 	std::span<uint32_t> indices;
 
-	virtual ~Mesh();
+	virtual ~Mesh() = default;
 
 	static Ref<Mesh> create(const std::span<Vertex> vertices,
 			const std::span<uint32_t> indices);
+
+	static void destroy(Ref<Mesh> mesh);
 };
 
 struct ModelMesh {

@@ -15,5 +15,5 @@ struct VulkanMesh : public Mesh {
 			const std::span<Vertex> vertices,
 			const std::span<uint32_t> indices);
 
-	static void destroy(const VulkanContext& context, VulkanMesh& mesh);
+	static void destroy(const VulkanContext& context, const VulkanMesh* mesh);
 };

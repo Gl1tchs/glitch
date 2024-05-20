@@ -1,20 +1,27 @@
 #pragma once
 
+#include "renderer/image.h"
+
 #include "platform/vulkan/vk_common.h"
 
-struct VulkanImage {
+[[nodiscard]] VkFormat image_format_to_vk_format(ImageFormat format);
+
+struct VulkanImage : public Image {
 	VkImage image;
 	VkImageView image_view;
 	VmaAllocation allocation;
 	VkExtent3D image_extent;
 	VkFormat image_format;
 
-	static VulkanImage create(const VulkanContext& context, VkExtent3D size,
-			VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+	virtual ~VulkanImage() = default;
 
-	static VulkanImage create(const VulkanContext& context, const void* data,
+	static Ref<VulkanImage> create(const VulkanContext& context,
 			VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
 			bool mipmapped = false);
 
-	static void destroy(const VulkanContext& context, const VulkanImage& img);
+	static Ref<VulkanImage> create(const VulkanContext& context,
+			const void* data, VkExtent3D size, VkFormat format,
+			VkImageUsageFlags usage, bool mipmapped = false);
+
+	static void destroy(const VulkanContext& context, VulkanImage* img);
 };

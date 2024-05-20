@@ -1,6 +1,6 @@
 #include "platform/vulkan/vk_descriptors.h"
 
-#include <vulkan/vulkan_core.h>
+#include "platform/vulkan/vk_common.h"
 
 void DescriptorLayoutBuilder::add_binding(
 		uint32_t binding, VkDescriptorType type) {

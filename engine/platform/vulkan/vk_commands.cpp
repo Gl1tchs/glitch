@@ -173,17 +173,17 @@ void VulkanCommandBuffer::copy_buffer(const VulkanBuffer& src_buffer,
 }
 
 void VulkanCommandBuffer::copy_buffer_to_image(const VulkanBuffer& src_buffer,
-		VulkanImage& dst_image, VkImageLayout image_layout,
+		Ref<VulkanImage> dst_image, VkImageLayout image_layout,
 		uint32_t region_count, const VkBufferImageCopy* regions) {
-	vkCmdCopyBufferToImage(command_buffer, src_buffer.buffer, dst_image.image,
+	vkCmdCopyBufferToImage(command_buffer, src_buffer.buffer, dst_image->image,
 			image_layout, region_count, regions);
 }
 
 void VulkanCommandBuffer::copy_image_to_image(
-		const VulkanImage& src_image, VulkanImage& dst_image) {
-	copy_image_to_image(src_image.image, dst_image.image,
-			{ src_image.image_extent.width, src_image.image_extent.height },
-			{ dst_image.image_extent.width, dst_image.image_extent.height });
+		Ref<VulkanImage> src_image, Ref<VulkanImage> dst_image) {
+	copy_image_to_image(src_image->image, dst_image->image,
+			{ src_image->image_extent.width, src_image->image_extent.height },
+			{ dst_image->image_extent.width, dst_image->image_extent.height });
 }
 
 void VulkanCommandBuffer::copy_image_to_image(VkImage src_image,
@@ -227,9 +227,9 @@ void VulkanCommandBuffer::copy_image_to_image(VkImage src_image,
 	vkCmdBlitImage2(command_buffer, &blit_info);
 }
 
-void VulkanCommandBuffer::transition_image(const VulkanImage& image,
+void VulkanCommandBuffer::transition_image(Ref<VulkanImage> image,
 		VkImageLayout current_layout, VkImageLayout new_layout) {
-	transition_image(image.image, current_layout, new_layout);
+	transition_image(image->image, current_layout, new_layout);
 }
 
 void VulkanCommandBuffer::transition_image(
