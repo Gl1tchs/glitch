@@ -1,5 +1,10 @@
 # TODOS
 
+## Core
+- [ ] SIMD Matrix multiplication
+- [ ] Mat4 type
+- [ ] Vector dot/cross products
+
 ## Vulkan Renderer
 - [x] VkCommandBuffer and VkCommandPool abstraction
 - [ ] VkDescriptorSet abstraction

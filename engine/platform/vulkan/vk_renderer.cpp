@@ -34,7 +34,7 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
-	vkDeviceWaitIdle(context.device);
+	wait_for_device();
 
 	context.deletion_queue.flush();
 }

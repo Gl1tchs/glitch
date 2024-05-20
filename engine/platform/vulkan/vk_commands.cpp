@@ -131,7 +131,7 @@ void VulkanCommandBuffer::push_constants(
 			offset, size, push_constants);
 }
 
-void VulkanCommandBuffer::set_viewport(Vector2f size) {
+void VulkanCommandBuffer::set_viewport(Vec2f size) {
 	VkViewport viewport = {
 		.x = 0,
 		.y = 0,

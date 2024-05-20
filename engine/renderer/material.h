@@ -12,12 +12,12 @@ struct Material {
 
 struct MetallicRoughnessMaterial : public Material {
 	struct MaterialConstants {
-		Vector4f color_factors;
-		Vector4f metal_rough_factors;
+		Vec4f color_factors;
+		Vec4f metal_rough_factors;
 		// padding, we need it anyway because
 		// the uniform buffer is reserved
 		// for 24 bytes.
-		Vector4f padding[4];
+		Vec4f padding[4];
 	};
 
 	struct MaterialResources {

@@ -1,3 +1,4 @@
+#define GL_MAIN
 #include "core/entrypoint.h"
 
 Application* create_application(int argc, const char** argv) {
@@ -8,4 +9,3 @@ Application* create_application(int argc, const char** argv) {
 	};
 	return new Application(info);
 }
-

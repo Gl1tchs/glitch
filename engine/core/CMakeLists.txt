@@ -1,5 +1,5 @@
 file(GLOB_RECURSE CORE_SOURCES
-    "${ENGINE_DIR}/core/*.cpp"
+   "${ENGINE_DIR}/core/*.cpp"
     "${ENGINE_DIR}/core/*.h"
 )
 

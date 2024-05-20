@@ -62,7 +62,7 @@ struct VulkanCommandBuffer {
 			VkShaderStageFlags shader_stages, VkDeviceSize offset,
 			uint32_t size, const void* push_constants);
 
-	void set_viewport(Vector2f size);
+	void set_viewport(Vec2f size);
 
 	void set_scissor(VkExtent2D size, VkOffset2D offset = { 0, 0 });
 

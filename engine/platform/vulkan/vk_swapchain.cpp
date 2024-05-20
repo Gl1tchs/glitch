@@ -3,7 +3,7 @@
 #include <VkBootstrap.h>
 
 VulkanSwapchain::VulkanSwapchain(VkDevice device, VkPhysicalDevice chosen_gpu,
-		VkSurfaceKHR surface, Vector2u size) :
+		VkSurfaceKHR surface, Vec2u size) :
 		device(device),
 		chosen_gpu(chosen_gpu),
 		surface(surface),
@@ -22,7 +22,7 @@ VkResult VulkanSwapchain::request_next_image(
 			device, swapchain, 10000, semaphore, nullptr, image_index);
 }
 
-void VulkanSwapchain::resize(Vector2u size) {
+void VulkanSwapchain::resize(Vec2u size) {
 	vkDeviceWaitIdle(device);
 
 	_destroy();
@@ -30,7 +30,7 @@ void VulkanSwapchain::resize(Vector2u size) {
 	_create(size);
 }
 
-void VulkanSwapchain::_create(Vector2u size) {
+void VulkanSwapchain::_create(Vec2u size) {
 	vkb::SwapchainBuilder swapchain_builder{ chosen_gpu, device, surface };
 
 	swapchain_format = VK_FORMAT_B8G8R8A8_UNORM;

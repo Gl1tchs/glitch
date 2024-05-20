@@ -1,6 +1,9 @@
 # define include dirs and library targets
 set(VENDOR_DIR ${CMAKE_SOURCE_DIR}/third_party)
 
+set(CATCH2_INCLUDES ${VENDOR_DIR}/Catch2/src PARENT_SCOPE)
+set(CATCH2_LIBRARIES Catch2::Catch2 PARENT_SCOPE)
+
 set(VMA_INCLUDES ${VENDOR_DIR}/VulkanMemoryAllocator/include PARENT_SCOPE)
 set(VMA_LIBRARIES GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
 
@@ -28,6 +31,10 @@ set(STB_INCLUDES ${VENDOR_DIR}/stb/include PARENT_SCOPE)
 
 set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
 set(VK_BOOTSTRAP_LIBRARIES vk-bootstrap::vk-bootstrap PARENT_SCOPE)
+
+if (GL_BUILD_TESTS)
+    add_subdirectory(Catch2)
+endif()
 
 # define and build targets
 set(VMA_BUILD_SAMPLES OFF CACHE BOOL "Build samples" FORCE)

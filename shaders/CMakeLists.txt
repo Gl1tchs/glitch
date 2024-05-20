@@ -52,7 +52,7 @@ add_custom_target(shaders ALL
 
 # bundle the shaders if any provided
 if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
-    set(BUNDLER_EXE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/bundler)
+    set(BUNDLER_EXE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/programs/bundler)
 
     set(BUNDLE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/include")
 

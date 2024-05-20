@@ -5,7 +5,7 @@
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_renderer.h"
 
-Ref<Image> Image::create(Vector2u size, ImageFormat format, bool mipmapped) {
+Ref<Image> Image::create(Vec2u size, ImageFormat format, bool mipmapped) {
 	switch (Renderer::get_backend()) {
 		case RenderBackend::Vulkan: {
 			Ref<VulkanImage> vk_image =
@@ -24,7 +24,7 @@ Ref<Image> Image::create(Vector2u size, ImageFormat format, bool mipmapped) {
 }
 
 Ref<Image> Image::create(
-		const void* data, Vector2u size, ImageFormat format, bool mipmapped) {
+		const void* data, Vec2u size, ImageFormat format, bool mipmapped) {
 	switch (Renderer::get_backend()) {
 		case RenderBackend::Vulkan: {
 			Ref<VulkanImage> vk_image =

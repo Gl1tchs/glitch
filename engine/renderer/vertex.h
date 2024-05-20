@@ -1,9 +1,9 @@
 #pragma once
 
 struct Vertex {
-	Vector3f position;
+	Vec3f position;
 	float uv_x;
-	Vector3f normal;
+	Vec3f normal;
 	float uv_y;
-	Vector4f color;
+	Vec4f color;
 };

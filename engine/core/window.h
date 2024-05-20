@@ -24,7 +24,7 @@ public:
 
 	bool is_open() const;
 
-	Vector2u get_size() const;
+	Vec2u get_size() const;
 
 	float get_aspect_ratio() const;
 

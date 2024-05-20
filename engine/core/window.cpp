@@ -43,14 +43,14 @@ void Window::poll_events() const { glfwPollEvents(); }
 
 bool Window::is_open() const { return !glfwWindowShouldClose(window); }
 
-Vector2u Window::get_size() const {
-	Vector2u s{};
+Vec2u Window::get_size() const {
+	Vec2u s{};
 	glfwGetWindowSize(window, (int*)&s.x, (int*)&s.y);
 	return s;
 }
 
 float Window::get_aspect_ratio() const {
-	const Vector2u s = get_size();
+	const Vec2u s = get_size();
 	return static_cast<float>(s.x) / static_cast<float>(s.y);
 }
 

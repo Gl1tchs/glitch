@@ -16,7 +16,7 @@ struct Input {
 
 	static bool is_mouse_released(MouseCode button);
 
-	static Vector2f get_mouse_position();
+	static Vec2f get_mouse_position();
 
-	static Vector2f get_scroll_offset();
+	static Vec2f get_scroll_offset();
 };

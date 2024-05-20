@@ -5,13 +5,13 @@
 class VulkanSwapchain {
 public:
 	VulkanSwapchain(VkDevice device, VkPhysicalDevice chosen_gpu,
-			VkSurfaceKHR surface, Vector2u size);
+			VkSurfaceKHR surface, Vec2u size);
 
 	~VulkanSwapchain();
 
 	VkResult request_next_image(VkSemaphore semaphore, uint32_t* image_index);
 
-	void resize(Vector2u size);
+	void resize(Vec2u size);
 
 	VkImage get_image(uint32_t image_index) {
 		return swapchain_images[image_index];
@@ -26,7 +26,7 @@ public:
 	VkExtent2D get_extent() { return swapchain_extent; }
 
 private:
-	void _create(Vector2u size);
+	void _create(Vec2u size);
 
 	void _destroy();
 

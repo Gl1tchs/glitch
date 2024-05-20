@@ -36,8 +36,8 @@ struct Image {
 	virtual ~Image() = default;
 
 	static Ref<Image> create(
-			Vector2u size, ImageFormat format, bool mipmapped = false);
-	static Ref<Image> create(const void* data, Vector2u size,
+			Vec2u size, ImageFormat format, bool mipmapped = false);
+	static Ref<Image> create(const void* data, Vec2u size,
 			ImageFormat format, bool mipmapped = false);
 
 	static void destroy(Ref<Image> image);

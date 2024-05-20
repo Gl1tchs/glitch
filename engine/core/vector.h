@@ -5,120 +5,264 @@
 template <typename T>
 concept ArithmeticType = std::is_arithmetic_v<T>;
 
-template <ArithmeticType T> using Scalar = T;
+template <ArithmeticType T, size_t TSize> struct Vec {
+	std::array<T, TSize> values;
 
-template <ArithmeticType T> struct Vector2 {
+	constexpr Vec() { std::fill(values.begin(), values.end(), 0.0f); }
+	constexpr Vec(const T& val) {
+		std::fill(values.begin(), values.end(), val);
+	}
+	constexpr Vec(const std::initializer_list<T> init) :
+			values(init.begin(), init.end()) {}
+	constexpr Vec(const Vec& other) : values(other.values) {}
+	constexpr Vec(Vec&& other) noexcept : values(std::move(other.values)) {}
+
+	float dot(const Vec& other) const {
+		float res = 0;
+		for (int i = 0; i < TSize; i++) {
+			res += values[i] * other[i];
+		}
+		return res;
+	}
+
+	T& operator[](size_t index) { return values[index]; }
+
+	const T& operator[](size_t index) const { return values[index]; }
+
+	constexpr Vec& operator=(const Vec& other) {
+		values = other.values;
+		return *this;
+	}
+
+	constexpr Vec operator+(const Vec& other) const {
+		Vec res{};
+		for (int i = 0; i < TSize; i++) {
+			res[i] = values[i] + other[i];
+		}
+		return res;
+	}
+
+	constexpr Vec operator-(const Vec& other) const {
+		Vec res{};
+		for (int i = 0; i < TSize; i++) {
+			res[i] = values[i] - other[i];
+		}
+		return res;
+	}
+
+	constexpr Vec operator*(const T& scalar) const {
+		Vec res{};
+		for (int i = 0; i < TSize; i++) {
+			res[i] = values[i] * scalar;
+		}
+		return res;
+	}
+
+	constexpr Vec operator/(const T& scalar) const {
+		Vec res{};
+		for (int i = 0; i < TSize; i++) {
+			res[i] = values[i] / scalar;
+		}
+		return res;
+	}
+
+	constexpr Vec& operator+=(const Vec& other) {
+		*this = *this + other;
+		return *this;
+	}
+
+	constexpr Vec& operator-=(const Vec& other) {
+		*this = *this - other;
+		return *this;
+	}
+
+	constexpr Vec& operator*=(const T& scalar) {
+		*this = *this * scalar;
+		return *this;
+	}
+
+	constexpr Vec& operator/=(const T& scalar) {
+		*this = *this / scalar;
+		return *this;
+	}
+
+	constexpr bool operator==(const Vec& other) const {
+		for (int i = 0; i < TSize; i++) {
+			if (values[i] != other[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+};
+
+template <ArithmeticType T> struct Vec<T, 2> {
 	T x;
 	T y;
 
-	constexpr Vector2() : x(0), y(0) {}
-	constexpr Vector2(const T& val) : x(val), y(val) {}
-	constexpr Vector2(const T& x_val, const T& y_val) : x(x_val), y(y_val) {}
-	constexpr Vector2(const Vector2& other) : x(other.x), y(other.y) {}
-	constexpr Vector2(Vector2&& other) noexcept :
+	constexpr Vec() : x(0), y(0) {}
+	constexpr Vec(const T& val) : x(val), y(val) {}
+	constexpr Vec(const T& x_val, const T& y_val) : x(x_val), y(y_val) {}
+	constexpr Vec(const Vec& other) : x(other.x), y(other.y) {}
+	constexpr Vec(Vec&& other) noexcept :
 			x(std::move(other.x)), y(std::move(other.y)) {}
 
-	constexpr Vector2& operator=(const Vector2& other) {
+	float dot(const Vec& other) const { return x * other.x + y * other.y; }
+
+	constexpr Vec& operator=(const Vec& other) {
 		x = other.x;
 		y = other.y;
 		return *this;
 	}
 
-	constexpr Vector2 operator+(const Vector2& other) const {
-		return Vector2(x + other.x, y + other.y);
+	constexpr Vec operator+(const Vec& other) const {
+		return Vec(x + other.x, y + other.y);
 	}
 
-	constexpr Vector2 operator-(const Vector2& other) const {
-		return Vector2(x - other.x, y - other.y);
+	constexpr Vec operator-(const Vec& other) const {
+		return Vec(x - other.x, y - other.y);
 	}
 
-	constexpr Vector2 operator*(const T& scalar) const {
-		return Vector2(x * scalar, y * scalar);
+	constexpr Vec operator*(const T& scalar) const {
+		return Vec(x * scalar, y * scalar);
 	}
 
-	constexpr Vector2 operator/(const T& scalar) const {
-		static_assert(scalar != 0 || std::abs(scalar) - 0.00001f > 0.0f);
-		return Vector2(x / scalar, y / scalar);
+	constexpr Vec operator/(const T& scalar) const {
+		return Vec(x / scalar, y / scalar);
+	}
+
+	constexpr Vec& operator+=(const Vec& other) {
+		*this = *this + other;
+		return *this;
+	}
+
+	constexpr Vec& operator-=(const Vec& other) {
+		*this = *this - other;
+		return *this;
+	}
+
+	constexpr Vec& operator*=(const T& scalar) {
+		*this = *this * scalar;
+		return *this;
+	}
+
+	constexpr Vec& operator/=(const T& scalar) {
+		*this = *this / scalar;
+		return *this;
+	}
+
+	constexpr bool operator==(const Vec& other) const {
+		return x == other.x && y == other.y;
 	}
 };
 
-using Vector2f = Vector2<float>;
-using Vector2d = Vector2<double>;
-using Vector2i = Vector2<int>;
-using Vector2u = Vector2<unsigned int>;
+using Vec2f = Vec<float, 2>;
+using Vec2d = Vec<double, 2>;
+using Vec2i = Vec<int, 2>;
+using Vec2u = Vec<uint32_t, 2>;
 
-template <ArithmeticType T> struct Vector3 {
+template <ArithmeticType T> struct Vec<T, 3> {
 	T x;
 	T y;
 	T z;
 
-	constexpr Vector3() : x(0), y(0), z(0) {}
-	constexpr Vector3(const T& val) : x(val), y(val), z(val) {}
-	constexpr Vector3(const T& x_val, const T& y_val, const T& z_val) :
+	constexpr Vec() : x(0), y(0), z(0) {}
+	constexpr Vec(const T& val) : x(val), y(val), z(val) {}
+	constexpr Vec(const T& x_val, const T& y_val, const T& z_val) :
 			x(x_val), y(y_val), z(z_val) {}
-	constexpr Vector3(const Vector2<T>& vec2, const T& z_val) :
+	constexpr Vec(const Vec<T, 2>& vec2, const T& z_val) :
 			x(vec2.x), y(vec2.y), z(z_val) {}
-	constexpr Vector3(const Vector3& other) :
-			x(other.x), y(other.y), z(other.z) {}
-	constexpr Vector3(Vector3&& other) noexcept :
+	constexpr Vec(const Vec& other) : x(other.x), y(other.y), z(other.z) {}
+	constexpr Vec(Vec&& other) noexcept :
 			x(std::move(other.x)),
 			y(std::move(other.y)),
 			z(std::move(other.z)) {}
 
-	constexpr Vector3& operator=(const Vector3& other) {
+	float dot(const Vec& other) const {
+		return x * other.x + y * other.y + z * other.z;
+	}
+
+	constexpr Vec& operator=(const Vec& other) {
 		x = other.x;
 		y = other.y;
 		z = other.z;
 		return *this;
 	}
 
-	constexpr Vector3 operator+(const Vector3& other) const {
-		return Vector3(x + other.x, y + other.y, z + other.z);
+	constexpr Vec operator+(const Vec& other) const {
+		return Vec(x + other.x, y + other.y, z + other.z);
 	}
 
-	constexpr Vector3 operator-(const Vector3& other) const {
-		return Vector3(x - other.x, y - other.y, z - other.z);
+	constexpr Vec operator-(const Vec& other) const {
+		return Vec(x - other.x, y - other.y, z - other.z);
 	}
 
-	constexpr Vector3 operator*(const T& scalar) const {
-		return Vector3(x * scalar, y * scalar, z * scalar);
+	constexpr Vec operator*(const T& scalar) const {
+		return Vec(x * scalar, y * scalar, z * scalar);
 	}
 
-	constexpr Vector3 operator/(const T& scalar) const {
-		static_assert(scalar != 0 || std::abs(scalar) - 0.00001f > 0.0f);
-		return Vector3(x / scalar, y / scalar, z / scalar);
+	constexpr Vec operator/(const T& scalar) const {
+		return Vec(x / scalar, y / scalar, z / scalar);
+	}
+
+	constexpr Vec& operator+=(const Vec& other) {
+		*this = *this + other;
+		return *this;
+	}
+
+	constexpr Vec& operator-=(const Vec& other) {
+		*this = *this - other;
+		return *this;
+	}
+
+	constexpr Vec& operator*=(const T& scalar) {
+		*this = *this * scalar;
+		return *this;
+	}
+
+	constexpr Vec& operator/=(const T& scalar) {
+		*this = *this / scalar;
+		return *this;
+	}
+
+	constexpr bool operator==(const Vec& other) const {
+		return x == other.x && y == other.y && z == other.z;
 	}
 };
 
-using Vector3f = Vector3<float>;
-using Vector3d = Vector3<double>;
-using Vector3i = Vector3<int>;
-using Vector3u = Vector3<unsigned int>;
+using Vec3f = Vec<float, 3>;
+using Vec3d = Vec<double, 3>;
+using Vec3i = Vec<int, 3>;
+using Vec3u = Vec<uint32_t, 3>;
 
-template <ArithmeticType T> struct Vector4 {
+template <ArithmeticType T> struct Vec<T, 4> {
 	T x;
 	T y;
 	T z;
 	T w;
 
-	constexpr Vector4() : x(0), y(0), z(0), w(0) {}
-	constexpr Vector4(const T& val) : x(val), y(val), z(val), w(val) {}
-	constexpr Vector4(
+	constexpr Vec() : x(0), y(0), z(0), w(0) {}
+	constexpr Vec(const T& val) : x(val), y(val), z(val), w(val) {}
+	constexpr Vec(
 			const T& x_val, const T& y_val, const T& z_val, const T& w_val) :
 			x(x_val), y(y_val), z(z_val), w(w_val) {}
-	constexpr Vector4(const Vector2<T>& vec2, const T& z_val, const T& w_val) :
+	constexpr Vec(const Vec<T, 2>& vec2, const T& z_val, const T& w_val) :
 			x(vec2.x), y(vec2.y), z(z_val), w(w_val) {}
-	constexpr Vector4(const Vector3<T>& vec3, const T& w_val) :
+	constexpr Vec(const Vec<T, 4>& vec3, const T& w_val) :
 			x(vec3.x), y(vec3.y), z(vec3.z), w(w_val) {}
-	constexpr Vector4(const Vector4& other) :
+	constexpr Vec(const Vec& other) :
 			x(other.x), y(other.y), z(other.z), w(other.w) {}
-	constexpr Vector4(Vector4&& other) noexcept :
+	constexpr Vec(Vec&& other) noexcept :
 			x(std::move(other.x)),
 			y(std::move(other.y)),
 			z(std::move(other.z)),
 			w(std::move(other.w)) {}
 
-	constexpr Vector4& operator=(const Vector4& other) {
+	float dot(const Vec& other) const {
+		return x * other.x + y * other.y + z * other.z + w * other.w;
+	}
+
+	constexpr Vec& operator=(const Vec& other) {
 		x = other.x;
 		y = other.y;
 		z = other.z;
@@ -126,25 +270,48 @@ template <ArithmeticType T> struct Vector4 {
 		return *this;
 	}
 
-	constexpr Vector4 operator+(const Vector4& other) const {
-		return Vector4(x + other.x, y + other.y, z + other.z, w + other.w);
+	constexpr Vec operator+(const Vec& other) const {
+		return Vec(x + other.x, y + other.y, z + other.z, w + other.w);
 	}
 
-	constexpr Vector4 operator-(const Vector4& other) const {
-		return Vector4(x - other.x, y - other.y, z - other.z, w - other.w);
+	constexpr Vec operator-(const Vec& other) const {
+		return Vec(x - other.x, y - other.y, z - other.z, w - other.w);
 	}
 
-	constexpr Vector4 operator*(const T& scalar) const {
-		return Vector4(x * scalar, y * scalar, z * scalar, w * scalar);
+	constexpr Vec operator*(const T& scalar) const {
+		return Vec(x * scalar, y * scalar, z * scalar, w * scalar);
 	}
 
-	constexpr Vector4 operator/(const T& scalar) const {
-		static_assert(scalar != 0 || std::abs(scalar) - 0.00001f > 0.0f);
-		return Vector4(x / scalar, y / scalar, z / scalar, w * scalar);
+	constexpr Vec operator/(const T& scalar) const {
+		return Vec(x / scalar, y / scalar, z / scalar, w * scalar);
+	}
+
+	constexpr Vec& operator+=(const Vec& other) {
+		*this = *this + other;
+		return *this;
+	}
+
+	constexpr Vec& operator-=(const Vec& other) {
+		*this = *this - other;
+		return *this;
+	}
+
+	constexpr Vec& operator*=(const T& scalar) {
+		*this = *this * scalar;
+		return *this;
+	}
+
+	constexpr Vec& operator/=(const T& scalar) {
+		*this = *this / scalar;
+		return *this;
+	}
+
+	constexpr bool operator==(const Vec& other) const {
+		return x == other.x && y == other.y && z == other.z;
 	}
 };
 
-using Vector4f = Vector4<float>;
-using Vector4d = Vector4<double>;
-using Vector4i = Vector4<int>;
-using Vector4u = Vector4<unsigned int>;
+using Vec4f = Vec<float, 4>;
+using Vec4d = Vec<double, 4>;
+using Vec4i = Vec<int, 4>;
+using Vec4u = Vec<uint32_t, 4>;

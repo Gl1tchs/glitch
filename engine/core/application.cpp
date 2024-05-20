@@ -53,9 +53,9 @@ Application::Application(const ApplicationCreateInfo& info) {
 
 	uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
 	white_image = Image::create(
-			(void*)&white, Vector2u{ 1, 1 }, ImageFormat::R8G8B8A8_UNORM);
+			(void*)&white, Vec2u{ 1, 1 }, ImageFormat::R8G8B8A8_UNORM);
 
-	Vector2u size = {};
+	Vec2u size = {};
 	int channel_count;
 	uint8_t* image_data = stbi_load("assets/t_texture.png", (int*)&size.x,
 			(int*)&size.y, &channel_count, STBI_rgb_alpha);
