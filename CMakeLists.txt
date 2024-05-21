@@ -5,18 +5,60 @@ project(glitch)
 option(GL_BUILD_TESTS "Build tests!" ON)
 set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
 
+option(GL_BUILD_TESTBED "Build testbed application!" ON)
+set(GL_BUILD_TESTBED ${GL_BUILD_TESTBED})
+
 # append into module path for our own configurations
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CMakeOptions)
 
-set(ENGINE_DIR ${CMAKE_SOURCE_DIR}/engine)
-set(EDITOR_DIR ${CMAKE_SOURCE_DIR}/editor)
+find_package(Vulkan REQUIRED)
 
-# needs to build first because of the variables
 add_subdirectory(third_party)
-
-add_subdirectory(editor)
-add_subdirectory(engine)
 add_subdirectory(programs)
 add_subdirectory(shaders)
+
+file(GLOB_RECURSE SOURCES
+    "include/*.h"
+    "src/*.h"
+    "src/*.cpp"
+)
+
+add_library(glitch ${SOURCES})
+
+target_include_directories(glitch PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+    ${GLM_INCLUDES}
+)
+
+target_include_directories(glitch PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/include
+    ${GLFW_INCLUDES}
+    ${STB_INCLUDES}
+    ${VMA_INCLUDES}
+    ${VK_BOOTSTRAP_INCLUDES}
+    ${Vulkan_INCLUDE_DIRS}    
+)
+
+target_link_libraries(glitch PUBLIC 
+    ${GLM_LIBRARIES}
+)
+
+target_link_libraries(glitch PRIVATE
+    ${GLFW_LIBRARIES}
+    ${VMA_LIBRARIES}
+    ${VK_BOOTSTRAP_LIBRARIES}
+    ${Vulkan_LIBRARIES}
+)
+
+target_precompile_headers(glitch PUBLIC include/pch.h)
+
+if (GL_BUILD_TESTBED)
+    add_subdirectory(testbed)
+endif()
+
+if (GL_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

@@ -4,6 +4,7 @@
 - [ ] SIMD Matrix multiplication
 - [ ] Mat4 type
 - [ ] Vector dot/cross products
+- [ ] Use our own types for transformations
 
 ## Vulkan Renderer
 - [x] VkCommandBuffer and VkCommandPool abstraction
@@ -13,3 +14,5 @@
 - [ ] Mesh rendering
 - [ ] Model rendering, indexing in detail (fist index)
 - [ ] Instanced rendering
+- [ ] Pipeline ordering and one time binding
+- [ ] Multisampling

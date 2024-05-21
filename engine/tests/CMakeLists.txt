@@ -1,3 +1,0 @@
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests)
-
-add_subdirectory(core_tests)

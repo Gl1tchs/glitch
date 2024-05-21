@@ -10,9 +10,6 @@ set(VMA_LIBRARIES GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
 set(FASTGLTF_INCLUDES ${VENDOR_DIR}/fastgltf/include PARENT_SCOPE)
 set(FASTGLTF_LIBRARIES fastltf PARENT_SCOPE)
 
-set(FMT_INCLUDES ${VENDOR_DIR}/fmt/include PARENT_SCOPE)
-set(FMT_LIBRARIES fmt::fmt PARENT_SCOPE)
-
 set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
 set(GLFW_LIBRARIES glfw PARENT_SCOPE)
 
@@ -41,8 +38,6 @@ set(VMA_BUILD_SAMPLES OFF CACHE BOOL "Build samples" FORCE)
 add_subdirectory(VulkanMemoryAllocator)
 
 add_subdirectory(fastgltf)
-
-add_subdirectory(fmt)
 
 add_subdirectory(glfw)
 
