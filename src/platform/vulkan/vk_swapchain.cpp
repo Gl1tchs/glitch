@@ -12,8 +12,15 @@ VkResult VulkanSwapchain::request_next_image(const VulkanContext& context,
 void VulkanSwapchain::resize(const VulkanContext& context, Vec2u size) {
 	vkDeviceWaitIdle(context.device);
 
+	// create new swapchain with the old reference
+	VulkanSwapchain new_swapchain;
+	create(context, size, &new_swapchain, swapchain);
+
+	// destroy the old swapchain
 	destroy(context, this);
-	create(context, size, this);
+
+	// use new swapchain
+	*this = new_swapchain;
 }
 
 Ref<VulkanSwapchain> VulkanSwapchain::create(
@@ -25,24 +32,31 @@ Ref<VulkanSwapchain> VulkanSwapchain::create(
 }
 
 void VulkanSwapchain::create(const VulkanContext& context, Vec2u size,
-		VulkanSwapchain* out_swapchain) {
+		VulkanSwapchain* out_swapchain, VkSwapchainKHR old_swapchain) {
 	vkb::SwapchainBuilder swapchain_builder{ context.chosen_gpu, context.device,
 		context.surface };
 
-	out_swapchain->swapchain_format = VK_FORMAT_B8G8R8A8_UNORM;
+	// for faster recreation
+	if (old_swapchain != VK_NULL_HANDLE) {
+		swapchain_builder.set_old_swapchain(old_swapchain);
+	}
 
 	vkb::Swapchain vkb_swapchain =
 			swapchain_builder
 					.set_desired_format(VkSurfaceFormatKHR{
-							.format = out_swapchain->swapchain_format,
-							.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+							.format = VK_FORMAT_B8G8R8A8_UNORM,
+							.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+					})
 					.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+					.set_desired_min_image_count(
+							vkb::SwapchainBuilder::DOUBLE_BUFFERING)
 					.set_desired_extent(size.x, size.y)
 					.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 					.build()
 					.value();
 
 	out_swapchain->swapchain_extent = vkb_swapchain.extent;
+	out_swapchain->swapchain_format = vkb_swapchain.image_format;
 
 	out_swapchain->swapchain = vkb_swapchain.swapchain;
 	out_swapchain->swapchain_images = vkb_swapchain.get_images().value();

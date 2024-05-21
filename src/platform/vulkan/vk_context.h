@@ -19,7 +19,10 @@ struct VulkanContext {
 	VkDescriptorSetLayout scene_data_descriptor_layout;
 
 	VkQueue graphics_queue;
-	uint32_t graphics_queue_family;
+	uint32_t graphics_queue_family{ UINT32_MAX };
+
+	VkQueue present_queue;
+	uint32_t present_queue_family{ UINT32_MAX };
 
 	VkFormat color_attachment_format;
 	VkFormat depth_attachment_format;

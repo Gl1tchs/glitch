@@ -134,6 +134,20 @@ void VulkanRenderer::draw() {
 	}
 	cmd.end();
 
+	// submit commands
+	VkSemaphoreSubmitInfo wait_info = vkinit::semaphore_submit_info(
+			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
+			get_current_frame().swapchain_semaphore);
+	VkSemaphoreSubmitInfo signal_info =
+			vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+					get_current_frame().render_semaphore);
+
+	// submit command buffer to the queue and execute it.
+	// render_fence will now block until the graphic commands finish
+	// execution
+	cmd.submit(context.graphics_queue, get_current_frame().render_fence,
+			&wait_info, &signal_info);
+
 	_present_image(cmd, swapchain_image_index);
 
 	frame_number++;
@@ -241,19 +255,6 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 void VulkanRenderer::_present_image(
 		VulkanCommandBuffer& cmd, uint32_t swapchain_image_index) {
-	VkSemaphoreSubmitInfo wait_info = vkinit::semaphore_submit_info(
-			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
-			get_current_frame().swapchain_semaphore);
-	VkSemaphoreSubmitInfo signal_info =
-			vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-					get_current_frame().render_semaphore);
-
-	// submit command buffer to the queue and execute it.
-	// render_fence will now block until the graphic commands finish
-	// execution
-	cmd.submit(context.graphics_queue, get_current_frame().render_fence,
-			&wait_info, &signal_info);
-
 	VkPresentInfoKHR present_info = {
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.pNext = nullptr,
@@ -264,7 +265,7 @@ void VulkanRenderer::_present_image(
 		.pImageIndices = &swapchain_image_index,
 	};
 
-	if (VkResult res = vkQueuePresentKHR(context.graphics_queue, &present_info);
+	if (VkResult res = vkQueuePresentKHR(context.present_queue, &present_info);
 			res == VK_ERROR_OUT_OF_DATE_KHR) {
 		// resize the swapchain on the next frame
 		Application::get_instance()->enqueue_main_thread(
@@ -336,6 +337,11 @@ void VulkanRenderer::_init_vulkan() {
 			vkb_device.get_queue(vkb::QueueType::graphics).value();
 	context.graphics_queue_family =
 			vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+
+	context.present_queue =
+			vkb_device.get_queue(vkb::QueueType::present).value();
+	context.present_queue_family =
+			vkb_device.get_queue_index(vkb::QueueType::present).value();
 
 	deletion_queue.push_function([this]() {
 		vkDestroySurfaceKHR(context.instance, context.surface, nullptr);

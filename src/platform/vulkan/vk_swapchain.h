@@ -4,11 +4,11 @@
 
 struct VulkanSwapchain {
 	VkSwapchainKHR swapchain;
+	VkExtent2D swapchain_extent;
 	VkFormat swapchain_format;
 
 	std::vector<VkImage> swapchain_images;
 	std::vector<VkImageView> swapchain_image_views;
-	VkExtent2D swapchain_extent;
 
 	VkResult request_next_image(const VulkanContext& context,
 			VkSemaphore semaphore, uint32_t* image_index);
@@ -31,7 +31,8 @@ struct VulkanSwapchain {
 			const VulkanContext& context, Vec2u size);
 
 	static void create(const VulkanContext& context, Vec2u size,
-			VulkanSwapchain* out_swapchain);
+			VulkanSwapchain* out_swapchain,
+			VkSwapchainKHR old_swapchain = VK_NULL_HANDLE);
 
 	static void destroy(
 			const VulkanContext& context, VulkanSwapchain* swapchain);
