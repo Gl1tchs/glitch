@@ -45,17 +45,19 @@ void TestBedApplication::_on_start() {
 
 	Vec2u size = {};
 	int channel_count;
-	uint8_t* image_data = stbi_load("assets/t_texture.png", (int*)&size.x,
+	uint8_t* image_data = stbi_load("assets/texture1.jpg", (int*)&size.x,
 			(int*)&size.y, &channel_count, STBI_rgb_alpha);
 
-	color_image = Image::create(image_data, size, ImageFormat::R8G8B8A8_UNORM);
+	color_image =
+			Image::create(image_data, size, ImageFormat::R8G8B8A8_UNORM, true);
 
 	stbi_image_free(image_data);
 
 	image_data = stbi_load("assets/texture.jpg", (int*)&size.x, (int*)&size.y,
 			&channel_count, STBI_rgb_alpha);
 
-	color_image2 = Image::create(image_data, size, ImageFormat::R8G8B8A8_UNORM);
+	color_image2 =
+			Image::create(image_data, size, ImageFormat::R8G8B8A8_UNORM, true);
 
 	stbi_image_free(image_data);
 
@@ -72,41 +74,35 @@ void TestBedApplication::_on_start() {
 	resources.color_image = color_image2;
 
 	material_instance2 = material->create_instance(resources);
-
-	current_material = material_instance;
 }
 
 void TestBedApplication::_on_update(float dt) {
 	camera.aspect_ratio = get_window()->get_aspect_ratio();
 
-	if (!space_pressed && Input::is_key_pressed(KeyCode::SPACE)) {
-		if (current_material == material_instance) {
-			current_material = material_instance2;
+	int element_count = 25;
+	for (int i = 1; i <= element_count; ++i) {
+		Transform transform;
+		float time = timer.get_elapsed_seconds();
+
+		// Oscillation parameters
+		float x = std::sin(time + i) * 1.25f; // Oscillate along x-axis
+		float y = std::cos(time + (element_count - i)) *
+				1.25f; // Oscillate along y-axis
+
+		transform.local_position = { x, y, 0 };
+		transform.local_scale = { 0.2f, 0.2f, 1.0f };
+
+		InstanceSubmitData submit_data = {
+			.transform = transform.get_transform_matrix(),
+		};
+
+		// Randomly select between material_instance and material_instance2
+		if (i % 2 == 0) {
+			get_renderer()->submit_mesh(mesh, material_instance, submit_data);
 		} else {
-			current_material = material_instance;
+			get_renderer()->submit_mesh(mesh, material_instance2, submit_data);
 		}
-		space_pressed = true;
 	}
-	if (space_pressed && Input::is_key_released(KeyCode::SPACE)) {
-		space_pressed = false;
-	}
-
-	static float angle = 0.0f;
-
-	constexpr float radius = 1.0f;
-	constexpr float speed = 2.0f;
-
-	angle += speed * dt;
-
-	Transform transform;
-	transform.local_position =
-			glm::vec3(radius * cos(angle), radius * sin(angle), 0.0f);
-
-	InstanceSubmitData submit_data = {
-		.transform = transform.get_transform_matrix(),
-	};
-
-	get_renderer()->submit_mesh(mesh, current_material, submit_data);
 }
 
 void TestBedApplication::_on_destroy() {

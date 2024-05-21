@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gl/core/application.h>
+#include <gl/core/timer.h>
 #include <gl/renderer/camera.h>
 #include <gl/renderer/material.h>
 #include <gl/renderer/mesh.h>
@@ -20,14 +21,13 @@ protected:
 private:
 	OrthographicCamera camera;
 
+	Timer timer;
+
 	Ref<Mesh> mesh;
 	Ref<MetallicRoughnessMaterial> material;
 
 	Ref<MaterialInstance> material_instance;
 	Ref<MaterialInstance> material_instance2;
-
-	Ref<MaterialInstance> current_material;
-	bool space_pressed = false;
 
 	Ref<Image> color_image;
 	Ref<Image> color_image2;
