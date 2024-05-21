@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/window.h"
+#include "renderer/camera.h"
 #include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/renderer.h"
@@ -51,6 +52,8 @@ private:
 	Ref<Renderer> renderer;
 
 	// TEMP
+	OrthographicCamera camera;
+
 	Ref<Mesh> mesh;
 	Ref<MetallicRoughnessMaterial> material;
 

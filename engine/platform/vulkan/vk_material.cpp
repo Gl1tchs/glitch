@@ -34,11 +34,16 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 	material->material_layout = layout_builder.build(context.device,
 			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
+	VkDescriptorSetLayout descriptors[] = {
+		context.scene_data_descriptor_layout,
+		material->material_layout,
+	};
+
 	VulkanPipelineLayoutCreateInfo mesh_layout_info = {
 		.push_constant_count = 1,
 		.push_constants = &matrix_range,
-		.descriptor_set_count = 1,
-		.descriptor_sets = &material->material_layout,
+		.descriptor_set_count = 2,
+		.descriptor_sets = descriptors,
 	};
 
 	material->pipeline.pipeline_layout =

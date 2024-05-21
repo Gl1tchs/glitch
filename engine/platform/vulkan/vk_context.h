@@ -3,7 +3,6 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include "core/deletion_queue.h"
 #include "renderer/image.h"
 
 #include "platform/vulkan/vk_descriptors.h"
@@ -17,8 +16,7 @@ struct VulkanContext {
 	VkDebugUtilsMessengerEXT debug_messenger;
 
 	VulkanDescriptorAllocator descriptor_allocator;
-
-	DeletionQueue deletion_queue;
+	VkDescriptorSetLayout scene_data_descriptor_layout;
 
 	VkQueue graphics_queue;
 	uint32_t graphics_queue_family;

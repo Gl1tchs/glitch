@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/window.h"
+#include "renderer/camera.h"
 
 #include "renderer/material.h"
 #include "renderer/mesh.h"
@@ -18,6 +19,8 @@ public:
 
 	virtual void submit_mesh(
 			Ref<Mesh> mesh, Ref<MaterialInstance> material) = 0;
+
+	virtual void attach_camera(Camera* camera) = 0;
 
 	// record drawing commands and submit them
 	virtual void draw() = 0;

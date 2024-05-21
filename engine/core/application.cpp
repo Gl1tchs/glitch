@@ -28,6 +28,7 @@ Application::Application(const ApplicationCreateInfo& info) {
 	// initialize render backend
 	auto backend = find_proper_backend();
 	renderer = Renderer::create(backend, window);
+	renderer->attach_camera(&camera);
 
 	std::vector<Vertex> vertices = {
 		{ { 0.5f, 0.5f, 0.0f }, 1.0f, { 0.0f, 0.0f, 0.0f }, 1.0f,
@@ -75,7 +76,7 @@ Application::Application(const ApplicationCreateInfo& info) {
 		.constants = constants,
 		.constants_offset = 0,
 		.color_image = color_image,
-		.color_filtering = ImageFilteringMode::LINEAR,
+		.color_filtering = ImageFilteringMode::NEAREST,
 		.roughness_image = white_image,
 		.roughness_filtering = ImageFilteringMode::LINEAR,
 	};
@@ -131,6 +132,8 @@ void Application::_event_loop(float dt) {
 	_process_main_thread_queue();
 
 	_on_update(dt);
+
+	camera.aspect_ratio = window->get_aspect_ratio();
 
 	if (!space_pressed && Input::is_key_pressed(KeyCode::SPACE)) {
 		if (current_material == material_instance) {

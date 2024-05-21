@@ -2,7 +2,6 @@
 
 #include "core/application.h"
 #include "core/window.h"
-#include "glm/packing.hpp"
 #include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
@@ -36,10 +35,16 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 VulkanRenderer::~VulkanRenderer() {
 	wait_for_device();
 
-	context.deletion_queue.flush();
+	for (auto& frame : frames) {
+		frame.deletion_queue.flush();
+	}
+
+	deletion_queue.flush();
 }
 
 VulkanRenderer* VulkanRenderer::get_instance() { return s_instance; }
+
+void VulkanRenderer::attach_camera(Camera* camera) { this->camera = camera; }
 
 void VulkanRenderer::submit_mesh(
 		Ref<Mesh> mesh, Ref<MaterialInstance> material) {
@@ -52,7 +57,7 @@ void VulkanRenderer::draw() {
 			&get_current_frame().render_fence, true, UINT64_MAX));
 
 	get_current_frame().deletion_queue.flush();
-	// get_current_frame().frame_descriptors.clear_pools(context.device);
+	get_current_frame().frame_descriptors.clear_pools(context.device);
 
 	// request image from the swapchain
 	uint32_t swapchain_image_index;
@@ -84,8 +89,9 @@ void VulkanRenderer::draw() {
 								 draw_image->image_extent.height) *
 			render_scale;
 
-	// begin the command buffer recording. We will use this command buffer
-	// exactly once, so we want to let vulkan know that
+	// begin the command buffer recording. We will use
+	// this command buffer exactly once, so we want to
+	// let vulkan know that
 	cmd.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	{
 		// clear color
@@ -167,20 +173,48 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 	VkRenderingAttachmentInfo depth_attachment = vkinit::depth_attachment_info(
 			depth_image->image_view, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
+	VulkanBuffer scene_data_buffer = VulkanBuffer::create(context.allocator,
+			sizeof(VulkanSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+	get_current_frame().deletion_queue.push_function([=, this]() {
+		VulkanBuffer::destroy(context.allocator, scene_data_buffer);
+	});
+
+	VulkanSceneData* scene_uniform_data =
+			(VulkanSceneData*)scene_data_buffer.allocation->GetMappedData();
+	if (camera) {
+		scene_uniform_data->view = camera->get_view_matrix();
+		scene_uniform_data->proj = camera->get_projection_matrix();
+		scene_uniform_data->view_proj =
+				scene_uniform_data->proj * scene_uniform_data->view;
+	}
+
+	VkDescriptorSet global_descriptor =
+			get_current_frame().frame_descriptors.allocate(
+					context.device, context.scene_data_descriptor_layout);
+
+	DescriptorWriter writer;
+	writer.write_buffer(0, scene_data_buffer.buffer, sizeof(VulkanSceneData), 0,
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	writer.update_set(context.device, global_descriptor);
+
 	cmd.begin_rendering(draw_extent, &color_attachment, &depth_attachment);
 	{
+		// set dynamic viewport and scissor
+		cmd.set_viewport(
+				{ (float)draw_extent.width, (float)draw_extent.height });
+		cmd.set_scissor(draw_extent);
+
 		for (const auto& [material, meshes] : meshes_to_draw) {
 			Ref<VulkanMaterialInstance> vk_material =
 					std::dynamic_pointer_cast<VulkanMaterialInstance>(material);
 
 			cmd.bind_pipeline(vk_material->pipeline->pipeline);
 
-			// set dynamic viewport and scissor
-			cmd.set_viewport(
-					{ (float)draw_extent.width, (float)draw_extent.height });
-			cmd.set_scissor(draw_extent);
-
 			cmd.bind_descriptor_sets(vk_material->pipeline->pipeline_layout, 0,
+					1, &global_descriptor);
+			cmd.bind_descriptor_sets(vk_material->pipeline->pipeline_layout, 1,
 					1, &vk_material->descriptor_set);
 
 			for (const auto& mesh : meshes) {
@@ -301,7 +335,7 @@ void VulkanRenderer::_init_vulkan() {
 	context.graphics_queue_family =
 			vkb_device.get_queue_index(vkb::QueueType::graphics).value();
 
-	context.deletion_queue.push_function([this]() {
+	deletion_queue.push_function([this]() {
 		vkDestroySurfaceKHR(context.instance, context.surface, nullptr);
 		vkDestroyDevice(context.device, nullptr);
 
@@ -318,7 +352,7 @@ void VulkanRenderer::_init_vulkan() {
 	};
 	vmaCreateAllocator(&allocator_info, &context.allocator);
 
-	context.deletion_queue.push_function(
+	deletion_queue.push_function(
 			[this]() { vmaDestroyAllocator(context.allocator); });
 
 	// get information about the context.device
@@ -337,7 +371,7 @@ void VulkanRenderer::_init_swapchain() {
 	swapchain = create_ref<VulkanSwapchain>(
 			context.device, context.chosen_gpu, context.surface, window_size);
 
-	context.deletion_queue.push_function([this]() { swapchain.reset(); });
+	deletion_queue.push_function([this]() { swapchain.reset(); });
 
 	// prepare drawing images
 	VkExtent3D draw_image_extent = {
@@ -358,7 +392,7 @@ void VulkanRenderer::_init_swapchain() {
 			context.depth_attachment_format,
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	context.deletion_queue.push_function([this]() {
+	deletion_queue.push_function([this]() {
 		VulkanImage::destroy(context, draw_image.get());
 		VulkanImage::destroy(context, depth_image.get());
 	});
@@ -376,7 +410,7 @@ void VulkanRenderer::_init_commands() {
 		frame.command_pool =
 				VulkanCommandPool::create(context.device, &command_pool_info);
 		// command pool cleanup
-		context.deletion_queue.push_function([this, &frame]() {
+		deletion_queue.push_function([this, &frame]() {
 			VulkanCommandPool::destroy(context.device, frame.command_pool);
 		});
 
@@ -391,7 +425,7 @@ void VulkanRenderer::_init_commands() {
 	// allocate the command buffer for immediate submits
 	imm_command_buffer = imm_command_pool.allocate_buffer(context.device);
 
-	context.deletion_queue.push_function([this]() {
+	deletion_queue.push_function([this]() {
 		VulkanCommandPool::destroy(context.device, imm_command_pool);
 	});
 }
@@ -419,7 +453,7 @@ void VulkanRenderer::_init_sync_structures() {
 				&frames[i].render_semaphore));
 
 		// sync object cleanup
-		context.deletion_queue.push_function([this, i]() {
+		deletion_queue.push_function([this, i]() {
 			vkDestroyFence(context.device, frames[i].render_fence, nullptr);
 			vkDestroySemaphore(
 					context.device, frames[i].render_semaphore, nullptr);
@@ -430,7 +464,7 @@ void VulkanRenderer::_init_sync_structures() {
 
 	// immediate sync structures
 	VK_CHECK(vkCreateFence(context.device, &fence_info, nullptr, &imm_fence));
-	context.deletion_queue.push_function(
+	deletion_queue.push_function(
 			[this]() { vkDestroyFence(context.device, imm_fence, nullptr); });
 }
 
@@ -442,8 +476,32 @@ void VulkanRenderer::_init_descriptors() {
 
 	context.descriptor_allocator.init(context.device, 10, pool_sizes);
 
-	context.deletion_queue.push_function([this]() {
+	deletion_queue.push_function([this]() {
 		context.descriptor_allocator.destroy_pools(context.device);
+	});
+
+	for (int i = 0; i < FRAME_OVERLAP; i++) {
+		// create a descriptor pool
+		std::vector<VulkanDescriptorAllocator::PoolSizeRatio> frame_sizes = {
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
+		};
+
+		frames[i].frame_descriptors = VulkanDescriptorAllocator{};
+		frames[i].frame_descriptors.init(context.device, 1000, frame_sizes);
+
+		deletion_queue.push_function([this, i]() {
+			frames[i].frame_descriptors.destroy_pools(context.device);
+		});
+	}
+
+	DescriptorLayoutBuilder builder;
+	builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	context.scene_data_descriptor_layout = builder.build(context.device,
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+	deletion_queue.push_function([this]() {
+		vkDestroyDescriptorSetLayout(
+				context.device, context.scene_data_descriptor_layout, nullptr);
 	});
 }
 
@@ -463,7 +521,7 @@ void VulkanRenderer::_init_samplers() {
 	vkCreateSampler(
 			context.device, &sampler_info, nullptr, &context.nearest_sampler);
 
-	context.deletion_queue.push_function([this]() {
+	deletion_queue.push_function([this]() {
 		vkDestroySampler(context.device, context.linear_sampler, nullptr);
 		vkDestroySampler(context.device, context.nearest_sampler, nullptr);
 	});

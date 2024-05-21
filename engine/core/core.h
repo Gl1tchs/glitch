@@ -2,6 +2,7 @@
 
 #include "core/assert.h"
 #include "core/buffer.h"
+#include "core/matrix.h"
 #include "core/memory.h"
 #include "core/vector.h"
 

@@ -1,19 +1,27 @@
 #pragma once
 
-#include "renderer/material.h"
-#include "renderer/mesh.h"
 #include "renderer/renderer.h"
 
 #include "core/deletion_queue.h"
 #include "core/window.h"
 
+#include "renderer/material.h"
+#include "renderer/mesh.h"
+
 #include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_context.h"
+#include "platform/vulkan/vk_descriptors.h"
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_mesh.h"
 #include "platform/vulkan/vk_swapchain.h"
 
 constexpr uint32_t FRAME_OVERLAP = 2;
+
+struct VulkanSceneData {
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::mat4 view_proj;
+};
 
 struct VulkanFrameData {
 	VulkanCommandPool command_pool;
@@ -23,7 +31,7 @@ struct VulkanFrameData {
 	VkFence render_fence;
 
 	DeletionQueue deletion_queue;
-	// DescriptorAllocator frame_descriptors;
+	VulkanDescriptorAllocator frame_descriptors;
 };
 
 class VulkanRenderer : public Renderer {
@@ -32,6 +40,8 @@ public:
 	virtual ~VulkanRenderer();
 
 	static VulkanRenderer* get_instance();
+
+	void attach_camera(Camera* camera) override;
 
 	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material) override;
 
@@ -74,8 +84,12 @@ private:
 	VulkanCommandBuffer imm_command_buffer;
 	VulkanCommandPool imm_command_pool;
 
+	Camera* camera = nullptr;
+
 	std::map<Ref<MaterialInstance>, std::vector<Ref<VulkanMesh>>>
 			meshes_to_draw;
+
+	DeletionQueue deletion_queue;
 
 private:
 	VulkanFrameData& get_current_frame() {

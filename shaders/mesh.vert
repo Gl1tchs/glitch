@@ -27,7 +27,7 @@ void main() {
     Vertex v = push_constants.vertex_buffer.vertices[gl_VertexIndex];
 
     // output the position of each vertex
-    gl_Position = vec4(v.position, 1.0f);
+    gl_Position = scene_data.viewproj * vec4(v.position, 1.0f);
 
     out_color = v.color.xyz * material_data.color_factors.xyz;
     out_uv = vec2(v.uv_x, v.uv_y);
