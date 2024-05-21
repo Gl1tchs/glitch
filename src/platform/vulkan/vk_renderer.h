@@ -43,7 +43,8 @@ public:
 
 	void attach_camera(Camera* camera) override;
 
-	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material) override;
+	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
+			const InstanceSubmitData& data) override;
 
 	void draw() override;
 
@@ -86,8 +87,12 @@ private:
 
 	Camera* camera = nullptr;
 
-	std::map<Ref<MaterialInstance>, std::vector<Ref<VulkanMesh>>>
-			meshes_to_draw;
+	struct MeshDrawData {
+		Ref<VulkanMesh> mesh;
+		InstanceSubmitData data;
+	};
+
+	std::map<Ref<MaterialInstance>, std::vector<MeshDrawData>> meshes_to_draw;
 
 	DeletionQueue deletion_queue;
 

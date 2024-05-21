@@ -36,6 +36,8 @@
 #include <variant>
 #include <vector>
 
+#include <glm/glm.hpp>
+
 #include "gl/core/core.h"
 
 namespace fs = std::filesystem;

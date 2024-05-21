@@ -1,7 +1,5 @@
 #pragma once
 
-#include <glm/glm.hpp>
-
 inline constexpr glm::vec3 VEC3_UP(0.0f, 1.0f, 0.0f);
 inline constexpr glm::vec3 VEC3_RIGHT(1.0f, 0.0f, 0.0f);
 inline constexpr glm::vec3 VEC3_FORWARD(0.0f, 0.0f, -1.0f);

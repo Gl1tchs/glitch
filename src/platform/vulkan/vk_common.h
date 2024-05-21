@@ -18,6 +18,6 @@
 	} while (false)
 
 struct DrawPushConstants {
-	// Mat4f world_matrix;
+	glm::mat4 transform;
 	VkDeviceAddress vertex_buffer;
 };

@@ -3,7 +3,6 @@
 #include "platform/vulkan/vk_buffer.h"
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_pipeline.h"
-#include "platform/vulkan/vk_renderer.h"
 
 Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 		VulkanContext& context) {

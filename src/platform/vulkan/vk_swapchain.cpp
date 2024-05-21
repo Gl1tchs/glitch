@@ -2,43 +2,39 @@
 
 #include <VkBootstrap.h>
 
-VulkanSwapchain::VulkanSwapchain(VkDevice device, VkPhysicalDevice chosen_gpu,
-		VkSurfaceKHR surface, Vec2u size) :
-		device(device),
-		chosen_gpu(chosen_gpu),
-		surface(surface),
-		swapchain(VK_NULL_HANDLE),
-		swapchain_format(VK_FORMAT_R16G16B16A16_SFLOAT),
-		swapchain_extent(VkExtent2D{ size.x, size.y }) {
-    _create(size);
-}
-
-VulkanSwapchain::~VulkanSwapchain() { _destroy(); }
-
-VkResult VulkanSwapchain::request_next_image(
+VkResult VulkanSwapchain::request_next_image(const VulkanContext& context,
 		VkSemaphore semaphore, uint32_t* image_index) {
 	uint32_t swapchain_image_index;
 	return vkAcquireNextImageKHR(
-			device, swapchain, 10000, semaphore, nullptr, image_index);
+			context.device, swapchain, 10000, semaphore, nullptr, image_index);
 }
 
-void VulkanSwapchain::resize(Vec2u size) {
-	vkDeviceWaitIdle(device);
+void VulkanSwapchain::resize(const VulkanContext& context, Vec2u size) {
+	vkDeviceWaitIdle(context.device);
 
-	_destroy();
-
-	_create(size);
+	destroy(context, this);
+	create(context, size, this);
 }
 
-void VulkanSwapchain::_create(Vec2u size) {
-	vkb::SwapchainBuilder swapchain_builder{ chosen_gpu, device, surface };
+Ref<VulkanSwapchain> VulkanSwapchain::create(
+		const VulkanContext& context, Vec2u size) {
+	Ref<VulkanSwapchain> swapchain = create_ref<VulkanSwapchain>();
+	create(context, size, swapchain.get());
 
-	swapchain_format = VK_FORMAT_B8G8R8A8_UNORM;
+	return swapchain;
+}
+
+void VulkanSwapchain::create(const VulkanContext& context, Vec2u size,
+		VulkanSwapchain* out_swapchain) {
+	vkb::SwapchainBuilder swapchain_builder{ context.chosen_gpu, context.device,
+		context.surface };
+
+	out_swapchain->swapchain_format = VK_FORMAT_B8G8R8A8_UNORM;
 
 	vkb::Swapchain vkb_swapchain =
 			swapchain_builder
 					.set_desired_format(VkSurfaceFormatKHR{
-							.format = swapchain_format,
+							.format = out_swapchain->swapchain_format,
 							.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
 					.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
 					.set_desired_extent(size.x, size.y)
@@ -46,18 +42,21 @@ void VulkanSwapchain::_create(Vec2u size) {
 					.build()
 					.value();
 
-	swapchain_extent = vkb_swapchain.extent;
+	out_swapchain->swapchain_extent = vkb_swapchain.extent;
 
-	swapchain = vkb_swapchain.swapchain;
-	swapchain_images = vkb_swapchain.get_images().value();
-	swapchain_image_views = vkb_swapchain.get_image_views().value();
+	out_swapchain->swapchain = vkb_swapchain.swapchain;
+	out_swapchain->swapchain_images = vkb_swapchain.get_images().value();
+	out_swapchain->swapchain_image_views =
+			vkb_swapchain.get_image_views().value();
 }
 
-void VulkanSwapchain::_destroy() {
-	vkDestroySwapchainKHR(device, swapchain, nullptr);
+void VulkanSwapchain::destroy(
+		const VulkanContext& context, VulkanSwapchain* swapchain) {
+	vkDestroySwapchainKHR(context.device, swapchain->swapchain, nullptr);
 
 	// destroy swapchain resources
-	for (int i = 0; i < swapchain_image_views.size(); i++) {
-		vkDestroyImageView(device, swapchain_image_views[i], nullptr);
+	for (int i = 0; i < swapchain->swapchain_image_views.size(); i++) {
+		vkDestroyImageView(
+				context.device, swapchain->swapchain_image_views[i], nullptr);
 	}
 }

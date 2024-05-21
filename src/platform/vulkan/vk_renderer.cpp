@@ -2,6 +2,7 @@
 
 #include "gl/core/application.h"
 #include "gl/core/window.h"
+#include "gl/renderer/renderer.h"
 #include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
@@ -46,10 +47,10 @@ VulkanRenderer* VulkanRenderer::get_instance() { return s_instance; }
 
 void VulkanRenderer::attach_camera(Camera* camera) { this->camera = camera; }
 
-void VulkanRenderer::submit_mesh(
-		Ref<Mesh> mesh, Ref<MaterialInstance> material) {
+void VulkanRenderer::submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
+		const InstanceSubmitData& data) {
 	Ref<VulkanMesh> vk_mesh = std::dynamic_pointer_cast<VulkanMesh>(mesh);
-	meshes_to_draw[material].push_back(vk_mesh);
+	meshes_to_draw[material].push_back({ vk_mesh, data });
 }
 
 void VulkanRenderer::draw() {
@@ -61,13 +62,13 @@ void VulkanRenderer::draw() {
 
 	// request image from the swapchain
 	uint32_t swapchain_image_index;
-	if (VkResult res = swapchain->request_next_image(
+	if (VkResult res = swapchain->request_next_image(context,
 				get_current_frame().swapchain_semaphore,
 				&swapchain_image_index);
 			res == VK_ERROR_OUT_OF_DATE_KHR) {
 		// resize the swapchain on the next frame
 		Application::get_instance()->enqueue_main_thread(
-				[this]() { swapchain->resize(window->get_size()); });
+				[this]() { swapchain->resize(context, window->get_size()); });
 		return;
 	}
 
@@ -217,9 +218,10 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 			cmd.bind_descriptor_sets(vk_material->pipeline->pipeline_layout, 1,
 					1, &vk_material->descriptor_set);
 
-			for (const auto& mesh : meshes) {
+			for (const auto& [mesh, data] : meshes) {
 				// draw geometry
 				DrawPushConstants push_constants = {
+					.transform = data.transform,
 					.vertex_buffer = mesh->vertex_buffer_address,
 				};
 				cmd.push_constants(vk_material->pipeline->pipeline_layout,
@@ -266,7 +268,7 @@ void VulkanRenderer::_present_image(
 			res == VK_ERROR_OUT_OF_DATE_KHR) {
 		// resize the swapchain on the next frame
 		Application::get_instance()->enqueue_main_thread(
-				[this]() { swapchain->resize(window->get_size()); });
+				[this]() { swapchain->resize(context, window->get_size()); });
 	}
 }
 
@@ -368,10 +370,10 @@ void VulkanRenderer::_init_vulkan() {
 
 void VulkanRenderer::_init_swapchain() {
 	const auto window_size = window->get_size();
-	swapchain = create_ref<VulkanSwapchain>(
-			context.device, context.chosen_gpu, context.surface, window_size);
+	swapchain = VulkanSwapchain::create(context, window_size);
 
-	deletion_queue.push_function([this]() { swapchain.reset(); });
+	deletion_queue.push_function(
+			[this]() { VulkanSwapchain::destroy(context, swapchain.get()); });
 
 	// prepare drawing images
 	VkExtent3D draw_image_extent = {

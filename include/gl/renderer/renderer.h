@@ -13,12 +13,16 @@ enum class RenderBackend {
 
 [[nodiscard]] RenderBackend find_proper_backend() noexcept;
 
+struct InstanceSubmitData {
+	glm::mat4 transform;
+};
+
 class Renderer {
 public:
 	virtual ~Renderer() = default;
 
-	virtual void submit_mesh(
-			Ref<Mesh> mesh, Ref<MaterialInstance> material) = 0;
+	virtual void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
+			const InstanceSubmitData& data) = 0;
 
 	virtual void attach_camera(Camera* camera) = 0;
 

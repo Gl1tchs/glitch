@@ -20,14 +20,17 @@ layout(buffer_reference, std430) readonly buffer VertexBuffer {
 
 // push constants
 layout(push_constant) uniform constants {
+    mat4 transform;
     VertexBuffer vertex_buffer;
 } push_constants;
 
 void main() {
     Vertex v = push_constants.vertex_buffer.vertices[gl_VertexIndex];
 
+    vec4 frag_pos = vec4(v.position, 1.0f);
+
     // output the position of each vertex
-    gl_Position = scene_data.viewproj * vec4(v.position, 1.0f);
+    gl_Position = scene_data.viewproj * push_constants.transform * frag_pos;
 
     out_color = v.color.xyz * material_data.color_factors.xyz;
     out_uv = vec2(v.uv_x, v.uv_y);

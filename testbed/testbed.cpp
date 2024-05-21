@@ -1,4 +1,5 @@
 #include "testbed.h"
+#include "gl/core/transform.h"
 
 #include <gl/core/input.h>
 #include <gl/renderer/image.h>
@@ -13,6 +14,7 @@ TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
 TestBedApplication::~TestBedApplication() {}
 
 void TestBedApplication::_on_start() {
+	camera.zoom_level = 2.0f;
 	get_renderer()->attach_camera(&camera);
 
 	std::vector<Vertex> vertices = {
@@ -89,7 +91,22 @@ void TestBedApplication::_on_update(float dt) {
 		space_pressed = false;
 	}
 
-	get_renderer()->submit_mesh(mesh, current_material);
+	static float angle = 0.0f;
+
+	constexpr float radius = 1.0f;
+	constexpr float speed = 2.0f;
+
+	angle += speed * dt;
+
+	Transform transform;
+	transform.local_position =
+			glm::vec3(radius * cos(angle), radius * sin(angle), 0.0f);
+
+	InstanceSubmitData submit_data = {
+		.transform = transform.get_transform_matrix(),
+	};
+
+	get_renderer()->submit_mesh(mesh, current_material, submit_data);
 }
 
 void TestBedApplication::_on_destroy() {

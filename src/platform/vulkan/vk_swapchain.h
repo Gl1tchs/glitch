@@ -2,16 +2,18 @@
 
 #include "platform/vulkan/vk_common.h"
 
-class VulkanSwapchain {
-public:
-	VulkanSwapchain(VkDevice device, VkPhysicalDevice chosen_gpu,
-			VkSurfaceKHR surface, Vec2u size);
+struct VulkanSwapchain {
+	VkSwapchainKHR swapchain;
+	VkFormat swapchain_format;
 
-	~VulkanSwapchain();
+	std::vector<VkImage> swapchain_images;
+	std::vector<VkImageView> swapchain_image_views;
+	VkExtent2D swapchain_extent;
 
-	VkResult request_next_image(VkSemaphore semaphore, uint32_t* image_index);
+	VkResult request_next_image(const VulkanContext& context,
+			VkSemaphore semaphore, uint32_t* image_index);
 
-	void resize(Vec2u size);
+	void resize(const VulkanContext& context, Vec2u size);
 
 	VkImage get_image(uint32_t image_index) {
 		return swapchain_images[image_index];
@@ -25,20 +27,12 @@ public:
 
 	VkExtent2D get_extent() { return swapchain_extent; }
 
-private:
-	void _create(Vec2u size);
+	static Ref<VulkanSwapchain> create(
+			const VulkanContext& context, Vec2u size);
 
-	void _destroy();
+	static void create(const VulkanContext& context, Vec2u size,
+			VulkanSwapchain* out_swapchain);
 
-private:
-	VkDevice device;
-	VkPhysicalDevice chosen_gpu;
-	VkSurfaceKHR surface;
-
-	VkSwapchainKHR swapchain;
-	VkFormat swapchain_format;
-
-	std::vector<VkImage> swapchain_images;
-	std::vector<VkImageView> swapchain_image_views;
-	VkExtent2D swapchain_extent;
+	static void destroy(
+			const VulkanContext& context, VulkanSwapchain* swapchain);
 };
