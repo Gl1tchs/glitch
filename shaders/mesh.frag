@@ -10,4 +10,5 @@ layout(location = 0) out vec4 out_color;
 
 void main() {
     out_color = vec4(texture(color_tex, in_uv).xyz, 1.0f);
+    out_color *= material_data.color_factors;
 }

@@ -1,9 +1,9 @@
 #pragma once
 
-namespace chrono = std::chrono;
-
 class Timer final {
 public:
+	using Clock = std::chrono::high_resolution_clock;
+
 	Timer();
 
 	float get_elapsed_milliseconds();
@@ -13,5 +13,5 @@ public:
 	float get_delta_time();
 
 private:
-	chrono::time_point<chrono::high_resolution_clock> last_frame_time;
+	std::chrono::time_point<Clock> last_frame_time;
 };

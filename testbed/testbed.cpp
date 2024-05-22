@@ -35,7 +35,7 @@ void TestBedApplication::_on_start() {
 	material = MetallicRoughnessMaterial::create();
 
 	MetallicRoughnessMaterial::MaterialConstants constants = {
-		.color_factors = { 1.0f, 1.0f, 1.0, 1.0f },
+		.color_factors = { 0.9f, 0.8f, 0.7f, 1.0f },
 		.metal_rough_factors = { 1.0f, 0.5f, 1.0f, 1.0f },
 	};
 
@@ -72,25 +72,22 @@ void TestBedApplication::_on_start() {
 	material_instance = material->create_instance(resources);
 
 	resources.color_image = color_image2;
-
 	material_instance2 = material->create_instance(resources);
 }
 
 void TestBedApplication::_on_update(float dt) {
 	camera.aspect_ratio = get_window()->get_aspect_ratio();
 
-	int element_count = 25;
-	for (int i = 1; i <= element_count; ++i) {
-		Transform transform;
-		float time = timer.get_elapsed_seconds();
+	constexpr int element_count = 10;
 
-		// Oscillation parameters
-		float x = std::sin(time + i) * 1.25f; // Oscillate along x-axis
-		float y = std::cos(time + (element_count - i)) *
-				1.25f; // Oscillate along y-axis
+	static Transform transforms[element_count];
 
-		transform.local_position = { x, y, 0 };
-		transform.local_scale = { 0.2f, 0.2f, 1.0f };
+	for (int i = -element_count / 2; i < element_count / 2; ++i) {
+		Transform& transform = transforms[i + element_count / 2];
+
+		transform.local_position.x = i / 2.0f;
+		transform.local_rotation.z += 90 * dt;
+		transform.local_scale = { 0.3f, 0.3, 1.0f };
 
 		InstanceSubmitData submit_data = {
 			.transform = transform.get_transform_matrix(),

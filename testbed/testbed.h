@@ -21,8 +21,6 @@ protected:
 private:
 	OrthographicCamera camera;
 
-	Timer timer;
-
 	Ref<Mesh> mesh;
 	Ref<MetallicRoughnessMaterial> material;
 
