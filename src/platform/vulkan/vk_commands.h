@@ -3,8 +3,10 @@
 #include "platform/vulkan/vk_common.h"
 
 #include "platform/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_pipeline.h"
+#include <vulkan/vulkan_core.h>
 
 struct VulkanCommandBuffer;
 
@@ -47,6 +49,8 @@ struct VulkanCommandBuffer {
 
 	void bind_pipeline(const VulkanPipeline& pipeline);
 
+	void bind_pipeline(const VulkanComputePipeline& pipeline);
+
 	void bind_index_buffer(const VulkanBuffer& index_buffer,
 			VkDeviceSize offset, VkIndexType index_type);
 
@@ -54,9 +58,13 @@ struct VulkanCommandBuffer {
 			uint32_t first_index = 0, int32_t vertex_offset = 0,
 			uint32_t first_instance = 0);
 
+	void dispatch(uint32_t group_count_x, uint32_t group_count_y,
+			uint32_t group_count_z);
+
 	void bind_descriptor_sets(const VulkanPipelineLayout& pipeline_layout,
 			uint32_t first_set, uint32_t descriptor_set_count,
-			const VkDescriptorSet* descriptor_sets);
+			const VkDescriptorSet* descriptor_sets,
+			VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 	void push_constants(const VulkanPipelineLayout& pipeline_layout,
 			VkShaderStageFlags shader_stages, VkDeviceSize offset,

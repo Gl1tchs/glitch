@@ -9,6 +9,7 @@
 #include "gl/renderer/mesh.h"
 
 #include "platform/vulkan/vk_commands.h"
+#include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "platform/vulkan/vk_image.h"
@@ -93,6 +94,14 @@ private:
 	};
 
 	std::map<Ref<MaterialInstance>, std::vector<MeshDrawData>> meshes_to_draw;
+
+	// temp
+	VulkanPipelineLayout compute_pipeline_layout;
+	VulkanComputePipeline compute_pipeline;
+	VulkanDescriptorAllocator compute_allocator;
+	VkDescriptorSet compute_descriptor_set;
+	VkDescriptorSetLayout compute_descriptor_layout;
+	// end temp
 
 	DeletionQueue deletion_queue;
 

@@ -4,11 +4,13 @@
 #include "gl/core/window.h"
 #include "gl/renderer/renderer.h"
 #include "platform/vulkan/vk_commands.h"
+#include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "platform/vulkan/vk_init.h"
 #include "platform/vulkan/vk_material.h"
 #include "platform/vulkan/vk_mesh.h"
+#include "platform/vulkan/vk_pipeline.h"
 
 #include <VkBootstrap.h>
 #include <vulkan/vulkan_core.h>
@@ -31,6 +33,63 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 	_init_sync_structures();
 	_init_descriptors();
 	_init_samplers();
+
+	// temp
+	std::vector<VulkanDescriptorAllocator::PoolSizeRatio> sizes = {
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+	};
+
+	compute_allocator.init(context.device, 10, sizes);
+
+	{
+		DescriptorLayoutBuilder builder;
+		builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		compute_descriptor_layout =
+				builder.build(context.device, VK_SHADER_STAGE_COMPUTE_BIT);
+	}
+
+	compute_descriptor_set = compute_allocator.allocate(
+			context.device, compute_descriptor_layout);
+
+	{
+		DescriptorWriter writer;
+		writer.write_image(0, draw_image->image_view, VK_NULL_HANDLE,
+				VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		writer.update_set(context.device, compute_descriptor_set);
+	}
+
+	VulkanPipelineLayoutCreateInfo layout_info = {
+		.descriptor_set_count = 1,
+		.descriptor_sets = &compute_descriptor_layout,
+	};
+
+	compute_pipeline_layout =
+			VulkanPipelineLayout::create(context.device, &layout_info);
+
+	VkShaderModule compute_shader;
+	GL_ASSERT(vk_load_shader_module_external(context.device,
+			"assets/shaders/gradient.comp.spv", &compute_shader));
+
+	VulkanComputePipelineCreateInfo pipeline_info = {
+		.shader_module = compute_shader,
+		.layout = compute_pipeline_layout,
+	};
+
+	compute_pipeline = VulkanComputePipeline::create(context, &pipeline_info);
+
+	vkDestroyShaderModule(context.device, compute_shader, nullptr);
+
+	deletion_queue.push_function([this]() {
+		VulkanComputePipeline::destroy(context, &compute_pipeline);
+
+		VulkanPipelineLayout::destroy(context.device, compute_pipeline_layout);
+
+		compute_allocator.destroy_pools(context.device);
+
+		vkDestroyDescriptorSetLayout(
+				context.device, compute_descriptor_layout, nullptr);
+	});
+	// end temp
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -103,6 +162,18 @@ void VulkanRenderer::draw() {
 
 		cmd.clear_color_image(
 				draw_image->image, VK_IMAGE_LAYOUT_GENERAL, &clear_color);
+
+		// temp
+		{
+			cmd.bind_pipeline(compute_pipeline);
+
+			cmd.bind_descriptor_sets(compute_pipeline_layout, 0, 1,
+					&compute_descriptor_set, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+			cmd.dispatch(std::ceil(draw_extent.width / 16.0f),
+					std::ceil(draw_extent.height / 16.0f), 1);
+		}
+		// temp
 
 		// draw geometry
 		cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_GENERAL,

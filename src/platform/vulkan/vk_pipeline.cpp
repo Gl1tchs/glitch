@@ -280,3 +280,44 @@ bool vk_load_shader_module(VkDevice device, const char* file_path,
 	*out_shader_module = shader_module;
 	return true;
 }
+
+bool vk_load_shader_module_external(VkDevice device, const char* file_path,
+		VkShaderModule* out_shader_module) {
+	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open()) {
+		return false;
+	}
+
+	size_t file_size = (size_t)file.tellg();
+
+	std::vector<uint32_t> buffer(file_size / sizeof(uint32_t));
+
+	// put file cursor at beginning
+	file.seekg(0);
+
+	// load the entire file into the buffer
+	file.read((char*)buffer.data(), file_size);
+
+	file.close();
+
+	// create a new shader module, using the buffer we loaded
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.pNext = nullptr;
+
+	// codeSize has to be in bytes, so multiply the ints in the buffer by size
+	// of int to know the real size of the buffer
+	create_info.codeSize = buffer.size() * sizeof(uint32_t);
+	create_info.pCode = buffer.data();
+
+	// check that the creation goes well.
+	VkShaderModule shader_module;
+	if (vkCreateShaderModule(device, &create_info, nullptr, &shader_module) !=
+			VK_SUCCESS) {
+		return false;
+	}
+
+	*out_shader_module = shader_module;
+	return true;
+}

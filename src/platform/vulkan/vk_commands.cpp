@@ -102,6 +102,11 @@ void VulkanCommandBuffer::bind_pipeline(const VulkanPipeline& pipeline) {
 			command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 }
 
+void VulkanCommandBuffer::bind_pipeline(const VulkanComputePipeline& pipeline) {
+	vkCmdBindPipeline(
+			command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
+}
+
 void VulkanCommandBuffer::bind_index_buffer(const VulkanBuffer& index_buffer,
 		VkDeviceSize offset, VkIndexType index_type) {
 	vkCmdBindIndexBuffer(
@@ -115,12 +120,17 @@ void VulkanCommandBuffer::draw_indexed(uint32_t index_count,
 			vertex_offset, first_instance);
 }
 
+void VulkanCommandBuffer::dispatch(uint32_t group_count_x,
+		uint32_t group_count_y, uint32_t group_count_z) {
+	vkCmdDispatch(command_buffer, group_count_x, group_count_y, group_count_z);
+}
+
 void VulkanCommandBuffer::bind_descriptor_sets(
 		const VulkanPipelineLayout& pipeline_layout, uint32_t first_set,
-		uint32_t descriptor_set_count, const VkDescriptorSet* descriptor_sets) {
-	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			pipeline_layout.layout, first_set, descriptor_set_count,
-			descriptor_sets, 0, nullptr);
+		uint32_t descriptor_set_count, const VkDescriptorSet* descriptor_sets,
+		VkPipelineBindPoint bind_point) {
+	vkCmdBindDescriptorSets(command_buffer, bind_point, pipeline_layout.layout,
+			first_set, descriptor_set_count, descriptor_sets, 0, nullptr);
 }
 
 void VulkanCommandBuffer::push_constants(

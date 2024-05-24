@@ -73,5 +73,14 @@ struct VulkanPipeline {
 	static void destroy(VkDevice device, VulkanPipeline& pipeline);
 };
 
+/**
+ * @brief loads shader module from bundled header
+ */
 bool vk_load_shader_module(VkDevice device, const char* file_path,
+		VkShaderModule* out_shader_module);
+
+/**
+ * @brief loads shader module from external file
+ */
+bool vk_load_shader_module_external(VkDevice device, const char* file_path,
 		VkShaderModule* out_shader_module);
