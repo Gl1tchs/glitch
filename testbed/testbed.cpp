@@ -1,5 +1,4 @@
 #include "testbed.h"
-#include "gl/core/transform.h"
 
 #include <gl/core/input.h>
 #include <gl/renderer/image.h>
@@ -78,6 +77,7 @@ void TestBedApplication::_on_start() {
 void TestBedApplication::_on_update(float dt) {
 	camera.aspect_ratio = get_window()->get_aspect_ratio();
 
+#if 1
 	constexpr int element_count = 10;
 
 	static Transform transforms[element_count];
@@ -100,6 +100,7 @@ void TestBedApplication::_on_update(float dt) {
 			get_renderer()->submit_mesh(mesh, material_instance2, submit_data);
 		}
 	}
+#endif
 }
 
 void TestBedApplication::_on_destroy() {

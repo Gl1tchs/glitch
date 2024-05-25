@@ -54,7 +54,7 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 	pipeline_info.set_polygon_mode(VK_POLYGON_MODE_FILL);
 	pipeline_info.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
 	pipeline_info.set_multisampling_none();
-	pipeline_info.enable_blending(VulkanBlendingMode::ADDITIVE);
+	pipeline_info.set_blending(VulkanBlendingMode::NONE);
 	pipeline_info.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
 
 	// render format

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gl/core/timer.h"
 #include "gl/renderer/renderer.h"
 
 #include "gl/core/deletion_queue.h"
@@ -101,6 +102,12 @@ private:
 	VulkanDescriptorAllocator compute_allocator;
 	VkDescriptorSet compute_descriptor_set;
 	VkDescriptorSetLayout compute_descriptor_layout;
+	VkDescriptorSetLayout compute_global_layout;
+
+	Timer timer;
+	struct ComputeUB {
+		float time;
+	};
 	// end temp
 
 	DeletionQueue deletion_queue;

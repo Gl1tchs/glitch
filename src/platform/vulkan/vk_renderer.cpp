@@ -37,6 +37,7 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 	// temp
 	std::vector<VulkanDescriptorAllocator::PoolSizeRatio> sizes = {
 		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
 	};
 
 	compute_allocator.init(context.device, 10, sizes);
@@ -45,6 +46,13 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 		DescriptorLayoutBuilder builder;
 		builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 		compute_descriptor_layout =
+				builder.build(context.device, VK_SHADER_STAGE_COMPUTE_BIT);
+	}
+
+	{
+		DescriptorLayoutBuilder builder;
+		builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		compute_global_layout =
 				builder.build(context.device, VK_SHADER_STAGE_COMPUTE_BIT);
 	}
 
@@ -58,9 +66,14 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 		writer.update_set(context.device, compute_descriptor_set);
 	}
 
+	VkDescriptorSetLayout layouts[] = {
+		compute_descriptor_layout,
+		compute_global_layout,
+	};
+
 	VulkanPipelineLayoutCreateInfo layout_info = {
-		.descriptor_set_count = 1,
-		.descriptor_sets = &compute_descriptor_layout,
+		.descriptor_set_count = 2,
+		.descriptor_sets = layouts,
 	};
 
 	compute_pipeline_layout =
@@ -68,7 +81,7 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 
 	VkShaderModule compute_shader;
 	GL_ASSERT(vk_load_shader_module_external(context.device,
-			"assets/shaders/gradient.comp.spv", &compute_shader));
+			"assets/shaders/compute-shader.comp.spv", &compute_shader));
 
 	VulkanComputePipelineCreateInfo pipeline_info = {
 		.shader_module = compute_shader,
@@ -86,6 +99,8 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 
 		compute_allocator.destroy_pools(context.device);
 
+		vkDestroyDescriptorSetLayout(
+				context.device, compute_global_layout, nullptr);
 		vkDestroyDescriptorSetLayout(
 				context.device, compute_descriptor_layout, nullptr);
 	});
@@ -165,10 +180,33 @@ void VulkanRenderer::draw() {
 
 		// temp
 		{
+			VulkanBuffer compute_ub = VulkanBuffer::create(context.allocator,
+					sizeof(ComputeUB), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+					VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+			get_current_frame().deletion_queue.push_function([=, this]() {
+				VulkanBuffer::destroy(context.allocator, compute_ub);
+			});
+
+			ComputeUB* compute_ub_data =
+					(ComputeUB*)compute_ub.allocation->GetMappedData();
+			compute_ub_data->time = timer.get_elapsed_seconds();
+
+			VkDescriptorSet compute_descriptor =
+					get_current_frame().frame_descriptors.allocate(
+							context.device, compute_global_layout);
+
+			DescriptorWriter writer;
+			writer.write_buffer(0, compute_ub.buffer, sizeof(ComputeUB), 0,
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			writer.update_set(context.device, compute_descriptor);
+
 			cmd.bind_pipeline(compute_pipeline);
 
 			cmd.bind_descriptor_sets(compute_pipeline_layout, 0, 1,
 					&compute_descriptor_set, VK_PIPELINE_BIND_POINT_COMPUTE);
+			cmd.bind_descriptor_sets(compute_pipeline_layout, 1, 1,
+					&compute_descriptor, VK_PIPELINE_BIND_POINT_COMPUTE);
 
 			cmd.dispatch(std::ceil(draw_extent.width / 16.0f),
 					std::ceil(draw_extent.height / 16.0f), 1);

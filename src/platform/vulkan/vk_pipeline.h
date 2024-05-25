@@ -5,6 +5,7 @@
 enum class VulkanBlendingMode {
 	ADDITIVE,
 	ALPHA_BLEND,
+	NONE,
 };
 
 struct VulkanPipelineLayoutCreateInfo {
@@ -51,9 +52,7 @@ struct VulkanPipelineCreateInfo {
 
 	void set_multisampling_none();
 
-	void enable_blending(VulkanBlendingMode blending_mode);
-
-	void disable_blending();
+	void set_blending(VulkanBlendingMode blending_mode);
 
 	void set_color_attachment_format(VkFormat format);
 

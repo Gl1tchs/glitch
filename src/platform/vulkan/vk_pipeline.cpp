@@ -94,38 +94,39 @@ void VulkanPipelineCreateInfo::set_multisampling_none() {
 	multisampling.alphaToOneEnable = VK_FALSE;
 }
 
-void VulkanPipelineCreateInfo::enable_blending(
-		VulkanBlendingMode blending_mode) {
+void VulkanPipelineCreateInfo::set_blending(VulkanBlendingMode blending_mode) {
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 			VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
 			VK_COLOR_COMPONENT_A_BIT;
-	color_blend_attachment.blendEnable = VK_TRUE;
-	color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
-	color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
-	color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	switch (blending_mode) {
 		case VulkanBlendingMode::ADDITIVE: {
+			color_blend_attachment.blendEnable = VK_TRUE;
+			color_blend_attachment.dstColorBlendFactor =
+					VK_BLEND_FACTOR_DST_ALPHA;
+			color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+			color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 			color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
 			break;
 		}
 		case VulkanBlendingMode::ALPHA_BLEND: {
+			color_blend_attachment.blendEnable = VK_TRUE;
+			color_blend_attachment.dstColorBlendFactor =
+					VK_BLEND_FACTOR_DST_ALPHA;
+			color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+			color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 			color_blend_attachment.srcColorBlendFactor =
 					VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
 			break;
 		}
+		case VulkanBlendingMode::NONE: {
+			color_blend_attachment.blendEnable = VK_FALSE;
+			break;
+		}
 	}
-}
-
-void VulkanPipelineCreateInfo::disable_blending() {
-	// default write mask
-	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-			VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-			VK_COLOR_COMPONENT_A_BIT;
-	// no blending
-	color_blend_attachment.blendEnable = VK_FALSE;
 }
 
 void VulkanPipelineCreateInfo::set_color_attachment_format(VkFormat format) {
