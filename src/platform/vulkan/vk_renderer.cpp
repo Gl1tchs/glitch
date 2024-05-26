@@ -141,8 +141,7 @@ void VulkanRenderer::draw() {
 				&swapchain_image_index);
 			res == VK_ERROR_OUT_OF_DATE_KHR) {
 		// resize the swapchain on the next frame
-		Application::get_instance()->enqueue_main_thread(
-				[this]() { swapchain->resize(context, window->get_size()); });
+		_request_resize();
 		return;
 	}
 
@@ -377,8 +376,7 @@ void VulkanRenderer::_present_image(
 	if (VkResult res = vkQueuePresentKHR(context.present_queue, &present_info);
 			res == VK_ERROR_OUT_OF_DATE_KHR) {
 		// resize the swapchain on the next frame
-		Application::get_instance()->enqueue_main_thread(
-				[this]() { swapchain->resize(context, window->get_size()); });
+		_request_resize();
 	}
 }
 
@@ -642,4 +640,9 @@ void VulkanRenderer::_init_samplers() {
 		vkDestroySampler(context.device, context.linear_sampler, nullptr);
 		vkDestroySampler(context.device, context.nearest_sampler, nullptr);
 	});
+}
+
+void VulkanRenderer::_request_resize() {
+	Application::get_instance()->enqueue_main_thread(
+			[this]() { swapchain->resize(context, window->get_size()); });
 }

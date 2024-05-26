@@ -63,6 +63,8 @@ private:
 	void _present_image(
 			VulkanCommandBuffer& cmd, uint32_t swapchain_image_index);
 
+	void _request_resize();
+
 private:
 	static VulkanRenderer* s_instance;
 
