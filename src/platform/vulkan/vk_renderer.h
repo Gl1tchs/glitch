@@ -41,8 +41,6 @@ public:
 	VulkanRenderer(Ref<Window> window);
 	virtual ~VulkanRenderer();
 
-	static VulkanRenderer* get_instance();
-
 	void attach_camera(Camera* camera) override;
 
 	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
@@ -55,10 +53,14 @@ public:
 	void immediate_submit(
 			std::function<void(VulkanCommandBuffer& cmd)>&& function);
 
+	static VulkanRenderer* get_instance();
+
 	static VulkanContext& get_context();
 
 private:
 	void _geometry_pass(VulkanCommandBuffer& cmd);
+
+	void _compute_pass(VulkanCommandBuffer& cmd);
 
 	void _present_image(
 			VulkanCommandBuffer& cmd, uint32_t swapchain_image_index);

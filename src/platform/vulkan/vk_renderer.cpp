@@ -117,8 +117,6 @@ VulkanRenderer::~VulkanRenderer() {
 	deletion_queue.flush();
 }
 
-VulkanRenderer* VulkanRenderer::get_instance() { return s_instance; }
-
 void VulkanRenderer::attach_camera(Camera* camera) { this->camera = camera; }
 
 void VulkanRenderer::submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
@@ -177,40 +175,7 @@ void VulkanRenderer::draw() {
 		cmd.clear_color_image(
 				draw_image->image, VK_IMAGE_LAYOUT_GENERAL, &clear_color);
 
-		// temp
-		{
-			VulkanBuffer compute_ub = VulkanBuffer::create(context.allocator,
-					sizeof(ComputeUB), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-					VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-			get_current_frame().deletion_queue.push_function([=, this]() {
-				VulkanBuffer::destroy(context.allocator, compute_ub);
-			});
-
-			ComputeUB* compute_ub_data =
-					(ComputeUB*)compute_ub.allocation->GetMappedData();
-			compute_ub_data->time = timer.get_elapsed_seconds();
-
-			VkDescriptorSet compute_descriptor =
-					get_current_frame().frame_descriptors.allocate(
-							context.device, compute_global_layout);
-
-			DescriptorWriter writer;
-			writer.write_buffer(0, compute_ub.buffer, sizeof(ComputeUB), 0,
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-			writer.update_set(context.device, compute_descriptor);
-
-			cmd.bind_pipeline(compute_pipeline);
-
-			cmd.bind_descriptor_sets(compute_pipeline_layout, 0, 1,
-					&compute_descriptor_set, VK_PIPELINE_BIND_POINT_COMPUTE);
-			cmd.bind_descriptor_sets(compute_pipeline_layout, 1, 1,
-					&compute_descriptor, VK_PIPELINE_BIND_POINT_COMPUTE);
-
-			cmd.dispatch(std::ceil(draw_extent.width / 16.0f),
-					std::ceil(draw_extent.height / 16.0f), 1);
-		}
-		// temp
+		_compute_pass(cmd);
 
 		// draw geometry
 		cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_GENERAL,
@@ -287,12 +252,15 @@ void VulkanRenderer::immediate_submit(
 	VK_CHECK(vkWaitForFences(context.device, 1, &imm_fence, true, UINT64_MAX));
 }
 
+VulkanRenderer* VulkanRenderer::get_instance() { return s_instance; }
+
 VulkanContext& VulkanRenderer::get_context() { return get_instance()->context; }
 
 void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 	// begin a render pass  connected to our draw image
 	VkRenderingAttachmentInfo color_attachment = vkinit::attachment_info(
 			draw_image->image_view, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+
 	VkRenderingAttachmentInfo depth_attachment = vkinit::depth_attachment_info(
 			depth_image->image_view, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
@@ -359,6 +327,39 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 	}
 
 	meshes_to_draw.clear();
+}
+
+void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
+	VulkanBuffer compute_ub = VulkanBuffer::create(context.allocator,
+			sizeof(ComputeUB), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+	get_current_frame().deletion_queue.push_function([=, this]() {
+		VulkanBuffer::destroy(context.allocator, compute_ub);
+	});
+
+	ComputeUB* compute_ub_data =
+			(ComputeUB*)compute_ub.allocation->GetMappedData();
+	compute_ub_data->time = timer.get_elapsed_seconds();
+
+	VkDescriptorSet compute_descriptor =
+			get_current_frame().frame_descriptors.allocate(
+					context.device, compute_global_layout);
+
+	DescriptorWriter writer;
+	writer.write_buffer(0, compute_ub.buffer, sizeof(ComputeUB), 0,
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	writer.update_set(context.device, compute_descriptor);
+
+	cmd.bind_pipeline(compute_pipeline);
+
+	cmd.bind_descriptor_sets(compute_pipeline_layout, 0, 1,
+			&compute_descriptor_set, VK_PIPELINE_BIND_POINT_COMPUTE);
+	cmd.bind_descriptor_sets(compute_pipeline_layout, 1, 1, &compute_descriptor,
+			VK_PIPELINE_BIND_POINT_COMPUTE);
+
+	cmd.dispatch(std::ceil(draw_extent.width / 16.0f),
+			std::ceil(draw_extent.height / 16.0f), 1);
 }
 
 void VulkanRenderer::_present_image(
@@ -496,16 +497,24 @@ void VulkanRenderer::_init_swapchain() {
 	};
 
 	context.color_attachment_format = VK_FORMAT_R16G16B16A16_SFLOAT;
-	draw_image = VulkanImage::create(context, draw_image_extent,
-			context.color_attachment_format,
-			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-					VK_IMAGE_USAGE_STORAGE_BIT |
-					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+
+	VulkanImageCreateInfo draw_image_info = {
+		.format = context.color_attachment_format,
+		.size = draw_image_extent,
+		.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	};
+	draw_image = VulkanImage::create(context, &draw_image_info);
 
 	context.depth_attachment_format = VK_FORMAT_D32_SFLOAT;
-	depth_image = VulkanImage::create(context, draw_image_extent,
-			context.depth_attachment_format,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+	VulkanImageCreateInfo depth_image_info = {
+		.format = context.depth_attachment_format,
+		.size = draw_image_extent,
+		.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+	};
+	depth_image = VulkanImage::create(context, &depth_image_info);
 
 	deletion_queue.push_function([this]() {
 		VulkanImage::destroy(context, draw_image.get());

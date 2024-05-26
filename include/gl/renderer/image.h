@@ -32,13 +32,17 @@ enum class ImageFilteringMode {
 	NEAREST,
 };
 
+struct ImageCreateInfo {
+	ImageFormat format;
+	Vec2u size;
+	void* data = nullptr;
+	bool mipmapped = false;
+};
+
 struct Image {
 	virtual ~Image() = default;
 
-	static Ref<Image> create(
-			Vec2u size, ImageFormat format, bool mipmapped = false);
-	static Ref<Image> create(const void* data, Vec2u size,
-			ImageFormat format, bool mipmapped = false);
+	static Ref<Image> create(const ImageCreateInfo* info);
 
 	static void destroy(Ref<Image> image);
 };

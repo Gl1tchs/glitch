@@ -5,33 +5,19 @@
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_renderer.h"
 
-Ref<Image> Image::create(Vec2u size, ImageFormat format, bool mipmapped) {
+Ref<Image> Image::create(const ImageCreateInfo* info) {
 	switch (Renderer::get_backend()) {
 		case RenderBackend::Vulkan: {
-			Ref<VulkanImage> vk_image =
-					VulkanImage::create(VulkanRenderer::get_context(),
-							VkExtent3D{ size.x, size.y, 1 },
-							image_format_to_vk_format(format),
-							VK_IMAGE_USAGE_SAMPLED_BIT, mipmapped);
+			VulkanImageCreateInfo vk_info = {
+				.format = image_format_to_vk_format(info->format),
+				.size = VkExtent3D{ info->size.x, info->size.y, 1 },
+				.data = info->data,
+				.usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+				.mipmapped = info->mipmapped,
+			};
 
-			return vk_image;
-		}
-
-		default: {
-			return nullptr;
-		}
-	}
-}
-
-Ref<Image> Image::create(
-		const void* data, Vec2u size, ImageFormat format, bool mipmapped) {
-	switch (Renderer::get_backend()) {
-		case RenderBackend::Vulkan: {
-			Ref<VulkanImage> vk_image =
-					VulkanImage::create(VulkanRenderer::get_context(), data,
-							VkExtent3D{ size.x, size.y, 1 },
-							image_format_to_vk_format(format),
-							VK_IMAGE_USAGE_SAMPLED_BIT, mipmapped);
+			Ref<VulkanImage> vk_image = VulkanImage::create(
+					VulkanRenderer::get_context(), &vk_info);
 
 			return vk_image;
 		}
