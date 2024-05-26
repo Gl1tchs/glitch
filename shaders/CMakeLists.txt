@@ -66,3 +66,5 @@ if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
             ${SPV_COMP_LIST}
     )
 endif()
+
+add_dependencies(shaders bundler)

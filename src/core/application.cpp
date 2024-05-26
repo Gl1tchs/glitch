@@ -6,7 +6,7 @@
 Application* Application::s_instance = nullptr;
 
 Application::Application(const ApplicationCreateInfo& info) {
-	GL_ASSERT(!s_instance, "Only on instance can exists at a time!");
+	GL_ASSERT(!s_instance, "Only one instance can exists at a time!");
 	s_instance = this;
 
 	WindowCreateInfo window_info{};
@@ -17,7 +17,7 @@ Application::Application(const ApplicationCreateInfo& info) {
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	auto backend = find_proper_backend();
+	const auto backend = find_proper_backend();
 	renderer = Renderer::create(backend, window);
 }
 

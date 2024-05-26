@@ -27,6 +27,9 @@ file(GLOB_RECURSE SOURCES
 
 add_library(glitch ${SOURCES})
 
+# make sure shaders has been builded before building the engine
+add_dependencies(glitch shaders)
+
 target_include_directories(glitch PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${GLM_INCLUDES}
