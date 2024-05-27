@@ -1,13 +1,14 @@
 # TODOS
 
 ## Core
-- [ ] SIMD Matrix multiplication
-- [ ] Mat4 type
 - [ ] Vector dot/cross products
 - [ ] Use our own types for transformations
 
 ## Vulkan Renderer
-- [x] VkCommandBuffer and VkCommandPool abstraction
+- [ ] VFX
+    - [x] Compute Pipeline
+    - [ ] Custom effects with compute shaders
+    - [ ] Particle effects from custom effect
 - [ ] VkDescriptorSet abstraction
 - [ ] VkQueue abstraction
 - [ ] MaterialPipeline and dynamic binding
