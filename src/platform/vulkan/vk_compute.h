@@ -24,17 +24,17 @@ struct VulkanComputeEffectCreateInfo {
 	Vec3u group_count;
 };
 
-struct VulkanComputeEffect : public ComputeEffect {
+struct VulkanComputeEffectNode : public ComputeEffectNode {
 	VulkanPipelineLayout pipeline_layout;
 	VulkanComputePipeline pipeline;
 
 	Vec3u group_count;
 
-	virtual ~VulkanComputeEffect() = default;
+	virtual ~VulkanComputeEffectNode() = default;
 
-	static Ref<VulkanComputeEffect> create(const VulkanContext& context,
+	static Ref<VulkanComputeEffectNode> create(const VulkanContext& context,
 			const VulkanComputeEffectCreateInfo* info);
 
-	static void destroy(
-			const VulkanContext& context, VulkanComputeEffect* effect);
+	static void destroy(const VulkanContext& context,
+			const VulkanComputeEffectNode* effect);
 };

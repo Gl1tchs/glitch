@@ -38,10 +38,10 @@ TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
 TestBedApplication::~TestBedApplication() {}
 
 void TestBedApplication::_on_start() {
-	camera.zoom_level = 2.0f;
-	get_renderer()->attach_camera(&camera);
+	camera = create_ref<OrthographicCameraNode>();
+	camera->zoom_level = 2.0f;
 
-	mesh = Mesh::create(vertices, indices);
+	get_renderer()->get_scene_graph().push_root(camera);
 
 	material = MetallicRoughnessMaterial::create();
 
@@ -76,21 +76,6 @@ void TestBedApplication::_on_start() {
 		stbi_image_free(image_data);
 	}
 
-	{
-		Vec2u size;
-		uint8_t* image_data = stbi_load("assets/texture.jpg", (int*)&size.x,
-				(int*)&size.y, nullptr, STBI_rgb_alpha);
-
-		ImageCreateInfo color_image2_info = {
-			.format = ImageFormat::R8G8B8A8_UNORM,
-			.size = size,
-			.data = image_data,
-		};
-		color_image2 = Image::create(&color_image2_info);
-
-		stbi_image_free(image_data);
-	}
-
 	MetallicRoughnessMaterial::MaterialResources resources = {
 		.constants = constants,
 		.constants_offset = 0,
@@ -99,10 +84,13 @@ void TestBedApplication::_on_start() {
 		.roughness_image = white_image,
 		.roughness_filtering = ImageFilteringMode::LINEAR,
 	};
-	material_instance = material->create_instance(resources);
 
-	resources.color_image = color_image2;
-	material_instance2 = material->create_instance(resources);
+	my_node = create_ref<GeometryNode>();
+
+	my_node->mesh = Mesh::create(vertices, indices);
+	my_node->material = material->create_instance(resources);
+
+	get_renderer()->get_scene_graph().push_root(my_node);
 
 	const auto window_size = get_window()->get_size();
 	ComputeEffectCreateInfo compute_info = {
@@ -113,35 +101,15 @@ void TestBedApplication::_on_start() {
 				1,
 		},
 	};
-	effect = ComputeEffect::create(&compute_info);
+	effect_node = ComputeEffectNode::create(&compute_info);
+
+	get_renderer()->get_scene_graph().push_root(effect_node);
 }
 
 void TestBedApplication::_on_update(float dt) {
-	camera.aspect_ratio = get_window()->get_aspect_ratio();
+	camera->aspect_ratio = get_window()->get_aspect_ratio();
 
-	constexpr int element_count = 10;
-
-	static Transform transforms[element_count];
-
-	for (int i = -element_count / 2; i < element_count / 2; ++i) {
-		Transform& transform = transforms[i + element_count / 2];
-
-		transform.local_position.x = i / 2.0f;
-		transform.local_rotation.z += 90 * dt;
-		transform.local_scale = { 0.3f, 0.3, 1.0f };
-
-		InstanceSubmitData submit_data = {
-			.transform = transform.get_transform_matrix(),
-		};
-
-		if (i % 2 == 0) {
-			get_renderer()->submit_mesh(mesh, material_instance, submit_data);
-		} else {
-			get_renderer()->submit_mesh(mesh, material_instance2, submit_data);
-		}
-	}
-
-	get_renderer()->submit_compute_effect(effect);
+	my_node->transform.local_rotation.z += 90 * dt;
 }
 
 void TestBedApplication::_on_destroy() {
@@ -149,12 +117,7 @@ void TestBedApplication::_on_destroy() {
 	// before cleaning other resources
 	get_renderer()->wait_for_device();
 
-	ComputeEffect::destroy(effect);
-
-	Mesh::destroy(mesh);
-
 	Image::destroy(color_image);
-	Image::destroy(color_image2);
 	Image::destroy(white_image);
 
 	MetallicRoughnessMaterial::destroy(material);

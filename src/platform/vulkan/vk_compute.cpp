@@ -30,10 +30,10 @@ void VulkanComputePipeline::destroy(
 	vkDestroyPipeline(context.device, pipeline->pipeline, nullptr);
 }
 
-Ref<VulkanComputeEffect> VulkanComputeEffect::create(
+Ref<VulkanComputeEffectNode> VulkanComputeEffectNode::create(
 		const VulkanContext& context,
 		const VulkanComputeEffectCreateInfo* info) {
-	Ref<VulkanComputeEffect> effect = create_ref<VulkanComputeEffect>();
+	Ref<VulkanComputeEffectNode> effect = create_ref<VulkanComputeEffectNode>();
 	effect->group_count = info->group_count;
 
 	VkDescriptorSetLayout layouts[] = {
@@ -65,9 +65,9 @@ Ref<VulkanComputeEffect> VulkanComputeEffect::create(
 	return effect;
 }
 
-void VulkanComputeEffect::destroy(
-		const VulkanContext& context, VulkanComputeEffect* effect) {
+void VulkanComputeEffectNode::destroy(
+		const VulkanContext& context, const VulkanComputeEffectNode* effect) {
 	VulkanComputePipeline::destroy(context, &effect->pipeline);
 
-	VulkanPipelineLayout::destroy(context.device, effect->pipeline_layout);
+	VulkanPipelineLayout::destroy(context.device, &effect->pipeline_layout);
 }

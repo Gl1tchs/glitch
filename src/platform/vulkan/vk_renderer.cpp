@@ -2,6 +2,9 @@
 
 #include "gl/core/application.h"
 #include "gl/core/window.h"
+#include "gl/renderer/camera.h"
+#include "gl/renderer/compute.h"
+#include "gl/renderer/node.h"
 #include "gl/renderer/renderer.h"
 
 #include "platform/vulkan/vk_commands.h"
@@ -38,6 +41,8 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 VulkanRenderer::~VulkanRenderer() {
 	wait_for_device();
 
+	_destroy_scene_graph();
+
 	for (auto& frame : frames) {
 		frame.deletion_queue.flush();
 	}
@@ -45,21 +50,7 @@ VulkanRenderer::~VulkanRenderer() {
 	deletion_queue.flush();
 }
 
-void VulkanRenderer::attach_camera(Camera* camera) { this->camera = camera; }
-
-void VulkanRenderer::submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
-		const InstanceSubmitData& data) {
-	Ref<VulkanMesh> vk_mesh = std::dynamic_pointer_cast<VulkanMesh>(mesh);
-	meshes_to_draw[material].push_back({ vk_mesh, data });
-}
-
-void VulkanRenderer::submit_compute_effect(Ref<ComputeEffect> effect) {
-	Ref<VulkanComputeEffect> vk_effect =
-			std::dynamic_pointer_cast<VulkanComputeEffect>(effect);
-	compute_effects.push_back(vk_effect);
-}
-
-void VulkanRenderer::draw() {
+void VulkanRenderer::wait_and_render() {
 	VK_CHECK(vkWaitForFences(context.device, 1,
 			&get_current_frame().render_fence, true, UINT64_MAX));
 
@@ -212,12 +203,21 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 	VulkanSceneData* scene_uniform_data =
 			(VulkanSceneData*)scene_data_buffer.allocation->GetMappedData();
-	if (camera) {
+
+	get_scene_graph().traverse([scene_uniform_data](Node* node) {
+		if (node->get_type() != NodeType::CAMERA) {
+			return false;
+		}
+
+		CameraNode* camera = reinterpret_cast<CameraNode*>(node);
+
 		scene_uniform_data->view = camera->get_view_matrix();
 		scene_uniform_data->proj = camera->get_projection_matrix();
 		scene_uniform_data->view_proj =
 				scene_uniform_data->proj * scene_uniform_data->view;
-	}
+
+		return true;
+	});
 
 	VkDescriptorSet global_descriptor =
 			get_current_frame().frame_descriptors.allocate(
@@ -235,9 +235,16 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 				{ (float)draw_extent.width, (float)draw_extent.height });
 		cmd.set_scissor(draw_extent);
 
-		for (const auto& [material, meshes] : meshes_to_draw) {
+		get_scene_graph().traverse([&](Node* node) {
+			if (node->get_type() != NodeType::GEOMETRY) {
+				return false;
+			};
+
+			GeometryNode* geometry = reinterpret_cast<GeometryNode*>(node);
+
 			Ref<VulkanMaterialInstance> vk_material =
-					std::dynamic_pointer_cast<VulkanMaterialInstance>(material);
+					std::dynamic_pointer_cast<VulkanMaterialInstance>(
+							geometry->material);
 
 			cmd.bind_pipeline(vk_material->pipeline->pipeline);
 
@@ -246,25 +253,26 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 			cmd.bind_descriptor_sets(vk_material->pipeline->pipeline_layout, 1,
 					1, &vk_material->descriptor_set);
 
-			for (const auto& [mesh, data] : meshes) {
-				// draw geometry
-				DrawPushConstants push_constants = {
-					.transform = data.transform,
-					.vertex_buffer = mesh->vertex_buffer_address,
-				};
-				cmd.push_constants(vk_material->pipeline->pipeline_layout,
-						VK_SHADER_STAGE_VERTEX_BIT, 0,
-						sizeof(DrawPushConstants), &push_constants);
+			// draw geometry
+			Ref<VulkanMesh> vk_mesh =
+					std::dynamic_pointer_cast<VulkanMesh>(geometry->mesh);
 
-				cmd.bind_index_buffer(
-						mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-				cmd.draw_indexed(mesh->indices.size());
-			}
-		}
+			DrawPushConstants push_constants = {
+				.transform = geometry->transform.get_transform_matrix(),
+				.vertex_buffer = vk_mesh->vertex_buffer_address,
+			};
+			cmd.push_constants(vk_material->pipeline->pipeline_layout,
+					VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstants),
+					&push_constants);
+
+			cmd.bind_index_buffer(
+					vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+			cmd.draw_indexed(vk_mesh->index_count);
+
+			return false;
+		});
 		cmd.end_rendering();
 	}
-
-	meshes_to_draw.clear();
 }
 
 void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
@@ -289,7 +297,14 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	writer.update_set(context.device, compute_descriptor);
 
-	for (const auto& compute_effect : compute_effects) {
+	get_scene_graph().traverse([&](Node* node) {
+		if (node->get_type() != NodeType::COMPUTE) {
+			return false;
+		}
+
+		VulkanComputeEffectNode* compute_effect =
+				reinterpret_cast<VulkanComputeEffectNode*>(node);
+
 		cmd.bind_pipeline(compute_effect->pipeline);
 
 		cmd.bind_descriptor_sets(compute_effect->pipeline_layout, 0, 1,
@@ -300,9 +315,9 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 
 		cmd.dispatch(compute_effect->group_count.x,
 				compute_effect->group_count.y, compute_effect->group_count.z);
-	}
 
-	compute_effects.clear();
+		return false;
+	});
 }
 
 void VulkanRenderer::_present_image(

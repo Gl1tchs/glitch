@@ -1,4 +1,4 @@
-#define GL_MAIN
+#define GL_MAIN_IMPLEMENTATION
 #include <gl/core/entrypoint.h>
 
 #include "testbed.h"

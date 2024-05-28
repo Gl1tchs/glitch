@@ -5,8 +5,7 @@
 Ref<VulkanMesh> VulkanMesh::create(const VulkanContext& context,
 		const std::span<Vertex> vertices, const std::span<uint32_t> indices) {
 	Ref<VulkanMesh> mesh = create_ref<VulkanMesh>();
-	mesh->vertices = vertices;
-	mesh->indices = indices;
+	mesh->index_count = indices.size();
 
 	const uint32_t vertex_buffer_size = vertices.size() * sizeof(Vertex);
 	const uint32_t index_buffer_size = indices.size() * sizeof(uint32_t);

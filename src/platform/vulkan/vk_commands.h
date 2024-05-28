@@ -6,7 +6,6 @@
 #include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_pipeline.h"
-#include <vulkan/vulkan_core.h>
 
 struct VulkanCommandBuffer;
 

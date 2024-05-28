@@ -4,7 +4,7 @@
 
 extern Application* create_application(int argc, const char** argv);
 
-#ifdef GL_MAIN
+#ifdef GL_MAIN_IMPLEMENTATION
 int main(int argc, const char** argv) {
 	// create application instance
 	Application* _application = create_application(argc, argv);

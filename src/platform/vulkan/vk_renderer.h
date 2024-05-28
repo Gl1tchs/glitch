@@ -5,15 +5,11 @@
 #include "gl/core/deletion_queue.h"
 #include "gl/core/timer.h"
 #include "gl/core/window.h"
-#include "gl/renderer/material.h"
-#include "gl/renderer/mesh.h"
 
 #include "platform/vulkan/vk_commands.h"
-#include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "platform/vulkan/vk_image.h"
-#include "platform/vulkan/vk_mesh.h"
 #include "platform/vulkan/vk_swapchain.h"
 
 constexpr uint32_t FRAME_OVERLAP = 2;
@@ -40,14 +36,7 @@ public:
 	VulkanRenderer(Ref<Window> window);
 	virtual ~VulkanRenderer();
 
-	void attach_camera(Camera* camera) override;
-
-	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
-			const InstanceSubmitData& data) override;
-
-	void submit_compute_effect(Ref<ComputeEffect> effect) override;
-
-	void draw() override;
+	void wait_and_render() override;
 
 	void wait_for_device() override;
 
@@ -71,6 +60,13 @@ private:
 private:
 	static VulkanRenderer* s_instance;
 
+	Timer timer;
+	struct ComputeUB {
+		float time;
+	};
+
+	DeletionQueue deletion_queue;
+
 	Ref<Window> window;
 
 	// vulkan context
@@ -90,24 +86,6 @@ private:
 	VkFence imm_fence;
 	VulkanCommandBuffer imm_command_buffer;
 	VulkanCommandPool imm_command_pool;
-
-	Camera* camera = nullptr;
-
-	struct MeshDrawData {
-		Ref<VulkanMesh> mesh;
-		InstanceSubmitData data;
-	};
-
-	std::map<Ref<MaterialInstance>, std::vector<MeshDrawData>> meshes_to_draw;
-
-	Timer timer;
-	struct ComputeUB {
-		float time;
-	};
-
-	std::vector<Ref<VulkanComputeEffect>> compute_effects;
-
-	DeletionQueue deletion_queue;
 
 private:
 	VulkanFrameData& get_current_frame() {

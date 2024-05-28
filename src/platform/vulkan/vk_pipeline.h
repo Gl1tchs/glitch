@@ -23,7 +23,8 @@ struct VulkanPipelineLayout {
 
 	static VulkanPipelineLayout create(
 			VkDevice device, const VulkanPipelineLayoutCreateInfo* info);
-	static void destroy(VkDevice device, VulkanPipelineLayout& layout);
+
+	static void destroy(VkDevice device, const VulkanPipelineLayout* layout);
 };
 
 struct VulkanPipelineCreateInfo {

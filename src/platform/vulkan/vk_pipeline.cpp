@@ -22,8 +22,8 @@ VulkanPipelineLayout VulkanPipelineLayout::create(
 }
 
 void VulkanPipelineLayout::destroy(
-		VkDevice device, VulkanPipelineLayout& layout) {
-	vkDestroyPipelineLayout(device, layout.layout, nullptr);
+		VkDevice device, const VulkanPipelineLayout* layout) {
+	vkDestroyPipelineLayout(device, layout->layout, nullptr);
 }
 
 VulkanPipelineCreateInfo::VulkanPipelineCreateInfo() { reset(); }

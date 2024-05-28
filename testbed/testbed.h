@@ -20,17 +20,12 @@ protected:
 	void _on_destroy() override;
 
 private:
-	OrthographicCamera camera;
+	Ref<OrthographicCameraNode> camera;
+	Ref<GeometryNode> my_node;
+	Ref<ComputeEffectNode> effect_node;
 
-	Ref<Mesh> mesh;
 	Ref<MetallicRoughnessMaterial> material;
 
-	Ref<MaterialInstance> material_instance;
-	Ref<MaterialInstance> material_instance2;
-
 	Ref<Image> color_image;
-	Ref<Image> color_image2;
 	Ref<Image> white_image;
-
-	Ref<ComputeEffect> effect;
 };

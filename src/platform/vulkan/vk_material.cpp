@@ -81,7 +81,7 @@ void VulkanMetallicRoughnessMaterial::destroy(
 			context.device, material->material_layout, nullptr);
 
 	VulkanPipelineLayout::destroy(
-			context.device, material->pipeline.pipeline_layout);
+			context.device, &material->pipeline.pipeline_layout);
 	VulkanPipeline::destroy(context.device, material->pipeline.pipeline);
 }
 
