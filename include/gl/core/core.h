@@ -2,7 +2,6 @@
 
 #include "gl/core/assert.h"
 #include "gl/core/buffer.h"
-#include "gl/core/matrix.h"
 #include "gl/core/memory.h"
 #include "gl/core/vector.h"
 

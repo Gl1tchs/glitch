@@ -3,12 +3,13 @@
 #include "gl/renderer/renderer.h"
 
 #include "gl/core/deletion_queue.h"
+#include "gl/core/timer.h"
 #include "gl/core/window.h"
-
 #include "gl/renderer/material.h"
 #include "gl/renderer/mesh.h"
 
 #include "platform/vulkan/vk_commands.h"
+#include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "platform/vulkan/vk_image.h"
@@ -39,12 +40,12 @@ public:
 	VulkanRenderer(Ref<Window> window);
 	virtual ~VulkanRenderer();
 
-	static VulkanRenderer* get_instance();
-
 	void attach_camera(Camera* camera) override;
 
 	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
 			const InstanceSubmitData& data) override;
+
+	void submit_compute_effect(Ref<ComputeEffect> effect) override;
 
 	void draw() override;
 
@@ -53,13 +54,19 @@ public:
 	void immediate_submit(
 			std::function<void(VulkanCommandBuffer& cmd)>&& function);
 
+	static VulkanRenderer* get_instance();
+
 	static VulkanContext& get_context();
 
 private:
 	void _geometry_pass(VulkanCommandBuffer& cmd);
 
+	void _compute_pass(VulkanCommandBuffer& cmd);
+
 	void _present_image(
 			VulkanCommandBuffer& cmd, uint32_t swapchain_image_index);
+
+	void _request_resize();
 
 private:
 	static VulkanRenderer* s_instance;
@@ -93,6 +100,13 @@ private:
 	};
 
 	std::map<Ref<MaterialInstance>, std::vector<MeshDrawData>> meshes_to_draw;
+
+	Timer timer;
+	struct ComputeUB {
+		float time;
+	};
+
+	std::vector<Ref<VulkanComputeEffect>> compute_effects;
 
 	DeletionQueue deletion_queue;
 

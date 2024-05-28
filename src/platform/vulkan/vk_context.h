@@ -18,6 +18,11 @@ struct VulkanContext {
 	VulkanDescriptorAllocator descriptor_allocator;
 	VkDescriptorSetLayout scene_data_descriptor_layout;
 
+	VulkanDescriptorAllocator compute_descriptor_allocator;
+	VkDescriptorSet compute_descriptor_set;
+	VkDescriptorSetLayout compute_descriptor_layout;
+	VkDescriptorSetLayout compute_data_descriptor_layout;
+
 	VkQueue graphics_queue;
 	uint32_t graphics_queue_family{ UINT32_MAX };
 

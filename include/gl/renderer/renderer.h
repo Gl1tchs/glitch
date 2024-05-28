@@ -2,7 +2,7 @@
 
 #include "gl/core/window.h"
 #include "gl/renderer/camera.h"
-
+#include "gl/renderer/compute.h"
 #include "gl/renderer/material.h"
 #include "gl/renderer/mesh.h"
 
@@ -23,6 +23,8 @@ public:
 
 	virtual void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
 			const InstanceSubmitData& data) = 0;
+
+	virtual void submit_compute_effect(Ref<ComputeEffect> effect) = 0;
 
 	virtual void attach_camera(Camera* camera) = 0;
 

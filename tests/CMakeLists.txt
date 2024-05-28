@@ -13,3 +13,9 @@ target_link_libraries(glitch-tests PRIVATE
     glitch
     ${CATCH2_LIBRARIES}
 )
+
+list(APPEND CMAKE_MODULE_PATH ${CATCH2_SOURCE_DIR}/extras)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(glitch-tests)

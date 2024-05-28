@@ -1,8 +1,9 @@
 # define include dirs and library targets
 set(VENDOR_DIR ${CMAKE_SOURCE_DIR}/third_party)
 
+set(CATCH2_SOURCE_DIR ${VENDOR_DIR}/Catch2 PARENT_SCOPE)
 set(CATCH2_INCLUDES ${VENDOR_DIR}/Catch2/src PARENT_SCOPE)
-set(CATCH2_LIBRARIES Catch2::Catch2 PARENT_SCOPE)
+set(CATCH2_LIBRARIES Catch2::Catch2WithMain PARENT_SCOPE)
 
 set(VMA_INCLUDES ${VENDOR_DIR}/VulkanMemoryAllocator/include PARENT_SCOPE)
 set(VMA_LIBRARIES GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)

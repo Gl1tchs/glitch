@@ -94,38 +94,39 @@ void VulkanPipelineCreateInfo::set_multisampling_none() {
 	multisampling.alphaToOneEnable = VK_FALSE;
 }
 
-void VulkanPipelineCreateInfo::enable_blending(
-		VulkanBlendingMode blending_mode) {
+void VulkanPipelineCreateInfo::set_blending(VulkanBlendingMode blending_mode) {
 	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
 			VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
 			VK_COLOR_COMPONENT_A_BIT;
-	color_blend_attachment.blendEnable = VK_TRUE;
-	color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
-	color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
-	color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	switch (blending_mode) {
 		case VulkanBlendingMode::ADDITIVE: {
+			color_blend_attachment.blendEnable = VK_TRUE;
+			color_blend_attachment.dstColorBlendFactor =
+					VK_BLEND_FACTOR_DST_ALPHA;
+			color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+			color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 			color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
 			break;
 		}
 		case VulkanBlendingMode::ALPHA_BLEND: {
+			color_blend_attachment.blendEnable = VK_TRUE;
+			color_blend_attachment.dstColorBlendFactor =
+					VK_BLEND_FACTOR_DST_ALPHA;
+			color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+			color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 			color_blend_attachment.srcColorBlendFactor =
 					VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
 			break;
 		}
+		case VulkanBlendingMode::NONE: {
+			color_blend_attachment.blendEnable = VK_FALSE;
+			break;
+		}
 	}
-}
-
-void VulkanPipelineCreateInfo::disable_blending() {
-	// default write mask
-	color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-			VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-			VK_COLOR_COMPONENT_A_BIT;
-	// no blending
-	color_blend_attachment.blendEnable = VK_FALSE;
 }
 
 void VulkanPipelineCreateInfo::set_color_attachment_format(VkFormat format) {
@@ -269,6 +270,47 @@ bool vk_load_shader_module(VkDevice device, const char* file_path,
 	// of int to know the real size of the buffer
 	create_info.codeSize = shader_data.size;
 	create_info.pCode = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
+
+	// check that the creation goes well.
+	VkShaderModule shader_module;
+	if (vkCreateShaderModule(device, &create_info, nullptr, &shader_module) !=
+			VK_SUCCESS) {
+		return false;
+	}
+
+	*out_shader_module = shader_module;
+	return true;
+}
+
+bool vk_load_shader_module_external(VkDevice device, const char* file_path,
+		VkShaderModule* out_shader_module) {
+	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open()) {
+		return false;
+	}
+
+	size_t file_size = (size_t)file.tellg();
+
+	std::vector<uint32_t> buffer(file_size / sizeof(uint32_t));
+
+	// put file cursor at beginning
+	file.seekg(0);
+
+	// load the entire file into the buffer
+	file.read((char*)buffer.data(), file_size);
+
+	file.close();
+
+	// create a new shader module, using the buffer we loaded
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.pNext = nullptr;
+
+	// codeSize has to be in bytes, so multiply the ints in the buffer by size
+	// of int to know the real size of the buffer
+	create_info.codeSize = buffer.size() * sizeof(uint32_t);
+	create_info.pCode = buffer.data();
 
 	// check that the creation goes well.
 	VkShaderModule shader_module;

@@ -5,6 +5,7 @@
 enum class VulkanBlendingMode {
 	ADDITIVE,
 	ALPHA_BLEND,
+	NONE,
 };
 
 struct VulkanPipelineLayoutCreateInfo {
@@ -51,9 +52,7 @@ struct VulkanPipelineCreateInfo {
 
 	void set_multisampling_none();
 
-	void enable_blending(VulkanBlendingMode blending_mode);
-
-	void disable_blending();
+	void set_blending(VulkanBlendingMode blending_mode);
 
 	void set_color_attachment_format(VkFormat format);
 
@@ -73,5 +72,14 @@ struct VulkanPipeline {
 	static void destroy(VkDevice device, VulkanPipeline& pipeline);
 };
 
+/**
+ * @brief loads shader module from bundled header
+ */
 bool vk_load_shader_module(VkDevice device, const char* file_path,
+		VkShaderModule* out_shader_module);
+
+/**
+ * @brief loads shader module from external file
+ */
+bool vk_load_shader_module_external(VkDevice device, const char* file_path,
 		VkShaderModule* out_shader_module);

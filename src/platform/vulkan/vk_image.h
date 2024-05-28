@@ -6,6 +6,14 @@
 
 [[nodiscard]] VkFormat image_format_to_vk_format(ImageFormat format);
 
+struct VulkanImageCreateInfo {
+	VkFormat format;
+	VkExtent3D size;
+	void* data = nullptr;
+	VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	bool mipmapped = false;
+};
+
 struct VulkanImage : public Image {
 	VkImage image;
 	VkImageView image_view;
@@ -15,13 +23,8 @@ struct VulkanImage : public Image {
 
 	virtual ~VulkanImage() = default;
 
-	static Ref<VulkanImage> create(const VulkanContext& context,
-			VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
-			bool mipmapped = false);
-
-	static Ref<VulkanImage> create(const VulkanContext& context,
-			const void* data, VkExtent3D size, VkFormat format,
-			VkImageUsageFlags usage, bool mipmapped = false);
+	static Ref<VulkanImage> create(
+			const VulkanContext& context, const VulkanImageCreateInfo* info);
 
 	static void destroy(const VulkanContext& context, VulkanImage* img);
 };

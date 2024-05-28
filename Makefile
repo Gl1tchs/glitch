@@ -14,6 +14,6 @@ build:
 	$(CMAKE) --build $(BUILD_PATH)
 
 clean:
-	@rm -rf $(BUILD_PATH)
+	@rm -rf $(BUILD_PATH) bin
 
 .PHONY: all configure build clean

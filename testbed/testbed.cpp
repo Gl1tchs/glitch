@@ -1,5 +1,4 @@
 #include "testbed.h"
-#include "gl/core/transform.h"
 
 #include <gl/core/input.h>
 #include <gl/renderer/image.h>
@@ -39,27 +38,46 @@ void TestBedApplication::_on_start() {
 		.metal_rough_factors = { 1.0f, 0.5f, 1.0f, 1.0f },
 	};
 
-	uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
-	white_image = Image::create(
-			(void*)&white, Vec2u{ 1, 1 }, ImageFormat::R8G8B8A8_UNORM);
+	{
+		uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
 
-	Vec2u size = {};
-	int channel_count;
-	uint8_t* image_data = stbi_load("assets/texture1.jpg", (int*)&size.x,
-			(int*)&size.y, &channel_count, STBI_rgb_alpha);
+		ImageCreateInfo white_image_info = {
+			.format = ImageFormat::R8G8B8A8_UNORM,
+			.size = { 1, 1 },
+			.data = &white,
+		};
+		white_image = Image::create(&white_image_info);
+	}
 
-	color_image =
-			Image::create(image_data, size, ImageFormat::R8G8B8A8_UNORM, true);
+	{
+		Vec2u size;
+		uint8_t* image_data = stbi_load("assets/texture1.jpg", (int*)&size.x,
+				(int*)&size.y, nullptr, STBI_rgb_alpha);
 
-	stbi_image_free(image_data);
+		ImageCreateInfo color_image_info = {
+			.format = ImageFormat::R8G8B8A8_UNORM,
+			.size = size,
+			.data = image_data,
+		};
+		color_image = Image::create(&color_image_info);
 
-	image_data = stbi_load("assets/texture.jpg", (int*)&size.x, (int*)&size.y,
-			&channel_count, STBI_rgb_alpha);
+		stbi_image_free(image_data);
+	}
 
-	color_image2 =
-			Image::create(image_data, size, ImageFormat::R8G8B8A8_UNORM, true);
+	{
+		Vec2u size;
+		uint8_t* image_data = stbi_load("assets/texture.jpg", (int*)&size.x,
+				(int*)&size.y, nullptr, STBI_rgb_alpha);
 
-	stbi_image_free(image_data);
+		ImageCreateInfo color_image2_info = {
+			.format = ImageFormat::R8G8B8A8_UNORM,
+			.size = size,
+			.data = image_data,
+		};
+		color_image2 = Image::create(&color_image2_info);
+
+		stbi_image_free(image_data);
+	}
 
 	MetallicRoughnessMaterial::MaterialResources resources = {
 		.constants = constants,
@@ -73,6 +91,15 @@ void TestBedApplication::_on_start() {
 
 	resources.color_image = color_image2;
 	material_instance2 = material->create_instance(resources);
+
+	const auto window_size = get_window()->get_size();
+	ComputeEffectCreateInfo compute_info = {
+		.group_count_x = (uint32_t)std::ceil(window_size.x / 16.0f),
+		.group_count_y = (uint32_t)std::ceil(window_size.y / 16.0f),
+		.group_count_z = 1,
+		.shader_spv_path = "assets/shaders/compute-shader.comp.spv",
+	};
+	effect = ComputeEffect::create(&compute_info);
 }
 
 void TestBedApplication::_on_update(float dt) {
@@ -100,12 +127,16 @@ void TestBedApplication::_on_update(float dt) {
 			get_renderer()->submit_mesh(mesh, material_instance2, submit_data);
 		}
 	}
+
+	get_renderer()->submit_compute_effect(effect);
 }
 
 void TestBedApplication::_on_destroy() {
 	// wait for operations to finish
 	// before cleaning other resources
 	get_renderer()->wait_for_device();
+
+	ComputeEffect::destroy(effect);
 
 	Mesh::destroy(mesh);
 
