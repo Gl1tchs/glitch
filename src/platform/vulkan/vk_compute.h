@@ -20,19 +20,15 @@ struct VulkanComputePipeline {
 };
 
 struct VulkanComputeEffectCreateInfo {
-	uint32_t group_count_x;
-	uint32_t group_count_y;
-	uint32_t group_count_z;
 	const char* shader_spv_path;
+	Vec3u group_count;
 };
 
 struct VulkanComputeEffect : public ComputeEffect {
 	VulkanPipelineLayout pipeline_layout;
 	VulkanComputePipeline pipeline;
 
-	uint32_t group_count_x;
-	uint32_t group_count_y;
-	uint32_t group_count_z;
+	Vec3u group_count;
 
 	virtual ~VulkanComputeEffect() = default;
 

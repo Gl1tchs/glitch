@@ -1,9 +1,6 @@
 #include "platform/vulkan/vk_compute.h"
 
 #include "platform/vulkan/vk_init.h"
-#include "platform/vulkan/vk_renderer.h"
-
-#include <vulkan/vulkan_core.h>
 
 VulkanComputePipeline VulkanComputePipeline::create(
 		const VulkanContext& context,
@@ -37,9 +34,7 @@ Ref<VulkanComputeEffect> VulkanComputeEffect::create(
 		const VulkanContext& context,
 		const VulkanComputeEffectCreateInfo* info) {
 	Ref<VulkanComputeEffect> effect = create_ref<VulkanComputeEffect>();
-	effect->group_count_x = info->group_count_x;
-	effect->group_count_y = info->group_count_y;
-	effect->group_count_z = info->group_count_z;
+	effect->group_count = info->group_count;
 
 	VkDescriptorSetLayout layouts[] = {
 		context.compute_descriptor_layout,

@@ -294,8 +294,8 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 		cmd.bind_descriptor_sets(compute_effect->pipeline_layout, 1, 1,
 				&compute_descriptor, VK_PIPELINE_BIND_POINT_COMPUTE);
 
-		cmd.dispatch(compute_effect->group_count_x,
-				compute_effect->group_count_y, compute_effect->group_count_z);
+		cmd.dispatch(compute_effect->group_count.x,
+				compute_effect->group_count.y, compute_effect->group_count.z);
 	}
 
 	compute_effects.clear();

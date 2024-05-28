@@ -1,10 +1,8 @@
 #pragma once
 
 struct ComputeEffectCreateInfo {
-	uint32_t group_count_x;
-	uint32_t group_count_y;
-	uint32_t group_count_z;
 	const char* shader_spv_path;
+	Vec3u group_count;
 };
 
 struct ComputeEffect {

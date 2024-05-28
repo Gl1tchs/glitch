@@ -8,7 +8,8 @@
 - [ ] VFX
     - [x] Compute Pipeline
     - [x] Custom effects with compute shaders
-    - [ ] Binary shader loading for comput shaders
+    - [ ] Binary shader loading for compute shaders
+    - [ ] Async compute
     - [ ] Particle effects from custom effect
 - [ ] VkDescriptorSet abstraction
 - [ ] VkQueue abstraction

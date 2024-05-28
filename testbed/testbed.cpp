@@ -94,10 +94,12 @@ void TestBedApplication::_on_start() {
 
 	const auto window_size = get_window()->get_size();
 	ComputeEffectCreateInfo compute_info = {
-		.group_count_x = (uint32_t)std::ceil(window_size.x / 16.0f),
-		.group_count_y = (uint32_t)std::ceil(window_size.y / 16.0f),
-		.group_count_z = 1,
-		.shader_spv_path = "assets/shaders/compute-shader.comp.spv",
+        .shader_spv_path = "assets/shaders/compute-shader.comp.spv",
+		.group_count = {
+				(uint32_t)std::ceil(window_size.x / 16.0f),
+				(uint32_t)std::ceil(window_size.y / 16.0f),
+				1,
+		},
 	};
 	effect = ComputeEffect::create(&compute_info);
 }
