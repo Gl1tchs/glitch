@@ -7,6 +7,31 @@
 #include <stb_image.h>
 #include <glm/packing.hpp>
 
+std::vector<Vertex> vertices = {
+	Vertex{ .position = { 0.5f, 0.5f, 0.0f },
+			.uv_x = 1.0f,
+			.normal = { 0.0f, 0.0f, 0.0f },
+			.uv_y = 1.0f,
+			.color = { 0.9f, 0.6f, 0.34f, 1.0f } },
+	Vertex{ .position = { 0.5f, -0.5f, 0.0f },
+			.uv_x = 1.0f,
+			.normal = { 0.0f, 0.0f, 0.0f },
+			.uv_y = 0.0f,
+			.color = { 0.2f, 0.4f, 0.8f, 1.0f } },
+	Vertex{ .position = { -0.5f, -0.5f, 0.0f },
+			.uv_x = 0.0f,
+			.normal = { 0.0f, 0.0f, 0.0f },
+			.uv_y = 0.0f,
+			.color = { 0.4f, 0.8f, 0.6f, 1.0f } },
+	Vertex{ .position = { -0.5f, 0.5f, 0.0f },
+			.uv_x = 0.0f,
+			.normal = { 0.0f, 0.0f, 0.0f },
+			.uv_y = 1.0f,
+			.color = { 0.8f, 0.2f, 0.4f, 1.0f } },
+};
+
+std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
+
 TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
 		Application(info) {}
 
@@ -15,19 +40,6 @@ TestBedApplication::~TestBedApplication() {}
 void TestBedApplication::_on_start() {
 	camera.zoom_level = 2.0f;
 	get_renderer()->attach_camera(&camera);
-
-	std::vector<Vertex> vertices = {
-		{ { 0.5f, 0.5f, 0.0f }, 1.0f, { 0.0f, 0.0f, 0.0f }, 1.0f,
-				{ 0.9f, 0.6f, 0.34f, 1.0f } },
-		{ { 0.5f, -0.5f, 0.0f }, 1.0f, { 0.0f, 0.0f, 0.0f }, 0.0f,
-				{ 0.2f, 0.4f, 0.8f, 1.0f } },
-		{ { -0.5f, -0.5f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 0.0f,
-				{ 0.4f, 0.8f, 0.6f, 1.0f } },
-		{ { -0.5f, 0.5f, 0.0f }, 0.0f, { 0.0f, 0.0f, 0.0f }, 1.0f,
-				{ 0.8f, 0.2f, 0.4f, 1.0f } },
-	};
-
-	std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 
 	mesh = Mesh::create(vertices, indices);
 
@@ -122,7 +134,6 @@ void TestBedApplication::_on_update(float dt) {
 			.transform = transform.get_transform_matrix(),
 		};
 
-		// Randomly select between material_instance and material_instance2
 		if (i % 2 == 0) {
 			get_renderer()->submit_mesh(mesh, material_instance, submit_data);
 		} else {

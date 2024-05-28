@@ -5,7 +5,7 @@
 
 Application* create_application(int argc, const char** argv) {
 	ApplicationCreateInfo info = {
-		.name = "GlEditor",
+		.name = "Glitch Testbed",
 		.argc = argc,
 		.argv = argv,
 	};

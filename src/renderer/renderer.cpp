@@ -8,6 +8,10 @@
 
 static RenderBackend s_backend;
 
+RendererSettings& Renderer::get_settings() { return settings; }
+
+RenderBackend Renderer::get_backend() { return s_backend; }
+
 Ref<Renderer> Renderer::create(RenderBackend backend, Ref<Window> window) {
 	s_backend = backend;
 
@@ -23,5 +27,3 @@ Ref<Renderer> Renderer::create(RenderBackend backend, Ref<Window> window) {
 		}
 	}
 }
-
-RenderBackend Renderer::get_backend() { return s_backend; }

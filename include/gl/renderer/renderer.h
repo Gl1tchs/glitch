@@ -17,6 +17,11 @@ struct InstanceSubmitData {
 	glm::mat4 transform;
 };
 
+struct RendererSettings {
+	float render_scale = 1.0f;
+	// bool msaa;
+};
+
 class Renderer {
 public:
 	virtual ~Renderer() = default;
@@ -34,7 +39,12 @@ public:
 	// wait for all operations to finish
 	virtual void wait_for_device() = 0;
 
-	static Ref<Renderer> create(RenderBackend backend, Ref<Window> window);
+	RendererSettings& get_settings();
 
 	static RenderBackend get_backend();
+
+	static Ref<Renderer> create(RenderBackend backend, Ref<Window> window);
+
+private:
+	RendererSettings settings{};
 };

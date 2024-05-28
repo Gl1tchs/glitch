@@ -88,12 +88,16 @@ void VulkanRenderer::draw() {
 	// reset the command buffer to begin recording again.
 	cmd.reset();
 
-	draw_extent.width = std::min(swapchain->get_extent().width,
-								draw_image->image_extent.width) *
-			render_scale;
-	draw_extent.height = std::min(swapchain->get_extent().height,
-								 draw_image->image_extent.height) *
-			render_scale;
+	// set render scale
+	const float render_scale = get_settings().render_scale;
+	{
+		draw_extent.width = std::min(swapchain->get_extent().width,
+									draw_image->image_extent.width) *
+				render_scale;
+		draw_extent.height = std::min(swapchain->get_extent().height,
+									 draw_image->image_extent.height) *
+				render_scale;
+	}
 
 	// begin the command buffer recording. We will use
 	// this command buffer exactly once, so we want to

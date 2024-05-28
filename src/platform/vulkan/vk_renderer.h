@@ -81,8 +81,7 @@ private:
 
 	Ref<VulkanImage> draw_image;
 	Ref<VulkanImage> depth_image;
-	VkExtent2D draw_extent{};
-	float render_scale = 1.0f;
+	VkExtent2D draw_extent;
 
 	VulkanFrameData frames[FRAME_OVERLAP];
 	uint32_t frame_number{ 0 };
