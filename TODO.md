@@ -7,7 +7,8 @@
 ## Vulkan Renderer
 - [ ] VFX
     - [x] Compute Pipeline
-    - [ ] Custom effects with compute shaders
+    - [x] Custom effects with compute shaders
+    - [ ] Binary shader loading for comput shaders
     - [ ] Particle effects from custom effect
 - [ ] VkDescriptorSet abstraction
 - [ ] VkQueue abstraction

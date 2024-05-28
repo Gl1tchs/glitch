@@ -91,12 +91,20 @@ void TestBedApplication::_on_start() {
 
 	resources.color_image = color_image2;
 	material_instance2 = material->create_instance(resources);
+
+	const auto window_size = get_window()->get_size();
+	ComputeEffectCreateInfo compute_info = {
+		.group_count_x = (uint32_t)std::ceil(window_size.x / 16.0f),
+		.group_count_y = (uint32_t)std::ceil(window_size.y / 16.0f),
+		.group_count_z = 1,
+		.shader_spv_path = "assets/shaders/compute-shader.comp.spv",
+	};
+	effect = ComputeEffect::create(&compute_info);
 }
 
 void TestBedApplication::_on_update(float dt) {
 	camera.aspect_ratio = get_window()->get_aspect_ratio();
 
-#if 1
 	constexpr int element_count = 10;
 
 	static Transform transforms[element_count];
@@ -119,13 +127,16 @@ void TestBedApplication::_on_update(float dt) {
 			get_renderer()->submit_mesh(mesh, material_instance2, submit_data);
 		}
 	}
-#endif
+
+	get_renderer()->submit_compute_effect(effect);
 }
 
 void TestBedApplication::_on_destroy() {
 	// wait for operations to finish
 	// before cleaning other resources
 	get_renderer()->wait_for_device();
+
+	ComputeEffect::destroy(effect);
 
 	Mesh::destroy(mesh);
 

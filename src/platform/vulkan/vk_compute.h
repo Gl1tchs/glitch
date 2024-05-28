@@ -1,6 +1,6 @@
 #pragma once
 
-#include "platform/vulkan/vk_common.h"
+#include "gl/renderer/compute.h"
 
 #include "platform/vulkan/vk_pipeline.h"
 
@@ -17,4 +17,28 @@ struct VulkanComputePipeline {
 
 	static void destroy(const VulkanContext& context,
 			const VulkanComputePipeline* pipeline);
+};
+
+struct VulkanComputeEffectCreateInfo {
+	uint32_t group_count_x;
+	uint32_t group_count_y;
+	uint32_t group_count_z;
+	const char* shader_spv_path;
+};
+
+struct VulkanComputeEffect : public ComputeEffect {
+	VulkanPipelineLayout pipeline_layout;
+	VulkanComputePipeline pipeline;
+
+	uint32_t group_count_x;
+	uint32_t group_count_y;
+	uint32_t group_count_z;
+
+	virtual ~VulkanComputeEffect() = default;
+
+	static Ref<VulkanComputeEffect> create(const VulkanContext& context,
+			const VulkanComputeEffectCreateInfo* info);
+
+	static void destroy(
+			const VulkanContext& context, VulkanComputeEffect* effect);
 };

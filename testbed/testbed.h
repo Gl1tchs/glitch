@@ -3,6 +3,7 @@
 #include <gl/core/application.h>
 #include <gl/core/timer.h>
 #include <gl/renderer/camera.h>
+#include <gl/renderer/compute.h>
 #include <gl/renderer/material.h>
 #include <gl/renderer/mesh.h>
 
@@ -30,4 +31,6 @@ private:
 	Ref<Image> color_image;
 	Ref<Image> color_image2;
 	Ref<Image> white_image;
+
+	Ref<ComputeEffect> effect;
 };

@@ -1,11 +1,10 @@
 #pragma once
 
-#include "gl/core/timer.h"
 #include "gl/renderer/renderer.h"
 
 #include "gl/core/deletion_queue.h"
+#include "gl/core/timer.h"
 #include "gl/core/window.h"
-
 #include "gl/renderer/material.h"
 #include "gl/renderer/mesh.h"
 
@@ -45,6 +44,8 @@ public:
 
 	void submit_mesh(Ref<Mesh> mesh, Ref<MaterialInstance> material,
 			const InstanceSubmitData& data) override;
+
+	void submit_compute_effect(Ref<ComputeEffect> effect) override;
 
 	void draw() override;
 
@@ -100,19 +101,12 @@ private:
 
 	std::map<Ref<MaterialInstance>, std::vector<MeshDrawData>> meshes_to_draw;
 
-	// temp
-	VulkanPipelineLayout compute_pipeline_layout;
-	VulkanComputePipeline compute_pipeline;
-	VulkanDescriptorAllocator compute_allocator;
-	VkDescriptorSet compute_descriptor_set;
-	VkDescriptorSetLayout compute_descriptor_layout;
-	VkDescriptorSetLayout compute_global_layout;
-
 	Timer timer;
 	struct ComputeUB {
 		float time;
 	};
-	// end temp
+
+	std::vector<Ref<VulkanComputeEffect>> compute_effects;
 
 	DeletionQueue deletion_queue;
 
