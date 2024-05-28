@@ -204,20 +204,15 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 	VulkanSceneData* scene_uniform_data =
 			(VulkanSceneData*)scene_data_buffer.allocation->GetMappedData();
 
-	get_scene_graph().traverse([scene_uniform_data](Node* node) {
-		if (node->get_type() != NodeType::CAMERA) {
-			return false;
-		}
+	get_scene_graph().traverse<CameraNode>(
+			[scene_uniform_data](CameraNode* camera) {
+				scene_uniform_data->view = camera->get_view_matrix();
+				scene_uniform_data->proj = camera->get_projection_matrix();
+				scene_uniform_data->view_proj =
+						scene_uniform_data->proj * scene_uniform_data->view;
 
-		CameraNode* camera = reinterpret_cast<CameraNode*>(node);
-
-		scene_uniform_data->view = camera->get_view_matrix();
-		scene_uniform_data->proj = camera->get_projection_matrix();
-		scene_uniform_data->view_proj =
-				scene_uniform_data->proj * scene_uniform_data->view;
-
-		return true;
-	});
+				return true;
+			});
 
 	VkDescriptorSet global_descriptor =
 			get_current_frame().frame_descriptors.allocate(
@@ -235,16 +230,10 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 				{ (float)draw_extent.width, (float)draw_extent.height });
 		cmd.set_scissor(draw_extent);
 
-		get_scene_graph().traverse([&](Node* node) {
-			if (node->get_type() != NodeType::GEOMETRY) {
-				return false;
-			};
-
-			GeometryNode* geometry = reinterpret_cast<GeometryNode*>(node);
-
+		get_scene_graph().traverse<GeometryNode>([&](GeometryNode* node) {
 			Ref<VulkanMaterialInstance> vk_material =
 					std::dynamic_pointer_cast<VulkanMaterialInstance>(
-							geometry->material);
+							node->material);
 
 			cmd.bind_pipeline(vk_material->pipeline->pipeline);
 
@@ -255,10 +244,10 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 			// draw geometry
 			Ref<VulkanMesh> vk_mesh =
-					std::dynamic_pointer_cast<VulkanMesh>(geometry->mesh);
+					std::dynamic_pointer_cast<VulkanMesh>(node->mesh);
 
 			DrawPushConstants push_constants = {
-				.transform = geometry->transform.get_transform_matrix(),
+				.transform = node->transform.get_transform_matrix(),
 				.vertex_buffer = vk_mesh->vertex_buffer_address,
 			};
 			cmd.push_constants(vk_material->pipeline->pipeline_layout,
@@ -297,27 +286,22 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	writer.update_set(context.device, compute_descriptor);
 
-	get_scene_graph().traverse([&](Node* node) {
-		if (node->get_type() != NodeType::COMPUTE) {
-			return false;
-		}
+	get_scene_graph().traverse<VulkanComputeEffectNode>(
+			[&](VulkanComputeEffectNode* compute_effect) {
+				cmd.bind_pipeline(compute_effect->pipeline);
 
-		VulkanComputeEffectNode* compute_effect =
-				reinterpret_cast<VulkanComputeEffectNode*>(node);
+				cmd.bind_descriptor_sets(compute_effect->pipeline_layout, 0, 1,
+						&context.compute_descriptor_set,
+						VK_PIPELINE_BIND_POINT_COMPUTE);
+				cmd.bind_descriptor_sets(compute_effect->pipeline_layout, 1, 1,
+						&compute_descriptor, VK_PIPELINE_BIND_POINT_COMPUTE);
 
-		cmd.bind_pipeline(compute_effect->pipeline);
+				cmd.dispatch(compute_effect->group_count.x,
+						compute_effect->group_count.y,
+						compute_effect->group_count.z);
 
-		cmd.bind_descriptor_sets(compute_effect->pipeline_layout, 0, 1,
-				&context.compute_descriptor_set,
-				VK_PIPELINE_BIND_POINT_COMPUTE);
-		cmd.bind_descriptor_sets(compute_effect->pipeline_layout, 1, 1,
-				&compute_descriptor, VK_PIPELINE_BIND_POINT_COMPUTE);
-
-		cmd.dispatch(compute_effect->group_count.x,
-				compute_effect->group_count.y, compute_effect->group_count.z);
-
-		return false;
-	});
+				return false;
+			});
 }
 
 void VulkanRenderer::_present_image(

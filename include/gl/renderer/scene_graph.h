@@ -23,8 +23,27 @@ public:
 	 */
 	void traverse(const std::function<bool(Node*)>& callback);
 
+	template <NodeDerived T>
+	void traverse(const std::function<bool(T*)>& callback) {
+		_traverse_node<T>(root.get(), callback);
+	}
+
 private:
-	void traverse_node(Node* node, const std::function<bool(Node*)>& callback);
+	static void _traverse_node(
+			Node* node, const std::function<bool(Node*)>& callback);
+
+	template <NodeDerived T>
+	static void _traverse_node(
+			Node* node, const std::function<bool(T*)>& callback) {
+		// TODO: maybe this is a bad practice
+		_traverse_node(node, [=](Node* node) {
+			if (node->get_type() != T::get_static_type()) {
+				return false;
+			}
+
+			return callback(reinterpret_cast<T*>(node));
+		});
+	}
 
 private:
 	Ref<Node> root;
