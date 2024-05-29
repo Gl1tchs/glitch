@@ -1,0 +1,31 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(rgba16f, set = 0, binding = 0) uniform image2D image;
+
+layout(set = 1, binding = 0) uniform ComputeUB {
+    float dt;
+} compute_ub;
+
+void main() {
+    ivec2 texel_coord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(image);
+
+    // Calculate the wave offset using a sine function
+    float wave_frequency = 10.0;
+    float wave_amplitude = 10.0;
+    float wave_offset = sin(float(texel_coord.y) / wave_frequency + compute_ub.dt) * wave_amplitude;
+
+    // Calculate the new x position with the wave offset
+    int new_x = texel_coord.x + int(wave_offset);
+
+    // Ensure the new x position is within bounds
+    new_x = clamp(new_x, 0, size.x - 1);
+
+    // Load the color from the new position
+    vec4 color = imageLoad(image, ivec2(new_x, texel_coord.y));
+
+    // Store the result in the image
+    imageStore(image, texel_coord, color);
+}

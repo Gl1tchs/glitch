@@ -3,7 +3,6 @@
 #include "gl/core/application.h"
 #include "gl/core/window.h"
 #include "gl/renderer/camera.h"
-#include "gl/renderer/compute.h"
 #include "gl/renderer/node.h"
 #include "gl/renderer/renderer.h"
 
@@ -51,9 +50,11 @@ VulkanRenderer::~VulkanRenderer() {
 }
 
 void VulkanRenderer::wait_and_render() {
+	// wait for gpu to finish execution
 	VK_CHECK(vkWaitForFences(context.device, 1,
 			&get_current_frame().render_fence, true, UINT64_MAX));
 
+	// reset frame descriptors
 	get_current_frame().deletion_queue.flush();
 	get_current_frame().frame_descriptors.clear_pools(context.device);
 
@@ -72,12 +73,7 @@ void VulkanRenderer::wait_and_render() {
 	VK_CHECK(vkResetFences(
 			context.device, 1, &get_current_frame().render_fence));
 
-	// naming it cmd for shorter writing
 	VulkanCommandBuffer cmd = get_current_frame().main_command_buffer;
-
-	// now that we are sure that the commands finished executing, we can safely
-	// reset the command buffer to begin recording again.
-	cmd.reset();
 
 	// set render scale
 	const float render_scale = get_settings().render_scale;
@@ -90,65 +86,11 @@ void VulkanRenderer::wait_and_render() {
 				render_scale;
 	}
 
-	// begin the command buffer recording. We will use
-	// this command buffer exactly once, so we want to
-	// let vulkan know that
-	cmd.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	{
-		// clear color
-		cmd.transition_image(
-				draw_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-
-		VkClearColorValue clear_color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-
-		cmd.clear_color_image(
-				draw_image->image, VK_IMAGE_LAYOUT_GENERAL, &clear_color);
-
-		_compute_pass(cmd);
-
-		// draw geometry
-		cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_GENERAL,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-		cmd.transition_image(depth_image, VK_IMAGE_LAYOUT_UNDEFINED,
-				VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
-		_geometry_pass(cmd);
-
-		// transition the draw image and the swapchain image into their correct
-		// transfer layouts
-		cmd.transition_image(draw_image,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		cmd.transition_image(swapchain->get_image(swapchain_image_index),
-				VK_IMAGE_LAYOUT_UNDEFINED,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-		// execute a copy from the draw image into the swapchain
-		cmd.copy_image_to_image(draw_image->image,
-				swapchain->get_image(swapchain_image_index), draw_extent,
-				swapchain->get_extent());
-
-		// set swapchain image layout to present so we can show it on the
-		// screen
-		cmd.transition_image(swapchain->get_image(swapchain_image_index),
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	}
-	cmd.end();
+	// record draw passes
+	_record_commands(cmd, swapchain_image_index);
 
 	// submit commands
-	VkSemaphoreSubmitInfo wait_info = vkinit::semaphore_submit_info(
-			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
-			get_current_frame().swapchain_semaphore);
-	VkSemaphoreSubmitInfo signal_info =
-			vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-					get_current_frame().render_semaphore);
-
-	// submit command buffer to the queue and execute it.
-	// render_fence will now block until the graphic commands finish
-	// execution
-	cmd.submit(context.graphics_queue, get_current_frame().render_fence,
-			&wait_info, &signal_info);
+	_submit_commands(cmd);
 
 	_present_image(cmd, swapchain_image_index);
 
@@ -184,6 +126,84 @@ void VulkanRenderer::immediate_submit(
 VulkanRenderer* VulkanRenderer::get_instance() { return s_instance; }
 
 VulkanContext& VulkanRenderer::get_context() { return get_instance()->context; }
+
+void VulkanRenderer::_record_commands(
+		VulkanCommandBuffer& cmd, const uint32_t swapchain_image_index) {
+	// now that we are sure that the commands finished executing, we can safely
+	// reset the command buffer to begin recording again.
+	cmd.reset();
+
+	// begin the command buffer recording. We will use
+	// this command buffer exactly once, so we want to
+	// let vulkan know that
+	cmd.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	{
+		// clear color
+		{
+			cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_GENERAL);
+
+			VkClearColorValue clear_color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
+
+			cmd.clear_color_image(
+					draw_image->image, VK_IMAGE_LAYOUT_GENERAL, &clear_color);
+		}
+
+		// draw geometry
+		{
+			cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_GENERAL,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			cmd.transition_image(depth_image, VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+			_geometry_pass(cmd);
+		}
+
+		// draw compute effects
+		{
+			cmd.transition_image(draw_image,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_GENERAL);
+
+			_compute_pass(cmd);
+		}
+
+		// transition the draw image and the swapchain image into their correct
+		// transfer layouts
+		cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_GENERAL,
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		cmd.transition_image(swapchain->get_image(swapchain_image_index),
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+		// execute a copy from the draw image into the swapchain
+		cmd.copy_image_to_image(draw_image->image,
+				swapchain->get_image(swapchain_image_index), draw_extent,
+				swapchain->get_extent());
+
+		// set swapchain image layout to present so we can show it on the
+		// screen
+		cmd.transition_image(swapchain->get_image(swapchain_image_index),
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	}
+	cmd.end();
+}
+
+void VulkanRenderer::_submit_commands(VulkanCommandBuffer& cmd) {
+	VkSemaphoreSubmitInfo wait_info = vkinit::semaphore_submit_info(
+			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
+			get_current_frame().swapchain_semaphore);
+	VkSemaphoreSubmitInfo signal_info =
+			vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+					get_current_frame().render_semaphore);
+
+	// submit command buffer to the queue and execute it.
+	// render_fence will now block until the graphic commands finish
+	// execution
+	cmd.submit(context.graphics_queue, get_current_frame().render_fence,
+			&wait_info, &signal_info);
+}
 
 void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 	// begin a render pass  connected to our draw image
@@ -275,7 +295,7 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 
 	ComputeUB* compute_ub_data =
 			(ComputeUB*)compute_ub.allocation->GetMappedData();
-	compute_ub_data->time = timer.get_elapsed_seconds();
+	compute_ub_data->delta_time = timer.get_delta_time();
 
 	VkDescriptorSet compute_descriptor =
 			get_current_frame().frame_descriptors.allocate(

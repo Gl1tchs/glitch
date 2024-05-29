@@ -48,6 +48,11 @@ public:
 	static VulkanContext& get_context();
 
 private:
+	void _record_commands(
+			VulkanCommandBuffer& cmd, const uint32_t swapchain_image_index);
+
+	void _submit_commands(VulkanCommandBuffer& cmd);
+
 	void _geometry_pass(VulkanCommandBuffer& cmd);
 
 	void _compute_pass(VulkanCommandBuffer& cmd);
@@ -62,7 +67,7 @@ private:
 
 	Timer timer;
 	struct ComputeUB {
-		float time;
+		float delta_time;
 	};
 
 	DeletionQueue deletion_queue;

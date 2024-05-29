@@ -91,15 +91,15 @@ void TestBedApplication::_on_start() {
 
 	my_node->transform.local_position.x += 1;
 
+	get_renderer()->get_scene_graph().push_root(my_node);
+
 	my_node2 = create_ref<GeometryNode>();
 	my_node2->mesh = Mesh::create(vertices, indices);
 	my_node2->material = material->create_instance(resources);
 
-	my_node2->transform.local_position.y += 1.5f;
+	my_node2->transform.local_position.x -= 1;
 
-	my_node->add_child(my_node2);
-
-	get_renderer()->get_scene_graph().push_root(my_node);
+	get_renderer()->get_scene_graph().push_root(my_node2);
 
 	const auto window_size = get_window()->get_size();
 	ComputeEffectCreateInfo compute_info = {
@@ -119,6 +119,7 @@ void TestBedApplication::_on_update(float dt) {
 	camera->aspect_ratio = get_window()->get_aspect_ratio();
 
 	my_node->transform.local_rotation.z += 90 * dt;
+	my_node2->transform.local_rotation.z -= 90 * dt;
 }
 
 void TestBedApplication::_on_destroy() {

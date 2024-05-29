@@ -1,7 +1,5 @@
 #pragma once
 
-#include "platform/vulkan/vk_common.h"
-
 #include "platform/vulkan/vk_buffer.h"
 #include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_image.h"
