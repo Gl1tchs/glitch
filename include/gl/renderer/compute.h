@@ -1,9 +1,10 @@
 #pragma once
 
 #include "gl/renderer/node.h"
+#include "gl/renderer/shader.h"
 
 struct ComputeEffectCreateInfo {
-	const char* shader_spv_path;
+	Ref<Shader> shader;
 	Vec3u group_count;
 };
 

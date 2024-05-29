@@ -5,7 +5,7 @@
 #include "platform/vulkan/vk_pipeline.h"
 
 struct VulkanComputePipelineCreateInfo {
-	VkShaderModule shader_module;
+	Ref<VulkanShader> shader_module;
 	VulkanPipelineLayout layout;
 };
 
@@ -20,7 +20,7 @@ struct VulkanComputePipeline {
 };
 
 struct VulkanComputeEffectCreateInfo {
-	const char* shader_spv_path;
+	Ref<VulkanShader> shader;
 	Vec3u group_count;
 };
 

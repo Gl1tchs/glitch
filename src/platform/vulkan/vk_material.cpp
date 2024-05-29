@@ -3,18 +3,17 @@
 #include "platform/vulkan/vk_buffer.h"
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_pipeline.h"
+#include "platform/vulkan/vk_shader.h"
 
 Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 		VulkanContext& context) {
-	VkShaderModule vertex_shader;
-	GL_ASSERT(vk_load_shader_module(
-					  context.device, "mesh.vert.spv", &vertex_shader),
-			"Failed to load mesh vertex shader!");
+	Ref<VulkanShader> vertex_shader =
+			VulkanShader::get(context.device, "mesh.vert.spv");
+	GL_ASSERT(vertex_shader, "Failed to load mesh vertex shader!");
 
-	VkShaderModule fragment_shader;
-	GL_ASSERT(vk_load_shader_module(
-					  context.device, "mesh.frag.spv", &fragment_shader),
-			"Failed to load mesh fragment shader!");
+	Ref<VulkanShader> fragment_shader =
+			VulkanShader::get(context.device, "mesh.frag.spv");
+	GL_ASSERT(fragment_shader, "Failed to load mesh fragment shader!");
 
 	VkPushConstantRange matrix_range = {
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
@@ -65,8 +64,8 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 	material->pipeline.pipeline = VulkanPipeline::create(context.device,
 			&pipeline_info, &material->pipeline.pipeline_layout);
 
-	vkDestroyShaderModule(context.device, fragment_shader, nullptr);
-	vkDestroyShaderModule(context.device, vertex_shader, nullptr);
+	VulkanShader::destroy(context.device, vertex_shader);
+	VulkanShader::destroy(context.device, fragment_shader);
 
 	return material;
 }

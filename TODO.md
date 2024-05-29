@@ -1,7 +1,7 @@
 # TODOS
 
 ## Core
-- [ ] Vector dot/cross products
+- [ ] xector dot/cross products
 - [ ] Use our own types for transformations
 
 ## Vulkan Renderer
@@ -10,7 +10,7 @@
 - [ ] VFX
     - [x] Compute Pipeline
     - [x] Custom effects with compute shaders
-    - [ ] Binary shader loading for compute shaders
+    - [x] Binary shader loading for compute shaders
     - [ ] Async compute
     - [ ] Particle effects from custom effect
 - [ ] VkDescriptorSet abstraction

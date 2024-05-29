@@ -102,15 +102,20 @@ void TestBedApplication::_on_start() {
 	get_renderer()->get_scene_graph().push_root(my_node2);
 
 	const auto window_size = get_window()->get_size();
+	Ref<Shader> compute_shader =
+			Shader::create("assets/shaders/compute-shader.comp.spv");
+
 	ComputeEffectCreateInfo compute_info = {
-        .shader_spv_path = "assets/shaders/compute-shader.comp.spv",
-		.group_count = {
+        .shader =compute_shader, 
+		.group_count ={
 				(uint32_t)std::ceil(window_size.x / 16.0f),
 				(uint32_t)std::ceil(window_size.y / 16.0f),
 				1,
 		},
 	};
 	effect_node = ComputeEffectNode::create(&compute_info);
+
+	Shader::destroy(compute_shader);
 
 	get_renderer()->get_scene_graph().push_root(effect_node);
 }

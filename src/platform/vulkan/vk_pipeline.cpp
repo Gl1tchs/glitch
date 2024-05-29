@@ -1,8 +1,6 @@
 #include "platform/vulkan/vk_pipeline.h"
 #include "platform/vulkan/vk_init.h"
 
-#include "shader_bundle.gen.h"
-
 #include <vulkan/vulkan_core.h>
 
 VulkanPipelineLayout VulkanPipelineLayout::create(
@@ -55,14 +53,14 @@ void VulkanPipelineCreateInfo::reset() {
 }
 
 void VulkanPipelineCreateInfo::set_shaders(
-		VkShaderModule vertex_shader, VkShaderModule fragment_shader) {
+		Ref<VulkanShader> vertex_shader, Ref<VulkanShader> fragment_shader) {
 	shader_stages.clear();
 
 	shader_stages.push_back(vkinit::pipeline_shader_stage_create_info(
-			VK_SHADER_STAGE_VERTEX_BIT, vertex_shader));
+			VK_SHADER_STAGE_VERTEX_BIT, vertex_shader->shader));
 
 	shader_stages.push_back(vkinit::pipeline_shader_stage_create_info(
-			VK_SHADER_STAGE_FRAGMENT_BIT, fragment_shader));
+			VK_SHADER_STAGE_FRAGMENT_BIT, fragment_shader->shader));
 }
 
 void VulkanPipelineCreateInfo::set_input_topology(
@@ -241,84 +239,4 @@ VulkanPipeline VulkanPipeline::create(VkDevice device,
 
 void VulkanPipeline::destroy(VkDevice device, VulkanPipeline& pipeline) {
 	vkDestroyPipeline(device, pipeline.pipeline, nullptr);
-}
-
-bool vk_load_shader_module(VkDevice device, const char* file_path,
-		VkShaderModule* out_shader_module) {
-	BundleFileData shader_data{};
-	bool shader_found = false;
-
-	for (int i = 0; i < BUNDLE_FILE_COUNT; i++) {
-		BundleFileData data = BUNDLE_FILES[i];
-		if (strcmp(data.path, file_path) == 0) {
-			shader_data = data;
-			shader_found = true;
-			break;
-		}
-	}
-
-	if (!shader_found) {
-		return false;
-	}
-
-	// create a new shader module, using the buffer we loaded
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.pNext = nullptr;
-
-	// codeSize has to be in bytes, so multiply the ints in the buffer by size
-	// of int to know the real size of the buffer
-	create_info.codeSize = shader_data.size;
-	create_info.pCode = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
-
-	// check that the creation goes well.
-	VkShaderModule shader_module;
-	if (vkCreateShaderModule(device, &create_info, nullptr, &shader_module) !=
-			VK_SUCCESS) {
-		return false;
-	}
-
-	*out_shader_module = shader_module;
-	return true;
-}
-
-bool vk_load_shader_module_external(VkDevice device, const char* file_path,
-		VkShaderModule* out_shader_module) {
-	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open()) {
-		return false;
-	}
-
-	size_t file_size = (size_t)file.tellg();
-
-	std::vector<uint32_t> buffer(file_size / sizeof(uint32_t));
-
-	// put file cursor at beginning
-	file.seekg(0);
-
-	// load the entire file into the buffer
-	file.read((char*)buffer.data(), file_size);
-
-	file.close();
-
-	// create a new shader module, using the buffer we loaded
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.pNext = nullptr;
-
-	// codeSize has to be in bytes, so multiply the ints in the buffer by size
-	// of int to know the real size of the buffer
-	create_info.codeSize = buffer.size() * sizeof(uint32_t);
-	create_info.pCode = buffer.data();
-
-	// check that the creation goes well.
-	VkShaderModule shader_module;
-	if (vkCreateShaderModule(device, &create_info, nullptr, &shader_module) !=
-			VK_SUCCESS) {
-		return false;
-	}
-
-	*out_shader_module = shader_module;
-	return true;
 }

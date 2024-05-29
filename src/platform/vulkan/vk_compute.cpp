@@ -7,7 +7,7 @@ VulkanComputePipeline VulkanComputePipeline::create(
 		const VulkanComputePipelineCreateInfo* info) {
 	VkPipelineShaderStageCreateInfo shader_stage_info =
 			vkinit::pipeline_shader_stage_create_info(
-					VK_SHADER_STAGE_COMPUTE_BIT, info->shader_module);
+					VK_SHADER_STAGE_COMPUTE_BIT, info->shader_module->shader);
 
 	VkComputePipelineCreateInfo create_info = {
 		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
@@ -33,6 +33,8 @@ void VulkanComputePipeline::destroy(
 Ref<VulkanComputeEffectNode> VulkanComputeEffectNode::create(
 		const VulkanContext& context,
 		const VulkanComputeEffectCreateInfo* info) {
+	GL_ASSERT(info->shader, "Invalid compute shader has been provided!");
+
 	Ref<VulkanComputeEffectNode> effect = create_ref<VulkanComputeEffectNode>();
 	effect->group_count = info->group_count;
 
@@ -49,18 +51,12 @@ Ref<VulkanComputeEffectNode> VulkanComputeEffectNode::create(
 	effect->pipeline_layout =
 			VulkanPipelineLayout::create(context.device, &layout_info);
 
-	VkShaderModule compute_shader;
-	GL_ASSERT(vk_load_shader_module_external(
-			context.device, info->shader_spv_path, &compute_shader));
-
 	VulkanComputePipelineCreateInfo pipeline_info = {
-		.shader_module = compute_shader,
+		.shader_module = info->shader,
 		.layout = effect->pipeline_layout,
 	};
 
 	effect->pipeline = VulkanComputePipeline::create(context, &pipeline_info);
-
-	vkDestroyShaderModule(context.device, compute_shader, nullptr);
 
 	return effect;
 }

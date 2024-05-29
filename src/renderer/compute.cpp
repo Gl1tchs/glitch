@@ -4,13 +4,14 @@
 
 #include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_renderer.h"
+#include "platform/vulkan/vk_shader.h"
 
 Ref<ComputeEffectNode> ComputeEffectNode::create(
 		const ComputeEffectCreateInfo* info) {
 	switch (Renderer::get_backend()) {
 		case RenderBackend::Vulkan: {
 			VulkanComputeEffectCreateInfo vk_info = {
-				.shader_spv_path = info->shader_spv_path,
+				.shader = std::dynamic_pointer_cast<VulkanShader>(info->shader),
 				.group_count = info->group_count,
 			};
 			Ref<VulkanComputeEffectNode> vk_effect =
