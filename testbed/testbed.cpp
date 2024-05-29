@@ -5,7 +5,6 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#include <glm/packing.hpp>
 
 TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
 		Application(info) {}
@@ -27,31 +26,27 @@ void TestBedApplication::_on_start() {
 		.metal_rough_factors = { 1.0f, 0.5f, 1.0f, 1.0f },
 	};
 
-	{
-		uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
+	constexpr uint32_t white = 0xFFFFFF;
 
-		ImageCreateInfo white_image_info = {
-			.format = ImageFormat::R8G8B8A8_UNORM,
-			.size = { 1, 1 },
-			.data = &white,
-		};
-		white_image = Image::create(&white_image_info);
-	}
+	ImageCreateInfo white_image_info = {
+		.format = ImageFormat::R8G8B8A8_UNORM,
+		.size = { 1, 1 },
+		.data = (void*)&white,
+	};
+	white_image = Image::create(&white_image_info);
 
-	{
-		Vec2u size;
-		uint8_t* image_data = stbi_load("assets/texture1.jpg", (int*)&size.x,
-				(int*)&size.y, nullptr, STBI_rgb_alpha);
+	Vec2u size;
+	uint8_t* image_data = stbi_load("assets/texture1.jpg", (int*)&size.x,
+			(int*)&size.y, nullptr, STBI_rgb_alpha);
 
-		ImageCreateInfo color_image_info = {
-			.format = ImageFormat::R8G8B8A8_UNORM,
-			.size = size,
-			.data = image_data,
-		};
-		color_image = Image::create(&color_image_info);
+	ImageCreateInfo color_image_info = {
+		.format = ImageFormat::R8G8B8A8_UNORM,
+		.size = size,
+		.data = image_data,
+	};
+	color_image = Image::create(&color_image_info);
 
-		stbi_image_free(image_data);
-	}
+	stbi_image_free(image_data);
 
 	MetallicRoughnessMaterial::MaterialResources resources = {
 		.constants = constants,
@@ -72,6 +67,11 @@ void TestBedApplication::_on_start() {
 	models[1]->material = material->create_instance(resources);
 	models[1]->transform.local_position.x -= 1.5f;
 	get_renderer()->get_scene_graph().push_root(models[1]);
+
+	models[2]->material = material->create_instance(resources);
+	models[2]->transform.local_position.x = 3.0f;
+	models[2]->transform.local_position.z = 3.0f;
+	get_renderer()->get_scene_graph().push_root(models[2]);
 
 #if 0
 	const auto window_size = get_window()->get_size();
@@ -100,6 +100,7 @@ void TestBedApplication::_on_update(float dt) {
 
 	models[0]->transform.local_rotation.z += 90 * dt;
 	models[1]->transform.local_rotation.z -= 90 * dt;
+	models[2]->transform.local_rotation.y += 90 * dt;
 }
 
 void TestBedApplication::_on_destroy() {
