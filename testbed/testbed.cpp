@@ -86,9 +86,18 @@ void TestBedApplication::_on_start() {
 	};
 
 	my_node = create_ref<GeometryNode>();
-
 	my_node->mesh = Mesh::create(vertices, indices);
 	my_node->material = material->create_instance(resources);
+
+	my_node->transform.local_position.x += 1;
+
+	my_node2 = create_ref<GeometryNode>();
+	my_node2->mesh = Mesh::create(vertices, indices);
+	my_node2->material = material->create_instance(resources);
+
+	my_node2->transform.local_position.y += 1.5f;
+
+	my_node->add_child(my_node2);
 
 	get_renderer()->get_scene_graph().push_root(my_node);
 

@@ -22,6 +22,7 @@ protected:
 private:
 	Ref<OrthographicCameraNode> camera;
 	Ref<GeometryNode> my_node;
+	Ref<GeometryNode> my_node2;
 	Ref<ComputeEffectNode> effect_node;
 
 	Ref<MetallicRoughnessMaterial> material;
