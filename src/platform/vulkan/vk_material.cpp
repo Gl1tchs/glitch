@@ -4,6 +4,7 @@
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_pipeline.h"
 #include "platform/vulkan/vk_shader.h"
+#include <vulkan/vulkan_core.h>
 
 Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 		VulkanContext& context) {
@@ -51,10 +52,11 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 	pipeline_info.set_shaders(vertex_shader, fragment_shader);
 	pipeline_info.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	pipeline_info.set_polygon_mode(VK_POLYGON_MODE_FILL);
-	pipeline_info.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+	pipeline_info.set_cull_mode(
+			VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 	pipeline_info.set_multisampling_none();
 	pipeline_info.set_blending(VulkanBlendingMode::NONE);
-	pipeline_info.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+	pipeline_info.enable_depthtest(true, VK_COMPARE_OP_LESS);
 
 	// render format
 	pipeline_info.set_color_attachment_format(context.color_attachment_format);

@@ -6,7 +6,3 @@ void Node::add_child(Ref<Node> node) {
 
 	children.push_back(node);
 }
-
-void GeometryNode::destroy(const GeometryNode* node) {
-	Mesh::destroy(node->mesh);
-}

@@ -7,39 +7,16 @@
 #include <stb_image.h>
 #include <glm/packing.hpp>
 
-std::vector<Vertex> vertices = {
-	Vertex{ .position = { 0.5f, 0.5f, 0.0f },
-			.uv_x = 1.0f,
-			.normal = { 0.0f, 0.0f, 0.0f },
-			.uv_y = 1.0f,
-			.color = { 0.9f, 0.6f, 0.34f, 1.0f } },
-	Vertex{ .position = { 0.5f, -0.5f, 0.0f },
-			.uv_x = 1.0f,
-			.normal = { 0.0f, 0.0f, 0.0f },
-			.uv_y = 0.0f,
-			.color = { 0.2f, 0.4f, 0.8f, 1.0f } },
-	Vertex{ .position = { -0.5f, -0.5f, 0.0f },
-			.uv_x = 0.0f,
-			.normal = { 0.0f, 0.0f, 0.0f },
-			.uv_y = 0.0f,
-			.color = { 0.4f, 0.8f, 0.6f, 1.0f } },
-	Vertex{ .position = { -0.5f, 0.5f, 0.0f },
-			.uv_x = 0.0f,
-			.normal = { 0.0f, 0.0f, 0.0f },
-			.uv_y = 1.0f,
-			.color = { 0.8f, 0.2f, 0.4f, 1.0f } },
-};
-
-std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
-
 TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
 		Application(info) {}
 
 TestBedApplication::~TestBedApplication() {}
 
 void TestBedApplication::_on_start() {
-	camera = create_ref<OrthographicCameraNode>();
-	camera->zoom_level = 2.0f;
+	camera = create_ref<PerspectiveCameraNode>();
+
+	get_window()->set_cursor_mode(WindowCursorMode::DISABLED);
+	camera_controller.set_camera(camera.get());
 
 	get_renderer()->get_scene_graph().push_root(camera);
 
@@ -85,22 +62,18 @@ void TestBedApplication::_on_start() {
 		.roughness_filtering = ImageFilteringMode::LINEAR,
 	};
 
-	my_node = create_ref<GeometryNode>();
-	my_node->mesh = Mesh::create(vertices, indices);
-	my_node->material = material->create_instance(resources);
+	// TODO destroy unusued model
+	models = Model::load("assets/basicmesh.glb").value();
 
-	my_node->transform.local_position.x += 1;
+	// models[0]->material = material->create_instance(resources);
+	models[0]->transform.local_position.x += 1.5f;
+	get_renderer()->get_scene_graph().push_root(models[0]);
 
-	get_renderer()->get_scene_graph().push_root(my_node);
+	models[1]->material = material->create_instance(resources);
+	models[1]->transform.local_position.x -= 1.5f;
+	get_renderer()->get_scene_graph().push_root(models[1]);
 
-	my_node2 = create_ref<GeometryNode>();
-	my_node2->mesh = Mesh::create(vertices, indices);
-	my_node2->material = material->create_instance(resources);
-
-	my_node2->transform.local_position.x -= 1;
-
-	get_renderer()->get_scene_graph().push_root(my_node2);
-
+#if 0
 	const auto window_size = get_window()->get_size();
 	Ref<Shader> compute_shader =
 			Shader::create("assets/shaders/compute-shader.comp.spv");
@@ -118,19 +91,25 @@ void TestBedApplication::_on_start() {
 	Shader::destroy(compute_shader);
 
 	get_renderer()->get_scene_graph().push_root(effect_node);
+#endif
 }
 
 void TestBedApplication::_on_update(float dt) {
 	camera->aspect_ratio = get_window()->get_aspect_ratio();
+	camera_controller.update(dt);
 
-	my_node->transform.local_rotation.z += 90 * dt;
-	my_node2->transform.local_rotation.z -= 90 * dt;
+	models[0]->transform.local_rotation.z += 90 * dt;
+	models[1]->transform.local_rotation.z -= 90 * dt;
 }
 
 void TestBedApplication::_on_destroy() {
 	// wait for operations to finish
 	// before cleaning other resources
 	get_renderer()->wait_for_device();
+
+	for (auto model : models) {
+		Model::destroy(model.get());
+	}
 
 	Image::destroy(color_image);
 	Image::destroy(white_image);

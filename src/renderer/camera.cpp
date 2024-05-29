@@ -19,6 +19,12 @@ glm::mat4 PerspectiveCameraNode::get_view_matrix() const {
 }
 
 glm::mat4 PerspectiveCameraNode::get_projection_matrix() const {
-	return glm::perspective(
+	glm::mat4 proj = glm::perspective(
 			glm::radians(fov), aspect_ratio, near_clip, far_clip);
+
+	// invert the Y direction on projection matrix so that we are more similar
+	// to opengl and gltf axis
+	proj[1][1] *= -1;
+
+	return proj;
 }

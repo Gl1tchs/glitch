@@ -42,7 +42,8 @@ target_include_directories(glitch PRIVATE
     ${STB_INCLUDES}
     ${VMA_INCLUDES}
     ${VK_BOOTSTRAP_INCLUDES}
-    ${Vulkan_INCLUDE_DIRS}    
+    ${Vulkan_INCLUDE_DIRS}
+    ${FASTGLTF_INCLUDES}
 )
 
 target_link_libraries(glitch PUBLIC 
@@ -54,6 +55,7 @@ target_link_libraries(glitch PRIVATE
     ${VMA_LIBRARIES}
     ${VK_BOOTSTRAP_LIBRARIES}
     ${Vulkan_LIBRARIES}
+    ${FASTGLTF_LIBRARIES}
 )
 
 target_precompile_headers(glitch PUBLIC include/pch.h)

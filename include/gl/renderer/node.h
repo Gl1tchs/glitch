@@ -1,8 +1,6 @@
 #pragma once
 
 #include "gl/core/transform.h"
-#include "gl/renderer/material.h"
-#include "gl/renderer/mesh.h"
 
 enum class NodeType { NONE, GEOMETRY, COMPUTE, CAMERA, LIGHT };
 
@@ -24,12 +22,3 @@ struct Node {
 
 template <typename T>
 concept NodeDerived = std::is_base_of_v<Node, T>;
-
-struct GeometryNode : public Node {
-	GL_IMPL_NODE(NodeType::GEOMETRY)
-
-	Ref<Mesh> mesh;
-	Ref<MaterialInstance> material;
-
-	static void destroy(const GeometryNode* node);
-};

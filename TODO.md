@@ -1,10 +1,8 @@
 # TODOS
 
-## Core
-- [ ] xector dot/cross products
-- [ ] Use our own types for transformations
 
 ## Vulkan Renderer
+- [ ] fix tearing
 - [ ] VkQueue abstraction
 - [x] Render graph
 - [ ] VFX

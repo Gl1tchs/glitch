@@ -10,6 +10,7 @@
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "platform/vulkan/vk_image.h"
+#include "platform/vulkan/vk_material.h"
 #include "platform/vulkan/vk_swapchain.h"
 
 constexpr uint32_t FRAME_OVERLAP = 2;
@@ -92,6 +93,13 @@ private:
 	VulkanCommandBuffer imm_command_buffer;
 	VulkanCommandPool imm_command_pool;
 
+	// default data
+	Ref<VulkanImage> white_image;
+	Ref<VulkanImage> error_image;
+
+	Ref<VulkanMetallicRoughnessMaterial> default_roughness;
+	Ref<VulkanMaterialInstance> default_roughness_instance;
+
 private:
 	VulkanFrameData& get_current_frame() {
 		return frames[frame_number % FRAME_OVERLAP];
@@ -104,4 +112,5 @@ private:
 	void _init_sync_structures();
 	void _init_descriptors();
 	void _init_samplers();
+	void _init_default_data();
 };

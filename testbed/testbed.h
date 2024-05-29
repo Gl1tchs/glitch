@@ -1,11 +1,13 @@
 #pragma once
 
+#include "camera_controller.h"
+
 #include <gl/core/application.h>
 #include <gl/core/timer.h>
 #include <gl/renderer/camera.h>
 #include <gl/renderer/compute.h>
 #include <gl/renderer/material.h>
-#include <gl/renderer/mesh.h>
+#include <gl/renderer/model.h>
 
 class TestBedApplication : public Application {
 public:
@@ -20,9 +22,11 @@ protected:
 	void _on_destroy() override;
 
 private:
-	Ref<OrthographicCameraNode> camera;
-	Ref<GeometryNode> my_node;
-	Ref<GeometryNode> my_node2;
+	std::vector<Ref<Model>> models;
+
+	CameraController camera_controller;
+	Ref<PerspectiveCameraNode> camera;
+
 	Ref<ComputeEffectNode> effect_node;
 
 	Ref<MetallicRoughnessMaterial> material;

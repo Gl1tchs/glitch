@@ -3,16 +3,17 @@
 #include "gl/core/application.h"
 #include "gl/core/window.h"
 #include "gl/renderer/camera.h"
-#include "gl/renderer/node.h"
+#include "gl/renderer/image.h"
 #include "gl/renderer/renderer.h"
 
 #include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_compute.h"
 #include "platform/vulkan/vk_context.h"
 #include "platform/vulkan/vk_descriptors.h"
+#include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_init.h"
 #include "platform/vulkan/vk_material.h"
-#include "platform/vulkan/vk_mesh.h"
+#include "platform/vulkan/vk_model.h"
 
 #include <VkBootstrap.h>
 #include <vulkan/vulkan_core.h>
@@ -35,6 +36,7 @@ VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 	_init_sync_structures();
 	_init_descriptors();
 	_init_samplers();
+	_init_default_data();
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -251,33 +253,34 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 				{ (float)draw_extent.width, (float)draw_extent.height });
 		cmd.set_scissor(draw_extent);
 
-		get_scene_graph().traverse<GeometryNode>([&](GeometryNode* node) {
-			Ref<VulkanMaterialInstance> vk_material =
-					std::dynamic_pointer_cast<VulkanMaterialInstance>(
-							node->material);
+		get_scene_graph().traverse<VulkanModel>([&](VulkanModel* model) {
+			// use default material if not provided
+			Ref<VulkanMaterialInstance> material = (!model->material)
+					? default_roughness_instance
+					: std::dynamic_pointer_cast<VulkanMaterialInstance>(
+							  model->material);
 
-			cmd.bind_pipeline(vk_material->pipeline->pipeline);
+			cmd.bind_pipeline(material->pipeline->pipeline);
 
-			cmd.bind_descriptor_sets(vk_material->pipeline->pipeline_layout, 0,
-					1, &global_descriptor);
-			cmd.bind_descriptor_sets(vk_material->pipeline->pipeline_layout, 1,
-					1, &vk_material->descriptor_set);
+			cmd.bind_descriptor_sets(material->pipeline->pipeline_layout, 0, 1,
+					&global_descriptor);
+			cmd.bind_descriptor_sets(material->pipeline->pipeline_layout, 1, 1,
+					&material->descriptor_set);
 
 			// draw geometry
-			Ref<VulkanMesh> vk_mesh =
-					std::dynamic_pointer_cast<VulkanMesh>(node->mesh);
-
 			DrawPushConstants push_constants = {
-				.transform = node->transform.get_transform_matrix(),
-				.vertex_buffer = vk_mesh->vertex_buffer_address,
+				.transform = model->transform.get_transform_matrix(),
+				.vertex_buffer = model->vertex_buffer_address,
 			};
-			cmd.push_constants(vk_material->pipeline->pipeline_layout,
+			cmd.push_constants(material->pipeline->pipeline_layout,
 					VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstants),
 					&push_constants);
 
-			cmd.bind_index_buffer(
-					vk_mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-			cmd.draw_indexed(vk_mesh->index_count);
+			cmd.bind_index_buffer(model->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+			for (const auto& vk_mesh : model->meshes) {
+				cmd.draw_indexed(vk_mesh.index_count, 1, vk_mesh.start_index);
+			}
 
 			return false;
 		});
@@ -666,6 +669,62 @@ void VulkanRenderer::_init_samplers() {
 	deletion_queue.push_function([this]() {
 		vkDestroySampler(context.device, context.linear_sampler, nullptr);
 		vkDestroySampler(context.device, context.nearest_sampler, nullptr);
+	});
+}
+
+void VulkanRenderer::_init_default_data() {
+	constexpr uint32_t white = 0xFFFFFF;
+	constexpr uint32_t magenta = 0xFF00FF;
+	constexpr uint32_t black = 0x000000;
+
+	// for 16x16 checkerboard texture
+	std::array<uint32_t, 16 * 16> pixels;
+	std::transform(
+			pixels.begin(), pixels.end(), pixels.begin(), [=](uint32_t& value) {
+				int index = &value - pixels.data();
+				int x = index % 16;
+				int y = index / 16;
+				return ((x % 2) ^ (y % 2)) ? magenta : black;
+			});
+
+	VulkanImageCreateInfo white_image_info = {
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.size = { 1, 1, 1 },
+		.data = (void*)&white,
+	};
+	white_image = VulkanImage::create(context, &white_image_info);
+
+	VulkanImageCreateInfo error_image_info = {
+		.format = VK_FORMAT_R8G8B8A8_UNORM,
+		.size = { 16, 16, 1 },
+		.data = (void*)pixels.data(),
+	};
+	error_image = VulkanImage::create(context, &error_image_info);
+
+	default_roughness = VulkanMetallicRoughnessMaterial::create(context);
+
+	VulkanMetallicRoughnessMaterial::MaterialConstants constants = {
+		.color_factors = { 1, 1, 1, 1 },
+		.metal_rough_factors = { 1, 1, 1, 1 },
+	};
+
+	VulkanMetallicRoughnessMaterial::MaterialResources resources = {
+		.constants = constants,
+		.constants_offset = 0,
+		.color_image = error_image,
+		.color_filtering = ImageFilteringMode::LINEAR,
+		.roughness_image = white_image,
+		.roughness_filtering = ImageFilteringMode::LINEAR,
+	};
+	default_roughness_instance =
+			default_roughness->create_instance(context, resources);
+
+	deletion_queue.push_function([this]() {
+		VulkanImage::destroy(context, white_image.get());
+		VulkanImage::destroy(context, error_image.get());
+
+		VulkanMetallicRoughnessMaterial::destroy(
+				context, default_roughness.get());
 	});
 }
 
