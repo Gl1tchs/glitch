@@ -77,14 +77,15 @@ void VulkanRenderer::wait_and_render() {
 
 	// set render scale
 	const float render_scale = get_settings().render_scale;
-	{
-		draw_extent.width = std::min(swapchain->get_extent().width,
-									draw_image->image_extent.width) *
-				render_scale;
-		draw_extent.height = std::min(swapchain->get_extent().height,
-									 draw_image->image_extent.height) *
-				render_scale;
-	}
+	draw_extent = VkExtent2D{
+		.width = static_cast<uint32_t>(std::min(swapchain->get_extent().width,
+											   draw_image->image_extent.width) *
+				render_scale),
+		.height =
+				static_cast<uint32_t>(std::min(swapchain->get_extent().height,
+											  draw_image->image_extent.height) *
+						render_scale),
+	};
 
 	// record draw passes
 	_record_commands(cmd, swapchain_image_index);
@@ -286,15 +287,15 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 	VulkanBuffer compute_ub = VulkanBuffer::create(context.allocator,
-			sizeof(ComputeUB), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VMA_MEMORY_USAGE_CPU_TO_GPU);
+			sizeof(ComputeGlobalUniformBuffer),
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 	get_current_frame().deletion_queue.push_function([=, this]() {
 		VulkanBuffer::destroy(context.allocator, compute_ub);
 	});
 
-	ComputeUB* compute_ub_data =
-			(ComputeUB*)compute_ub.allocation->GetMappedData();
+	ComputeGlobalUniformBuffer* compute_ub_data =
+			(ComputeGlobalUniformBuffer*)compute_ub.allocation->GetMappedData();
 	compute_ub_data->delta_time = timer.get_delta_time();
 
 	VkDescriptorSet compute_descriptor =
@@ -302,7 +303,8 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 					context.device, context.compute_data_descriptor_layout);
 
 	DescriptorWriter writer;
-	writer.write_buffer(0, compute_ub.buffer, sizeof(ComputeUB), 0,
+	writer.write_buffer(0, compute_ub.buffer,
+			sizeof(ComputeGlobalUniformBuffer), 0,
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	writer.update_set(context.device, compute_descriptor);
 
@@ -343,13 +345,13 @@ void VulkanRenderer::_present_image(
 	}
 }
 
-inline VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
+inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		VkDebugUtilsMessageTypeFlagsEXT message_type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
 		void* user_data) {
-	auto ms = vkb::to_string_message_severity(message_severity);
-	auto mt = vkb::to_string_message_type(message_type);
+	const auto ms = vkb::to_string_message_severity(message_severity);
+	const auto mt = vkb::to_string_message_type(message_type);
 	GL_LOG_TRACE("[{}: {}]\n{}", ms, mt, callback_data->pMessage);
 
 	return VK_FALSE;

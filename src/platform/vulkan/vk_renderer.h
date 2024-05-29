@@ -66,7 +66,7 @@ private:
 	static VulkanRenderer* s_instance;
 
 	Timer timer;
-	struct ComputeUB {
+	struct ComputeGlobalUniformBuffer {
 		float delta_time;
 	};
 
