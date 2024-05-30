@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gl/core/transform.h"
+#include "gl/core/uid.h"
 
 enum class NodeType { NONE, GEOMETRY, COMPUTE, CAMERA, LIGHT };
 
@@ -9,6 +10,8 @@ enum class NodeType { NONE, GEOMETRY, COMPUTE, CAMERA, LIGHT };
 	inline static NodeType get_static_type() { return type; }
 
 struct Node {
+	UID uid;
+
 	Transform transform;
 
 	Node* parent = nullptr;

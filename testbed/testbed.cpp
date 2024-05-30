@@ -17,7 +17,7 @@ void TestBedApplication::_on_start() {
 	get_window()->set_cursor_mode(WindowCursorMode::DISABLED);
 	camera_controller.set_camera(camera.get());
 
-	get_renderer()->get_scene_graph().push_root(camera);
+	get_renderer()->get_scene_graph().push_node(camera);
 
 	material = MetallicRoughnessMaterial::create();
 
@@ -62,16 +62,16 @@ void TestBedApplication::_on_start() {
 
 	// models[0]->material = material->create_instance(resources);
 	models[0]->transform.local_position.x += 1.5f;
-	get_renderer()->get_scene_graph().push_root(models[0]);
+	get_renderer()->get_scene_graph().push_node(models[0]);
 
 	models[1]->material = material->create_instance(resources);
 	models[1]->transform.local_position.x -= 1.5f;
-	get_renderer()->get_scene_graph().push_root(models[1]);
+	get_renderer()->get_scene_graph().push_node(models[1]);
 
 	models[2]->material = material->create_instance(resources);
 	models[2]->transform.local_position.x = 3.0f;
 	models[2]->transform.local_position.z = 3.0f;
-	get_renderer()->get_scene_graph().push_root(models[2]);
+	get_renderer()->get_scene_graph().push_node(models[2]);
 
 #if 0
 	const auto window_size = get_window()->get_size();

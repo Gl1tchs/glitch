@@ -13,7 +13,18 @@ public:
 	 * @brief pushes `node` into the root node's
 	 * children array
 	 */
-	void push_root(Ref<Node> node);
+	void push_node(Ref<Node> node);
+
+	/**
+	 * @brief finds node based on `uid`
+	 */
+	Node* find_node(const UID& uid);
+
+	/**
+	 * @brief removes node based on `uid`
+	 * @returns `true` if successfull `false` otherwise
+	 */
+	bool remove_node(const UID& uid);
 
 	/**
 	 * @brief execute function `callback` for all nodes
@@ -29,6 +40,8 @@ public:
 	}
 
 private:
+	static bool _remove_node(Node* parent, const UID& uid);
+
 	static void _traverse_node(
 			Node* node, const std::function<bool(Node*)>& callback);
 
