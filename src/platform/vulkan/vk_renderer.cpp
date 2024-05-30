@@ -63,7 +63,7 @@ void VulkanRenderer::wait_and_render() {
 	// request image from the swapchain
 	uint32_t swapchain_image_index;
 	if (VkResult res = swapchain->request_next_image(context,
-				get_current_frame().swapchain_semaphore,
+				get_current_frame().image_available_semaphore,
 				&swapchain_image_index);
 			res == VK_ERROR_OUT_OF_DATE_KHR) {
 		// resize the swapchain on the next frame
@@ -196,10 +196,10 @@ void VulkanRenderer::_record_commands(
 void VulkanRenderer::_submit_commands(VulkanCommandBuffer& cmd) {
 	VkSemaphoreSubmitInfo wait_info = vkinit::semaphore_submit_info(
 			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
-			get_current_frame().swapchain_semaphore);
+			get_current_frame().image_available_semaphore);
 	VkSemaphoreSubmitInfo signal_info =
 			vkinit::semaphore_submit_info(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
-					get_current_frame().render_semaphore);
+					get_current_frame().render_finished_semaphore);
 
 	// submit command buffer to the queue and execute it.
 	// render_fence will now block until the graphic commands finish
@@ -335,14 +335,14 @@ void VulkanRenderer::_present_image(
 		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 		.pNext = nullptr,
 		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = &get_current_frame().render_semaphore,
+		.pWaitSemaphores = &get_current_frame().render_finished_semaphore,
 		.swapchainCount = 1,
 		.pSwapchains = swapchain->get_swapchain(),
 		.pImageIndices = &swapchain_image_index,
 	};
 
 	if (VkResult res = vkQueuePresentKHR(context.present_queue, &present_info);
-			res == VK_ERROR_OUT_OF_DATE_KHR) {
+			res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		// resize the swapchain on the next frame
 		_request_resize();
 	}
@@ -491,7 +491,7 @@ void VulkanRenderer::_init_swapchain() {
 
 void VulkanRenderer::_init_commands() {
 	VkCommandPoolCreateInfo command_pool_info =
-			vkinit::command_pool_create_info(context.graphics_queue_family,
+			vkinit::command_pool_create_info(context.present_queue_family,
 					VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	// create frame pools and buffers
@@ -539,17 +539,17 @@ void VulkanRenderer::_init_sync_structures() {
 				context.device, &fence_info, nullptr, &frames[i].render_fence));
 
 		VK_CHECK(vkCreateSemaphore(context.device, &semaphore_info, nullptr,
-				&frames[i].swapchain_semaphore));
+				&frames[i].image_available_semaphore));
 		VK_CHECK(vkCreateSemaphore(context.device, &semaphore_info, nullptr,
-				&frames[i].render_semaphore));
+				&frames[i].render_finished_semaphore));
 
 		// sync object cleanup
 		deletion_queue.push_function([this, i]() {
 			vkDestroyFence(context.device, frames[i].render_fence, nullptr);
-			vkDestroySemaphore(
-					context.device, frames[i].render_semaphore, nullptr);
-			vkDestroySemaphore(
-					context.device, frames[i].swapchain_semaphore, nullptr);
+			vkDestroySemaphore(context.device,
+					frames[i].render_finished_semaphore, nullptr);
+			vkDestroySemaphore(context.device,
+					frames[i].image_available_semaphore, nullptr);
 		});
 	}
 

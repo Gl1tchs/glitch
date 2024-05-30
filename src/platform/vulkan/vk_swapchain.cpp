@@ -1,12 +1,13 @@
 #include "platform/vulkan/vk_swapchain.h"
 
 #include <VkBootstrap.h>
+#include <vulkan/vulkan_core.h>
 
 VkResult VulkanSwapchain::request_next_image(const VulkanContext& context,
 		VkSemaphore semaphore, uint32_t* image_index) {
 	uint32_t swapchain_image_index;
-	return vkAcquireNextImageKHR(
-			context.device, swapchain, 10000, semaphore, nullptr, image_index);
+	return vkAcquireNextImageKHR(context.device, swapchain, UINT64_MAX,
+			semaphore, VK_NULL_HANDLE, image_index);
 }
 
 void VulkanSwapchain::resize(const VulkanContext& context, Vec2u size) {
@@ -19,7 +20,7 @@ void VulkanSwapchain::resize(const VulkanContext& context, Vec2u size) {
 	// destroy the old swapchain
 	destroy(context, this);
 
-	// use new swapchain
+	// make new swapchain
 	*this = new_swapchain;
 }
 
@@ -47,7 +48,8 @@ void VulkanSwapchain::create(const VulkanContext& context, Vec2u size,
 							.format = VK_FORMAT_B8G8R8A8_UNORM,
 							.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
 					})
-					.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                    // TODO add setting
+					.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)
 					.set_desired_min_image_count(
 							vkb::SwapchainBuilder::DOUBLE_BUFFERING)
 					.set_desired_extent(size.x, size.y)

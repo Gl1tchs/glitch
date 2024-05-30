@@ -25,7 +25,7 @@ struct VulkanFrameData {
 	VulkanCommandPool command_pool;
 	VulkanCommandBuffer main_command_buffer;
 
-	VkSemaphore swapchain_semaphore, render_semaphore;
+	VkSemaphore image_available_semaphore, render_finished_semaphore;
 	VkFence render_fence;
 
 	DeletionQueue deletion_queue;

@@ -1,7 +1,6 @@
 # TODOS
 
 ## Vulkan Renderer
-- [ ] Fix tearing issue
 - [ ] Grid rendering
 - [ ] Instanced rendering
 - [ ] Multisampling
