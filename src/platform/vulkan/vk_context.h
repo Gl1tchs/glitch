@@ -31,6 +31,7 @@ struct VulkanContext {
 
 	VkFormat color_attachment_format;
 	VkFormat depth_attachment_format;
+	VkFormat position_format;
 
 	VkSampler linear_sampler;
 	VkSampler nearest_sampler;

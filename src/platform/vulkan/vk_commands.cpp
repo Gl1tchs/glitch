@@ -87,10 +87,19 @@ void VulkanCommandBuffer::submit(VkQueue queue, VkFence fence,
 }
 
 void VulkanCommandBuffer::begin_rendering(VkExtent2D draw_extent,
-		const VkRenderingAttachmentInfo* color_attachment,
+		uint32_t color_attachment_count,
+		const VkRenderingAttachmentInfo* color_attachments,
 		const VkRenderingAttachmentInfo* depth_attachment) {
-	VkRenderingInfo render_info = vkinit::rendering_info(
-			draw_extent, color_attachment, depth_attachment);
+	VkRenderingInfo render_info = {
+		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+		.pNext = nullptr,
+		.renderArea = VkRect2D{ VkOffset2D{ 0, 0 }, draw_extent },
+		.layerCount = 1,
+		.colorAttachmentCount = color_attachment_count,
+		.pColorAttachments = color_attachments,
+		.pDepthAttachment = depth_attachment,
+		.pStencilAttachment = nullptr,
+	};
 
 	vkCmdBeginRendering(command_buffer, &render_info);
 }

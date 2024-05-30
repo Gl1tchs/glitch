@@ -141,20 +141,11 @@ void VulkanRenderer::_record_commands(
 	// let vulkan know that
 	cmd.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	{
-		// clear color
-		{
-			cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_GENERAL);
-
-			VkClearColorValue clear_color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-
-			cmd.clear_color_image(
-					draw_image->image, VK_IMAGE_LAYOUT_GENERAL, &clear_color);
-		}
-
 		// draw geometry
 		{
-			cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_GENERAL,
+			cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			cmd.transition_image(position_image, VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 			cmd.transition_image(depth_image, VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
@@ -165,6 +156,9 @@ void VulkanRenderer::_record_commands(
 		// draw compute effects
 		{
 			cmd.transition_image(draw_image,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_GENERAL);
+			cmd.transition_image(position_image,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					VK_IMAGE_LAYOUT_GENERAL);
 
@@ -208,14 +202,26 @@ void VulkanRenderer::_submit_commands(VulkanCommandBuffer& cmd) {
 			&wait_info, &signal_info);
 }
 
+void VulkanRenderer::_present_image(
+		VulkanCommandBuffer& cmd, uint32_t swapchain_image_index) {
+	VkPresentInfoKHR present_info = {
+		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		.pNext = nullptr,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &get_current_frame().render_finished_semaphore,
+		.swapchainCount = 1,
+		.pSwapchains = swapchain->get_swapchain(),
+		.pImageIndices = &swapchain_image_index,
+	};
+
+	if (VkResult res = vkQueuePresentKHR(context.present_queue, &present_info);
+			res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+		// resize the swapchain on the next frame
+		_request_resize();
+	}
+}
+
 void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
-	// begin a render pass  connected to our draw image
-	VkRenderingAttachmentInfo color_attachment = vkinit::attachment_info(
-			draw_image->image_view, nullptr, VK_IMAGE_LAYOUT_GENERAL);
-
-	VkRenderingAttachmentInfo depth_attachment = vkinit::depth_attachment_info(
-			depth_image->image_view, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
 	VulkanBuffer scene_data_buffer = VulkanBuffer::create(context.allocator,
 			sizeof(VulkanSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -246,7 +252,20 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	writer.update_set(context.device, global_descriptor);
 
-	cmd.begin_rendering(draw_extent, &color_attachment, &depth_attachment);
+	// begin a render pass  connected to our draw image
+	const VkClearValue clear_color = { 0.1f, 0.1f, 0.1f, 1.0f };
+
+	constexpr uint32_t color_attachment_count = 2;
+	VkRenderingAttachmentInfo color_attachments[color_attachment_count] = {
+		vkinit::attachment_info(draw_image->image_view, &clear_color),
+		vkinit::attachment_info(position_image->image_view, &clear_color),
+	};
+
+	VkRenderingAttachmentInfo depth_attachment = vkinit::depth_attachment_info(
+			depth_image->image_view, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+	cmd.begin_rendering(draw_extent, color_attachment_count, color_attachments,
+			&depth_attachment);
 	{
 		// set dynamic viewport and scissor
 		cmd.set_viewport(
@@ -327,25 +346,6 @@ void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
 
 				return false;
 			});
-}
-
-void VulkanRenderer::_present_image(
-		VulkanCommandBuffer& cmd, uint32_t swapchain_image_index) {
-	VkPresentInfoKHR present_info = {
-		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-		.pNext = nullptr,
-		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = &get_current_frame().render_finished_semaphore,
-		.swapchainCount = 1,
-		.pSwapchains = swapchain->get_swapchain(),
-		.pImageIndices = &swapchain_image_index,
-	};
-
-	if (VkResult res = vkQueuePresentKHR(context.present_queue, &present_info);
-			res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
-		// resize the swapchain on the next frame
-		_request_resize();
-	}
 }
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
@@ -483,9 +483,20 @@ void VulkanRenderer::_init_swapchain() {
 	};
 	depth_image = VulkanImage::create(context, &depth_image_info);
 
+	context.position_format = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+	VulkanImageCreateInfo position_image_info = {
+		.format = context.position_format,
+		.size = draw_image_extent,
+		.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+				VK_IMAGE_USAGE_STORAGE_BIT,
+	};
+	position_image = VulkanImage::create(context, &position_image_info);
+
 	deletion_queue.push_function([this]() {
 		VulkanImage::destroy(context, draw_image.get());
 		VulkanImage::destroy(context, depth_image.get());
+		VulkanImage::destroy(context, position_image.get());
 	});
 }
 
@@ -604,7 +615,7 @@ void VulkanRenderer::_init_descriptors() {
 	// compute descriptors
 	{
 		std::vector<VulkanDescriptorAllocator::PoolSizeRatio> sizes = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2 },
 		};
 
 		context.compute_descriptor_allocator.init(context.device, 10, sizes);
@@ -616,6 +627,7 @@ void VulkanRenderer::_init_descriptors() {
 		{
 			DescriptorLayoutBuilder builder;
 			builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+			builder.add_binding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			context.compute_descriptor_layout =
 					builder.build(context.device, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -632,6 +644,8 @@ void VulkanRenderer::_init_descriptors() {
 		{
 			DescriptorWriter writer;
 			writer.write_image(0, draw_image->image_view, VK_NULL_HANDLE,
+					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+			writer.write_image(1, position_image->image_view, VK_NULL_HANDLE,
 					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			writer.update_set(context.device, context.compute_descriptor_set);
 		}
@@ -675,17 +689,6 @@ void VulkanRenderer::_init_samplers() {
 void VulkanRenderer::_init_default_data() {
 	constexpr uint32_t white = 0xFFFFFF;
 	constexpr uint32_t magenta = 0xFF00FF;
-	constexpr uint32_t black = 0x000000;
-
-	// for 16x16 checkerboard texture
-	std::array<uint32_t, 16 * 16> pixels;
-	std::transform(
-			pixels.begin(), pixels.end(), pixels.begin(), [=](uint32_t& value) {
-				int index = &value - pixels.data();
-				int x = index % 16;
-				int y = index / 16;
-				return ((x % 2) ^ (y % 2)) ? magenta : black;
-			});
 
 	VulkanImageCreateInfo white_image_info = {
 		.format = VK_FORMAT_R8G8B8A8_UNORM,
@@ -694,12 +697,12 @@ void VulkanRenderer::_init_default_data() {
 	};
 	white_image = VulkanImage::create(context, &white_image_info);
 
-	VulkanImageCreateInfo error_image_info = {
+	VulkanImageCreateInfo magenta_image_info = {
 		.format = VK_FORMAT_R8G8B8A8_UNORM,
-		.size = { 16, 16, 1 },
-		.data = (void*)pixels.data(),
+		.size = { 1, 1, 1 },
+		.data = (void*)&magenta,
 	};
-	error_image = VulkanImage::create(context, &error_image_info);
+	error_image = VulkanImage::create(context, &magenta_image_info);
 
 	default_roughness = VulkanMetallicRoughnessMaterial::create(context);
 

@@ -54,12 +54,12 @@ private:
 
 	void _submit_commands(VulkanCommandBuffer& cmd);
 
+	void _present_image(
+			VulkanCommandBuffer& cmd, uint32_t swapchain_image_index);
+
 	void _geometry_pass(VulkanCommandBuffer& cmd);
 
 	void _compute_pass(VulkanCommandBuffer& cmd);
-
-	void _present_image(
-			VulkanCommandBuffer& cmd, uint32_t swapchain_image_index);
 
 	void _request_resize();
 
@@ -84,6 +84,9 @@ private:
 	Ref<VulkanImage> draw_image;
 	Ref<VulkanImage> depth_image;
 	VkExtent2D draw_extent;
+
+	// g buffer images
+	Ref<VulkanImage> position_image;
 
 	VulkanFrameData frames[FRAME_OVERLAP];
 	uint32_t frame_number{ 0 };

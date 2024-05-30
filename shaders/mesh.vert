@@ -3,8 +3,9 @@
 
 #include "input_structures.glsl"
 
-layout(location = 0) out vec3 out_color;
-layout(location = 1) out vec2 out_uv;
+layout(location = 0) out vec4 out_position;
+layout(location = 1) out vec4 out_color;
+layout(location = 2) out vec2 out_uv;
 
 struct Vertex {
     vec3 position;
@@ -27,11 +28,12 @@ layout(push_constant) uniform constants {
 void main() {
     Vertex v = push_constants.vertex_buffer.vertices[gl_VertexIndex];
 
-    vec4 frag_pos = vec4(v.position, 1.0f);
+    vec4 frag_pos = push_constants.transform * vec4(v.position, 1.0f);
 
     // output the position of each vertex
-    gl_Position = scene_data.viewproj * push_constants.transform * frag_pos;
+    gl_Position = scene_data.viewproj * frag_pos;
 
-    out_color = v.color.xyz * material_data.color_factors.xyz;
+    out_position = frag_pos;
+    out_color = v.color * material_data.color_factors;
     out_uv = vec2(v.uv_x, v.uv_y);
 }

@@ -48,19 +48,25 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 	material->pipeline.pipeline_layout =
 			VulkanPipelineLayout::create(context.device, &mesh_layout_info);
 
-	VulkanPipelineCreateInfo pipeline_info;
-	pipeline_info.set_shaders(vertex_shader, fragment_shader);
-	pipeline_info.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	pipeline_info.set_polygon_mode(VK_POLYGON_MODE_FILL);
-	pipeline_info.set_cull_mode(
-			VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-	pipeline_info.set_multisampling_none();
-	pipeline_info.set_blending(VulkanBlendingMode::NONE);
-	pipeline_info.enable_depthtest(true, VK_COMPARE_OP_LESS);
+	VkFormat color_attachment_formats[] = {
+		context.color_attachment_format,
+		context.position_format,
+	};
 
-	// render format
-	pipeline_info.set_color_attachment_format(context.color_attachment_format);
-	pipeline_info.set_depth_format(context.depth_attachment_format);
+	VulkanPipelineCreateInfo pipeline_info = {
+		.vertex_shader = vertex_shader,
+		.fragment_shader = fragment_shader,
+		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.polygon_mode = VK_POLYGON_MODE_FILL,
+		.cull_mode = VK_CULL_MODE_NONE,
+		.front_face = VK_FRONT_FACE_CLOCKWISE,
+		.color_attachments = color_attachment_formats,
+		.depth_attachment = context.depth_attachment_format,
+		.blending_mode = VulkanBlendingMode::NONE,
+		.enable_depth_test = true,
+		.depth_write_enable = true,
+		.depth_op = VK_COMPARE_OP_LESS,
+	};
 
 	// finally build the pipeline
 	material->pipeline.pipeline = VulkanPipeline::create(context.device,

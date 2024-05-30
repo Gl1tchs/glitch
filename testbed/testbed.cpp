@@ -73,10 +73,8 @@ void TestBedApplication::_on_start() {
 	models[2]->transform.local_position.z = 3.0f;
 	get_renderer()->get_scene_graph().push_node(models[2]);
 
-#if 0
 	const auto window_size = get_window()->get_size();
-	Ref<Shader> compute_shader =
-			Shader::create("assets/shaders/compute-shader.comp.spv");
+	Ref<Shader> compute_shader = Shader::create("assets/shaders/grid.comp.spv");
 
 	ComputeEffectCreateInfo compute_info = {
         .shader =compute_shader, 
@@ -90,8 +88,7 @@ void TestBedApplication::_on_start() {
 
 	Shader::destroy(compute_shader);
 
-	get_renderer()->get_scene_graph().push_root(effect_node);
-#endif
+	get_renderer()->get_scene_graph().push_node(effect_node);
 }
 
 void TestBedApplication::_on_update(float dt) {

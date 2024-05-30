@@ -37,12 +37,9 @@ VkImageViewCreateInfo imageview_create_info(
 VkRenderingAttachmentInfo depth_attachment_info(VkImageView view,
 		VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-VkRenderingAttachmentInfo attachment_info(VkImageView view, VkClearValue* clear,
+VkRenderingAttachmentInfo attachment_info(VkImageView view,
+		const VkClearValue* clear,
 		VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-VkRenderingInfo rendering_info(VkExtent2D render_extent,
-		const VkRenderingAttachmentInfo* color_attachment,
-		const VkRenderingAttachmentInfo* depth_attachment);
 
 VkPipelineLayoutCreateInfo pipeline_layout_create_info();
 
