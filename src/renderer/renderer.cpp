@@ -16,6 +16,8 @@ SceneGraph& Renderer::get_scene_graph() { return scene_graph; }
 
 RendererSettings& Renderer::get_settings() { return settings; }
 
+RendererStats& Renderer::get_stats() { return stats; }
+
 RenderBackend Renderer::get_backend() { return s_backend; }
 
 Ref<Renderer> Renderer::create(RenderBackend backend, Ref<Window> window) {

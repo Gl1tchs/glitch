@@ -16,6 +16,11 @@ struct RendererSettings {
 	// bool msaa;
 };
 
+struct RendererStats {
+	uint32_t draw_calls;
+	uint32_t triangle_count;
+};
+
 class Renderer {
 public:
 	virtual ~Renderer() = default;
@@ -29,6 +34,8 @@ public:
 	SceneGraph& get_scene_graph();
 
 	RendererSettings& get_settings();
+
+	RendererStats& get_stats();
 
 	static RenderBackend get_backend();
 
@@ -46,4 +53,5 @@ private:
 	SceneGraph scene_graph;
 
 	RendererSettings settings{};
+	RendererStats stats{};
 };

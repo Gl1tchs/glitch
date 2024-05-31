@@ -56,6 +56,9 @@ VulkanRenderer::~VulkanRenderer() {
 }
 
 void VulkanRenderer::wait_and_render() {
+	// reset stats
+	memset(&get_stats(), 0, sizeof(RendererStats));
+
 	// wait for gpu to finish execution
 	VK_CHECK(vkWaitForFences(context.device, 1,
 			&get_current_frame().render_fence, true, UINT64_MAX));
@@ -283,7 +286,8 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 			return false;
 		});
 
-		static auto get_proper_material = [this](Ref<MaterialInstance> material)
+		static const auto get_proper_material =
+				[this](Ref<MaterialInstance> material)
 				-> Ref<VulkanMaterialInstance> {
 			return !material
 					? default_roughness_instance
@@ -293,7 +297,8 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 		// sort models based on material pipeline
 		// so that same ones will not be bound again
-		auto sort_function = [&](VulkanModel* lhs, VulkanModel* rhs) -> bool {
+		static const auto sort_function = [&](VulkanModel* lhs,
+												  VulkanModel* rhs) -> bool {
 			if (lhs->material != rhs->material) {
 				return lhs->index_buffer.info.size <
 						rhs->index_buffer.info.size;
@@ -308,19 +313,19 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 		VkBuffer last_index_buffer = VK_NULL_HANDLE;
 
 		for (auto model : models) {
-			Ref<VulkanMaterialInstance> model_material =
+			Ref<VulkanMaterialInstance> material =
 					get_proper_material(model->material);
 
-			if (model_material != last_material) {
-				last_material = model_material;
+			if (material != last_material) {
+				last_material = material;
 
-				if (model_material->pipeline != last_pipeline) {
-					last_pipeline = model_material->pipeline;
+				if (material->pipeline != last_pipeline) {
+					last_pipeline = material->pipeline;
 
-					cmd.bind_pipeline(model_material->pipeline->pipeline);
+					cmd.bind_pipeline(material->pipeline->pipeline);
 
 					cmd.bind_descriptor_sets(
-							model_material->pipeline->pipeline_layout, 0, 1,
+							material->pipeline->pipeline_layout, 0, 1,
 							&global_descriptor);
 
 					// set dynamic viewport and scissor
@@ -329,9 +334,8 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 					cmd.set_scissor(draw_extent);
 				}
 
-				cmd.bind_descriptor_sets(
-						model_material->pipeline->pipeline_layout, 1, 1,
-						&model_material->descriptor_set);
+				cmd.bind_descriptor_sets(material->pipeline->pipeline_layout, 1,
+						1, &material->descriptor_set);
 			}
 
 			// draw geometry
@@ -339,7 +343,7 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 				.transform = model->transform.get_transform_matrix(),
 				.vertex_buffer = model->vertex_buffer_address,
 			};
-			cmd.push_constants(model_material->pipeline->pipeline_layout,
+			cmd.push_constants(material->pipeline->pipeline_layout,
 					VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstants),
 					&push_constants);
 
@@ -350,8 +354,11 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 						model->index_buffer, 0, VK_INDEX_TYPE_UINT32);
 			}
 
-			for (const auto& vk_mesh : model->meshes) {
-				cmd.draw_indexed(vk_mesh.index_count, 1, vk_mesh.start_index);
+			for (const auto& mesh : model->meshes) {
+				cmd.draw_indexed(mesh.index_count, 1, mesh.start_index);
+
+				get_stats().draw_calls++;
+				get_stats().triangle_count += mesh.index_count / 3;
 			}
 		}
 		cmd.end_rendering();
