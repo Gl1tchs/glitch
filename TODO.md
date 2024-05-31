@@ -1,7 +1,6 @@
 # TODOS
 
 ## Vulkan Renderer
-- [x] Multiple color attachment
 - [ ] Grid rendering
 - [ ] Instanced rendering
 - [ ] Multisampling

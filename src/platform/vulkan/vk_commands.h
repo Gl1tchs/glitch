@@ -39,8 +39,7 @@ struct VulkanCommandBuffer {
 			const VkSemaphoreSubmitInfo* signal_semaphore = nullptr);
 
 	void begin_rendering(VkExtent2D draw_extent,
-			uint32_t color_attachment_count,
-			const VkRenderingAttachmentInfo* color_attachments,
+			std::span<VkRenderingAttachmentInfo> color_attachments,
 			const VkRenderingAttachmentInfo* depth_attachment);
 
 	void end_rendering();

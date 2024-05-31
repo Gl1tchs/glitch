@@ -87,6 +87,7 @@ private:
 
 	// g buffer images
 	Ref<VulkanImage> position_image;
+	Ref<VulkanImage> normal_image;
 
 	VulkanFrameData frames[FRAME_OVERLAP];
 	uint32_t frame_number{ 0 };

@@ -1,6 +1,7 @@
 #include "platform/vulkan/vk_renderer.h"
 
 #include "gl/core/application.h"
+#include "gl/core/event_system.h"
 #include "gl/core/window.h"
 #include "gl/renderer/camera.h"
 #include "gl/renderer/image.h"
@@ -29,6 +30,9 @@ VulkanRenderer* VulkanRenderer::s_instance = nullptr;
 VulkanRenderer::VulkanRenderer(Ref<Window> window) : window(window) {
 	GL_ASSERT(s_instance == nullptr);
 	s_instance = this;
+
+	event::subscribe<WindowResizeEvent>(
+			[this](const WindowResizeEvent& event) { _request_resize(); });
 
 	_init_vulkan();
 	_init_swapchain();
@@ -145,10 +149,13 @@ void VulkanRenderer::_record_commands(
 		{
 			cmd.transition_image(draw_image, VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-			cmd.transition_image(position_image, VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 			cmd.transition_image(depth_image, VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+			cmd.transition_image(position_image, VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			cmd.transition_image(normal_image, VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 			_geometry_pass(cmd);
 		}
@@ -159,6 +166,9 @@ void VulkanRenderer::_record_commands(
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					VK_IMAGE_LAYOUT_GENERAL);
 			cmd.transition_image(position_image,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_GENERAL);
+			cmd.transition_image(normal_image,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					VK_IMAGE_LAYOUT_GENERAL);
 
@@ -255,17 +265,17 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 	// begin a render pass  connected to our draw image
 	const VkClearValue clear_color = { 0.1f, 0.1f, 0.1f, 1.0f };
 
-	constexpr uint32_t color_attachment_count = 2;
+	constexpr uint32_t color_attachment_count = 3;
 	VkRenderingAttachmentInfo color_attachments[color_attachment_count] = {
 		vkinit::attachment_info(draw_image->image_view, &clear_color),
 		vkinit::attachment_info(position_image->image_view, &clear_color),
+		vkinit::attachment_info(normal_image->image_view, &clear_color),
 	};
 
 	VkRenderingAttachmentInfo depth_attachment = vkinit::depth_attachment_info(
 			depth_image->image_view, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-	cmd.begin_rendering(draw_extent, color_attachment_count, color_attachments,
-			&depth_attachment);
+	cmd.begin_rendering(draw_extent, color_attachments, &depth_attachment);
 	{
 		// set dynamic viewport and scissor
 		cmd.set_viewport(
@@ -493,10 +503,21 @@ void VulkanRenderer::_init_swapchain() {
 	};
 	position_image = VulkanImage::create(context, &position_image_info);
 
+	context.normal_format = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+	VulkanImageCreateInfo normal_image_info = {
+		.format = context.normal_format,
+		.size = draw_image_extent,
+		.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+				VK_IMAGE_USAGE_STORAGE_BIT,
+	};
+	normal_image = VulkanImage::create(context, &normal_image_info);
+
 	deletion_queue.push_function([this]() {
 		VulkanImage::destroy(context, draw_image.get());
 		VulkanImage::destroy(context, depth_image.get());
 		VulkanImage::destroy(context, position_image.get());
+		VulkanImage::destroy(context, normal_image.get());
 	});
 }
 
@@ -615,7 +636,7 @@ void VulkanRenderer::_init_descriptors() {
 	// compute descriptors
 	{
 		std::vector<VulkanDescriptorAllocator::PoolSizeRatio> sizes = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
 		};
 
 		context.compute_descriptor_allocator.init(context.device, 10, sizes);
@@ -628,6 +649,7 @@ void VulkanRenderer::_init_descriptors() {
 			DescriptorLayoutBuilder builder;
 			builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			builder.add_binding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+			builder.add_binding(2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			context.compute_descriptor_layout =
 					builder.build(context.device, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -646,6 +668,8 @@ void VulkanRenderer::_init_descriptors() {
 			writer.write_image(0, draw_image->image_view, VK_NULL_HANDLE,
 					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			writer.write_image(1, position_image->image_view, VK_NULL_HANDLE,
+					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+			writer.write_image(2, normal_image->image_view, VK_NULL_HANDLE,
 					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			writer.update_set(context.device, context.compute_descriptor_set);
 		}

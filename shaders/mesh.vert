@@ -5,7 +5,8 @@
 
 layout(location = 0) out vec4 out_position;
 layout(location = 1) out vec4 out_color;
-layout(location = 2) out vec2 out_uv;
+layout(location = 2) out vec4 out_normal;
+layout(location = 3) out vec2 out_uv;
 
 struct Vertex {
     vec3 position;
@@ -35,5 +36,6 @@ void main() {
 
     out_position = frag_pos;
     out_color = v.color * material_data.color_factors;
+    out_normal = vec4(v.normal, 1.0f);
     out_uv = vec2(v.uv_x, v.uv_y);
 }

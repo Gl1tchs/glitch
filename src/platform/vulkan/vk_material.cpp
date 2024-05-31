@@ -51,6 +51,7 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 	VkFormat color_attachment_formats[] = {
 		context.color_attachment_format,
 		context.position_format,
+		context.normal_format,
 	};
 
 	VulkanPipelineCreateInfo pipeline_info = {
