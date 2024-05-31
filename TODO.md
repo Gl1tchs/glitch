@@ -1,9 +1,11 @@
 # TODOS
 
 ## Vulkan Renderer
+- [ ] Window resizing wont resize draw image
 - [ ] Grid rendering
 - [ ] Instanced rendering
 - [ ] Multisampling
+- [ ] Font rendering
 - [ ] Deffered Shading
     - [ ] G Buffers
     - [ ] Finalize

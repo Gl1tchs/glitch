@@ -277,42 +277,83 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 	cmd.begin_rendering(draw_extent, color_attachments, &depth_attachment);
 	{
-		// set dynamic viewport and scissor
-		cmd.set_viewport(
-				{ (float)draw_extent.width, (float)draw_extent.height });
-		cmd.set_scissor(draw_extent);
-
+		std::vector<VulkanModel*> models;
 		get_scene_graph().traverse<VulkanModel>([&](VulkanModel* model) {
-			// use default material if not provided
-			Ref<VulkanMaterialInstance> material = (!model->material)
+			models.push_back(model);
+			return false;
+		});
+
+		static auto get_proper_material = [this](Ref<MaterialInstance> material)
+				-> Ref<VulkanMaterialInstance> {
+			return !material
 					? default_roughness_instance
 					: std::dynamic_pointer_cast<VulkanMaterialInstance>(
-							  model->material);
+							  material);
+		};
 
-			cmd.bind_pipeline(material->pipeline->pipeline);
+		// sort models based on material pipeline
+		// so that same ones will not be bound again
+		auto sort_function = [&](VulkanModel* lhs, VulkanModel* rhs) -> bool {
+			if (lhs->material != rhs->material) {
+				return lhs->index_buffer.info.size <
+						rhs->index_buffer.info.size;
+			} else {
+				return lhs->material < rhs->material;
+			}
+		};
+		std::sort(models.begin(), models.end(), sort_function);
 
-			cmd.bind_descriptor_sets(material->pipeline->pipeline_layout, 0, 1,
-					&global_descriptor);
-			cmd.bind_descriptor_sets(material->pipeline->pipeline_layout, 1, 1,
-					&material->descriptor_set);
+		Ref<VulkanMaterialInstance> last_material = nullptr;
+		VulkanMaterialPipeline* last_pipeline = nullptr;
+		VkBuffer last_index_buffer = VK_NULL_HANDLE;
+
+		for (auto model : models) {
+			Ref<VulkanMaterialInstance> model_material =
+					get_proper_material(model->material);
+
+			if (model_material != last_material) {
+				last_material = model_material;
+
+				if (model_material->pipeline != last_pipeline) {
+					last_pipeline = model_material->pipeline;
+
+					cmd.bind_pipeline(model_material->pipeline->pipeline);
+
+					cmd.bind_descriptor_sets(
+							model_material->pipeline->pipeline_layout, 0, 1,
+							&global_descriptor);
+
+					// set dynamic viewport and scissor
+					cmd.set_viewport({ (float)draw_extent.width,
+							(float)draw_extent.height });
+					cmd.set_scissor(draw_extent);
+				}
+
+				cmd.bind_descriptor_sets(
+						model_material->pipeline->pipeline_layout, 1, 1,
+						&model_material->descriptor_set);
+			}
 
 			// draw geometry
 			DrawPushConstants push_constants = {
 				.transform = model->transform.get_transform_matrix(),
 				.vertex_buffer = model->vertex_buffer_address,
 			};
-			cmd.push_constants(material->pipeline->pipeline_layout,
+			cmd.push_constants(model_material->pipeline->pipeline_layout,
 					VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstants),
 					&push_constants);
 
-			cmd.bind_index_buffer(model->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+			if (model->index_buffer.buffer != last_index_buffer) {
+				last_index_buffer = model->index_buffer.buffer;
+
+				cmd.bind_index_buffer(
+						model->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+			}
 
 			for (const auto& vk_mesh : model->meshes) {
 				cmd.draw_indexed(vk_mesh.index_count, 1, vk_mesh.start_index);
 			}
-
-			return false;
-		});
+		}
 		cmd.end_rendering();
 	}
 }
