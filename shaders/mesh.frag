@@ -1,19 +1,27 @@
 #version 450
 
 #include "input_structures.glsl"
+#include "sky_light.glsl"
 
-layout(location = 0) in vec4 in_position;
-layout(location = 1) in vec4 in_color;
-layout(location = 2) in vec4 in_normal;
-layout(location = 3) in vec2 in_uv;
+layout(location = 0) in vec3 v_position;
+layout(location = 1) in vec3 v_normal;
+layout(location = 2) in vec2 v_uv;
 
-layout(location = 0) out vec4 out_color;
-layout(location = 1) out vec4 out_position;
-layout(location = 2) out vec4 out_normal;
+layout(location = 0) out vec4 o_color;
 
 void main() {
-    out_color = vec4(texture(color_tex, in_uv).xyz, 1.0f);
+    SkyLight sun;
+    sun.direction = scene_data.sun_direction.xyz;
+    sun.color = scene_data.sun_color.rgb;
 
-    out_position = in_position;
-    out_normal = in_normal;
+    Material material;
+    material.diffuse = texture(color_tex, v_uv).rgb;
+    material.shininess = 1.0f;
+
+    vec3 norm = normalize(v_normal);
+    vec3 view_dir = normalize(scene_data.camera_pos.xyz - v_position);
+
+    vec3 lighing_result = calc_sky_light(sun, material, norm, view_dir);
+
+    o_color = vec4(lighing_result, 1.0f);
 }

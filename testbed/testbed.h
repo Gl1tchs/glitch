@@ -7,7 +7,7 @@
 #include <gl/renderer/camera.h>
 #include <gl/renderer/compute.h>
 #include <gl/renderer/material.h>
-#include <gl/renderer/model.h>
+#include <gl/renderer/mesh.h>
 
 class TestBedApplication : public Application {
 public:
@@ -22,15 +22,9 @@ protected:
 	void _on_destroy() override;
 
 private:
-	std::vector<Ref<Model>> models;
+	Ref<MetallicRoughnessMaterial> material;
+	Ref<Node> scene;
 
 	CameraController camera_controller;
 	Ref<PerspectiveCameraNode> camera;
-
-	Ref<ComputeEffectNode> effect_node;
-
-	Ref<MetallicRoughnessMaterial> material;
-
-	Ref<Image> color_image;
-	Ref<Image> white_image;
 };

@@ -7,6 +7,8 @@
 
 #include "platform/vulkan/vk_descriptors.h"
 
+struct VulkanImage;
+
 struct VulkanContext {
 	VkInstance instance;
 	VkDevice device;
@@ -36,6 +38,9 @@ struct VulkanContext {
 
 	VkSampler linear_sampler;
 	VkSampler nearest_sampler;
+
+	Ref<VulkanImage> white_image;
+	Ref<VulkanImage> error_image;
 
 	VkSampler get_sampler(ImageFilteringMode mode) const;
 };

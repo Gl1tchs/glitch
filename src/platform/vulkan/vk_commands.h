@@ -55,6 +55,9 @@ struct VulkanCommandBuffer {
 			uint32_t first_index = 0, int32_t vertex_offset = 0,
 			uint32_t first_instance = 0);
 
+	void draw_indexed_indirect(VulkanBuffer buffer, VkDeviceSize offset,
+			uint32_t draw_count, uint32_t stride);
+
 	void dispatch(uint32_t group_count_x, uint32_t group_count_y,
 			uint32_t group_count_z);
 

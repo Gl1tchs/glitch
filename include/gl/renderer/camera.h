@@ -27,7 +27,7 @@ struct PerspectiveCameraNode : CameraNode {
 	float aspect_ratio = 1.0f;
 	float fov = 45.0f;
 	float near_clip = 0.1f;
-	float far_clip = 300.0f;
+	float far_clip = 10000.0f;
 
 	~PerspectiveCameraNode() = default;
 

@@ -14,7 +14,7 @@
 #include "platform/vulkan/vk_image.h"
 #include "platform/vulkan/vk_init.h"
 #include "platform/vulkan/vk_material.h"
-#include "platform/vulkan/vk_model.h"
+#include "platform/vulkan/vk_mesh.h"
 
 #include <VkBootstrap.h>
 #include <vulkan/vulkan_core.h>
@@ -155,23 +155,12 @@ void VulkanRenderer::_record_commands(
 			cmd.transition_image(depth_image, VK_IMAGE_LAYOUT_UNDEFINED,
 					VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-			cmd.transition_image(position_image, VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-			cmd.transition_image(normal_image, VK_IMAGE_LAYOUT_UNDEFINED,
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
 			_geometry_pass(cmd);
 		}
 
 		// draw compute effects
 		{
 			cmd.transition_image(draw_image,
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-					VK_IMAGE_LAYOUT_GENERAL);
-			cmd.transition_image(position_image,
-					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-					VK_IMAGE_LAYOUT_GENERAL);
-			cmd.transition_image(normal_image,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 					VK_IMAGE_LAYOUT_GENERAL);
 
@@ -248,11 +237,15 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 	get_scene_graph().traverse<CameraNode>(
 			[scene_uniform_data](CameraNode* camera) {
+				scene_uniform_data->camera_pos =
+						glm::vec4(camera->transform.get_position(), 1.0f);
 				scene_uniform_data->view = camera->get_view_matrix();
 				scene_uniform_data->proj = camera->get_projection_matrix();
 				scene_uniform_data->view_proj =
 						scene_uniform_data->proj * scene_uniform_data->view;
-
+				scene_uniform_data->sun_direction = { -1, -1, -1 };
+				scene_uniform_data->sun_power = 1.0f;
+				scene_uniform_data->sun_color = { 1, 1, 1, 1 };
 				return true;
 			});
 
@@ -265,14 +258,12 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	writer.update_set(context.device, global_descriptor);
 
-	// begin a render pass  connected to our draw image
+	// begin a render pass connected to our draw image
 	const VkClearValue clear_color = { 0.1f, 0.1f, 0.1f, 1.0f };
 
-	constexpr uint32_t color_attachment_count = 3;
+	constexpr uint32_t color_attachment_count = 1;
 	VkRenderingAttachmentInfo color_attachments[color_attachment_count] = {
 		vkinit::attachment_info(draw_image->image_view, &clear_color),
-		vkinit::attachment_info(position_image->image_view, &clear_color),
-		vkinit::attachment_info(normal_image->image_view, &clear_color),
 	};
 
 	VkRenderingAttachmentInfo depth_attachment = vkinit::depth_attachment_info(
@@ -280,12 +271,6 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 
 	cmd.begin_rendering(draw_extent, color_attachments, &depth_attachment);
 	{
-		std::vector<VulkanModel*> models;
-		get_scene_graph().traverse<VulkanModel>([&](VulkanModel* model) {
-			models.push_back(model);
-			return false;
-		});
-
 		static const auto get_proper_material =
 				[this](Ref<MaterialInstance> material)
 				-> Ref<VulkanMaterialInstance> {
@@ -295,74 +280,49 @@ void VulkanRenderer::_geometry_pass(VulkanCommandBuffer& cmd) {
 							  material);
 		};
 
-		// sort models based on material pipeline
-		// so that same ones will not be bound again
-		static const auto sort_function = [&](VulkanModel* lhs,
-												  VulkanModel* rhs) -> bool {
-			if (lhs->material != rhs->material) {
-				return lhs->index_buffer.info.size <
-						rhs->index_buffer.info.size;
-			} else {
-				return lhs->material < rhs->material;
-			}
-		};
-		std::sort(models.begin(), models.end(), sort_function);
+		std::map<Ref<VulkanMaterialInstance>, std::vector<VulkanMesh*>>
+				mesh_map;
+		get_scene_graph().traverse<VulkanMesh>([&](VulkanMesh* mesh) {
+			mesh_map[get_proper_material(mesh->material)].push_back(mesh);
+			return false;
+		});
 
-		Ref<VulkanMaterialInstance> last_material = nullptr;
-		VulkanMaterialPipeline* last_pipeline = nullptr;
-		VkBuffer last_index_buffer = VK_NULL_HANDLE;
-
-		for (auto model : models) {
-			Ref<VulkanMaterialInstance> material =
-					get_proper_material(model->material);
-
-			if (material != last_material) {
-				last_material = material;
-
-				if (material->pipeline != last_pipeline) {
-					last_pipeline = material->pipeline;
-
-					cmd.bind_pipeline(material->pipeline->pipeline);
-
-					cmd.bind_descriptor_sets(
-							material->pipeline->pipeline_layout, 0, 1,
-							&global_descriptor);
-
-					// set dynamic viewport and scissor
-					cmd.set_viewport({ (float)draw_extent.width,
-							(float)draw_extent.height });
-					cmd.set_scissor(draw_extent);
-				}
-
-				cmd.bind_descriptor_sets(material->pipeline->pipeline_layout, 1,
-						1, &material->descriptor_set);
+		for (const auto& [material, meshes] : mesh_map) {
+			if (meshes.empty()) {
+				continue;
 			}
 
-			// draw geometry
-			DrawPushConstants push_constants = {
-				.transform = model->transform.get_transform_matrix(),
-				.vertex_buffer = model->vertex_buffer_address,
+			cmd.bind_pipeline(material->pipeline->pipeline);
+
+			// set dynamic viewport and scissor
+			cmd.set_viewport(
+					{ (float)draw_extent.width, (float)draw_extent.height });
+			cmd.set_scissor(draw_extent);
+
+			VkDescriptorSet descriptors[] = {
+				global_descriptor,
+				material->descriptor_set,
 			};
-			cmd.push_constants(material->pipeline->pipeline_layout,
-					VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstants),
-					&push_constants);
+			cmd.bind_descriptor_sets(
+					material->pipeline->pipeline_layout, 0, 2, descriptors);
 
-			if (model->index_buffer.buffer != last_index_buffer) {
-				last_index_buffer = model->index_buffer.buffer;
-
+			for (const auto& mesh : meshes) {
 				cmd.bind_index_buffer(
-						model->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-			}
+						mesh->index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-			for (const auto& mesh : model->meshes) {
-				cmd.draw_indexed(mesh.index_count, 1, mesh.start_index);
+				DrawPushConstants push_constants = {
+					.transform = mesh->transform.get_transform_matrix(),
+					.vertex_buffer = mesh->vertex_buffer_address,
+				};
+				cmd.push_constants(material->pipeline->pipeline_layout,
+						VK_SHADER_STAGE_VERTEX_BIT, 0,
+						sizeof(DrawPushConstants), &push_constants);
 
-				get_stats().draw_calls++;
-				get_stats().triangle_count += mesh.index_count / 3;
+				cmd.draw_indexed(mesh->index_count);
 			}
 		}
-		cmd.end_rendering();
 	}
+	cmd.end_rendering();
 }
 
 void VulkanRenderer::_compute_pass(VulkanCommandBuffer& cmd) {
@@ -541,31 +501,9 @@ void VulkanRenderer::_init_swapchain() {
 	};
 	depth_image = VulkanImage::create(context, &depth_image_info);
 
-	context.position_format = VK_FORMAT_R16G16B16A16_SFLOAT;
-
-	VulkanImageCreateInfo position_image_info = {
-		.format = context.position_format,
-		.size = draw_image_extent,
-		.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-				VK_IMAGE_USAGE_STORAGE_BIT,
-	};
-	position_image = VulkanImage::create(context, &position_image_info);
-
-	context.normal_format = VK_FORMAT_R16G16B16A16_SFLOAT;
-
-	VulkanImageCreateInfo normal_image_info = {
-		.format = context.normal_format,
-		.size = draw_image_extent,
-		.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-				VK_IMAGE_USAGE_STORAGE_BIT,
-	};
-	normal_image = VulkanImage::create(context, &normal_image_info);
-
 	deletion_queue.push_function([this]() {
 		VulkanImage::destroy(context, draw_image.get());
 		VulkanImage::destroy(context, depth_image.get());
-		VulkanImage::destroy(context, position_image.get());
-		VulkanImage::destroy(context, normal_image.get());
 	});
 }
 
@@ -684,7 +622,7 @@ void VulkanRenderer::_init_descriptors() {
 	// compute descriptors
 	{
 		std::vector<VulkanDescriptorAllocator::PoolSizeRatio> sizes = {
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
 		};
 
 		context.compute_descriptor_allocator.init(context.device, 10, sizes);
@@ -696,8 +634,6 @@ void VulkanRenderer::_init_descriptors() {
 		{
 			DescriptorLayoutBuilder builder;
 			builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-			builder.add_binding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-			builder.add_binding(2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			context.compute_descriptor_layout =
 					builder.build(context.device, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -714,10 +650,6 @@ void VulkanRenderer::_init_descriptors() {
 		{
 			DescriptorWriter writer;
 			writer.write_image(0, draw_image->image_view, VK_NULL_HANDLE,
-					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-			writer.write_image(1, position_image->image_view, VK_NULL_HANDLE,
-					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-			writer.write_image(2, normal_image->image_view, VK_NULL_HANDLE,
 					VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 			writer.update_set(context.device, context.compute_descriptor_set);
 		}
@@ -767,14 +699,14 @@ void VulkanRenderer::_init_default_data() {
 		.size = { 1, 1, 1 },
 		.data = (void*)&white,
 	};
-	white_image = VulkanImage::create(context, &white_image_info);
+	context.white_image = VulkanImage::create(context, &white_image_info);
 
 	VulkanImageCreateInfo magenta_image_info = {
 		.format = VK_FORMAT_R8G8B8A8_UNORM,
 		.size = { 1, 1, 1 },
 		.data = (void*)&magenta,
 	};
-	error_image = VulkanImage::create(context, &magenta_image_info);
+	context.error_image = VulkanImage::create(context, &magenta_image_info);
 
 	default_roughness = VulkanMetallicRoughnessMaterial::create(context);
 
@@ -786,17 +718,17 @@ void VulkanRenderer::_init_default_data() {
 	VulkanMetallicRoughnessMaterial::MaterialResources resources = {
 		.constants = constants,
 		.constants_offset = 0,
-		.color_image = error_image,
+		.color_image = context.error_image,
 		.color_filtering = ImageFilteringMode::LINEAR,
-		.roughness_image = white_image,
+		.roughness_image = context.white_image,
 		.roughness_filtering = ImageFilteringMode::LINEAR,
 	};
 	default_roughness_instance =
 			default_roughness->create_instance(context, resources);
 
 	deletion_queue.push_function([this]() {
-		VulkanImage::destroy(context, white_image.get());
-		VulkanImage::destroy(context, error_image.get());
+		VulkanImage::destroy(context, context.white_image.get());
+		VulkanImage::destroy(context, context.error_image.get());
 
 		VulkanMetallicRoughnessMaterial::destroy(
 				context, default_roughness.get());

@@ -128,6 +128,12 @@ void VulkanCommandBuffer::draw_indexed(uint32_t index_count,
 			vertex_offset, first_instance);
 }
 
+void VulkanCommandBuffer::draw_indexed_indirect(VulkanBuffer buffer,
+		VkDeviceSize offset, uint32_t draw_count, uint32_t stride) {
+	vkCmdDrawIndexedIndirect(
+			command_buffer, buffer.buffer, offset, draw_count, stride);
+}
+
 void VulkanCommandBuffer::dispatch(uint32_t group_count_x,
 		uint32_t group_count_y, uint32_t group_count_z) {
 	vkCmdDispatch(command_buffer, group_count_x, group_count_y, group_count_z);

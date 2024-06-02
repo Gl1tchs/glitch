@@ -1,7 +1,7 @@
 #include "gl/renderer/renderer.h"
 
 #include "gl/renderer/compute.h"
-#include "gl/renderer/model.h"
+#include "gl/renderer/mesh.h"
 #include "gl/renderer/node.h"
 
 #include "platform/vulkan/vk_renderer.h"
@@ -43,8 +43,8 @@ void Renderer::_destroy_scene_graph() {
 				break;
 			}
 			case NodeType::GEOMETRY: {
-				Model* model = reinterpret_cast<Model*>(node);
-				Model::destroy(model);
+				Mesh* model = reinterpret_cast<Mesh*>(node);
+				Mesh::destroy(model);
 				break;
 			}
 			case NodeType::COMPUTE: {

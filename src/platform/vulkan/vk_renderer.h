@@ -16,9 +16,15 @@
 constexpr uint32_t FRAME_OVERLAP = 2;
 
 struct VulkanSceneData {
+	glm::vec4 camera_pos;
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::mat4 view_proj;
+	glm::vec3 sun_direction;
+	// in glsl this will be the w component
+	// of the `sun_direction`
+	float sun_power;
+	glm::vec4 sun_color;
 };
 
 struct VulkanFrameData {
@@ -85,10 +91,6 @@ private:
 	Ref<VulkanImage> depth_image;
 	VkExtent2D draw_extent;
 
-	// g buffer images
-	Ref<VulkanImage> position_image;
-	Ref<VulkanImage> normal_image;
-
 	VulkanFrameData frames[FRAME_OVERLAP];
 	uint32_t frame_number{ 0 };
 
@@ -96,10 +98,6 @@ private:
 	VkFence imm_fence;
 	VulkanCommandBuffer imm_command_buffer;
 	VulkanCommandPool imm_command_pool;
-
-	// default data
-	Ref<VulkanImage> white_image;
-	Ref<VulkanImage> error_image;
 
 	Ref<VulkanMetallicRoughnessMaterial> default_roughness;
 	Ref<VulkanMaterialInstance> default_roughness_instance;

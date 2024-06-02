@@ -24,8 +24,8 @@ Ref<VulkanImage> vk_image_create(
 	// always allocate images on dedicated GPU memory
 	VmaAllocationCreateInfo alloc_info = {
 		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
-		.requiredFlags =
-				VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+		.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 	};
 
 	// allocate and create the image

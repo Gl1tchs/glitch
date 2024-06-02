@@ -3,17 +3,15 @@
 
 #include "input_structures.glsl"
 
-layout(location = 0) out vec4 out_position;
-layout(location = 1) out vec4 out_color;
-layout(location = 2) out vec4 out_normal;
-layout(location = 3) out vec2 out_uv;
+layout(location = 0) out vec3 o_position;
+layout(location = 1) out vec3 o_normal;
+layout(location = 2) out vec2 o_uv;
 
 struct Vertex {
     vec3 position;
     float uv_x;
     vec3 normal;
     float uv_y;
-    vec4 color;
 };
 
 layout(buffer_reference, std430) readonly buffer VertexBuffer {
@@ -34,8 +32,7 @@ void main() {
     // output the position of each vertex
     gl_Position = scene_data.viewproj * frag_pos;
 
-    out_position = frag_pos;
-    out_color = v.color * material_data.color_factors;
-    out_normal = vec4(v.normal, 1.0f);
-    out_uv = vec2(v.uv_x, v.uv_y);
+    o_position = frag_pos.xyz;
+    o_normal = v.normal;
+    o_uv = vec2(v.uv_x, v.uv_y);
 }

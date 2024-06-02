@@ -5,5 +5,4 @@ struct Vertex {
 	float uv_x;
 	Vec3f normal;
 	float uv_y;
-	Vec4f color;
 };

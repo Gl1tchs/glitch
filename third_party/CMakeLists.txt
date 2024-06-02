@@ -1,16 +1,15 @@
 # define include dirs and library targets
 set(VENDOR_DIR ${CMAKE_SOURCE_DIR}/third_party)
 
+set(TINYGLTF_INCLUDES ${VENDOR_DIR}/tinygltf PARENT_SCOPE)
+set(TINYGLTF_LIBRARIES tinygltf PARENT_SCOPE)
+
 set(CATCH2_SOURCE_DIR ${VENDOR_DIR}/Catch2 PARENT_SCOPE)
 set(CATCH2_INCLUDES ${VENDOR_DIR}/Catch2/src PARENT_SCOPE)
 set(CATCH2_LIBRARIES Catch2::Catch2WithMain PARENT_SCOPE)
 
 set(VMA_INCLUDES ${VENDOR_DIR}/VulkanMemoryAllocator/include PARENT_SCOPE)
 set(VMA_LIBRARIES GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
-
-set(FASTGLTF_INCLUDES ${VENDOR_DIR}/fastgltf/include PARENT_SCOPE)
-set(FASTGLTF_LIBRARIES fastgltf PARENT_SCOPE)
-
 set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
 set(GLFW_LIBRARIES glfw PARENT_SCOPE)
 
@@ -34,11 +33,14 @@ if (GL_BUILD_TESTS)
     add_subdirectory(Catch2)
 endif()
 
+set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE INTERNAL "" FORCE)
+set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(tinygltf)
+
 # define and build targets
 set(VMA_BUILD_SAMPLES OFF CACHE BOOL "Build samples" FORCE)
 add_subdirectory(VulkanMemoryAllocator)
-
-add_subdirectory(fastgltf)
 
 add_subdirectory(glfw)
 

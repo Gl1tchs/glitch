@@ -50,8 +50,6 @@ Ref<VulkanMetallicRoughnessMaterial> VulkanMetallicRoughnessMaterial::create(
 
 	VkFormat color_attachment_formats[] = {
 		context.color_attachment_format,
-		context.position_format,
-		context.normal_format,
 	};
 
 	VulkanPipelineCreateInfo pipeline_info = {
@@ -109,12 +107,14 @@ Ref<VulkanMaterialInstance> VulkanMetallicRoughnessMaterial::create_instance(
 			(MaterialConstants*)material_constants.info.pMappedData;
 	*scene_data = resources.constants;
 
-	Ref<VulkanImage> color_image =
-			std::dynamic_pointer_cast<VulkanImage>(resources.color_image);
+	Ref<VulkanImage> color_image = resources.color_image
+			? std::dynamic_pointer_cast<VulkanImage>(resources.color_image)
+			: context.error_image;
 	VkSampler color_sampler = context.get_sampler(resources.color_filtering);
 
-	Ref<VulkanImage> roughness_image =
-			std::dynamic_pointer_cast<VulkanImage>(resources.roughness_image);
+	Ref<VulkanImage> roughness_image = resources.roughness_image
+			? std::dynamic_pointer_cast<VulkanImage>(resources.roughness_image)
+			: context.white_image;
 	VkSampler roughness_sampler =
 			context.get_sampler(resources.roughness_filtering);
 
