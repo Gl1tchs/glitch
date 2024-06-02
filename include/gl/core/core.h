@@ -17,6 +17,8 @@
 #define GL_PLATFORM_ANDROID 1
 #endif
 
+template <typename T> using Optional = std::optional<T>;
+
 #define BIND_FUNC(fn)                                                          \
 	[this](auto&&... args) -> decltype(auto) {                                 \
 		return this->fn(std::forward<decltype(args)>(args)...);                \

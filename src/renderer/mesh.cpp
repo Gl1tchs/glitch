@@ -1,7 +1,9 @@
 #include "gl/renderer/mesh.h"
+
 #include "gl/renderer/image.h"
 #include "gl/renderer/material.h"
 #include "gl/renderer/renderer.h"
+
 #include "platform/vulkan/vk_mesh.h"
 #include "platform/vulkan/vk_renderer.h"
 
@@ -9,17 +11,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
-
-template <typename T>
-static const T* get_gltf_accessor_data(
-		const tinygltf::Model& model, const tinygltf::Accessor* accessor) {
-	const tinygltf::BufferView& view = model.bufferViews[accessor->bufferView];
-	const tinygltf::Buffer& buffer = model.buffers[view.buffer];
-
-	const T* data = reinterpret_cast<const T*>(
-			&buffer.data[accessor->byteOffset + view.byteOffset]);
-	return data;
-}
 
 struct LoadedImage {
 	Ref<Image> image;
@@ -63,63 +54,86 @@ static Ref<Image> load_material_image(
 	return image;
 }
 
+template <typename T> struct GLTFAccessor {
+	const tinygltf::Accessor* accessor;
+	const T* data;
+
+	inline const T* get(const int idx) {
+		return reinterpret_cast<const T*>(data + (idx * accessor->type));
+	}
+};
+
+template <typename T>
+static const T* get_gltf_accessor_data(
+		const tinygltf::Model& model, const tinygltf::Accessor* accessor) {
+	const tinygltf::BufferView& view = model.bufferViews[accessor->bufferView];
+	const tinygltf::Buffer& buffer = model.buffers[view.buffer];
+
+	const T* data = reinterpret_cast<const T*>(
+			&buffer.data[accessor->byteOffset + view.byteOffset]);
+	return data;
+}
+
+template <typename T>
+static Optional<GLTFAccessor<T>> get_gltf_accessor(const tinygltf::Model& model,
+		const tinygltf::Primitive& primitive, const std::string& name) {
+	const bool accessor_exists =
+			primitive.attributes.find(name) != primitive.attributes.end();
+
+	if (!accessor_exists) {
+		return {};
+	}
+
+	const auto& gltf_accessor = model.accessors[primitive.attributes.at(name)];
+	const auto* gltf_data =
+			get_gltf_accessor_data<float>(model, &gltf_accessor);
+
+	GLTFAccessor accessor = {
+		.accessor = &gltf_accessor,
+		.data = gltf_data,
+	};
+
+	return accessor;
+}
+
 static Ref<Mesh> process_mesh(const tinygltf::Model& model,
 		const tinygltf::Primitive& primitive, const fs::path& directory,
 		Ref<MetallicRoughnessMaterial> material) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
-	const bool ac_tex_coord_exists = primitive.attributes.find("TEXCOORD_0") !=
-			primitive.attributes.end();
-	const bool ac_normal_exists =
-			primitive.attributes.find("NORMAL") != primitive.attributes.end();
+	// position accessor is guaranteed to exists but the others are not
+	GLTFAccessor position_accessor =
+			get_gltf_accessor<float>(model, primitive, "POSITION").value();
 
-	// accessor and data retrivation
-	const auto& ac_position =
-			model.accessors[primitive.attributes.at("POSITION")];
-	const auto* dt_position =
-			get_gltf_accessor_data<float>(model, &ac_position);
+	Optional<GLTFAccessor<float>> tex_coord_accessor =
+			get_gltf_accessor<float>(model, primitive, "TEXCOORD_0");
+	Optional<GLTFAccessor<float>> normal_accessor =
+			get_gltf_accessor<float>(model, primitive, "NORMAL");
 
-	const auto* ac_tex_coord = ac_tex_coord_exists
-			? &model.accessors[primitive.attributes.at("TEXCOORD_0")]
-			: nullptr;
-	const auto* tex_coord_data = ac_tex_coord_exists
-			? get_gltf_accessor_data<float>(model, ac_tex_coord)
-			: nullptr;
+	static constexpr Vec2f DEFAULT_TEX_COORD = { 0.0f, 0.0f };
+	static constexpr Vec3f DEFAULT_NORMAL = { 0.0f, 0.0f, 0.0f };
 
-	const auto* normal_accessor = ac_normal_exists
-			? &model.accessors[primitive.attributes.at("NORMAL")]
-			: nullptr;
-	const auto* normal_data = ac_normal_exists
-			? get_gltf_accessor_data<float>(model, normal_accessor)
-			: nullptr;
-
-	float default_tex_coord[] = { 0.0f, 0.0f };
-	float default_normals[] = { 0.0f, 0.0f, 0.0f };
-
-	for (size_t i = 0; i < ac_position.count; ++i) {
+	for (size_t i = 0; i < position_accessor.accessor->count; ++i) {
 		Vertex v;
+		{
+			memcpy(&v.position, position_accessor.get(i), sizeof(Vec3f));
 
-		const float* position = reinterpret_cast<const float*>(
-				dt_position + (i * ac_position.type));
+			if (tex_coord_accessor.has_value()) {
+				const float* tex_coord = tex_coord_accessor->get(i);
+				v.uv_x = tex_coord[0];
+				v.uv_y = tex_coord[1];
+			} else {
+				v.uv_x = DEFAULT_TEX_COORD.x;
+				v.uv_y = DEFAULT_TEX_COORD.y;
+			}
 
-		const float* tex_coord = ac_tex_coord_exists
-				? reinterpret_cast<const float*>(
-						  tex_coord_data + (i * ac_tex_coord->type))
-				: default_tex_coord;
-
-		const float* normal = ac_normal_exists
-				? reinterpret_cast<const float*>(
-						  normal_data + (i * normal_accessor->type))
-				: default_normals;
-
-		memcpy(&v.position, position, sizeof(Vec3f));
-
-		v.uv_x = tex_coord[0];
-
-		memcpy(&v.normal, normal, sizeof(Vec3f));
-
-		v.uv_y = tex_coord[1];
+			if (normal_accessor.has_value()) {
+				memcpy(&v.normal, normal_accessor->get(i), sizeof(Vec3f));
+			} else {
+				v.normal = DEFAULT_NORMAL;
+			}
+		}
 
 		vertices.push_back(v);
 	}
