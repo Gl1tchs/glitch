@@ -1,9 +1,9 @@
-#include "gl/core/window.h"
+#include "core/window.h"
 
-#include "gl/core/event_system.h"
-#include "gl/core/input.h"
-#include "gl/core/key_code.h"
-#include "gl/core/mouse_code.h"
+#include "core/event/event_system.h"
+#include "core/event/input.h"
+#include "core/event/key_code.h"
+#include "core/event/mouse_code.h"
 
 #include <GLFW/glfw3.h>
 

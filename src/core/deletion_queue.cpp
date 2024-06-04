@@ -1,4 +1,4 @@
-#include "gl/core/deletion_queue.h"
+#include "core/deletion_queue.h"
 
 void DeletionQueue::push_function(std::function<void()>&& func) {
 	deletors.push_back(func);

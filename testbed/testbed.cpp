@@ -1,12 +1,9 @@
 #include "testbed.h"
 
-#include <gl/core/input.h>
-#include <gl/renderer/image.h>
+#include <core/event/input.h>
 
 TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
 		Application(info) {}
-
-TestBedApplication::~TestBedApplication() {}
 
 void TestBedApplication::_on_start() {
 	camera = create_ref<PerspectiveCameraNode>();
@@ -15,17 +12,6 @@ void TestBedApplication::_on_start() {
 	camera_controller.set_camera(camera.get());
 
 	get_renderer()->get_scene_graph().push_node(camera);
-
-	material = MetallicRoughnessMaterial::create();
-
-	scene = Mesh::load("assets/just_a_girl.glb", material);
-	if (scene) {
-		for (auto& node : scene->children) {
-			node->transform.local_scale = glm::vec3(0.1f);
-			node->transform.local_rotation.x = -90.0;
-		}
-		get_renderer()->get_scene_graph().push_node(scene);
-	}
 }
 
 void TestBedApplication::_on_update(float dt) {
@@ -33,10 +19,4 @@ void TestBedApplication::_on_update(float dt) {
 	camera_controller.update(dt);
 }
 
-void TestBedApplication::_on_destroy() {
-	// wait for operations to finish
-	// before cleaning other resources
-	get_renderer()->wait_for_device();
-
-	MetallicRoughnessMaterial::destroy(material);
-}
+void TestBedApplication::_on_destroy() {}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gl/renderer/camera.h>
+#include <renderer/camera.h>
 
 class CameraController {
 public:

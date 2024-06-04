@@ -1,4 +1,4 @@
-#include "gl/core/timer.h"
+#include "core/timer.h"
 
 Timer::Timer() : last_frame_time(Clock::now()) {}
 

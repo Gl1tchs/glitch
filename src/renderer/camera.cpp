@@ -1,4 +1,4 @@
-#include "gl/renderer/camera.h"
+#include "renderer/camera.h"
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>

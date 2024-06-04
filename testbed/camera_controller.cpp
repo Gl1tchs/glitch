@@ -1,6 +1,6 @@
 #include "camera_controller.h"
 
-#include <gl/core/input.h>
+#include <core/event/input.h>
 
 CameraController::CameraController() :
 		last_mouse_pos(

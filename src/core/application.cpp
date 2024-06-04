@@ -1,7 +1,7 @@
-#include "gl/core/application.h"
+#include "core/application.h"
 
-#include "gl/core/event_system.h"
-#include "gl/core/timer.h"
+#include "core/event/event_system.h"
+#include "core/timer.h"
 
 Application* Application::s_instance = nullptr;
 
@@ -17,11 +17,8 @@ Application::Application(const ApplicationCreateInfo& info) {
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	const auto backend = find_proper_backend();
-	renderer = Renderer::create(backend, window);
+	renderer = create_ref<Renderer>(window);
 }
-
-Application::~Application() {}
 
 void Application::run() {
 	_on_start();

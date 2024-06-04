@@ -1,4 +1,4 @@
-#include "gl/core/transform.h"
+#include "core/transform.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>

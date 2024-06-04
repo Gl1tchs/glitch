@@ -1,4 +1,4 @@
-#include "gl/renderer/node.h"
+#include "renderer/node.h"
 
 void Node::add_child(Ref<Node> node) {
 	node->parent = this;

@@ -1,4 +1,4 @@
-#include "gl/renderer/scene_graph.h"
+#include "renderer/scene_graph.h"
 
 SceneGraph::SceneGraph() : root(create_ref<Node>()) {}
 
