@@ -1,93 +1,83 @@
 #pragma once
 
-#include "backends/vulkan/vk_buffer.h"
-#include "backends/vulkan/vk_pipeline.h"
+#include "core/color.h"
+#include "core/templates/vector_view.h"
 
-struct VulkanCommandBuffer;
+#include "renderer/render_backend.h"
+#include "renderer/types.h"
 
-struct VulkanCommandPool {
-	VkCommandPool command_pool;
+namespace vk {
 
-	static VulkanCommandPool create(
-			VkDevice device, const VkCommandPoolCreateInfo* info);
-	static VulkanCommandPool create(VkDevice device,
-			uint32_t queue_family_index, VkCommandPoolCreateFlags flags = 0);
+CommandPool command_pool_create(
+		Context p_context, CommandBuffer p_cmd, CommandQueue p_queue);
 
-	static void destroy(VkDevice device, VulkanCommandPool& command_pool);
+void command_pool_free(
+		Context p_context, CommandBuffer p_cmd, CommandPool p_command_pool);
 
-	VulkanCommandBuffer allocate_buffer(VkDevice device);
+CommandBuffer command_pool_allocate(
+		Context p_context, CommandPool p_command_pool);
 
-	std::vector<VulkanCommandBuffer> allocate_buffer(
-			VkDevice device, const uint32_t count);
+std::vector<CommandBuffer> command_pool_allocate(
+		Context p_context, CommandPool p_command_pool, const uint32_t count);
 
-	void reset(VkDevice device);
-};
+void command_pool_reset(Context p_context, CommandPool p_command_pool);
 
-struct VulkanCommandBuffer {
-	VkCommandBuffer command_buffer;
+void command_begin(CommandBuffer p_cmd);
 
-	void begin(VkBufferUsageFlags flags = 0);
+void command_end(CommandBuffer p_cmd);
 
-	void end();
+void command_reset(CommandBuffer p_cmd);
 
-	void reset(VkCommandBufferResetFlags flags = 0);
+void command_submit(CommandBuffer p_cmd, CommandQueue p_queue,
+		Fence p_fence = nullptr, Semaphore p_wait_semaphore = nullptr,
+		Semaphore p_signal_semaphore = nullptr);
 
-	void submit(VkQueue queue, VkFence fence,
-			const VkSemaphoreSubmitInfo* wait_semaphore = nullptr,
-			const VkSemaphoreSubmitInfo* signal_semaphore = nullptr);
+void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
+		VectorView<Image> p_color_attachments, Image p_depth_attachment);
 
-	void begin_rendering(VkExtent2D draw_extent,
-			std::span<VkRenderingAttachmentInfo> color_attachments,
-			const VkRenderingAttachmentInfo* depth_attachment);
+void command_end_rendering(CommandBuffer p_cmd);
 
-	void end_rendering();
+void command_bind_graphics_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline);
 
-	void bind_pipeline(const VulkanPipeline& pipeline);
+void command_bind_compute_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline);
 
-	void bind_index_buffer(const VulkanBuffer& index_buffer,
-			VkDeviceSize offset, VkIndexType index_type);
+void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
+		uint64_t p_offset, IndexType p_index_type);
 
-	void draw_indexed(uint32_t index_count, uint32_t instance_count = 1,
-			uint32_t first_index = 0, int32_t vertex_offset = 0,
-			uint32_t first_instance = 0);
+void command_draw_indexed(CommandBuffer p_cmd, uint32_t p_index_count,
+		uint32_t p_instance_count = 1, uint32_t p_first_index = 0,
+		int32_t p_vertex_offset = 0, uint32_t p_first_instance = 0);
 
-	void draw_indexed_indirect(VulkanBuffer buffer, VkDeviceSize offset,
-			uint32_t draw_count, uint32_t stride);
+void command_draw_indexed_indirect(CommandBuffer p_cmd, Buffer p_buffer,
+		uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride);
 
-	void dispatch(uint32_t group_count_x, uint32_t group_count_y,
-			uint32_t group_count_z);
+void command_dispatch(CommandBuffer p_cmd, uint32_t p_group_count_x,
+		uint32_t p_group_count_y, uint32_t p_group_count_z);
 
-	void bind_descriptor_sets(const VulkanPipelineLayout& pipeline_layout,
-			uint32_t first_set, uint32_t descriptor_set_count,
-			const VkDescriptorSet* descriptor_sets,
-			VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS);
+void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
+		uint32_t p_first_set, VectorView<UniformSet> p_uniform_sets,
+		PipelineType p_type = PIPELINE_TYPE_GRAPHICS);
 
-	void push_constants(const VulkanPipelineLayout& pipeline_layout,
-			VkShaderStageFlags shader_stages, VkDeviceSize offset,
-			uint32_t size, const void* push_constants);
+void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
+		uint64_t p_offset, uint32_t p_size, const void* p_push_constants);
 
-	void set_viewport(Vec2f size);
+void command_set_viewport(CommandBuffer p_cmd, Vec2f size);
 
-	void set_scissor(VkExtent2D size, VkOffset2D offset = { 0, 0 });
+void command_set_scissor(CommandBuffer p_cmd, const Vec2u& p_size,
+		const Vec2u& p_offset = { 0, 0 });
 
-	void clear_color_image(VkImage image, VkImageLayout image_layout,
-			const VkClearColorValue* clear_color,
-			VkImageAspectFlags aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT);
+void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
+		Buffer p_dst_buffer, VectorView<BufferCopyRegion> p_regions);
 
-	void copy_buffer(const VulkanBuffer& src_buffer, VulkanBuffer& dst_buffer,
-			uint32_t region_count, const VkBufferCopy* regions);
+// image layout must be VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+void command_copy_buffer_to_image(CommandBuffer p_cmd, Buffer p_src_buffer,
+		Image p_dst_image, VectorView<BufferImageCopyRegion> p_regions);
 
-	void copy_buffer_to_image(const VulkanBuffer& src_buffer,
-			Ref<VulkanImage> dst_image, VkImageLayout image_layout,
-			uint32_t region_count, const VkBufferImageCopy* regions);
+void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
+		Image p_dst_image, const Vec2u& p_src_extent,
+		const Vec2u& p_dst_extent);
 
-	void copy_image_to_image(
-			Ref<VulkanImage> src_image, Ref<VulkanImage> dst_image);
-	void copy_image_to_image(VkImage src_image, VkImage dst_image,
-			const VkExtent2D& src_extent, const VkExtent2D& dst_extent);
+void command_transition_image(CommandBuffer p_cmd, Image p_image,
+		ImageLayout p_current_layout, ImageLayout p_new_layout);
 
-	void transition_image(Ref<VulkanImage> image, VkImageLayout current_layout,
-			VkImageLayout new_layout);
-	void transition_image(VkImage image, VkImageLayout current_layout,
-			VkImageLayout new_layout);
-};
+} //namespace vk

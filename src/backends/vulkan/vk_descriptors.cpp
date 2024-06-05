@@ -1,206 +1,341 @@
 #include "backends/vulkan/vk_descriptors.h"
 
-#include "backends/vulkan/vk_common.h"
+#include "backends/vulkan/vk_context.h"
+#include "backends/vulkan/vk_image.h"
 
-void DescriptorLayoutBuilder::add_binding(
-		uint32_t binding, VkDescriptorType type) {
-	VkDescriptorSetLayoutBinding new_binding{};
-	new_binding.binding = binding;
-	new_binding.descriptorCount = 1;
-	new_binding.descriptorType = type;
+namespace vk {
 
-	bindings.push_back(new_binding);
-}
+VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
+		const DescriptorSetPoolKey& p_key,
+		DescriptorSetPools::iterator* r_pool_sets_it) {
+	VulkanContext* context = (VulkanContext*)p_context;
 
-void DescriptorLayoutBuilder::clear() { bindings.clear(); }
+	DescriptorSetPools::iterator pool_sets_it =
+			context->descriptor_set_pools.find(p_key);
 
-VkDescriptorSetLayout DescriptorLayoutBuilder::build(VkDevice device,
-		VkShaderStageFlags shader_stages, void* next,
-		VkDescriptorSetLayoutCreateFlags flags) {
-	for (auto& b : bindings) {
-		b.stageFlags |= shader_stages;
-	}
-
-	VkDescriptorSetLayoutCreateInfo info = {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		.pNext = next,
-		.flags = flags,
-		.bindingCount = (uint32_t)bindings.size(),
-		.pBindings = bindings.data(),
-	};
-
-	VkDescriptorSetLayout set;
-	VK_CHECK(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
-
-	return set;
-}
-
-void VulkanDescriptorAllocator::init(VkDevice device, uint32_t initial_sets,
-		std::span<PoolSizeRatio> pool_size_ratios) {
-	ratios.clear();
-
-	// TODO use generic function
-	for (auto r : pool_size_ratios) {
-		ratios.push_back(r);
-	}
-
-	VkDescriptorPool new_pool =
-			create_pool(device, initial_sets, pool_size_ratios);
-
-	sets_per_pool = initial_sets * 1.5f;
-
-	ready_pools.push_back(new_pool);
-}
-
-void VulkanDescriptorAllocator::clear_pools(VkDevice device) {
-	for (auto p : ready_pools) {
-		vkResetDescriptorPool(device, p, 0);
-	}
-	for (auto p : full_pools) {
-		vkResetDescriptorPool(device, p, 0);
-		ready_pools.push_back(p);
-	}
-
-	full_pools.clear();
-}
-
-void VulkanDescriptorAllocator::destroy_pools(VkDevice device) {
-	for (auto p : ready_pools) {
-		vkDestroyDescriptorPool(device, p, nullptr);
-	}
-	for (auto p : full_pools) {
-		vkDestroyDescriptorPool(device, p, nullptr);
-		ready_pools.push_back(p);
-	}
-
-	full_pools.clear();
-}
-
-VkDescriptorSet VulkanDescriptorAllocator::allocate(
-		VkDevice device, VkDescriptorSetLayout layout, void* next) {
-	VkDescriptorPool pool_to_use = get_pool(device);
-
-	VkDescriptorSetAllocateInfo alloc_info = {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-		.pNext = next,
-		.descriptorPool = pool_to_use,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &layout,
-	};
-
-	VkDescriptorSet ds;
-
-	VkResult res = vkAllocateDescriptorSets(device, &alloc_info, &ds);
-	if (res == VK_ERROR_OUT_OF_POOL_MEMORY || res == VK_ERROR_FRAGMENTED_POOL) {
-		full_pools.push_back(pool_to_use);
-
-		pool_to_use = get_pool(device);
-		alloc_info.descriptorPool = pool_to_use;
-
-		VK_CHECK(vkAllocateDescriptorSets(device, &alloc_info, &ds));
-	}
-
-	ready_pools.push_back(pool_to_use);
-
-	return ds;
-}
-
-VkDescriptorPool VulkanDescriptorAllocator::get_pool(VkDevice device) {
-	VkDescriptorPool new_pool;
-	if (ready_pools.size() != 0) {
-		new_pool = ready_pools.back();
-		ready_pools.pop_back();
-	} else {
-		// need to create a new pool
-		new_pool = create_pool(device, sets_per_pool, ratios);
-
-		sets_per_pool *= 1.5f;
-		if (sets_per_pool > 4092) {
-			sets_per_pool = 4092;
+	if (pool_sets_it != context->descriptor_set_pools.end()) {
+		for (auto& pair : pool_sets_it->second) {
+			if (pair.second < context->max_descriptor_sets_per_pool) {
+				*r_pool_sets_it = pool_sets_it;
+			}
 		}
 	}
 
-	return new_pool;
-}
-
-VkDescriptorPool VulkanDescriptorAllocator::create_pool(VkDevice device,
-		uint32_t set_count, std::span<PoolSizeRatio> pool_ratios) {
-	std::vector<VkDescriptorPoolSize> pool_sizes;
-	for (PoolSizeRatio ratio : pool_ratios) {
-		pool_sizes.push_back(VkDescriptorPoolSize{
-				.type = ratio.type,
-				.descriptorCount =
-						static_cast<uint32_t>(ratio.ratio * set_count),
-		});
+	// Create a new one.
+	std::vector<VkDescriptorPoolSize> vk_sizes(UNIFORM_TYPE_MAX);
+	uint32_t vk_sizes_count = 0;
+	{
+		VkDescriptorPoolSize* curr_vk_size = vk_sizes.data();
+		if (p_key.uniform_type[UNIFORM_TYPE_SAMPLER]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_SAMPLER;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_SAMPLER] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		if (p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		if (p_key.uniform_type[UNIFORM_TYPE_TEXTURE]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_TEXTURE] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		if (p_key.uniform_type[UNIFORM_TYPE_IMAGE]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_IMAGE] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		if (p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		if (p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		if (p_key.uniform_type[UNIFORM_TYPE_INPUT_ATTACHMENT]) {
+			*curr_vk_size = {};
+			curr_vk_size->type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+			curr_vk_size->descriptorCount =
+					p_key.uniform_type[UNIFORM_TYPE_INPUT_ATTACHMENT] *
+					context->max_descriptor_sets_per_pool;
+			curr_vk_size++;
+			vk_sizes_count++;
+		}
+		GL_ASSERT(vk_sizes_count <= UNIFORM_TYPE_MAX);
 	}
 
-	VkDescriptorPoolCreateInfo pool_info = {
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-		.flags = 0,
-		.maxSets = set_count,
-		.poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
-		.pPoolSizes = pool_sizes.data(),
-	};
+	VkDescriptorPoolCreateInfo descriptor_set_pool_create_info = {};
+	descriptor_set_pool_create_info.sType =
+			VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptor_set_pool_create_info.flags =
+			VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
-	VkDescriptorPool new_pool;
-	vkCreateDescriptorPool(device, &pool_info, nullptr, &new_pool);
+	descriptor_set_pool_create_info.maxSets =
+			context->max_descriptor_sets_per_pool;
+	descriptor_set_pool_create_info.poolSizeCount = vk_sizes_count;
+	descriptor_set_pool_create_info.pPoolSizes = vk_sizes.data();
 
-	return new_pool;
-}
+	VkDescriptorPool vk_pool = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateDescriptorPool(context->device,
+			&descriptor_set_pool_create_info, nullptr, &vk_pool));
 
-void DescriptorWriter::write_buffer(int binding, VkBuffer buffer, size_t size,
-		size_t offset, VkDescriptorType type) {
-	VkDescriptorBufferInfo& info =
-			buffer_infos.emplace_back(VkDescriptorBufferInfo{
-					.buffer = buffer,
-					.offset = offset,
-					.range = size,
-			});
-
-	VkWriteDescriptorSet write = {
-		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-		.dstSet = VK_NULL_HANDLE, //left empty for now until we need to write it
-		.dstBinding = static_cast<uint32_t>(binding),
-		.descriptorCount = 1,
-		.descriptorType = type,
-		.pBufferInfo = &info,
-	};
-
-	writes.push_back(write);
-}
-
-void DescriptorWriter::write_image(int binding, VkImageView image,
-		VkSampler sampler, VkImageLayout layout, VkDescriptorType type) {
-	VkDescriptorImageInfo& info =
-			image_infos.emplace_back(VkDescriptorImageInfo{
-					.sampler = sampler,
-					.imageView = image,
-					.imageLayout = layout,
-			});
-
-	VkWriteDescriptorSet write = {
-		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-		.dstSet = VK_NULL_HANDLE, //left empty for now until we need to write it
-		.dstBinding = static_cast<uint32_t>(binding),
-		.descriptorCount = 1,
-		.descriptorType = type,
-		.pImageInfo = &info,
-	};
-
-	writes.push_back(write);
-}
-
-void DescriptorWriter::clear() {
-	image_infos.clear();
-	writes.clear();
-	buffer_infos.clear();
-}
-
-void DescriptorWriter::update_set(VkDevice device, VkDescriptorSet set) {
-	for (VkWriteDescriptorSet& write : writes) {
-		write.dstSet = set;
+	// Bookkeep.
+	if (pool_sets_it == context->descriptor_set_pools.end()) {
+		pool_sets_it = context->descriptor_set_pools
+							   .emplace(p_key,
+									   std::unordered_map<VkDescriptorPool,
+											   uint32_t>())
+							   .first;
 	}
 
+	std::unordered_map<VkDescriptorPool, uint32_t>& pool_rcs =
+			pool_sets_it->second;
+	pool_rcs.emplace(vk_pool, 0);
+	*r_pool_sets_it = pool_sets_it;
+
+	return vk_pool;
+}
+
+void descriptor_set_pool_unreference(Context p_context,
+		DescriptorSetPools::iterator p_pool_sets_it,
+		VkDescriptorPool p_vk_descriptor_pool) {
+	VulkanContext* context = (VulkanContext*)p_context;
+
+	std::unordered_map<VkDescriptorPool, uint32_t>::iterator pool_rcs_it =
+			p_pool_sets_it->second.find(p_vk_descriptor_pool);
+	pool_rcs_it->second--;
+	if (pool_rcs_it->second == 0) {
+		vkDestroyDescriptorPool(context->device, p_vk_descriptor_pool, nullptr);
+		p_pool_sets_it->second.erase(p_vk_descriptor_pool);
+		if (p_pool_sets_it->second.empty()) {
+			context->descriptor_set_pools.erase(p_pool_sets_it);
+		}
+	}
+}
+
+UniformSet uniform_set_create(Context p_context,
+		VectorView<BoundUniform> p_uniforms, Shader p_shader,
+		uint32_t p_set_index) {
+	DescriptorSetPoolKey pool_key;
+
+	std::vector<VkWriteDescriptorSet> vk_writes(p_uniforms.size());
+	for (uint32_t i = 0; i < p_uniforms.size(); i++) {
+		const BoundUniform& uniform = p_uniforms[i];
+
+		vk_writes[i] = {};
+		vk_writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		vk_writes[i].dstBinding = uniform.binding;
+		vk_writes[i].descriptorType =
+				VK_DESCRIPTOR_TYPE_MAX_ENUM; // Invalid value.
+
+		uint32_t num_descriptors = 1;
+
+		switch (uniform.type) {
+			case UNIFORM_TYPE_SAMPLER: {
+				num_descriptors = uniform.ids.size();
+				std::vector<VkDescriptorImageInfo> vk_img_infos(
+						num_descriptors);
+
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					vk_img_infos[j] = {};
+					vk_img_infos[j].sampler = (VkSampler)uniform.ids[j];
+					vk_img_infos[j].imageView = VK_NULL_HANDLE;
+					vk_img_infos[j].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				}
+
+				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+				vk_writes[i].pImageInfo = vk_img_infos.data();
+			} break;
+			case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: {
+				num_descriptors = uniform.ids.size() / 2;
+				std::vector<VkDescriptorImageInfo> vk_img_infos(
+						num_descriptors);
+
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					vk_img_infos[j] = {};
+					vk_img_infos[j].sampler = (VkSampler)uniform.ids[j * 2 + 0];
+					vk_img_infos[j].imageView =
+							((const VulkanImage*)uniform.ids[j * 2 + 1])
+									->vk_image_view;
+					vk_img_infos[j].imageLayout =
+							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				}
+
+				vk_writes[i].descriptorType =
+						VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				vk_writes[i].pImageInfo = vk_img_infos.data();
+			} break;
+			case UNIFORM_TYPE_TEXTURE: {
+				num_descriptors = uniform.ids.size();
+				std::vector<VkDescriptorImageInfo> vk_img_infos(
+						num_descriptors);
+
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					vk_img_infos[j] = {};
+					vk_img_infos[j].imageView =
+							((const VulkanImage*)uniform.ids[j])->vk_image_view;
+					vk_img_infos[j].imageLayout =
+							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				}
+
+				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				vk_writes[i].pImageInfo = vk_img_infos.data();
+			} break;
+			case UNIFORM_TYPE_IMAGE: {
+				num_descriptors = uniform.ids.size();
+				std::vector<VkDescriptorImageInfo> vk_img_infos(
+						num_descriptors);
+
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					vk_img_infos[j] = {};
+					vk_img_infos[j].imageView =
+							((const VulkanImage*)uniform.ids[j])->vk_image_view;
+					vk_img_infos[j].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+				}
+
+				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				vk_writes[i].pImageInfo = vk_img_infos.data();
+			} break;
+			case UNIFORM_TYPE_UNIFORM_BUFFER: {
+				const VulkanBuffer* buf_info =
+						(const VulkanBuffer*)uniform.ids[0];
+				VkDescriptorBufferInfo vk_buf_info = {};
+				vk_buf_info.buffer = buf_info->vk_buffer;
+				vk_buf_info.range = buf_info->size;
+
+				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				vk_writes[i].pBufferInfo = &vk_buf_info;
+			} break;
+			case UNIFORM_TYPE_STORAGE_BUFFER: {
+				const VulkanBuffer* buf_info =
+						(const VulkanBuffer*)uniform.ids[0];
+				VkDescriptorBufferInfo vk_buf_info = {};
+				vk_buf_info.buffer = buf_info->vk_buffer;
+				vk_buf_info.range = buf_info->size;
+
+				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				vk_writes[i].pBufferInfo = &vk_buf_info;
+			} break;
+			case UNIFORM_TYPE_INPUT_ATTACHMENT: {
+				num_descriptors = uniform.ids.size();
+				std::vector<VkDescriptorImageInfo> vk_img_infos(
+						num_descriptors);
+
+				for (uint32_t j = 0; j < uniform.ids.size(); j++) {
+					vk_img_infos[j] = {};
+					vk_img_infos[j].imageView =
+							((const VulkanImage*)uniform.ids[j])->vk_image_view;
+					vk_img_infos[j].imageLayout =
+							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				}
+
+				vk_writes[i].descriptorType =
+						VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+				vk_writes[i].pImageInfo = vk_img_infos.data();
+			} break;
+			default: {
+				GL_ASSERT(false);
+			}
+		}
+
+		vk_writes[i].descriptorCount = num_descriptors;
+
+		if (pool_key.uniform_type[uniform.type] == MAX_UNIFORM_POOL_ELEMENT) {
+			GL_LOG_ERROR("Uniform set reached the limit of bindings for the "
+						 "same type ({})",
+					static_cast<int>(MAX_UNIFORM_POOL_ELEMENT));
+
+			return UniformSet();
+		}
+		pool_key.uniform_type[uniform.type] += num_descriptors;
+	}
+
+	VulkanContext* context = (VulkanContext*)p_context;
+
+	// Need a descriptor pool.
+	DescriptorSetPools::iterator pool_sets_it = {};
+	VkDescriptorPool vk_pool = descriptor_set_pool_find_or_create(
+			p_context, pool_key, &pool_sets_it);
+	GL_ASSERT(vk_pool);
+	pool_sets_it->second[vk_pool]++;
+
+	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {};
+	descriptor_set_allocate_info.sType =
+			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptor_set_allocate_info.descriptorPool = vk_pool;
+	descriptor_set_allocate_info.descriptorSetCount = 1;
+
+	const VulkanShader* shader_info = (const VulkanShader*)p_shader;
+	descriptor_set_allocate_info.pSetLayouts =
+			&shader_info->descriptor_set_layouts[p_set_index];
+
+	VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
+	VkResult res = vkAllocateDescriptorSets(
+			context->device, &descriptor_set_allocate_info, &vk_descriptor_set);
+	if (res) {
+		descriptor_set_pool_unreference(p_context, pool_sets_it, vk_pool);
+
+		GL_LOG_ERROR("Cannot allocate descriptor sets, error {}.",
+				static_cast<int>(res));
+
+		return UniformSet();
+	}
+
+	for (uint32_t i = 0; i < p_uniforms.size(); i++) {
+		vk_writes[i].dstSet = vk_descriptor_set;
+	}
 	vkUpdateDescriptorSets(
-			device, (uint32_t)writes.size(), writes.data(), 0, nullptr);
+			context->device, p_uniforms.size(), vk_writes.data(), 0, nullptr);
+
+	// Bookkeep.
+	VulkanUniformSet* usi = VersatileResource::allocate<VulkanUniformSet>(
+			context->resources_allocator);
+	usi->vk_descriptor_set = vk_descriptor_set;
+	usi->vk_descriptor_pool = vk_pool;
+	usi->pool_sets_it = pool_sets_it;
+
+	return UniformSet(usi);
 }
+
+void uniform_set_free(Context p_context, UniformSet p_uniform_set) {
+	VulkanContext* context = (VulkanContext*)p_context;
+	VulkanUniformSet* usi = (VulkanUniformSet*)p_uniform_set;
+
+	vkFreeDescriptorSets(context->device, usi->vk_descriptor_pool, 1,
+			&usi->vk_descriptor_set);
+
+	descriptor_set_pool_unreference(
+			p_context, usi->pool_sets_it, usi->vk_descriptor_pool);
+
+	VersatileResource::free(context->resources_allocator, usi);
+}
+
+} //namespace vk

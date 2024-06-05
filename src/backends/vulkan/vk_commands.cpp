@@ -1,161 +1,260 @@
 #include "backends/vulkan/vk_commands.h"
 
-#include "backends/vulkan/vk_init.h"
+#include "backends/vulkan/vk_buffer.h"
+#include "backends/vulkan/vk_common.h"
+#include "backends/vulkan/vk_context.h"
+#include "backends/vulkan/vk_image.h"
+#include "backends/vulkan/vk_shader.h"
+#include "renderer/render_backend.h"
+#include "renderer/types.h"
 
 #include <vulkan/vulkan_core.h>
 
-VulkanCommandPool VulkanCommandPool::create(
-		VkDevice device, const VkCommandPoolCreateInfo* info) {
-	VulkanCommandPool command_pool{ VK_NULL_HANDLE };
+namespace vk {
+
+CommandPool command_pool_create(
+		Context p_context, CommandBuffer p_cmd, CommandQueue p_queue) {
+	VulkanContext* context = (VulkanContext*)p_context;
+	VulkanQueue* queue = (VulkanQueue*)p_queue;
+
+	VkCommandPoolCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	create_info.queueFamilyIndex = queue->queue_family;
+
+	VkCommandPool vk_command_pool = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateCommandPool(
-			device, info, nullptr, &command_pool.command_pool));
+			context->device, &create_info, nullptr, &vk_command_pool));
 
-	return command_pool;
+	return CommandPool(vk_command_pool);
 }
 
-VulkanCommandPool VulkanCommandPool::create(VkDevice device,
-		uint32_t queue_family_index, VkCommandPoolCreateFlags flags) {
-	VkCommandPoolCreateInfo pool_info =
-			vkinit::command_pool_create_info(queue_family_index, flags);
+void command_pool_free(
+		Context p_context, CommandBuffer p_cmd, CommandPool p_command_pool) {
+	VulkanContext* context = (VulkanContext*)p_context;
 
-	return VulkanCommandPool::create(device, &pool_info);
+	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
+
+	vkDestroyCommandPool(context->device, command_pool, nullptr);
 }
 
-void VulkanCommandPool::destroy(
-		VkDevice device, VulkanCommandPool& command_pool) {
-	vkDestroyCommandPool(device, command_pool.command_pool, nullptr);
-}
+CommandBuffer command_pool_allocate(
+		Context p_context, CommandPool p_command_pool) {
+	VulkanContext* context = (VulkanContext*)p_context;
 
-VulkanCommandBuffer VulkanCommandPool::allocate_buffer(VkDevice device) {
-	VkCommandBufferAllocateInfo cmd_alloc_info =
-			vkinit::command_buffer_allocate_info(command_pool, 1);
+	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
 
-	VulkanCommandBuffer command_buffer{ VK_NULL_HANDLE };
+	VkCommandBufferAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	alloc_info.pNext = nullptr;
+	alloc_info.commandPool = command_pool;
+	alloc_info.commandBufferCount = 1;
+	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+	VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
 	VK_CHECK(vkAllocateCommandBuffers(
-			device, &cmd_alloc_info, &command_buffer.command_buffer));
+			context->device, &alloc_info, &vk_command_buffer));
 
-	return command_buffer;
+	return CommandBuffer(vk_command_buffer);
 }
 
-std::vector<VulkanCommandBuffer> VulkanCommandPool::allocate_buffer(
-		VkDevice device, const uint32_t count) {
-	VkCommandBufferAllocateInfo cmd_alloc_info =
-			vkinit::command_buffer_allocate_info(command_pool, count);
+std::vector<CommandBuffer> command_pool_allocate(
+		Context p_context, CommandPool p_command_pool, const uint32_t p_count) {
+	VulkanContext* context = (VulkanContext*)p_context;
 
-	std::vector<VulkanCommandBuffer> command_buffers(count);
+	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
 
-	// retrieve VkCommandBuffer* from our type
-	std::vector<VkCommandBuffer*> command_buffer_ptrs(count);
-	std::transform(command_buffers.begin(), command_buffers.end(),
-			command_buffer_ptrs.begin(),
-			[](VulkanCommandBuffer& cmd_buffer) -> VkCommandBuffer* {
-				return &cmd_buffer.command_buffer;
-			});
+	VkCommandBufferAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	alloc_info.pNext = nullptr;
+	alloc_info.commandPool = command_pool;
+	alloc_info.commandBufferCount = p_count;
+	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-	VK_CHECK(vkAllocateCommandBuffers(
-			device, &cmd_alloc_info, command_buffer_ptrs.front()));
+	std::vector<CommandBuffer> command_buffers(p_count);
+	VK_CHECK(vkAllocateCommandBuffers(context->device, &alloc_info,
+			(VkCommandBuffer*)&command_buffers.front()));
 
 	return command_buffers;
 }
 
-void VulkanCommandPool::reset(VkDevice device) {
-	vkResetCommandPool(
-			device, command_pool, VK_COMMAND_POOL_RESET_FLAG_BITS_MAX_ENUM);
+void command_pool_reset(Context p_context, CommandPool p_command_pool) {
+	VulkanContext* context = (VulkanContext*)p_context;
+
+	vkResetCommandPool(context->device, (VkCommandPool)p_command_pool,
+			VK_COMMAND_POOL_RESET_FLAG_BITS_MAX_ENUM);
 }
 
-void VulkanCommandBuffer::begin(VkBufferUsageFlags flags) {
-	VkCommandBufferBeginInfo info = vkinit::command_buffer_begin_info(flags);
-	vkBeginCommandBuffer(command_buffer, &info);
+void command_begin(CommandBuffer p_cmd) {
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.pNext = nullptr;
+	begin_info.pInheritanceInfo = nullptr;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer((VkCommandBuffer)p_cmd, &begin_info);
 }
 
-void VulkanCommandBuffer::end() { vkEndCommandBuffer(command_buffer); }
-
-void VulkanCommandBuffer::reset(VkCommandBufferResetFlags flags) {
-	vkResetCommandBuffer(command_buffer, flags);
+void command_end(CommandBuffer p_cmd) {
+	vkEndCommandBuffer((VkCommandBuffer)p_cmd);
 }
 
-void VulkanCommandBuffer::submit(VkQueue queue, VkFence fence,
-		const VkSemaphoreSubmitInfo* wait_semaphore,
-		const VkSemaphoreSubmitInfo* signal_semaphore) {
-	VkCommandBufferSubmitInfo cmd_info =
-			vkinit::command_buffer_submit_info(command_buffer);
-
-	VkSubmitInfo2 submit =
-			vkinit::submit_info(&cmd_info, wait_semaphore, signal_semaphore);
-
-	VK_CHECK(vkQueueSubmit2(queue, 1, &submit, fence));
+void command_reset(CommandBuffer p_cmd) {
+	vkResetCommandBuffer((VkCommandBuffer)p_cmd, 0);
 }
 
-void VulkanCommandBuffer::begin_rendering(VkExtent2D draw_extent,
-		std::span<VkRenderingAttachmentInfo> color_attachments,
-		const VkRenderingAttachmentInfo* depth_attachment) {
-	VkRenderingInfo render_info = {
-		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-		.pNext = nullptr,
-		.renderArea = VkRect2D{ VkOffset2D{ 0, 0 }, draw_extent },
-		.layerCount = 1,
-		.colorAttachmentCount = (uint32_t)color_attachments.size(),
-		.pColorAttachments = color_attachments.data(),
-		.pDepthAttachment = depth_attachment,
-		.pStencilAttachment = nullptr,
-	};
+void command_submit(CommandBuffer p_cmd, CommandQueue p_queue, Fence p_fence,
+		Semaphore p_wait_semaphore, Semaphore p_signal_semaphore) {
+	VkCommandBufferSubmitInfo cmd_info{};
+	cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+	cmd_info.pNext = nullptr;
+	cmd_info.commandBuffer = (VkCommandBuffer)p_cmd;
+	cmd_info.deviceMask = 0;
 
-	vkCmdBeginRendering(command_buffer, &render_info);
+	VkSemaphoreSubmitInfo wait_semaphore_info{};
+	wait_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	wait_semaphore_info.pNext = nullptr;
+	wait_semaphore_info.semaphore = (VkSemaphore)p_wait_semaphore;
+	wait_semaphore_info.stageMask =
+			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT; // TODO get as
+															 // parameter
+	wait_semaphore_info.deviceIndex = 0;
+	wait_semaphore_info.value = 1;
+
+	VkSemaphoreSubmitInfo signal_semaphore_info{};
+	wait_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+	wait_semaphore_info.pNext = nullptr;
+	wait_semaphore_info.semaphore = (VkSemaphore)p_signal_semaphore;
+	wait_semaphore_info.stageMask =
+			VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT; // TODO get as parameter
+	wait_semaphore_info.deviceIndex = 0;
+	wait_semaphore_info.value = 1;
+
+	VkSubmitInfo2 submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+	submit_info.pNext = nullptr;
+	submit_info.waitSemaphoreInfoCount = p_wait_semaphore == nullptr ? 0 : 1;
+	submit_info.pWaitSemaphoreInfos = &signal_semaphore_info;
+	submit_info.signalSemaphoreInfoCount =
+			p_signal_semaphore == nullptr ? 0 : 1;
+	submit_info.pSignalSemaphoreInfos = &signal_semaphore_info;
+	submit_info.commandBufferInfoCount = 1;
+	submit_info.pCommandBufferInfos = &cmd_info;
+
+	VulkanQueue* queue = (VulkanQueue*)p_queue;
+
+	VK_CHECK(vkQueueSubmit2(queue->queue, 1, &submit_info, (VkFence)p_fence));
 }
 
-void VulkanCommandBuffer::end_rendering() { vkCmdEndRendering(command_buffer); }
+void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
+		VectorView<Image> p_color_attachments, Image p_depth_attachment) {
+	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
+			p_color_attachments.size());
+	for (uint32_t i = 0; i < p_color_attachments.size(); i++) {
+		VulkanImage* vk_image = (VulkanImage*)p_color_attachments[i];
 
-void VulkanCommandBuffer::bind_pipeline(const VulkanPipeline& pipeline) {
-	vkCmdBindPipeline(
-			command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
+		auto& info = color_attachment_infos[i];
+		info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		info.pNext = nullptr;
+		info.imageView = vk_image->vk_image_view;
+		info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		info.loadOp =
+				VK_ATTACHMENT_LOAD_OP_LOAD; // TODO VK_ATTACHMENT_LOAD_OP_CLEAR
+		info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		// info.clearValue = clear_value; // TODO
+	}
+
+	VulkanImage* vk_depth_image = (VulkanImage*)p_depth_attachment;
+
+	VkRenderingAttachmentInfo depth_attachment_info{};
+	depth_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	depth_attachment_info.pNext = nullptr;
+	depth_attachment_info.imageView = vk_depth_image->vk_image_view;
+	depth_attachment_info.imageLayout =
+			VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+	depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depth_attachment_info.clearValue.depthStencil.depth = 1.0f;
+
+	VkRenderingInfo render_info = {};
+	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	render_info.pNext = nullptr;
+	render_info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 },
+		{ p_draw_extent.x, p_draw_extent.y } };
+	render_info.layerCount = 1;
+	render_info.colorAttachmentCount = p_color_attachments.size();
+	render_info.pColorAttachments = color_attachment_infos.data();
+	render_info.pDepthAttachment = &depth_attachment_info;
+	render_info.pStencilAttachment = nullptr;
+
+	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);
 }
 
-void VulkanCommandBuffer::bind_pipeline(const VulkanComputePipeline& pipeline) {
-	vkCmdBindPipeline(
-			command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
+void command_end_rendering(CommandBuffer p_cmd) {
+	vkCmdEndRendering((VkCommandBuffer)p_cmd);
 }
 
-void VulkanCommandBuffer::bind_index_buffer(const VulkanBuffer& index_buffer,
-		VkDeviceSize offset, VkIndexType index_type) {
-	vkCmdBindIndexBuffer(
-			command_buffer, index_buffer.buffer, offset, index_type);
+void command_bind_graphics_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline) {
+	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			(VkPipeline)p_pipeline);
 }
 
-void VulkanCommandBuffer::draw_indexed(uint32_t index_count,
-		uint32_t instance_count, uint32_t first_index, int32_t vertex_offset,
-		uint32_t first_instance) {
-	vkCmdDrawIndexed(command_buffer, index_count, instance_count, first_index,
-			vertex_offset, first_instance);
+void command_bind_compute_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline) {
+	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+			(VkPipeline)p_pipeline);
 }
 
-void VulkanCommandBuffer::draw_indexed_indirect(VulkanBuffer buffer,
-		VkDeviceSize offset, uint32_t draw_count, uint32_t stride) {
-	vkCmdDrawIndexedIndirect(
-			command_buffer, buffer.buffer, offset, draw_count, stride);
+void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
+		uint64_t p_offset, IndexType p_index_type) {
+	VulkanBuffer* index_buffer = (VulkanBuffer*)p_index_buffer;
+
+	vkCmdBindIndexBuffer((VkCommandBuffer)p_cmd, index_buffer->vk_buffer,
+			p_offset,
+			p_index_type == INDEX_TYPE_UINT16 ? VK_INDEX_TYPE_UINT16
+											  : VK_INDEX_TYPE_UINT32);
 }
 
-void VulkanCommandBuffer::dispatch(uint32_t group_count_x,
-		uint32_t group_count_y, uint32_t group_count_z) {
-	vkCmdDispatch(command_buffer, group_count_x, group_count_y, group_count_z);
+void command_draw_indexed(CommandBuffer p_cmd, uint32_t p_index_count,
+		uint32_t p_instance_count, uint32_t p_first_index,
+		int32_t p_vertex_offset, uint32_t p_first_instance) {
+	vkCmdDrawIndexed((VkCommandBuffer)p_cmd, p_index_count, p_instance_count,
+			p_first_index, p_vertex_offset, p_first_instance);
 }
 
-void VulkanCommandBuffer::bind_descriptor_sets(
-		const VulkanPipelineLayout& pipeline_layout, uint32_t first_set,
-		uint32_t descriptor_set_count, const VkDescriptorSet* descriptor_sets,
-		VkPipelineBindPoint bind_point) {
-	vkCmdBindDescriptorSets(command_buffer, bind_point, pipeline_layout.layout,
-			first_set, descriptor_set_count, descriptor_sets, 0, nullptr);
+void command_draw_indexed_indirect(CommandBuffer p_cmd, Buffer p_buffer,
+		uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) {
+	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
+
+	vkCmdDrawIndexedIndirect((VkCommandBuffer)p_cmd, buffer->vk_buffer,
+			p_offset, p_draw_count, p_stride);
 }
 
-void VulkanCommandBuffer::push_constants(
-		const VulkanPipelineLayout& pipeline_layout,
-		VkShaderStageFlags shader_stages, VkDeviceSize offset, uint32_t size,
-		const void* push_constants) {
-	vkCmdPushConstants(command_buffer, pipeline_layout.layout, shader_stages,
-			offset, size, push_constants);
+void command_dispatch(CommandBuffer p_cmd, uint32_t p_group_count_x,
+		uint32_t p_group_count_y, uint32_t p_group_count_z) {
+	vkCmdDispatch((VkCommandBuffer)p_cmd, p_group_count_x, p_group_count_y,
+			p_group_count_z);
 }
 
-void VulkanCommandBuffer::set_viewport(Vec2f size) {
+void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
+		uint32_t p_first_set, VectorView<UniformSet> p_uniform_sets,
+		PipelineType p_type) {
+	VulkanShader* shader = (VulkanShader*)p_shader;
+
+	vkCmdBindDescriptorSets((VkCommandBuffer)p_cmd,
+			p_type == PIPELINE_TYPE_GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS
+											 : VK_PIPELINE_BIND_POINT_COMPUTE,
+			shader->pipeline_layout, p_first_set, p_uniform_sets.size(),
+			(const VkDescriptorSet*)p_uniform_sets.data(), 0, nullptr);
+}
+
+void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
+		uint64_t p_offset, uint32_t p_size, const void* p_push_constants) {
+	VulkanShader* shader = (VulkanShader*)p_shader;
+
+	vkCmdPushConstants((VkCommandBuffer)p_cmd, shader->pipeline_layout,
+			VK_SHADER_STAGE_ALL, p_offset, p_size, p_push_constants);
+}
+
+void command_set_viewport(CommandBuffer p_cmd, Vec2f size) {
 	VkViewport viewport = {
 		.x = 0,
 		.y = 0,
@@ -165,65 +264,67 @@ void VulkanCommandBuffer::set_viewport(Vec2f size) {
 		.maxDepth = 1.0f,
 	};
 
-	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	vkCmdSetViewport((VkCommandBuffer)p_cmd, 0, 1, &viewport);
 }
 
-void VulkanCommandBuffer::set_scissor(VkExtent2D size, VkOffset2D offset) {
-	VkRect2D scissor = {
-		.offset = offset,
-		.extent = size,
-	};
+void command_set_scissor(
+		CommandBuffer p_cmd, const Vec2u& p_size, const Vec2u& p_offset) {
+	VkRect2D scissor = {};
+	memcpy(&scissor.extent, &p_size, sizeof(VkExtent2D));
+	memcpy(&scissor.offset, &p_offset, sizeof(VkExtent2D));
 
-	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	vkCmdSetScissor((VkCommandBuffer)p_cmd, 0, 1, &scissor);
 }
 
-void VulkanCommandBuffer::clear_color_image(VkImage image,
-		VkImageLayout image_layout, const VkClearColorValue* clear_color,
-		VkImageAspectFlags aspect_flags) {
-	VkImageSubresourceRange image_range = {
-		.aspectMask = aspect_flags,
-		.levelCount = 1,
-		.layerCount = 1,
-	};
-	vkCmdClearColorImage(
-			command_buffer, image, image_layout, clear_color, 1, &image_range);
+void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
+		Buffer p_dst_buffer, VectorView<BufferCopyRegion> p_regions) {
+	VulkanBuffer* src_buffer = (VulkanBuffer*)p_src_buffer;
+	VulkanBuffer* dst_buffer = (VulkanBuffer*)p_dst_buffer;
+
+	static_assert(sizeof(BufferCopyRegion) == sizeof(VkBufferCopy));
+
+	std::vector<VkBufferCopy> regions(p_regions.size());
+	for (uint32_t i = 0; i < p_regions.size(); i++) {
+		VkBufferCopy& copy = regions[i];
+		memcpy(&copy, &p_regions[i], sizeof(VkBufferCopy));
+	}
+
+	vkCmdCopyBuffer((VkCommandBuffer)p_cmd, src_buffer->vk_buffer,
+			dst_buffer->vk_buffer, p_regions.size(), regions.data());
 }
 
-void VulkanCommandBuffer::copy_buffer(const VulkanBuffer& src_buffer,
-		VulkanBuffer& dst_buffer, uint32_t region_count,
-		const VkBufferCopy* regions) {
-	vkCmdCopyBuffer(command_buffer, src_buffer.buffer, dst_buffer.buffer,
-			region_count, regions);
+void command_copy_buffer_to_image(CommandBuffer p_cmd, Buffer p_src_buffer,
+		Image p_dst_image, uint32_t p_region_count,
+		VectorView<BufferImageCopyRegion> p_regions) {
+	VulkanBuffer* src_buffer = (VulkanBuffer*)p_src_buffer;
+	VulkanImage* dst_image = (VulkanImage*)p_dst_image;
+
+	static_assert(sizeof(BufferImageCopyRegion) == sizeof(VkBufferImageCopy));
+
+	std::vector<VkBufferImageCopy> regions(p_regions.size());
+	for (uint32_t i = 0; i < p_regions.size(); i++) {
+		VkBufferImageCopy& copy = regions[i];
+		memcpy(&copy, &p_regions[i], sizeof(VkBufferImageCopy));
+	}
+
+	vkCmdCopyBufferToImage((VkCommandBuffer)p_cmd, src_buffer->vk_buffer,
+			dst_image->vk_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			p_regions.size(), regions.data());
 }
 
-void VulkanCommandBuffer::copy_buffer_to_image(const VulkanBuffer& src_buffer,
-		Ref<VulkanImage> dst_image, VkImageLayout image_layout,
-		uint32_t region_count, const VkBufferImageCopy* regions) {
-	vkCmdCopyBufferToImage(command_buffer, src_buffer.buffer, dst_image->image,
-			image_layout, region_count, regions);
-}
+void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
+		Image p_dst_image, const Vec2u& p_src_extent,
+		const Vec2u& p_dst_extent) {
+	VkImageBlit2 blit_region = {};
+	blit_region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
+	blit_region.pNext = nullptr;
 
-void VulkanCommandBuffer::copy_image_to_image(
-		Ref<VulkanImage> src_image, Ref<VulkanImage> dst_image) {
-	copy_image_to_image(src_image->image, dst_image->image,
-			{ src_image->image_extent.width, src_image->image_extent.height },
-			{ dst_image->image_extent.width, dst_image->image_extent.height });
-}
-
-void VulkanCommandBuffer::copy_image_to_image(VkImage src_image,
-		VkImage dst_image, const VkExtent2D& src_extent,
-		const VkExtent2D& dst_extent) {
-	VkImageBlit2 blit_region = {
-		.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
-		.pNext = nullptr,
-	};
-
-	blit_region.srcOffsets[1].x = src_extent.width;
-	blit_region.srcOffsets[1].y = src_extent.height;
+	blit_region.srcOffsets[1].x = p_src_extent.x;
+	blit_region.srcOffsets[1].y = p_src_extent.y;
 	blit_region.srcOffsets[1].z = 1;
 
-	blit_region.dstOffsets[1].x = dst_extent.width;
-	blit_region.dstOffsets[1].y = dst_extent.height;
+	blit_region.dstOffsets[1].x = p_dst_extent.x;
+	blit_region.dstOffsets[1].y = p_dst_extent.y;
 	blit_region.dstOffsets[1].z = 1;
 
 	blit_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -236,53 +337,63 @@ void VulkanCommandBuffer::copy_image_to_image(VkImage src_image,
 	blit_region.dstSubresource.layerCount = 1;
 	blit_region.dstSubresource.mipLevel = 0;
 
-	VkBlitImageInfo2 blit_info{
-		.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
-		.pNext = nullptr,
-		.srcImage = src_image,
-		.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		.dstImage = dst_image,
-		.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		.regionCount = 1,
-		.pRegions = &blit_region,
-		.filter = VK_FILTER_LINEAR,
-	};
+	VulkanImage* src_image = (VulkanImage*)p_src_image;
+	VulkanImage* dst_image = (VulkanImage*)p_dst_image;
 
-	vkCmdBlitImage2(command_buffer, &blit_info);
+	VkBlitImageInfo2 blit_info = {};
+	blit_info.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
+	blit_info.pNext = nullptr;
+	blit_info.srcImage = src_image->vk_image;
+	blit_info.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	blit_info.dstImage = dst_image->vk_image;
+	blit_info.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	blit_info.regionCount = 1;
+	blit_info.pRegions = &blit_region;
+	blit_info.filter = VK_FILTER_LINEAR;
+
+	vkCmdBlitImage2((VkCommandBuffer)p_cmd, &blit_info);
 }
 
-void VulkanCommandBuffer::transition_image(Ref<VulkanImage> image,
-		VkImageLayout current_layout, VkImageLayout new_layout) {
-	transition_image(image->image, current_layout, new_layout);
-}
-
-void VulkanCommandBuffer::transition_image(
-		VkImage image, VkImageLayout current_layout, VkImageLayout new_layout) {
+void command_transition_image(CommandBuffer p_cmd, Image p_image,
+		ImageLayout p_current_layout, ImageLayout p_new_layout) {
 	VkImageAspectFlags aspect_mask =
-			(new_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+			(p_new_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
 			? VK_IMAGE_ASPECT_DEPTH_BIT
 			: VK_IMAGE_ASPECT_COLOR_BIT;
 
-	VkImageMemoryBarrier2 image_barrier = {
-		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-		.pNext = nullptr,
-		.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-		.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-		.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-		.dstAccessMask =
-				VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
-		.oldLayout = current_layout,
-		.newLayout = new_layout,
-		.image = image,
-		.subresourceRange = vkinit::image_subresource_range(aspect_mask),
-	};
+	VkImageLayout vk_current_layout =
+			static_cast<VkImageLayout>(p_current_layout);
+	VkImageLayout vk_new_layout = static_cast<VkImageLayout>(p_new_layout);
 
-	VkDependencyInfo dep_info = {
-		.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-		.pNext = nullptr,
-		.imageMemoryBarrierCount = 1,
-		.pImageMemoryBarriers = &image_barrier,
-	};
+	VulkanImage* image = (VulkanImage*)p_image;
 
-	vkCmdPipelineBarrier2(command_buffer, &dep_info);
+	VkImageSubresourceRange sub_image = {};
+	sub_image.aspectMask = aspect_mask;
+	sub_image.baseMipLevel = 0;
+	sub_image.levelCount = VK_REMAINING_MIP_LEVELS;
+	sub_image.baseArrayLayer = 0;
+	sub_image.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+	VkImageMemoryBarrier2 image_barrier = {};
+	image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+	image_barrier.pNext = nullptr;
+	image_barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+	image_barrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+	image_barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+	image_barrier.dstAccessMask =
+			VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+	image_barrier.oldLayout = vk_current_layout;
+	image_barrier.newLayout = vk_new_layout;
+	image_barrier.image = image->vk_image;
+	image_barrier.subresourceRange = sub_image;
+
+	VkDependencyInfo dep_info = {};
+	dep_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	dep_info.pNext = nullptr;
+	dep_info.imageMemoryBarrierCount = 1;
+	dep_info.pImageMemoryBarriers = &image_barrier;
+
+	vkCmdPipelineBarrier2((VkCommandBuffer)p_cmd, &dep_info);
 }
+
+} //namespace vk

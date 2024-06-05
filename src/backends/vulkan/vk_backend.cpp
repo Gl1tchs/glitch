@@ -82,13 +82,13 @@ Context VulkanRenderBackend::init(Ref<Window> window) {
 
 	s_context->device = vkb_device.device;
 
-	s_context->graphics_queue = Queue{
+	s_context->graphics_queue = VulkanQueue{
 		.queue = vkb_device.get_queue(vkb::QueueType::graphics).value(),
 		.queue_family =
 				vkb_device.get_queue_index(vkb::QueueType::graphics).value(),
 	};
 
-	s_context->present_queue = Queue{
+	s_context->present_queue = VulkanQueue{
 		.queue = vkb_device.get_queue(vkb::QueueType::present).value(),
 		.queue_family =
 				vkb_device.get_queue_index(vkb::QueueType::present).value(),

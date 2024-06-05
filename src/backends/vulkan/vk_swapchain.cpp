@@ -1,52 +1,54 @@
 #include "backends/vulkan/vk_swapchain.h"
 
+#include "backends/vulkan/vk_context.h"
+
 #include <VkBootstrap.h>
 #include <vulkan/vulkan_core.h>
 
-VkResult VulkanSwapchain::request_next_image(const VulkanContext& context,
-		VkSemaphore semaphore, uint32_t* image_index) {
-	uint32_t swapchain_image_index;
-	return vkAcquireNextImageKHR(context.device, swapchain, UINT64_MAX,
-			semaphore, VK_NULL_HANDLE, image_index);
-}
+namespace vk {
 
-void VulkanSwapchain::resize(const VulkanContext& context, Vec2u size) {
-	vkDeviceWaitIdle(context.device);
-
-	// create new swapchain with the old reference
-	VulkanSwapchain new_swapchain;
-	create(context, size, &new_swapchain, swapchain);
-
-	// destroy the old swapchain
-	destroy(context, this);
-
-	// make new swapchain
-	*this = new_swapchain;
-}
-
-Ref<VulkanSwapchain> VulkanSwapchain::create(
-		const VulkanContext& context, Vec2u size) {
-	Ref<VulkanSwapchain> swapchain = create_ref<VulkanSwapchain>();
-	create(context, size, swapchain.get());
-
-	return swapchain;
-}
-
-void VulkanSwapchain::create(const VulkanContext& context, Vec2u size,
-		VulkanSwapchain* out_swapchain, VkSwapchainKHR old_swapchain) {
-	vkb::SwapchainBuilder swapchain_builder{ context.chosen_gpu, context.device,
-		context.surface };
-
-	// for faster recreation
-	if (old_swapchain != VK_NULL_HANDLE) {
-		swapchain_builder.set_old_swapchain(old_swapchain);
+static void _swap_chain_release(
+		VulkanContext* p_context, VulkanSwapchain* p_swapchain) {
+	// destroy swapchain resources
+	for (int i = 0; i < p_swapchain->image_views.size(); i++) {
+		vkDestroyImageView(
+				p_context->device, p_swapchain->image_views[i], nullptr);
 	}
+
+	p_swapchain->image_index = UINT32_MAX;
+	p_swapchain->images.clear();
+	p_swapchain->image_views.clear();
+
+	vkDestroySwapchainKHR(
+			p_context->device, p_swapchain->vk_swapchain, nullptr);
+}
+
+Swapchain swap_chain_create() {
+	VulkanSwapchain* swapchain = new VulkanSwapchain();
+	swapchain->format = VK_FORMAT_R8G8B8A8_UNORM;
+	swapchain->color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+	return Swapchain(swapchain);
+}
+
+void swap_chain_resize(Context p_context, CommandQueue p_cmd_queue,
+		Swapchain p_swapchain, Vec2u size) {
+	VulkanContext* context = (VulkanContext*)p_context;
+	VulkanQueue* queue = (VulkanQueue*)p_cmd_queue;
+	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
+
+	vkDeviceWaitIdle(context->device);
+
+	_swap_chain_release(context, swapchain);
+
+	vkb::SwapchainBuilder swapchain_builder{ context->physical_device,
+		context->device, context->surface };
 
 	vkb::Swapchain vkb_swapchain =
 			swapchain_builder
 					.set_desired_format(VkSurfaceFormatKHR{
-							.format = VK_FORMAT_B8G8R8A8_UNORM,
-							.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+							.format = swapchain->format,
+							.colorSpace = swapchain->color_space,
 					})
 					// TODO add setting
 					.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)
@@ -57,22 +59,47 @@ void VulkanSwapchain::create(const VulkanContext& context, Vec2u size,
 					.build()
 					.value();
 
-	out_swapchain->swapchain_extent = vkb_swapchain.extent;
-	out_swapchain->swapchain_format = vkb_swapchain.image_format;
-
-	out_swapchain->swapchain = vkb_swapchain.swapchain;
-	out_swapchain->swapchain_images = vkb_swapchain.get_images().value();
-	out_swapchain->swapchain_image_views =
-			vkb_swapchain.get_image_views().value();
+	swapchain->vk_swapchain = vkb_swapchain.swapchain;
+	swapchain->images = vkb_swapchain.get_images().value();
+	swapchain->image_views = vkb_swapchain.get_image_views().value();
 }
 
-void VulkanSwapchain::destroy(
-		const VulkanContext& context, VulkanSwapchain* swapchain) {
-	vkDestroySwapchainKHR(context.device, swapchain->swapchain, nullptr);
+uint32_t swap_chain_acquire_image(
+		Context p_context, Swapchain p_swapchain, Semaphore p_semaphore) {
+	VulkanContext* context = (VulkanContext*)p_context;
+	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
+	VkSemaphore semaphore = (VkSemaphore)p_semaphore;
 
-	// destroy swapchain resources
-	for (int i = 0; i < swapchain->swapchain_image_views.size(); i++) {
-		vkDestroyImageView(
-				context.device, swapchain->swapchain_image_views[i], nullptr);
+	vkAcquireNextImageKHR(context->device, swapchain->vk_swapchain, UINT64_MAX,
+			semaphore, VK_NULL_HANDLE, &swapchain->image_index);
+
+	return swapchain->image_index;
+}
+
+DataFormat swap_chain_get_format(Swapchain p_swapchain) {
+	GL_ASSERT(p_swapchain != nullptr);
+
+	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
+	switch (swapchain->format) {
+		case VK_FORMAT_B8G8R8A8_UNORM:
+			return DATA_FORMAT_B8G8R8A8_UNORM;
+		case VK_FORMAT_R8G8B8A8_UNORM:
+			return DATA_FORMAT_R8G8B8A8_UNORM;
+		default:
+			GL_ASSERT(false, "Unknown swapchain format.");
+			return DATA_FORMAT_MAX;
 	}
 }
+
+void swap_chain_free(Context p_context, Swapchain p_swapchain) {
+	GL_ASSERT(p_swapchain != nullptr);
+
+	VulkanContext* context = (VulkanContext*)p_context;
+
+	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
+	_swap_chain_release(context, swapchain);
+
+	delete swapchain;
+}
+
+} //namespace vk

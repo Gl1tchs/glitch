@@ -1,5 +1,6 @@
 #include "backends/vulkan/vk_context.h"
 
+#include "backends/vulkan/vk_commands.h"
 #include "backends/vulkan/vk_common.h"
 
 VmaPool VulkanContext::find_or_create_small_allocs_pool(
@@ -25,4 +26,26 @@ VmaPool VulkanContext::find_or_create_small_allocs_pool(
 			pool; // Don't try to create it again if failed the first time.
 
 	return pool;
+}
+
+void VulkanContext::immediate_submit(
+		std::function<void(CommandBuffer p_cmd)>&& p_function) {
+	VK_CHECK(vkResetFences(device, 1, (VkFence*)&imm_fence));
+
+	vk::command_reset(imm_command_buffer);
+
+	vk::command_begin(imm_command_buffer);
+	{
+		// run the command
+		p_function(imm_command_buffer);
+	}
+	vk::command_end(imm_command_buffer);
+
+	// submit command buffer to the queue and execute it.
+	// imm_fence will now block until the graphic commands finish execution
+	vk::command_submit(imm_command_buffer, (CommandQueue)&graphics_queue);
+
+	// wait till the operation finishes
+	VK_CHECK(
+			vkWaitForFences(device, 1, (VkFence*)&imm_fence, true, UINT64_MAX));
 }

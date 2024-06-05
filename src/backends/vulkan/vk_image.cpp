@@ -1,177 +1,153 @@
 #include "backends/vulkan/vk_image.h"
 
 #include "backends/vulkan/vk_buffer.h"
-#include "backends/vulkan/vk_init.h"
-#include "backends/vulkan/vk_renderer.h"
+#include "backends/vulkan/vk_commands.h"
+#include "backends/vulkan/vk_context.h"
 
 #include <vulkan/vulkan_core.h>
 
-Ref<VulkanImage> vk_image_create(
-		const VulkanContext& context, const VulkanImageCreateInfo* info) {
-	Ref<VulkanImage> new_image = create_ref<VulkanImage>();
-	new_image->image_extent = info->size;
-	new_image->image_format = info->format;
+namespace vk {
 
-	VkImageCreateInfo img_info =
-			vkinit::image_create_info(info->format, info->usage, info->size);
-	if (info->mipmapped) {
-		img_info.mipLevels =
-				static_cast<uint32_t>(std::floor(std::log2(
-						std::max(info->size.width, info->size.height)))) +
+static Image _image_create(VulkanContext* p_context, VkFormat p_format,
+		VkExtent3D p_size, VkImageUsageFlags p_usage, bool p_mipmapped) {
+	VkImageCreateInfo img_info = {};
+	img_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	img_info.pNext = nullptr;
+	img_info.imageType = VK_IMAGE_TYPE_2D;
+	img_info.format = p_format;
+	img_info.extent = p_size;
+	img_info.mipLevels = 1;
+	img_info.arrayLayers = 1;
+	// for MSAA. we will not be using it by default, so default it to 1 sample
+	// per pixel.
+	img_info.samples = VK_SAMPLE_COUNT_1_BIT;
+	// optimal tiling, which means the image is stored on the best gpu format
+	img_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	img_info.usage = p_usage;
+
+	if (p_mipmapped) {
+		img_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(
+									 std::max(p_size.width, p_size.height)))) +
 				1;
 	}
 
 	// always allocate images on dedicated GPU memory
-	VmaAllocationCreateInfo alloc_info = {
-		.usage = VMA_MEMORY_USAGE_GPU_ONLY,
-		.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-	};
+	VmaAllocationCreateInfo alloc_info = {};
+	alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	alloc_info.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	// allocate and create the image
-	VK_CHECK(vmaCreateImage(context.allocator, &img_info, &alloc_info,
-			&new_image->image, &new_image->allocation, nullptr));
+	VkImage vk_image = VK_NULL_HANDLE;
+	VmaAllocation vma_allocation = {};
+	VK_CHECK(vmaCreateImage(p_context->allocator, &img_info, &alloc_info,
+			&vk_image, &vma_allocation, nullptr));
 
 	// if the format is a depth format, we will need to have it use the correct
 	// aspect flag
 	VkImageAspectFlags aspect_flags = VK_IMAGE_ASPECT_COLOR_BIT;
-	if (info->format == VK_FORMAT_D32_SFLOAT) {
+	if (img_info.format == VK_FORMAT_D32_SFLOAT) {
 		aspect_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	}
 
 	// build image view for the image
-	VkImageViewCreateInfo view_info = vkinit::imageview_create_info(
-			info->format, new_image->image, aspect_flags);
+	// build a image-view for the depth image to use for rendering
+	VkImageViewCreateInfo view_info = {};
+	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_info.pNext = nullptr;
+	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	view_info.image = vk_image;
+	view_info.format = p_format;
+	view_info.subresourceRange.baseMipLevel = 0;
 	view_info.subresourceRange.levelCount = img_info.mipLevels;
+	view_info.subresourceRange.baseArrayLayer = 0;
+	view_info.subresourceRange.layerCount = 1;
+	view_info.subresourceRange.aspectMask = aspect_flags;
 
+	VkImageView vk_image_view = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateImageView(
-			context.device, &view_info, nullptr, &new_image->image_view));
+			p_context->device, &view_info, nullptr, &vk_image_view));
 
-	return new_image;
+	// Bookkeep
+	VulkanImage* image = VersatileResource::allocate<VulkanImage>(
+			p_context->resources_allocator);
+	image->vk_image = vk_image;
+	image->vk_image_view = vk_image_view;
+	image->allocation = vma_allocation;
+	image->image_format = p_format;
+	image->image_extent = p_size;
+
+	return Image(image);
 }
 
-Ref<VulkanImage> VulkanImage::create(
-		const VulkanContext& context, const VulkanImageCreateInfo* info) {
-	if (!info->data) {
-		return vk_image_create(context, info);
+Image image_create(Context p_context, DataFormat p_format, Vec2u p_size,
+		const void* p_data, ImageUsage p_usage, bool p_mipmapped) {
+	VulkanContext* vk_context = (VulkanContext*)p_context;
+
+	VkExtent3D vk_size = { p_size.x, p_size.y, 1 };
+	VkFormat vk_format = static_cast<VkFormat>(p_format);
+	VkImageUsageFlags vk_usage = static_cast<VkImageUsageFlags>(p_usage);
+
+	if (!p_data) {
+		return _image_create(
+				vk_context, vk_format, vk_size, vk_usage, p_mipmapped);
 	} else {
 		const size_t data_size =
-				info->size.depth * info->size.width * info->size.height * 4;
-		VulkanBuffer staging_buffer = VulkanBuffer::create(context.allocator,
-				data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-				VMA_MEMORY_USAGE_CPU_TO_GPU);
+				vk_size.depth * vk_size.width * vk_size.height * 4;
 
-		memcpy(staging_buffer.info.pMappedData, info->data, data_size);
+		Buffer staging_buffer = vk::buffer_create(p_context, data_size,
+				BUFFER_USAGE_TRANSFER_FROM_BIT, MEMORY_ALLOCATION_TYPE_CPU);
 
-		VkImageUsageFlags image_usage = info->usage;
+		uint8_t* mapped_data = vk::buffer_map(p_context, staging_buffer);
+		{ memcpy(mapped_data, p_data, data_size); }
+		vk::buffer_unmap(p_context, staging_buffer);
+
+		VkImageUsageFlags image_usage = vk_usage;
 		image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		image_usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-		VulkanImageCreateInfo new_info = *info;
-		new_info.usage = image_usage;
+		Image new_image = _image_create(
+				vk_context, vk_format, vk_size, image_usage, p_mipmapped);
 
-		Ref<VulkanImage> new_image = vk_image_create(context, &new_info);
+		vk_context->immediate_submit([&](CommandBuffer cmd) {
+			vk::command_transition_image(cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
+					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		VulkanRenderer::get_instance()->immediate_submit(
-				[&](VulkanCommandBuffer& cmd) {
-					cmd.transition_image(new_image, VK_IMAGE_LAYOUT_UNDEFINED,
-							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			BufferImageCopyRegion copy_region = {};
+			copy_region.buffer_offset = 0;
+			copy_region.buffer_row_length = 0;
+			copy_region.buffer_image_height = 0;
+			copy_region.image_subresource = {};
+			copy_region.image_subresource.aspect_mask = IMAGE_ASPECT_COLOR_BIT;
+			copy_region.image_subresource.mip_level = 0;
+			copy_region.image_subresource.base_array_layer = 0;
+			copy_region.image_subresource.layer_count = 1;
+			copy_region.image_extent = { p_size.x, p_size.y, 1 };
+			copy_region.image_offset = 0;
 
-					VkBufferImageCopy copy_region = {
-                        .bufferOffset = 0,
-                        .bufferRowLength = 0,
-                        .bufferImageHeight = 0,
-                        .imageSubresource = {
-                            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                            .mipLevel = 0,
-                            .baseArrayLayer = 0,
-                            .layerCount = 1,
-                        },
-                        .imageExtent =info->size,
-                    };
+			VectorView<BufferImageCopyRegion> copy_view(copy_region);
 
-					// copy the buffer into the image
-					cmd.copy_buffer_to_image(staging_buffer, new_image,
-							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-							&copy_region);
+			// copy the buffer into the image
+			vk::command_copy_buffer_to_image(
+					cmd, staging_buffer, new_image, copy_view);
 
-					cmd.transition_image(new_image,
-							VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				});
+			vk::command_transition_image(cmd, new_image,
+					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		});
 
-		VulkanBuffer::destroy(context.allocator, staging_buffer);
+		vk::buffer_free(p_context, staging_buffer);
 
-		return new_image;
+		return Image(new_image);
 	}
 }
 
-void VulkanImage::destroy(const VulkanContext& context, VulkanImage* img) {
-	vkDestroyImageView(context.device, img->image_view, nullptr);
-	vmaDestroyImage(context.allocator, img->image, img->allocation);
+void image_free(Context p_context, Image p_image) {
+	VulkanContext* context = (VulkanContext*)p_context;
+	VulkanImage* image = (VulkanImage*)p_image;
+
+	vkDestroyImageView(context->device, image->vk_image_view, nullptr);
+	vmaDestroyImage(context->allocator, image->vk_image, image->allocation);
 }
 
-[[nodiscard]] VkFormat image_format_to_vk_format(ImageFormat format) {
-	switch (format) {
-		case ImageFormat::R8_UNORM: {
-			return VK_FORMAT_R8_UNORM;
-		}
-		case ImageFormat::R8G8_UNORM: {
-			return VK_FORMAT_R8G8_UNORM;
-		}
-		case ImageFormat::R8G8B8_UNORM: {
-			return VK_FORMAT_R8G8B8_UNORM;
-		}
-		case ImageFormat::R8G8B8A8_UNORM: {
-			return VK_FORMAT_R8G8B8A8_UNORM;
-		}
-		case ImageFormat::R16_UNORM: {
-			return VK_FORMAT_R16_UNORM;
-		}
-		case ImageFormat::R16G16_UNORM: {
-			return VK_FORMAT_R16G16_UNORM;
-		}
-		case ImageFormat::R16G16B16_UNORM: {
-			return VK_FORMAT_R16G16B16_UNORM;
-		}
-		case ImageFormat::R16G16B16A16_UNORM: {
-			return VK_FORMAT_R16G16B16A16_UNORM;
-		}
-		case ImageFormat::R16G16B16A16_SFLOAT: {
-			return VK_FORMAT_R16G16B16A16_SFLOAT;
-		}
-		case ImageFormat::R32_SFLOAT: {
-			return VK_FORMAT_R32_SFLOAT;
-		}
-		case ImageFormat::R32G32_SFLOAT: {
-			return VK_FORMAT_R32G32_SFLOAT;
-		}
-		case ImageFormat::R32G32B32_SFLOAT: {
-			return VK_FORMAT_R32G32B32_SFLOAT;
-		}
-		case ImageFormat::R32G32B32A32_SFLOAT: {
-			return VK_FORMAT_R32G32B32A32_SFLOAT;
-		}
-		case ImageFormat::B8G8R8_UNORM: {
-			return VK_FORMAT_B8G8R8_UNORM;
-		}
-		case ImageFormat::B8G8R8A8_UNORM: {
-			return VK_FORMAT_B8G8R8A8_UNORM;
-		}
-		case ImageFormat::D16_UNORM: {
-			return VK_FORMAT_D16_UNORM;
-		}
-		case ImageFormat::D24_UNORM_S8_UINT: {
-			return VK_FORMAT_D24_UNORM_S8_UINT;
-		}
-		case ImageFormat::D32_SFLOAT: {
-			return VK_FORMAT_D32_SFLOAT;
-		}
-		case ImageFormat::D32_SFLOAT_S8_UINT: {
-			return VK_FORMAT_D32_SFLOAT_S8_UINT;
-		}
-		default: {
-			return VK_FORMAT_R8G8B8A8_UNORM;
-		}
-	}
-}
+} //namespace vk

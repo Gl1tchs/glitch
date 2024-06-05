@@ -108,30 +108,6 @@ void VulkanRenderer::wait_and_render() {
 
 void VulkanRenderer::wait_for_device() { vkDeviceWaitIdle(context.device); }
 
-void VulkanRenderer::immediate_submit(
-		std::function<void(VulkanCommandBuffer& cmd)>&& function) {
-	VK_CHECK(vkResetFences(context.device, 1, &imm_fence));
-
-	imm_command_buffer.reset();
-
-	VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(
-			VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-	imm_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	{
-		// run the command
-		function(imm_command_buffer);
-	}
-	imm_command_buffer.end();
-
-	// submit command buffer to the queue and execute it.
-	// imm_fence will now block until the graphic commands finish execution
-	imm_command_buffer.submit(context.graphics_queue, imm_fence);
-
-	// wait till the operation finishes
-	VK_CHECK(vkWaitForFences(context.device, 1, &imm_fence, true, UINT64_MAX));
-}
-
 VulkanRenderer* VulkanRenderer::get_instance() { return s_instance; }
 
 VulkanContext& VulkanRenderer::get_context() { return get_instance()->context; }

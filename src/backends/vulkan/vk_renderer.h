@@ -99,11 +99,6 @@ private:
 	VulkanFrameData frames[FRAME_OVERLAP];
 	uint32_t frame_number{ 0 };
 
-	// immediate commands
-	VkFence imm_fence;
-	VulkanCommandBuffer imm_command_buffer;
-	VulkanCommandPool imm_command_pool;
-
 	Ref<VulkanMetallicRoughnessMaterial> default_roughness;
 	Ref<VulkanMaterialInstance> default_roughness_instance;
 
