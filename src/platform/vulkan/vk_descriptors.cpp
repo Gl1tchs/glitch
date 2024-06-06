@@ -1,7 +1,7 @@
-#include "backends/vulkan/vk_descriptors.h"
+#include "platform/vulkan/vk_descriptors.h"
 
-#include "backends/vulkan/vk_context.h"
-#include "backends/vulkan/vk_image.h"
+#include "platform/vulkan/vk_context.h"
+#include "platform/vulkan/vk_image.h"
 
 namespace vk {
 

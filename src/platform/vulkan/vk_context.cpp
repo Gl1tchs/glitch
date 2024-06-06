@@ -1,7 +1,7 @@
-#include "backends/vulkan/vk_context.h"
+#include "platform/vulkan/vk_context.h"
 
-#include "backends/vulkan/vk_commands.h"
-#include "backends/vulkan/vk_common.h"
+#include "platform/vulkan/vk_commands.h"
+#include "platform/vulkan/vk_common.h"
 
 VmaPool VulkanContext::find_or_create_small_allocs_pool(
 		uint32_t p_mem_type_index) {
@@ -43,7 +43,8 @@ void VulkanContext::immediate_submit(
 
 	// submit command buffer to the queue and execute it.
 	// imm_fence will now block until the graphic commands finish execution
-	vk::command_submit(imm_command_buffer, (CommandQueue)&graphics_queue);
+	vk::queue_submit(
+			(CommandQueue)&graphics_queue, imm_command_buffer, imm_fence);
 
 	// wait till the operation finishes
 	VK_CHECK(

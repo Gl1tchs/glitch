@@ -4,9 +4,19 @@
 
 #include "renderer/types.h"
 
-#include "backends/vulkan/vk_context.h"
-
 #include <vulkan/vulkan.h>
+
+struct DescriptorSetPoolKey {
+	uint16_t uniform_type[UNIFORM_TYPE_MAX] = {};
+
+	bool operator<(const DescriptorSetPoolKey& p_other) const {
+		return memcmp(uniform_type, p_other.uniform_type,
+					   sizeof(uniform_type)) < 0;
+	}
+};
+
+using DescriptorSetPools = std::map<DescriptorSetPoolKey,
+		std::unordered_map<VkDescriptorPool, uint32_t>>;
 
 struct VulkanUniformSet {
 	VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;

@@ -3,16 +3,13 @@
 #include "core/color.h"
 #include "core/templates/vector_view.h"
 
-#include "renderer/render_backend.h"
 #include "renderer/types.h"
 
 namespace vk {
 
-CommandPool command_pool_create(
-		Context p_context, CommandBuffer p_cmd, CommandQueue p_queue);
+CommandPool command_pool_create(Context p_context, CommandQueue p_queue);
 
-void command_pool_free(
-		Context p_context, CommandBuffer p_cmd, CommandPool p_command_pool);
+void command_pool_free(Context p_context, CommandPool p_command_pool);
 
 CommandBuffer command_pool_allocate(
 		Context p_context, CommandPool p_command_pool);
@@ -28,14 +25,15 @@ void command_end(CommandBuffer p_cmd);
 
 void command_reset(CommandBuffer p_cmd);
 
-void command_submit(CommandBuffer p_cmd, CommandQueue p_queue,
-		Fence p_fence = nullptr, Semaphore p_wait_semaphore = nullptr,
-		Semaphore p_signal_semaphore = nullptr);
-
 void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
 		VectorView<Image> p_color_attachments, Image p_depth_attachment);
 
 void command_end_rendering(CommandBuffer p_cmd);
+
+// image layout must be IMAGE_LAYOUT_GENERAL
+void command_clear_color(CommandBuffer p_cmd, Image p_image,
+		const Color& p_clear_color,
+		ImageAspectFlags p_image_aspect = IMAGE_ASPECT_COLOR_BIT);
 
 void command_bind_graphics_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline);
 

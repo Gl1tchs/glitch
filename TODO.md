@@ -1,9 +1,7 @@
 # TODOS
 
 ## New Renderer
-- [x] Create pipeline and descriptor layouts with the shader.
-- [ ] Graphics pipeline creation.
-- [ ] Compute pipeline creation.
+ - [ ] Abstract away functions
 
 ## Renderer
 - [ ] Implement more detailed scene graph system with components (proper ECS)

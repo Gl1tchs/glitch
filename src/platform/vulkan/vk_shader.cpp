@@ -1,6 +1,7 @@
-#include "backends/vulkan/vk_shader.h"
+#include "platform/vulkan/vk_shader.h"
 
-#include "backends/vulkan/vk_context.h"
+#include "platform/vulkan/vk_common.h"
+#include "platform/vulkan/vk_context.h"
 
 #include <spirv_cross.hpp>
 #include <spirv_glsl.hpp>

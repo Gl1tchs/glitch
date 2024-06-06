@@ -1,25 +1,25 @@
-#include "backends/vulkan/vk_commands.h"
+#include "platform/vulkan/vk_commands.h"
 
-#include "backends/vulkan/vk_buffer.h"
-#include "backends/vulkan/vk_common.h"
-#include "backends/vulkan/vk_context.h"
-#include "backends/vulkan/vk_image.h"
-#include "backends/vulkan/vk_shader.h"
-#include "renderer/render_backend.h"
 #include "renderer/types.h"
+
+#include "platform/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_common.h"
+#include "platform/vulkan/vk_context.h"
+#include "platform/vulkan/vk_image.h"
+#include "platform/vulkan/vk_shader.h"
 
 #include <vulkan/vulkan_core.h>
 
 namespace vk {
 
-CommandPool command_pool_create(
-		Context p_context, CommandBuffer p_cmd, CommandQueue p_queue) {
+CommandPool command_pool_create(Context p_context, CommandQueue p_queue) {
 	VulkanContext* context = (VulkanContext*)p_context;
 	VulkanQueue* queue = (VulkanQueue*)p_queue;
 
 	VkCommandPoolCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	create_info.queueFamilyIndex = queue->queue_family;
+	create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	VkCommandPool vk_command_pool = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateCommandPool(
@@ -28,8 +28,7 @@ CommandPool command_pool_create(
 	return CommandPool(vk_command_pool);
 }
 
-void command_pool_free(
-		Context p_context, CommandBuffer p_cmd, CommandPool p_command_pool) {
+void command_pool_free(Context p_context, CommandPool p_command_pool) {
 	VulkanContext* context = (VulkanContext*)p_context;
 
 	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
@@ -102,49 +101,6 @@ void command_reset(CommandBuffer p_cmd) {
 	vkResetCommandBuffer((VkCommandBuffer)p_cmd, 0);
 }
 
-void command_submit(CommandBuffer p_cmd, CommandQueue p_queue, Fence p_fence,
-		Semaphore p_wait_semaphore, Semaphore p_signal_semaphore) {
-	VkCommandBufferSubmitInfo cmd_info{};
-	cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-	cmd_info.pNext = nullptr;
-	cmd_info.commandBuffer = (VkCommandBuffer)p_cmd;
-	cmd_info.deviceMask = 0;
-
-	VkSemaphoreSubmitInfo wait_semaphore_info{};
-	wait_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	wait_semaphore_info.pNext = nullptr;
-	wait_semaphore_info.semaphore = (VkSemaphore)p_wait_semaphore;
-	wait_semaphore_info.stageMask =
-			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT; // TODO get as
-															 // parameter
-	wait_semaphore_info.deviceIndex = 0;
-	wait_semaphore_info.value = 1;
-
-	VkSemaphoreSubmitInfo signal_semaphore_info{};
-	wait_semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	wait_semaphore_info.pNext = nullptr;
-	wait_semaphore_info.semaphore = (VkSemaphore)p_signal_semaphore;
-	wait_semaphore_info.stageMask =
-			VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT; // TODO get as parameter
-	wait_semaphore_info.deviceIndex = 0;
-	wait_semaphore_info.value = 1;
-
-	VkSubmitInfo2 submit_info = {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-	submit_info.pNext = nullptr;
-	submit_info.waitSemaphoreInfoCount = p_wait_semaphore == nullptr ? 0 : 1;
-	submit_info.pWaitSemaphoreInfos = &signal_semaphore_info;
-	submit_info.signalSemaphoreInfoCount =
-			p_signal_semaphore == nullptr ? 0 : 1;
-	submit_info.pSignalSemaphoreInfos = &signal_semaphore_info;
-	submit_info.commandBufferInfoCount = 1;
-	submit_info.pCommandBufferInfos = &cmd_info;
-
-	VulkanQueue* queue = (VulkanQueue*)p_queue;
-
-	VK_CHECK(vkQueueSubmit2(queue->queue, 1, &submit_info, (VkFence)p_fence));
-}
-
 void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
 		VectorView<Image> p_color_attachments, Image p_depth_attachment) {
 	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
@@ -191,6 +147,32 @@ void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
 
 void command_end_rendering(CommandBuffer p_cmd) {
 	vkCmdEndRendering((VkCommandBuffer)p_cmd);
+}
+
+void command_clear_color(CommandBuffer p_cmd, Image p_image,
+		const Color& p_clear_color, ImageAspectFlags p_image_aspect) {
+	VulkanImage* image = (VulkanImage*)p_image;
+
+	VkClearColorValue clear_color = {};
+	static_assert(sizeof(VkClearColorValue) == sizeof(Color));
+	memcpy(&clear_color.float32, &p_clear_color.r, sizeof(Color));
+
+	VkImageSubresourceRange image_range = {};
+	image_range.aspectMask = [p_image_aspect]() -> VkImageAspectFlags {
+		switch (p_image_aspect) {
+			case IMAGE_ASPECT_COLOR_BIT:
+				return VK_IMAGE_ASPECT_COLOR_BIT;
+			case IMAGE_ASPECT_DEPTH_BIT:
+				return VK_IMAGE_ASPECT_DEPTH_BIT;
+			case IMAGE_ASPECT_STENCIL_BIT:
+				return VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
+	}();
+	image_range.levelCount = 1;
+	image_range.layerCount = 1;
+
+	vkCmdClearColorImage((VkCommandBuffer)p_cmd, image->vk_image,
+			VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &image_range);
 }
 
 void command_bind_graphics_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline) {
@@ -294,8 +276,7 @@ void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
 }
 
 void command_copy_buffer_to_image(CommandBuffer p_cmd, Buffer p_src_buffer,
-		Image p_dst_image, uint32_t p_region_count,
-		VectorView<BufferImageCopyRegion> p_regions) {
+		Image p_dst_image, VectorView<BufferImageCopyRegion> p_regions) {
 	VulkanBuffer* src_buffer = (VulkanBuffer*)p_src_buffer;
 	VulkanImage* dst_image = (VulkanImage*)p_dst_image;
 
@@ -317,7 +298,6 @@ void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
 		const Vec2u& p_dst_extent) {
 	VkImageBlit2 blit_region = {};
 	blit_region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
-	blit_region.pNext = nullptr;
 
 	blit_region.srcOffsets[1].x = p_src_extent.x;
 	blit_region.srcOffsets[1].y = p_src_extent.y;
@@ -342,7 +322,6 @@ void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
 
 	VkBlitImageInfo2 blit_info = {};
 	blit_info.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
-	blit_info.pNext = nullptr;
 	blit_info.srcImage = src_image->vk_image;
 	blit_info.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	blit_info.dstImage = dst_image->vk_image;

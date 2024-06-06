@@ -2,32 +2,17 @@
 
 #include "core/templates/versatile_resource.h"
 
-#include "backends/vulkan/vk_buffer.h"
-#include "backends/vulkan/vk_shader.h"
+#include "platform/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_descriptors.h"
+#include "platform/vulkan/vk_image.h"
+#include "platform/vulkan/vk_queue.h"
+#include "platform/vulkan/vk_shader.h"
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-using VersatileResource = VersatileResourceTemplate<VulkanBuffer,
-		/*VulkanImage,*/ VulkanShader
-		/*, VulkanDescriptor */>;
-
-struct VulkanQueue {
-	VkQueue queue;
-	uint32_t queue_family;
-};
-
-struct DescriptorSetPoolKey {
-	uint16_t uniform_type[UNIFORM_TYPE_MAX] = {};
-
-	bool operator<(const DescriptorSetPoolKey& p_other) const {
-		return memcmp(uniform_type, p_other.uniform_type,
-					   sizeof(uniform_type)) < 0;
-	}
-};
-
-using DescriptorSetPools = std::map<DescriptorSetPoolKey,
-		std::unordered_map<VkDescriptorPool, uint32_t>>;
+using VersatileResource = VersatileResourceTemplate<VulkanBuffer, VulkanImage,
+		VulkanShader, VulkanUniformSet>;
 
 struct VulkanContext {
 	VkInstance instance;

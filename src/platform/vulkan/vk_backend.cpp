@@ -1,22 +1,32 @@
-#include "backends/vulkan/vk_backend.h"
+#include "platform/vulkan/vk_backend.h"
 
-#include "backends/vulkan/vk_context.h"
+#include "platform/vulkan/vk_context.h"
+#include "renderer/types.h"
 
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-inline static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
+inline static VKAPI_ATTR VkBool32 VKAPI_CALL _vk_debug_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		VkDebugUtilsMessageTypeFlagsEXT message_type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
 		void* user_data) {
-	const auto ms = vkb::to_string_message_severity(message_severity);
-	const auto mt = vkb::to_string_message_type(message_type);
-	GL_LOG_TRACE("[{}: {}]\n{}", ms, mt, callback_data->pMessage);
+	if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+		GL_LOG_ERROR("{}", callback_data->pMessage);
+	} else if (message_severity &
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+		GL_LOG_WARNING("{}", callback_data->pMessage);
+	} else if (message_severity &
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+		GL_LOG_INFO("{}", callback_data->pMessage);
+	} else {
+		GL_LOG_TRACE("{}", callback_data->pMessage);
+	}
 
 	return VK_FALSE;
 }
@@ -28,19 +38,19 @@ Context VulkanRenderBackend::init(Ref<Window> window) {
 	s_context = new VulkanContext();
 
 	vkb::InstanceBuilder builder;
-	auto inst_ret =
-			builder.set_app_name("glitch")
-					// TODO do not activate debug messenger on DIST build
-					.enable_validation_layers()
-					.set_debug_callback(vk_debug_callback)
-					.require_api_version(1, 3, 0)
-					.build();
+	auto instance_result = builder.set_app_name("glitch")
+#ifdef GL_DEBUG_BUILD
+								   .enable_validation_layers()
+								   .set_debug_callback(_vk_debug_callback)
+#endif
+								   .require_api_version(1, 3, 0)
+								   .build();
 
-	if (!inst_ret.has_value()) {
+	if (!instance_result.has_value()) {
 		return nullptr;
 	}
 
-	vkb::Instance vkb_instance = inst_ret.value();
+	vkb::Instance vkb_instance = instance_result.value();
 
 	s_context->instance = vkb_instance.instance;
 	s_context->debug_messenger = vkb_instance.debug_messenger;
@@ -137,4 +147,15 @@ Context VulkanRenderBackend::init(Ref<Window> window) {
 void VulkanRenderBackend::shutdown(Context device) {
 	deletion_queue.flush();
 	delete s_context;
+}
+
+void VulkanRenderBackend::wait_for_device() {
+	VulkanContext* context = (VulkanContext*)s_context;
+	vkDeviceWaitIdle(context->device);
+}
+
+CommandQueue VulkanRenderBackend::get_command_queue(QueueType p_type) {
+	return CommandQueue(p_type == QUEUE_TYPE_GRAPHICS
+					? &s_context->graphics_queue
+					: &s_context->present_queue);
 }

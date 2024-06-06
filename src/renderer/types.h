@@ -12,13 +12,13 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(Buffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Image)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandPool)
 GL_DEFINE_HANDLE(CommandBuffer)
-GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandQueue) //
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandQueue)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Swapchain)
-GL_DEFINE_NON_DISPATCHABLE_HANDLE(Pipeline) //
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(Pipeline)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Shader)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(UniformSet)
-GL_DEFINE_NON_DISPATCHABLE_HANDLE(Fence) //
-GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore) //
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(Fence)
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore)
 
 enum DataFormat {
 	DATA_FORMAT_UNDEFINED = 0,
@@ -106,6 +106,18 @@ enum DataFormat {
 	DATA_FORMAT_MAX = 0x7FFFFFFF,
 };
 
+enum CompareOperator {
+	COMPARE_OP_NEVER,
+	COMPARE_OP_LESS,
+	COMPARE_OP_EQUAL,
+	COMPARE_OP_LESS_OR_EQUAL,
+	COMPARE_OP_GREATER,
+	COMPARE_OP_NOT_EQUAL,
+	COMPARE_OP_GREATER_OR_EQUAL,
+	COMPARE_OP_ALWAYS,
+	COMPARE_OP_MAX
+};
+
 enum MemoryAllocationType {
 	MEMORY_ALLOCATION_TYPE_CPU,
 	MEMORY_ALLOCATION_TYPE_GPU,
@@ -139,7 +151,7 @@ enum ImageLayout {
 	IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL = 1000241003,
 	IMAGE_LAYOUT_READ_ONLY_OPTIMAL = 1000314000,
 	IMAGE_LAYOUT_ATTACHMENT_OPTIMAL = 1000314001,
-	IMAGE_LAYOUT_PRESENT_SRC_KHR = 1000001002,
+	IMAGE_LAYOUT_PRESENT_SRC = 1000001002,
 	IMAGE_LAYOUT_MAX_ENUM = 0x7FFFFFFF
 };
 
@@ -161,13 +173,29 @@ struct ImageSubresourceLayers {
 	uint32_t layer_count;
 };
 
-enum ImageUsage {
+enum ImageSamples {
+	IMAGE_SAMPLES_1 = 0x00000001,
+	IMAGE_SAMPLES_2 = 0x00000002,
+	IMAGE_SAMPLES_4 = 0x00000004,
+	IMAGE_SAMPLES_8 = 0x00000008,
+	IMAGE_SAMPLES_16 = 0x00000010,
+	IMAGE_SAMPLES_32 = 0x00000020,
+	IMAGE_SAMPLES_64 = 0x00000040,
+	IMAGE_SAMPLES_MAX = 0x7FFFFFFF,
+};
+
+enum ImageUsageBits {
 	IMAGE_USAGE_TRANSFER_SRC_BIT = 0x00000001,
 	IMAGE_USAGE_TRANSFER_DST_BIT = 0x00000002,
 	IMAGE_USAGE_SAMPLED_BIT = 0x00000004,
 	IMAGE_USAGE_STORAGE_BIT = 0x00000008,
 	IMAGE_USAGE_COLOR_ATTACHMENT_BIT = 0x00000010,
 	IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 0x00000020,
+};
+
+enum QueueType {
+	QUEUE_TYPE_GRAPHICS,
+	QUEUE_TYPE_PRESENT,
 };
 
 enum IndexType {
@@ -218,4 +246,200 @@ struct BoundUniform {
 	UniformType type = UNIFORM_TYPE_MAX;
 	uint32_t binding = 0xffffffff; // Binding index as specified in shader.
 	std::vector<UniformSet> ids;
+};
+
+enum RenderPrimitive {
+	RENDER_PRIMITIVE_POINTS,
+	RENDER_PRIMITIVE_LINES,
+	RENDER_PRIMITIVE_LINES_WITH_ADJACENCY,
+	RENDER_PRIMITIVE_LINESTRIPS,
+	RENDER_PRIMITIVE_LINESTRIPS_WITH_ADJACENCY,
+	RENDER_PRIMITIVE_TRIANGLES,
+	RENDER_PRIMITIVE_TRIANGLES_WITH_ADJACENCY,
+	RENDER_PRIMITIVE_TRIANGLE_STRIPS,
+	RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_AJACENCY,
+	RENDER_PRIMITIVE_TRIANGLE_STRIPS_WITH_RESTART_INDEX,
+	RENDER_PRIMITIVE_TESSELATION_PATCH,
+	RENDER_PRIMITIVE_MAX
+};
+
+enum PolygonCullMode {
+	POLYGON_CULL_DISABLED,
+	POLYGON_CULL_FRONT,
+	POLYGON_CULL_BACK,
+	POLYGON_CULL_MAX
+};
+
+enum PolygonFrontFace {
+	POLYGON_FRONT_FACE_CLOCKWISE,
+	POLYGON_FRONT_FACE_COUNTER_CLOCKWISE,
+};
+
+enum StencilOperator {
+	STENCIL_OP_KEEP,
+	STENCIL_OP_ZERO,
+	STENCIL_OP_REPLACE,
+	STENCIL_OP_INCREMENT_AND_CLAMP,
+	STENCIL_OP_DECREMENT_AND_CLAMP,
+	STENCIL_OP_INVERT,
+	STENCIL_OP_INCREMENT_AND_WRAP,
+	STENCIL_OP_DECREMENT_AND_WRAP,
+	STENCIL_OP_MAX
+};
+
+enum LogicOperator {
+	LOGIC_OP_CLEAR,
+	LOGIC_OP_AND,
+	LOGIC_OP_AND_REVERSE,
+	LOGIC_OP_COPY,
+	LOGIC_OP_AND_INVERTED,
+	LOGIC_OP_NO_OP,
+	LOGIC_OP_XOR,
+	LOGIC_OP_OR,
+	LOGIC_OP_NOR,
+	LOGIC_OP_EQUIVALENT,
+	LOGIC_OP_INVERT,
+	LOGIC_OP_OR_REVERSE,
+	LOGIC_OP_COPY_INVERTED,
+	LOGIC_OP_OR_INVERTED,
+	LOGIC_OP_NAND,
+	LOGIC_OP_SET,
+	LOGIC_OP_MAX
+};
+
+enum BlendFactor {
+	BLEND_FACTOR_ZERO,
+	BLEND_FACTOR_ONE,
+	BLEND_FACTOR_SRC_COLOR,
+	BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+	BLEND_FACTOR_DST_COLOR,
+	BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+	BLEND_FACTOR_SRC_ALPHA,
+	BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	BLEND_FACTOR_DST_ALPHA,
+	BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+	BLEND_FACTOR_CONSTANT_COLOR,
+	BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+	BLEND_FACTOR_CONSTANT_ALPHA,
+	BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+	BLEND_FACTOR_SRC_ALPHA_SATURATE,
+	BLEND_FACTOR_SRC1_COLOR,
+	BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
+	BLEND_FACTOR_SRC1_ALPHA,
+	BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
+	BLEND_FACTOR_MAX
+};
+
+enum BlendOperation {
+	BLEND_OP_ADD,
+	BLEND_OP_SUBTRACT,
+	BLEND_OP_REVERSE_SUBTRACT,
+	BLEND_OP_MINIMUM,
+	BLEND_OP_MAXIMUM,
+	BLEND_OP_MAX
+};
+
+struct PipelineRasterizationState {
+	bool enable_depth_clamp = false;
+	bool discard_primitives = false;
+	bool wireframe = false;
+	PolygonCullMode cull_mode = POLYGON_CULL_DISABLED;
+	PolygonFrontFace front_face = POLYGON_FRONT_FACE_CLOCKWISE;
+	bool depth_bias_enabled = false;
+	float depth_bias_constant_factor = 0.0f;
+	float depth_bias_clamp = 0.0f;
+	float depth_bias_slope_factor = 0.0f;
+	float line_width = 1.0f;
+};
+
+struct PipelineMultisampleState {
+	ImageSamples sample_count = IMAGE_SAMPLES_1;
+	bool enable_sample_shading = false;
+	float min_sample_shading = 0.0f;
+	std::vector<uint32_t> sample_mask;
+	bool enable_alpha_to_coverage = false;
+	bool enable_alpha_to_one = false;
+};
+
+struct PipelineDepthStencilState {
+	bool enable_depth_test = false;
+	bool enable_depth_write = false;
+	CompareOperator depth_compare_operator = COMPARE_OP_ALWAYS;
+	bool enable_depth_range = false;
+	float depth_range_min = 0;
+	float depth_range_max = 0;
+	bool enable_stencil = false;
+
+	struct StencilOperationState {
+		StencilOperator fail = STENCIL_OP_ZERO;
+		StencilOperator pass = STENCIL_OP_ZERO;
+		StencilOperator depth_fail = STENCIL_OP_ZERO;
+		CompareOperator compare = COMPARE_OP_ALWAYS;
+		uint32_t compare_mask = 0;
+		uint32_t write_mask = 0;
+		uint32_t reference = 0;
+	};
+
+	StencilOperationState front_op;
+	StencilOperationState back_op;
+};
+
+struct PipelineColorBlendState {
+	bool enable_logic_op = false;
+	LogicOperator logic_op = LOGIC_OP_CLEAR;
+
+	struct Attachment {
+		bool enable_blend = false;
+		BlendFactor src_color_blend_factor = BLEND_FACTOR_ZERO;
+		BlendFactor dst_color_blend_factor = BLEND_FACTOR_ZERO;
+		BlendOperation color_blend_op = BLEND_OP_ADD;
+		BlendFactor src_alpha_blend_factor = BLEND_FACTOR_ZERO;
+		BlendFactor dst_alpha_blend_factor = BLEND_FACTOR_ZERO;
+		BlendOperation alpha_blend_op = BLEND_OP_ADD;
+		bool write_r = true;
+		bool write_g = true;
+		bool write_b = true;
+		bool write_a = true;
+	};
+
+	PipelineColorBlendState create_disabled(int p_attachments = 1) {
+		PipelineColorBlendState bs;
+		for (int i = 0; i < p_attachments; i++) {
+			bs.attachments.push_back(Attachment());
+		}
+		return bs;
+	}
+
+	PipelineColorBlendState create_blend(int p_attachments = 1) {
+		PipelineColorBlendState bs;
+		for (int i = 0; i < p_attachments; i++) {
+			Attachment ba;
+			ba.enable_blend = true;
+			ba.src_color_blend_factor = BLEND_FACTOR_SRC_ALPHA;
+			ba.dst_color_blend_factor = BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			ba.src_alpha_blend_factor = BLEND_FACTOR_SRC_ALPHA;
+			ba.dst_alpha_blend_factor = BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+			bs.attachments.push_back(ba);
+		}
+		return bs;
+	}
+
+	std::vector<Attachment> attachments; // One per render target texture.
+	Vec4f blend_constant;
+};
+
+struct RenderingState {
+	std::vector<DataFormat> color_attachments;
+	DataFormat depth_attachment;
+};
+
+enum PipelineDynamicStateFlags {
+	DYNAMIC_STATE_LINE_WIDTH = (1 << 0),
+	DYNAMIC_STATE_DEPTH_BIAS = (1 << 1),
+	DYNAMIC_STATE_BLEND_CONSTANTS = (1 << 2),
+	DYNAMIC_STATE_DEPTH_BOUNDS = (1 << 3),
+	DYNAMIC_STATE_STENCIL_COMPARE_MASK = (1 << 4),
+	DYNAMIC_STATE_STENCIL_WRITE_MASK = (1 << 5),
+	DYNAMIC_STATE_STENCIL_REFERENCE = (1 << 6),
 };

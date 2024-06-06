@@ -1,7 +1,7 @@
-#include "backends/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_buffer.h"
 
-#include "backends/vulkan/vk_common.h"
-#include "backends/vulkan/vk_context.h"
+#include "platform/vulkan/vk_common.h"
+#include "platform/vulkan/vk_context.h"
 
 namespace vk {
 
