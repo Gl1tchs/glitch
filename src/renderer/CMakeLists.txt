@@ -14,11 +14,14 @@ target_include_directories(gl-renderer
     ${CMAKE_BINARY_DIR}/include
     ${VMA_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
+    ${TINYGLTF_INCLUDES}
 )
 
 target_link_libraries(gl-renderer
     PRIVATE
     gl::vulkan-backend
+    PRIVATE
+    ${TINYGLTF_LIBS}
 )
 
 target_precompile_headers(gl-renderer PUBLIC ${ENGINE_DIR}/pch.h)

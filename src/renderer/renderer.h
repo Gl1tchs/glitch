@@ -27,6 +27,11 @@ struct GPUSceneData {
 	glm::vec4 sun_color;
 };
 
+struct GPUDrawPushConstants {
+	glm::mat4 transform;
+	uint64_t vertex_buffer;
+};
+
 struct RendererSettings {
 	float render_scale = 1.0f;
 	// bool msaa;
@@ -54,13 +59,17 @@ public:
 
 	void wait_and_render();
 
-	SceneGraph& get_scene_graph();
-
-	RendererSettings& get_settings();
-
-	RendererStats& get_stats();
+	void wait_for_device();
 
 	static GraphicsAPI get_graphics_api();
+
+	Context get_render_context() { return context; }
+
+	SceneGraph& get_scene_graph() { return scene_graph; }
+
+	RendererSettings& get_settings() { return settings; }
+
+	RendererStats& get_stats() { return stats; }
 
 private:
 	void _geometry_pass(CommandBuffer p_cmd);
@@ -96,7 +105,11 @@ private:
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 	uint32_t frame_number = 0;
 
-	Ref<Material> material;
+	Ref<Material> default_material;
+	Ref<MaterialInstance> default_material_instance;
+
+	Sampler default_sampler;
+	Image magenta_image;
 
 	SceneGraph scene_graph;
 

@@ -12,6 +12,7 @@
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Context)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Buffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Image)
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(Sampler)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandPool)
 GL_DEFINE_HANDLE(CommandBuffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandQueue)
@@ -22,6 +23,8 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(UniformPool)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(UniformSet)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Fence)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore)
+
+#define GL_NULL_HANDLE nullptr
 
 enum DataFormat {
 	DATA_FORMAT_UNDEFINED = 0,
@@ -161,8 +164,8 @@ enum ImageLayout {
 };
 
 enum ImageFiltering {
-	IMAGE_FILTERING_LINEAR,
-	IMAGE_FILTERING_NEAREST,
+	IMAGE_FILTERING_NEAREST = 0,
+	IMAGE_FILTERING_LINEAR = 1,
 };
 
 enum ImageAspectFlags {
@@ -372,7 +375,7 @@ struct PipelineDepthStencilState {
 	CompareOperator depth_compare_operator = COMPARE_OP_ALWAYS;
 	bool enable_depth_range = false;
 	float depth_range_min = 0;
-	float depth_range_max = 0;
+	float depth_range_max = 1.0f;
 	bool enable_stencil = false;
 
 	struct StencilOperationState {
@@ -407,7 +410,7 @@ struct PipelineColorBlendState {
 		bool write_a = true;
 	};
 
-	PipelineColorBlendState create_disabled(int p_attachments = 1) {
+	static PipelineColorBlendState create_disabled(int p_attachments = 1) {
 		PipelineColorBlendState bs;
 		for (int i = 0; i < p_attachments; i++) {
 			bs.attachments.push_back(Attachment());
@@ -415,7 +418,7 @@ struct PipelineColorBlendState {
 		return bs;
 	}
 
-	PipelineColorBlendState create_blend(int p_attachments = 1) {
+	static PipelineColorBlendState create_blend(int p_attachments = 1) {
 		PipelineColorBlendState bs;
 		for (int i = 0; i < p_attachments; i++) {
 			Attachment ba;

@@ -38,15 +38,17 @@ struct VulkanContext {
 
 	PagedAllocator<VersatileResource> resources_allocator;
 
-public:
-	VmaPool find_or_create_small_allocs_pool(uint32_t p_mem_type_index);
-
-	void immediate_submit(
-			std::function<void(CommandBuffer p_cmd)>&& p_function);
-
-private:
 	// immediate commands
 	Fence imm_fence;
 	CommandBuffer imm_command_buffer;
 	CommandPool imm_command_pool;
+
+	VmaPool find_or_create_small_allocs_pool(uint32_t p_mem_type_index);
 };
+
+namespace vk {
+
+void immediate_submit(Context p_context,
+		std::function<void(CommandBuffer p_cmd)>&& p_function);
+
+}

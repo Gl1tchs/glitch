@@ -1,6 +1,8 @@
 #include "platform/vulkan/vk_backend.h"
 
+#include "platform/vulkan/vk_commands.h"
 #include "platform/vulkan/vk_context.h"
+#include "platform/vulkan/vk_sync.h"
 #include "renderer/types.h"
 
 #include <VkBootstrap.h>
@@ -104,6 +106,12 @@ Context VulkanRenderBackend::init(Ref<Window> window) {
 				vkb_device.get_queue_index(vkb::QueueType::present).value(),
 	};
 
+	s_context->present_queue = VulkanQueue{
+		.queue = vkb_device.get_queue(vkb::QueueType::transfer).value(),
+		.queue_family =
+				vkb_device.get_queue_index(vkb::QueueType::transfer).value(),
+	};
+
 	deletion_queue.push_function([this]() {
 		vkDestroySurfaceKHR(s_context->instance, s_context->surface, nullptr);
 		vkDestroyDevice(s_context->device, nullptr);
@@ -140,6 +148,27 @@ Context VulkanRenderBackend::init(Ref<Window> window) {
 	GL_LOG_INFO("API: {}.{}.{}", VK_VERSION_MAJOR(properties.apiVersion),
 			VK_VERSION_MINOR(properties.apiVersion),
 			VK_VERSION_PATCH(properties.apiVersion));
+
+	s_context->imm_fence = vk::fence_create((Context)s_context);
+
+	s_context->imm_command_pool = vk::command_pool_create(
+			(Context)s_context, (CommandQueue)&s_context->command_queue);
+
+	s_context->imm_command_buffer = vk::command_pool_allocate(
+			(Context)s_context, s_context->imm_command_pool);
+
+	deletion_queue.push_function([=]() {
+		vk::command_pool_free((Context)s_context, s_context->imm_command_pool);
+		vk::fence_free((Context)s_context, s_context->imm_fence);
+	});
+
+	deletion_queue.push_function([=]() {
+		for (const auto& pools : s_context->descriptor_set_pools) {
+			for (const auto& pool : pools.second) {
+				vkDestroyDescriptorPool(s_context->device, pool.first, nullptr);
+			}
+		}
+	});
 
 	return Context(s_context);
 }

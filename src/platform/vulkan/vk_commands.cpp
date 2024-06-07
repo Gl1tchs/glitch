@@ -248,7 +248,7 @@ void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
 	vkCmdPushConstants((VkCommandBuffer)p_cmd, shader->pipeline_layout,
-			VK_SHADER_STAGE_ALL, p_offset, p_size, p_push_constants);
+			shader->push_constant_stages, p_offset, p_size, p_push_constants);
 }
 
 void command_set_viewport(CommandBuffer p_cmd, const Vec2f& size) {

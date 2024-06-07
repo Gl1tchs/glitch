@@ -4,7 +4,7 @@ if(NOT GLSLC)
             "Please make sure it is installed and available in your PATH.")
 endif()
 
-set(GLSL_FLAGS -I. --target-env=vulkan1.3 -std=450 -O)
+set(GLSL_FLAGS -I. --target-env=vulkan1.3 -std=450 -O -fpreserve-bindings)
 
 set(SRC_DIR ${ENGINE_DIR}/shaders)
 set(BUILD_DIR ${CMAKE_BINARY_DIR}/shaders)

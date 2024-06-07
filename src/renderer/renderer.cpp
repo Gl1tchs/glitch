@@ -5,6 +5,7 @@
 #include "platform/vulkan/vk_buffer.h"
 #include "platform/vulkan/vk_descriptors.h"
 #include "renderer/camera.h"
+#include "renderer/mesh.h"
 #include "renderer/node.h"
 #include "renderer/types.h"
 
@@ -41,8 +42,6 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			p_window->get_size(), nullptr,
 			IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	material = Material::create(context);
-
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
@@ -56,12 +55,30 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 
 		frame_data.render_fence = vk::fence_create(context);
 	}
+
+	default_material = Material::create(context);
+
+	constexpr uint32_t magenta_color = 0xFF00FF;
+
+	magenta_image = vk::image_create(
+			context, DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &magenta_color);
+	default_sampler = vk::sampler_create(context);
+
+	Material::MaterialResources resources = {};
+	resources.color_image = magenta_image;
+	resources.color_sampler = default_sampler;
+
+	default_material_instance =
+			default_material->create_instance(context, resources);
 }
 
 Renderer::~Renderer() {
 	backend->wait_for_device();
 
-	Material::destroy(context, material);
+	Material::destroy(context, default_material);
+
+	vk::image_free(context, magenta_image);
+	vk::sampler_free(context, default_sampler);
 
 	_destroy_scene_graph();
 
@@ -118,7 +135,7 @@ void Renderer::wait_and_render() {
 		vk::command_transition_image(
 				cmd, draw_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
 
-		vk::command_clear_color(cmd, draw_image, { 0.1f, 0.4f, 0.7f, 1.0f });
+		vk::command_clear_color(cmd, draw_image, { 0.1f, 0.1f, 0.1f, 1.0f });
 
 		vk::command_transition_image(cmd, draw_image, IMAGE_LAYOUT_GENERAL,
 				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -147,13 +164,15 @@ void Renderer::wait_and_render() {
 			_get_current_frame().render_finished_semaphore);
 
 	if (!vk::queue_present(context,
-				backend->get_command_queue(QUEUE_TYPE_PRESENT), swapchain,
+				backend->get_command_queue(QUEUE_TYPE_GRAPHICS), swapchain,
 				_get_current_frame().render_finished_semaphore)) {
 		_request_resize();
 	}
 
 	frame_number++;
 }
+
+void Renderer::wait_for_device() { backend->wait_for_device(); }
 
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	vk::command_begin_rendering(p_cmd, draw_extent, draw_image, depth_image);
@@ -186,37 +205,76 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 		}
 		vk::buffer_unmap(context, scene_data_buffer);
 
-		BoundUniform scene_data_uniform;
-		scene_data_uniform.binding = 0;
-		scene_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
-		scene_data_uniform.ids.push_back(scene_data_buffer);
+		// start rendering
+		static const auto get_proper_material =
+				[this](Ref<MaterialInstance> material)
+				-> Ref<MaterialInstance> {
+			return !material
+					? default_material_instance
+					: std::dynamic_pointer_cast<MaterialInstance>(material);
+		};
 
-		UniformSet scene_data_set = vk::uniform_set_create(
-				context, scene_data_uniform, material->shader, 0);
+		std::map<Ref<MaterialInstance>, std::vector<Mesh*>> mesh_map;
+		get_scene_graph().traverse<Mesh>([&](Mesh* mesh) {
+			mesh_map[get_proper_material(mesh->material)].push_back(mesh);
+			return false;
+		});
+
+		UniformSet scene_data_set = GL_NULL_HANDLE;
 		_get_current_frame().deletion_queue.push_function(
 				[=, this]() { vk::uniform_set_free(context, scene_data_set); });
 
-		// start rendering
-		vk::command_bind_graphics_pipeline(p_cmd, material->pipeline);
+		bool global_descriptor_set = false;
 
-		// set dynamic state
-		vk::command_set_viewport(
-				p_cmd, { (float)draw_extent.x, (float)draw_extent.y });
-		vk::command_set_scissor(p_cmd, draw_extent);
+		for (const auto& [material, meshes] : mesh_map) {
+			if (meshes.empty()) {
+				continue;
+			}
 
-		vk::command_bind_uniform_sets(
-				p_cmd, material->shader, 0, scene_data_set);
+			if (!global_descriptor_set) {
+				BoundUniform scene_data_uniform;
+				scene_data_uniform.binding = 0;
+				scene_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
+				scene_data_uniform.ids.push_back(scene_data_buffer);
 
-		vk::command_draw(p_cmd, 3);
+				scene_data_set = vk::uniform_set_create(
+						context, scene_data_uniform, material->shader, 0);
+
+				global_descriptor_set = true;
+			}
+
+			vk::command_bind_graphics_pipeline(p_cmd, material->pipeline);
+
+			// set dynamic state
+			vk::command_set_viewport(
+					p_cmd, { (float)draw_extent.x, (float)draw_extent.y });
+			vk::command_set_scissor(p_cmd, draw_extent);
+
+			std::vector<UniformSet> descriptors = {
+				scene_data_set,
+				material->uniform_set,
+			};
+			vk::command_bind_uniform_sets(
+					p_cmd, material->shader, 0, descriptors);
+
+			for (const auto& mesh : meshes) {
+				vk::command_bind_index_buffer(
+						p_cmd, mesh->index_buffer, 0, INDEX_TYPE_UINT32);
+
+				GPUDrawPushConstants push_constants = {
+					.transform = mesh->transform.get_transform_matrix(),
+					.vertex_buffer = mesh->vertex_buffer_address,
+				};
+
+				vk::command_push_constants(p_cmd, material->shader, 0,
+						sizeof(GPUDrawPushConstants), &push_constants);
+
+				vk::command_draw_indexed(p_cmd, mesh->index_count);
+			}
+		}
 	}
 	vk::command_end_rendering(p_cmd);
 }
-
-SceneGraph& Renderer::get_scene_graph() { return scene_graph; }
-
-RendererSettings& Renderer::get_settings() { return settings; }
-
-RendererStats& Renderer::get_stats() { return stats; }
 
 GraphicsAPI Renderer::get_graphics_api() { return s_api; }
 
@@ -229,12 +287,13 @@ void Renderer::_request_resize() {
 }
 
 void Renderer::_destroy_scene_graph() {
-	scene_graph.traverse([](Node* node) {
+	scene_graph.traverse([this](Node* node) {
 		switch (node->get_type()) {
 			case NodeType::NONE: {
 				break;
 			}
 			case NodeType::GEOMETRY: {
+				Mesh::destroy(context, (const Mesh*)node);
 				break;
 			}
 			case NodeType::COMPUTE: {

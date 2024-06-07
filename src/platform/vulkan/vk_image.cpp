@@ -137,7 +137,7 @@ Image image_create(Context p_context, DataFormat p_format, Vec2u p_size,
 		Image new_image = _image_create(
 				vk_context, vk_format, vk_size, image_usage, p_mipmapped);
 
-		vk_context->immediate_submit([&](CommandBuffer cmd) {
+		vk::immediate_submit(p_context, [&](CommandBuffer cmd) {
 			vk::command_transition_image(cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
 					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
@@ -186,6 +186,28 @@ Vec3u image_get_size(Image p_image) {
 	memcpy(&size, &image->image_extent, sizeof(Vec3u));
 
 	return size;
+}
+
+Sampler sampler_create(Context p_context, ImageFiltering p_filtering) {
+	VulkanContext* context = (VulkanContext*)p_context;
+
+	VkSamplerCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	create_info.minFilter = static_cast<VkFilter>(p_filtering);
+	create_info.magFilter = static_cast<VkFilter>(p_filtering);
+	// TODO other fields
+
+	VkSampler vk_sampler = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateSampler(
+			context->device, &create_info, nullptr, &vk_sampler));
+
+	return Sampler(vk_sampler);
+}
+
+void sampler_free(Context p_context, Sampler p_sampler) {
+	VulkanContext* context = (VulkanContext*)p_context;
+
+	vkDestroySampler(context->device, (VkSampler)p_sampler, nullptr);
 }
 
 } //namespace vk

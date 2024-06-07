@@ -24,74 +24,78 @@ UniformPool uniform_pool_find_or_create(Context p_context,
 	}
 
 	// Create a new one.
-	std::vector<VkDescriptorPoolSize> vk_sizes(UNIFORM_TYPE_MAX);
-	uint32_t vk_sizes_count = 0;
+	std::vector<VkDescriptorPoolSize> vk_sizes;
 	{
-		VkDescriptorPoolSize* curr_vk_size = vk_sizes.data();
+		VkDescriptorPoolSize curr_vk_size;
+		const auto reset_vk_size = [&]() {
+			memset(&curr_vk_size, 0, sizeof(VkDescriptorPoolSize));
+		};
+
 		if (p_key.uniform_type[UNIFORM_TYPE_SAMPLER]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_SAMPLER;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_SAMPLER] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_TEXTURE]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_TEXTURE] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_IMAGE]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_IMAGE] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_INPUT_ATTACHMENT]) {
-			*curr_vk_size = {};
-			curr_vk_size->type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-			curr_vk_size->descriptorCount =
+			reset_vk_size();
+			curr_vk_size.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+			curr_vk_size.descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_INPUT_ATTACHMENT] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
-			curr_vk_size++;
-			vk_sizes_count++;
+
+			vk_sizes.push_back(curr_vk_size);
 		}
-		GL_ASSERT(vk_sizes_count <= UNIFORM_TYPE_MAX);
+
+		GL_ASSERT(vk_sizes.size() <= UNIFORM_TYPE_MAX);
 	}
 
 	VkDescriptorPoolCreateInfo descriptor_set_pool_create_info = {};
@@ -101,7 +105,7 @@ UniformPool uniform_pool_find_or_create(Context p_context,
 			VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 	descriptor_set_pool_create_info.maxSets = MAX_DESCRIPTOR_SETS_PER_POOL;
-	descriptor_set_pool_create_info.poolSizeCount = vk_sizes_count;
+	descriptor_set_pool_create_info.poolSizeCount = (uint32_t)vk_sizes.size();
 	descriptor_set_pool_create_info.pPoolSizes = vk_sizes.data();
 
 	VkDescriptorPool vk_pool = VK_NULL_HANDLE;
@@ -147,127 +151,119 @@ UniformSet uniform_set_create(Context p_context,
 		uint32_t p_set_index) {
 	DescriptorSetPoolKey pool_key;
 
-	std::vector<VkWriteDescriptorSet> vk_writes(p_uniforms.size());
+	std::vector<VkWriteDescriptorSet> vk_writes;
 	for (uint32_t i = 0; i < p_uniforms.size(); i++) {
 		const BoundUniform& uniform = p_uniforms[i];
 
-		vk_writes[i] = {};
-		vk_writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		vk_writes[i].dstBinding = uniform.binding;
-		vk_writes[i].descriptorType =
-				VK_DESCRIPTOR_TYPE_MAX_ENUM; // Invalid value.
+		VkWriteDescriptorSet vk_write = {};
+		vk_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		vk_write.dstBinding = uniform.binding;
+		vk_write.descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM; // Invalid value.
 
 		uint32_t num_descriptors = 1;
 
 		switch (uniform.type) {
 			case UNIFORM_TYPE_SAMPLER: {
 				num_descriptors = uniform.ids.size();
-				std::vector<VkDescriptorImageInfo> vk_img_infos(
-						num_descriptors);
 
-				for (uint32_t j = 0; j < num_descriptors; j++) {
-					vk_img_infos[j] = {};
-					vk_img_infos[j].sampler = (VkSampler)uniform.ids[j];
-					vk_img_infos[j].imageView = VK_NULL_HANDLE;
-					vk_img_infos[j].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				}
+				VkDescriptorImageInfo vk_img_info = {};
+				vk_img_info.sampler = (VkSampler)uniform.ids[0];
+				vk_img_info.imageView = VK_NULL_HANDLE;
+				vk_img_info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-				vk_writes[i].pImageInfo = vk_img_infos.data();
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+				vk_write.pImageInfo = &vk_img_info;
 			} break;
 			case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: {
 				num_descriptors = uniform.ids.size() / 2;
-				std::vector<VkDescriptorImageInfo> vk_img_infos(
-						num_descriptors);
 
-				for (uint32_t j = 0; j < num_descriptors; j++) {
-					vk_img_infos[j] = {};
-					vk_img_infos[j].sampler = (VkSampler)uniform.ids[j * 2 + 0];
-					vk_img_infos[j].imageView =
-							((const VulkanImage*)uniform.ids[j * 2 + 1])
-									->vk_image_view;
-					vk_img_infos[j].imageLayout =
-							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				}
+				VkDescriptorImageInfo vk_img_info = {};
+				vk_img_info.sampler = (VkSampler)uniform.ids[0];
+				vk_img_info.imageView =
+						((const VulkanImage*)uniform.ids[1])->vk_image_view;
+				vk_img_info.imageLayout =
+						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-				vk_writes[i].descriptorType =
+				vk_write.descriptorType =
 						VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				vk_writes[i].pImageInfo = vk_img_infos.data();
+				vk_write.pImageInfo = &vk_img_info;
+
 			} break;
 			case UNIFORM_TYPE_TEXTURE: {
 				num_descriptors = uniform.ids.size();
-				std::vector<VkDescriptorImageInfo> vk_img_infos(
-						num_descriptors);
 
-				for (uint32_t j = 0; j < num_descriptors; j++) {
-					vk_img_infos[j] = {};
-					vk_img_infos[j].imageView =
-							((const VulkanImage*)uniform.ids[j])->vk_image_view;
-					vk_img_infos[j].imageLayout =
-							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				}
+				VkDescriptorImageInfo vk_img_info = {};
+				vk_img_info.imageView =
+						((const VulkanImage*)uniform.ids[0])->vk_image_view;
+				vk_img_info.imageLayout =
+						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-				vk_writes[i].pImageInfo = vk_img_infos.data();
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				vk_write.pImageInfo = &vk_img_info;
+
 			} break;
 			case UNIFORM_TYPE_IMAGE: {
 				num_descriptors = uniform.ids.size();
-				std::vector<VkDescriptorImageInfo> vk_img_infos(
-						num_descriptors);
 
-				for (uint32_t j = 0; j < num_descriptors; j++) {
-					vk_img_infos[j] = {};
-					vk_img_infos[j].imageView =
-							((const VulkanImage*)uniform.ids[j])->vk_image_view;
-					vk_img_infos[j].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-				}
+				VkDescriptorImageInfo vk_img_info = {};
+				vk_img_info.imageView =
+						((VulkanImage*)uniform.ids[0])->vk_image_view;
+				vk_img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-				vk_writes[i].pImageInfo = vk_img_infos.data();
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				vk_write.pImageInfo = &vk_img_info;
+
 			} break;
 			case UNIFORM_TYPE_UNIFORM_BUFFER: {
 				const VulkanBuffer* buf_info =
 						(const VulkanBuffer*)uniform.ids[0];
+
 				VkDescriptorBufferInfo vk_buf_info = {};
 				vk_buf_info.buffer = buf_info->vk_buffer;
 				vk_buf_info.range = buf_info->size;
 
-				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				vk_writes[i].pBufferInfo = &vk_buf_info;
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				vk_write.pBufferInfo = &vk_buf_info;
+
 			} break;
 			case UNIFORM_TYPE_STORAGE_BUFFER: {
 				const VulkanBuffer* buf_info =
 						(const VulkanBuffer*)uniform.ids[0];
+
 				VkDescriptorBufferInfo vk_buf_info = {};
 				vk_buf_info.buffer = buf_info->vk_buffer;
 				vk_buf_info.range = buf_info->size;
 
-				vk_writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				vk_writes[i].pBufferInfo = &vk_buf_info;
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				vk_write.pBufferInfo = &vk_buf_info;
+
 			} break;
 			case UNIFORM_TYPE_INPUT_ATTACHMENT: {
 				num_descriptors = uniform.ids.size();
-				std::vector<VkDescriptorImageInfo> vk_img_infos(
-						num_descriptors);
+				std::vector<VkDescriptorImageInfo> vk_img_infos;
 
 				for (uint32_t j = 0; j < uniform.ids.size(); j++) {
-					vk_img_infos[j] = {};
-					vk_img_infos[j].imageView =
+					VkDescriptorImageInfo vk_img_info = {};
+					vk_img_info.imageView =
 							((const VulkanImage*)uniform.ids[j])->vk_image_view;
-					vk_img_infos[j].imageLayout =
+					vk_img_info.imageLayout =
 							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+					vk_img_infos.push_back(vk_img_info);
 				}
 
-				vk_writes[i].descriptorType =
-						VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-				vk_writes[i].pImageInfo = vk_img_infos.data();
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+				vk_write.pImageInfo = vk_img_infos.data();
+
 			} break;
 			default: {
 				GL_ASSERT(false);
 			}
 		}
 
-		vk_writes[i].descriptorCount = num_descriptors;
+		vk_write.descriptorCount = num_descriptors;
+
+		vk_writes.push_back(vk_write);
 
 		if (pool_key.uniform_type[uniform.type] == MAX_UNIFORM_POOL_ELEMENT) {
 			GL_LOG_ERROR("Uniform set reached the limit of bindings for the "
@@ -313,6 +309,7 @@ UniformSet uniform_set_create(Context p_context,
 	for (uint32_t i = 0; i < p_uniforms.size(); i++) {
 		vk_writes[i].dstSet = vk_descriptor_set;
 	}
+
 	vkUpdateDescriptorSets(
 			context->device, p_uniforms.size(), vk_writes.data(), 0, nullptr);
 

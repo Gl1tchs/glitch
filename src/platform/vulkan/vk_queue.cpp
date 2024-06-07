@@ -55,7 +55,6 @@ bool queue_present(Context p_context, CommandQueue p_queue,
 
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.pNext = nullptr;
 	present_info.waitSemaphoreCount = p_wait_semaphore == nullptr ? 0 : 1;
 	present_info.pWaitSemaphores = (VkSemaphore*)&p_wait_semaphore;
 	present_info.swapchainCount = 1;

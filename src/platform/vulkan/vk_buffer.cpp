@@ -2,6 +2,7 @@
 
 #include "platform/vulkan/vk_common.h"
 #include "platform/vulkan/vk_context.h"
+#include <vulkan/vulkan_core.h>
 
 namespace vk {
 
@@ -85,6 +86,17 @@ void buffer_free(Context p_context, Buffer p_buffer) {
 	vmaDestroyBuffer(
 			context->allocator, buffer->vk_buffer, buffer->allocation.handle);
 	VersatileResource::free(context->resources_allocator, buffer);
+}
+
+uint64_t buffer_get_device_address(Context p_context, Buffer p_buffer) {
+	const VulkanContext* context = (VulkanContext*)p_context;
+	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
+
+	VkBufferDeviceAddressInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+	info.buffer = buffer->vk_buffer;
+
+	return vkGetBufferDeviceAddress(context->device, &info);
 }
 
 uint8_t* buffer_map(Context p_context, Buffer p_buffer) {

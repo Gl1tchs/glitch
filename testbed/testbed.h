@@ -20,6 +20,7 @@ protected:
 
 private:
 	Ref<Node> scene;
+	Ref<Material> material;
 
 	CameraController camera_controller;
 	Ref<PerspectiveCameraNode> camera;

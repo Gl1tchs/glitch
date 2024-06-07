@@ -42,7 +42,7 @@ static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 
 static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 		uint32_t p_binding, VkDescriptorType p_type, ShaderStage p_stage,
-		std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>&
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>&
 				p_bindings) {
 	const auto it = p_bindings.find(p_set);
 	if (it != p_bindings.end()) {
@@ -104,8 +104,7 @@ Shader shader_create_from_bytecode(
 
 	std::vector<VkShaderModule> vk_shaders;
 
-	std::unordered_map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>
-			set_bindings;
+	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> set_bindings;
 	std::vector<VkPushConstantRange> push_constant_ranges;
 
 	for (const auto& shader : p_shaders) {
@@ -173,8 +172,14 @@ Shader shader_create_from_bytecode(
 		spvReflectDestroyShaderModule(&module);
 	}
 
-	std::vector<VkDescriptorSetLayout> descriptor_set_layout;
-	for (const auto& [set, bindings] : set_bindings) {
+	std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+	for (auto& [_, bindings] : set_bindings) {
+		std::sort(bindings.begin(), bindings.end(),
+				[=](const VkDescriptorSetLayoutBinding& lhs,
+						const VkDescriptorSetLayoutBinding& rhs) -> bool {
+					return lhs.binding < rhs.binding;
+				});
+
 		VkDescriptorSetLayoutCreateInfo create_info = {};
 		create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		create_info.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -184,14 +189,14 @@ Shader shader_create_from_bytecode(
 		VK_CHECK(vkCreateDescriptorSetLayout(
 				context->device, &create_info, nullptr, &vk_set));
 
-		descriptor_set_layout.push_back(vk_set);
+		descriptor_set_layouts.push_back(vk_set);
 	}
 
 	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
 	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipeline_layout_info.setLayoutCount =
-			static_cast<uint32_t>(descriptor_set_layout.size());
-	pipeline_layout_info.pSetLayouts = descriptor_set_layout.data();
+			static_cast<uint32_t>(descriptor_set_layouts.size());
+	pipeline_layout_info.pSetLayouts = descriptor_set_layouts.data();
 	pipeline_layout_info.pushConstantRangeCount =
 			static_cast<uint32_t>(push_constant_ranges.size());
 	pipeline_layout_info.pPushConstantRanges = push_constant_ranges.data();
@@ -212,11 +217,17 @@ Shader shader_create_from_bytecode(
 		shader_stages.push_back(create_info);
 	}
 
+	uint32_t push_constant_stages = 0;
+	for (const auto& push_constant : push_constant_ranges) {
+		push_constant_stages |= push_constant.stageFlags;
+	}
+
 	// Bookkeep
 	VulkanShader* shader_info = VersatileResource::allocate<VulkanShader>(
 			context->resources_allocator);
 	shader_info->stage_create_infos = shader_stages;
-	shader_info->descriptor_set_layouts = descriptor_set_layout;
+	shader_info->push_constant_stages = push_constant_stages;
+	shader_info->descriptor_set_layouts = descriptor_set_layouts;
 	shader_info->pipeline_layout = vk_pipeline_layout;
 
 	return Shader(shader_info);

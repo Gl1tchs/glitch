@@ -25,4 +25,9 @@ void image_free(Context p_context, Image p_image);
 
 Vec3u image_get_size(Image p_image);
 
+Sampler sampler_create(
+		Context p_context, ImageFiltering p_filtering = IMAGE_FILTERING_LINEAR);
+
+void sampler_free(Context p_context, Sampler p_sampler);
+
 }; //namespace vk

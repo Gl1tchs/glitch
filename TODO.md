@@ -2,6 +2,7 @@
 
 ## New Renderer
  - [ ] Abstract away functions
+ - [ ] Use present queue for presenting images
 
 ## Renderer
 - [ ] Implement more detailed scene graph system with components (proper ECS)

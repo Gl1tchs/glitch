@@ -28,25 +28,32 @@ VmaPool VulkanContext::find_or_create_small_allocs_pool(
 	return pool;
 }
 
-void VulkanContext::immediate_submit(
+namespace vk {
+
+void immediate_submit(Context p_context,
 		std::function<void(CommandBuffer p_cmd)>&& p_function) {
-	VK_CHECK(vkResetFences(device, 1, (VkFence*)&imm_fence));
+	VulkanContext* context = (VulkanContext*)p_context;
 
-	vk::command_reset(imm_command_buffer);
+	VK_CHECK(vkResetFences(context->device, 1, (VkFence*)&context->imm_fence));
 
-	vk::command_begin(imm_command_buffer);
+	vk::command_reset(context->imm_command_buffer);
+
+	vk::command_begin(context->imm_command_buffer);
 	{
 		// run the command
-		p_function(imm_command_buffer);
+		p_function(context->imm_command_buffer);
 	}
-	vk::command_end(imm_command_buffer);
+	vk::command_end(context->imm_command_buffer);
 
 	// submit command buffer to the queue and execute it.
-	// imm_fence will now block until the graphic commands finish execution
-	vk::queue_submit(
-			(CommandQueue)&graphics_queue, imm_command_buffer, imm_fence);
+	// context->imm_fence will now block until the graphic commands finish
+	// execution
+	vk::queue_submit((CommandQueue)&context->graphics_queue,
+			context->imm_command_buffer, context->imm_fence);
 
 	// wait till the operation finishes
-	VK_CHECK(
-			vkWaitForFences(device, 1, (VkFence*)&imm_fence, true, UINT64_MAX));
+	VK_CHECK(vkWaitForFences(context->device, 1, (VkFence*)&context->imm_fence,
+			true, UINT64_MAX));
 }
+
+} //namespace vk

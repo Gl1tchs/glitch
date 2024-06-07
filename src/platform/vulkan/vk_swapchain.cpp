@@ -87,11 +87,10 @@ Optional<Image> swapchain_acquire_image(
 		Context p_context, Swapchain p_swapchain, Semaphore p_semaphore) {
 	VulkanContext* context = (VulkanContext*)p_context;
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
-	VkSemaphore semaphore = (VkSemaphore)p_semaphore;
 
 	VkResult res = vkAcquireNextImageKHR(context->device,
-			swapchain->vk_swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE,
-			&swapchain->image_index);
+			swapchain->vk_swapchain, UINT64_MAX, (VkSemaphore)p_semaphore,
+			VK_NULL_HANDLE, &swapchain->image_index);
 
 	if (res != VK_SUCCESS) {
 		return {};

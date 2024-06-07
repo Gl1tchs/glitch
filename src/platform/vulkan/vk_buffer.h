@@ -25,6 +25,8 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 
 void buffer_free(Context p_context, Buffer p_buffer);
 
+uint64_t buffer_get_device_address(Context p_context, Buffer p_buffer);
+
 uint8_t* buffer_map(Context p_context, Buffer p_buffer);
 
 void buffer_unmap(Context p_context, Buffer p_buffer);
