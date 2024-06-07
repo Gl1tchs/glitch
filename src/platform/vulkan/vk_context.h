@@ -35,7 +35,6 @@ struct VulkanContext {
 	std::unordered_map<uint32_t, VmaPool> small_allocs_pools;
 
 	DescriptorSetPools descriptor_set_pools;
-	uint32_t max_descriptor_sets_per_pool = 0;
 
 	PagedAllocator<VersatileResource> resources_allocator;
 

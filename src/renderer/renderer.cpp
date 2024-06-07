@@ -2,6 +2,9 @@
 
 #include "core/application.h"
 
+#include "platform/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_descriptors.h"
+#include "renderer/camera.h"
 #include "renderer/node.h"
 #include "renderer/types.h"
 
@@ -38,6 +41,8 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			p_window->get_size(), nullptr,
 			IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
+	material = Material::create(context);
+
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
@@ -51,8 +56,6 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 
 		frame_data.render_fence = vk::fence_create(context);
 	}
-
-	material = Material::create(context);
 }
 
 Renderer::~Renderer() {
@@ -64,6 +67,8 @@ Renderer::~Renderer() {
 
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
+
+		frame_data.deletion_queue.flush();
 
 		vk::command_pool_free(context, frame_data.command_pool);
 
@@ -83,6 +88,8 @@ Renderer::~Renderer() {
 
 void Renderer::wait_and_render() {
 	vk::fence_wait(context, _get_current_frame().render_fence);
+
+	_get_current_frame().deletion_queue.flush();
 
 	Optional<Image> swapchain_image = vk::swapchain_acquire_image(
 			context, swapchain, _get_current_frame().image_available_semaphore);
@@ -150,7 +157,58 @@ void Renderer::wait_and_render() {
 
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	vk::command_begin_rendering(p_cmd, draw_extent, draw_image, depth_image);
+	{
+		// scene data
+		Buffer scene_data_buffer = vk::buffer_create(context,
+				sizeof(GPUSceneData),
+				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+				MEMORY_ALLOCATION_TYPE_CPU);
 
+		_get_current_frame().deletion_queue.push_function(
+				[=, this]() { vk::buffer_free(context, scene_data_buffer); });
+
+		GPUSceneData* scene_uniform_data =
+				(GPUSceneData*)vk::buffer_map(context, scene_data_buffer);
+		{
+			get_scene_graph().traverse<CameraNode>([scene_uniform_data](
+														   CameraNode* camera) {
+				scene_uniform_data->camera_pos =
+						glm::vec4(camera->transform.get_position(), 1.0f);
+				scene_uniform_data->view = camera->get_view_matrix();
+				scene_uniform_data->proj = camera->get_projection_matrix();
+				scene_uniform_data->view_proj =
+						scene_uniform_data->proj * scene_uniform_data->view;
+				scene_uniform_data->sun_direction = { -1, -1, -1 };
+				scene_uniform_data->sun_power = 1.0f;
+				scene_uniform_data->sun_color = { 1, 1, 1, 1 };
+				return true;
+			});
+		}
+		vk::buffer_unmap(context, scene_data_buffer);
+
+		BoundUniform scene_data_uniform;
+		scene_data_uniform.binding = 0;
+		scene_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
+		scene_data_uniform.ids.push_back(scene_data_buffer);
+
+		UniformSet scene_data_set = vk::uniform_set_create(
+				context, scene_data_uniform, material->shader, 0);
+		_get_current_frame().deletion_queue.push_function(
+				[=, this]() { vk::uniform_set_free(context, scene_data_set); });
+
+		// start rendering
+		vk::command_bind_graphics_pipeline(p_cmd, material->pipeline);
+
+		// set dynamic state
+		vk::command_set_viewport(
+				p_cmd, { (float)draw_extent.x, (float)draw_extent.y });
+		vk::command_set_scissor(p_cmd, draw_extent);
+
+		vk::command_bind_uniform_sets(
+				p_cmd, material->shader, 0, scene_data_set);
+
+		vk::command_draw(p_cmd, 3);
+	}
 	vk::command_end_rendering(p_cmd);
 }
 

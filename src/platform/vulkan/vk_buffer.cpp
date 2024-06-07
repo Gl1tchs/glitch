@@ -10,17 +10,17 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 		MemoryAllocationType p_allocation_type) {
 	VulkanContext* context = (VulkanContext*)p_context;
 
-	VkBufferCreateInfo create_info;
+	VkBufferCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	create_info.pNext = nullptr;
 	create_info.size = p_size;
 	create_info.usage = p_usage;
 
-	VmaAllocationCreateInfo alloc_create_info;
+	VmaAllocationCreateInfo alloc_create_info = {};
 	switch (p_allocation_type) {
 		case MEMORY_ALLOCATION_TYPE_CPU: {
-			bool is_src = p_usage.has_flag(BUFFER_USAGE_TRANSFER_FROM_BIT);
-			bool is_dst = p_usage.has_flag(BUFFER_USAGE_TRANSFER_TO_BIT);
+			bool is_src = p_usage.has_flag(BUFFER_USAGE_TRANSFER_SRC_BIT);
+			bool is_dst = p_usage.has_flag(BUFFER_USAGE_TRANSFER_DST_BIT);
 			if (is_src && !is_dst) {
 				// Looks like a staging buffer: CPU maps, writes sequentially,
 				// then GPU copies to VRAM.
@@ -40,6 +40,7 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 		} break;
 		case MEMORY_ALLOCATION_TYPE_GPU: {
 			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
 			if (p_size <= VulkanContext::SMALL_ALLOCATION_MAX_SIZE) {
 				uint32_t mem_type_index = 0;
 				vmaFindMemoryTypeIndexForBufferInfo(context->allocator,
@@ -71,6 +72,10 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 }
 
 void buffer_free(Context p_context, Buffer p_buffer) {
+	if (!p_buffer) {
+		return;
+	}
+
 	VulkanContext* context = (VulkanContext*)p_context;
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 

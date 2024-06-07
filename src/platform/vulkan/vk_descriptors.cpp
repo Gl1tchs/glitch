@@ -5,7 +5,9 @@
 
 namespace vk {
 
-VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
+static const uint32_t MAX_DESCRIPTOR_SETS_PER_POOL = 10;
+
+UniformPool uniform_pool_find_or_create(Context p_context,
 		const DescriptorSetPoolKey& p_key,
 		DescriptorSetPools::iterator* r_pool_sets_it) {
 	VulkanContext* context = (VulkanContext*)p_context;
@@ -15,7 +17,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 
 	if (pool_sets_it != context->descriptor_set_pools.end()) {
 		for (auto& pair : pool_sets_it->second) {
-			if (pair.second < context->max_descriptor_sets_per_pool) {
+			if (pair.second < MAX_DESCRIPTOR_SETS_PER_POOL) {
 				*r_pool_sets_it = pool_sets_it;
 			}
 		}
@@ -31,7 +33,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_SAMPLER;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_SAMPLER] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -40,7 +42,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -49,7 +51,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_TEXTURE] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -58,7 +60,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_IMAGE] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -67,7 +69,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -76,7 +78,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -85,7 +87,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 			curr_vk_size->type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 			curr_vk_size->descriptorCount =
 					p_key.uniform_type[UNIFORM_TYPE_INPUT_ATTACHMENT] *
-					context->max_descriptor_sets_per_pool;
+					MAX_DESCRIPTOR_SETS_PER_POOL;
 			curr_vk_size++;
 			vk_sizes_count++;
 		}
@@ -98,8 +100,7 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 	descriptor_set_pool_create_info.flags =
 			VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
-	descriptor_set_pool_create_info.maxSets =
-			context->max_descriptor_sets_per_pool;
+	descriptor_set_pool_create_info.maxSets = MAX_DESCRIPTOR_SETS_PER_POOL;
 	descriptor_set_pool_create_info.poolSizeCount = vk_sizes_count;
 	descriptor_set_pool_create_info.pPoolSizes = vk_sizes.data();
 
@@ -121,10 +122,10 @@ VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
 	pool_rcs.emplace(vk_pool, 0);
 	*r_pool_sets_it = pool_sets_it;
 
-	return vk_pool;
+	return UniformPool(vk_pool);
 }
 
-void descriptor_set_pool_unreference(Context p_context,
+void uniform_pool_unreference(Context p_context,
 		DescriptorSetPools::iterator p_pool_sets_it,
 		VkDescriptorPool p_vk_descriptor_pool) {
 	VulkanContext* context = (VulkanContext*)p_context;
@@ -282,7 +283,7 @@ UniformSet uniform_set_create(Context p_context,
 
 	// Need a descriptor pool.
 	DescriptorSetPools::iterator pool_sets_it = {};
-	VkDescriptorPool vk_pool = descriptor_set_pool_find_or_create(
+	VkDescriptorPool vk_pool = (VkDescriptorPool)uniform_pool_find_or_create(
 			p_context, pool_key, &pool_sets_it);
 	GL_ASSERT(vk_pool);
 	pool_sets_it->second[vk_pool]++;
@@ -301,7 +302,7 @@ UniformSet uniform_set_create(Context p_context,
 	VkResult res = vkAllocateDescriptorSets(
 			context->device, &descriptor_set_allocate_info, &vk_descriptor_set);
 	if (res) {
-		descriptor_set_pool_unreference(p_context, pool_sets_it, vk_pool);
+		uniform_pool_unreference(p_context, pool_sets_it, vk_pool);
 
 		GL_LOG_ERROR("Cannot allocate descriptor sets, error {}.",
 				static_cast<int>(res));
@@ -326,13 +327,17 @@ UniformSet uniform_set_create(Context p_context,
 }
 
 void uniform_set_free(Context p_context, UniformSet p_uniform_set) {
+	if (!p_uniform_set) {
+		return;
+	}
+
 	VulkanContext* context = (VulkanContext*)p_context;
 	VulkanUniformSet* usi = (VulkanUniformSet*)p_uniform_set;
 
 	vkFreeDescriptorSets(context->device, usi->vk_descriptor_pool, 1,
 			&usi->vk_descriptor_set);
 
-	descriptor_set_pool_unreference(
+	uniform_pool_unreference(
 			p_context, usi->pool_sets_it, usi->vk_descriptor_pool);
 
 	VersatileResource::free(context->resources_allocator, usi);

@@ -28,11 +28,11 @@ namespace vk {
 
 static const uint32_t MAX_UNIFORM_POOL_ELEMENT = 65535;
 
-VkDescriptorPool descriptor_set_pool_find_or_create(Context p_context,
+UniformPool uniform_pool_find_or_create(Context p_context,
 		const DescriptorSetPoolKey& p_key,
 		DescriptorSetPools::iterator* r_pool_sets_it);
 
-void descriptor_set_pool_unreference(Context p_context,
+void uniform_pool_unreference(Context p_context,
 		DescriptorSetPools::iterator p_pool_sets_it,
 		VkDescriptorPool p_vk_descriptor_pool);
 

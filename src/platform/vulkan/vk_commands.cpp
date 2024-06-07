@@ -1,5 +1,6 @@
 #include "platform/vulkan/vk_commands.h"
 
+#include "platform/vulkan/vk_descriptors.h"
 #include "renderer/types.h"
 
 #include "platform/vulkan/vk_buffer.h"
@@ -195,6 +196,13 @@ void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
 											  : VK_INDEX_TYPE_UINT32);
 }
 
+void command_draw(CommandBuffer p_cmd, uint32_t p_vertex_count,
+		uint32_t p_instance_count, uint32_t p_first_vertex,
+		uint32_t p_first_instance) {
+	vkCmdDraw((VkCommandBuffer)p_cmd, p_vertex_count, p_instance_count,
+			p_first_vertex, p_first_instance);
+}
+
 void command_draw_indexed(CommandBuffer p_cmd, uint32_t p_index_count,
 		uint32_t p_instance_count, uint32_t p_first_index,
 		int32_t p_vertex_offset, uint32_t p_first_instance) {
@@ -221,11 +229,18 @@ void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
 		PipelineType p_type) {
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
+	std::vector<VkDescriptorSet> uniform_sets;
+	for (uint32_t i = 0; i < p_uniform_sets.size(); i++) {
+		VulkanUniformSet* uniform_set = (VulkanUniformSet*)p_uniform_sets[i];
+
+		uniform_sets.push_back(uniform_set->vk_descriptor_set);
+	}
+
 	vkCmdBindDescriptorSets((VkCommandBuffer)p_cmd,
 			p_type == PIPELINE_TYPE_GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS
 											 : VK_PIPELINE_BIND_POINT_COMPUTE,
 			shader->pipeline_layout, p_first_set, p_uniform_sets.size(),
-			(const VkDescriptorSet*)p_uniform_sets.data(), 0, nullptr);
+			uniform_sets.data(), 0, nullptr);
 }
 
 void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
@@ -236,7 +251,7 @@ void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
 			VK_SHADER_STAGE_ALL, p_offset, p_size, p_push_constants);
 }
 
-void command_set_viewport(CommandBuffer p_cmd, Vec2f size) {
+void command_set_viewport(CommandBuffer p_cmd, const Vec2f& size) {
 	VkViewport viewport = {
 		.x = 0,
 		.y = 0,

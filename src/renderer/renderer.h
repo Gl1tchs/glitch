@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/deletion_queue.h"
 #include "core/window.h"
 
 #include "renderer/material.h"
@@ -13,6 +14,18 @@ enum GraphicsAPI {
 };
 
 [[nodiscard]] GraphicsAPI find_proper_api() noexcept;
+
+struct GPUSceneData {
+	glm::vec4 camera_pos;
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::mat4 view_proj;
+	glm::vec3 sun_direction;
+	// in glsl this will be the w component
+	// of the `sun_direction`
+	float sun_power;
+	glm::vec4 sun_color;
+};
 
 struct RendererSettings {
 	float render_scale = 1.0f;
@@ -30,6 +43,8 @@ struct FrameData {
 
 	Semaphore image_available_semaphore, render_finished_semaphore;
 	Fence render_fence;
+
+	DeletionQueue deletion_queue;
 };
 
 class Renderer {

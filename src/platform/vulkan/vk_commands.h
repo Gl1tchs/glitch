@@ -42,6 +42,10 @@ void command_bind_compute_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline);
 void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
 		uint64_t p_offset, IndexType p_index_type);
 
+void command_draw(CommandBuffer p_cmd, uint32_t p_vertex_count,
+		uint32_t p_instance_count = 1, uint32_t p_first_vertex = 0,
+		uint32_t p_first_instance = 0);
+
 void command_draw_indexed(CommandBuffer p_cmd, uint32_t p_index_count,
 		uint32_t p_instance_count = 1, uint32_t p_first_index = 0,
 		int32_t p_vertex_offset = 0, uint32_t p_first_instance = 0);
@@ -59,7 +63,7 @@ void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
 void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
 		uint64_t p_offset, uint32_t p_size, const void* p_push_constants);
 
-void command_set_viewport(CommandBuffer p_cmd, Vec2f size);
+void command_set_viewport(CommandBuffer p_cmd, const Vec2f& size);
 
 void command_set_scissor(CommandBuffer p_cmd, const Vec2u& p_size,
 		const Vec2u& p_offset = { 0, 0 });

@@ -124,7 +124,7 @@ Image image_create(Context p_context, DataFormat p_format, Vec2u p_size,
 				vk_size.depth * vk_size.width * vk_size.height * 4;
 
 		Buffer staging_buffer = vk::buffer_create(p_context, data_size,
-				BUFFER_USAGE_TRANSFER_FROM_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+				BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
 
 		uint8_t* mapped_data = vk::buffer_map(p_context, staging_buffer);
 		{ memcpy(mapped_data, p_data, data_size); }
