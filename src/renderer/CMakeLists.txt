@@ -11,6 +11,7 @@ target_include_directories(gl-renderer
     ${ENGINE_DIR}
     ${GLM_INCLUDES}
     PRIVATE
+    ${CMAKE_BINARY_DIR}/include
     ${VMA_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
 )

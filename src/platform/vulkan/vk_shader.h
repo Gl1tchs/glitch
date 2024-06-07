@@ -13,7 +13,7 @@ struct VulkanShader {
 namespace vk {
 
 Shader shader_create_from_bytecode(
-		Context p_context, const std::vector<uint32_t>& p_shader_binary);
+		Context p_context, const std::vector<SpirvData>& p_shaders);
 
 void shader_free(Context p_context, Shader p_shader);
 

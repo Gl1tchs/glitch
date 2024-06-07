@@ -34,6 +34,10 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT |
 					IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
+	depth_image = vk::image_create(context, DATA_FORMAT_D32_SFLOAT,
+			p_window->get_size(), nullptr,
+			IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
@@ -47,10 +51,14 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 
 		frame_data.render_fence = vk::fence_create(context);
 	}
+
+	material = Material::create(context);
 }
 
 Renderer::~Renderer() {
 	backend->wait_for_device();
+
+	Material::destroy(context, material);
 
 	_destroy_scene_graph();
 
@@ -65,7 +73,9 @@ Renderer::~Renderer() {
 		vk::fence_free(context, frame_data.render_fence);
 	}
 
+	vk::image_free(context, depth_image);
 	vk::image_free(context, draw_image);
+
 	vk::swapchain_free(context, swapchain);
 
 	backend->shutdown(context);
@@ -104,6 +114,14 @@ void Renderer::wait_and_render() {
 		vk::command_clear_color(cmd, draw_image, { 0.1f, 0.4f, 0.7f, 1.0f });
 
 		vk::command_transition_image(cmd, draw_image, IMAGE_LAYOUT_GENERAL,
+				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		vk::command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
+				IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+		_geometry_pass(cmd);
+
+		vk::command_transition_image(cmd, draw_image,
+				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 		vk::command_transition_image(cmd, swapchain_image.value(),
 				IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -128,6 +146,12 @@ void Renderer::wait_and_render() {
 	}
 
 	frame_number++;
+}
+
+void Renderer::_geometry_pass(CommandBuffer p_cmd) {
+	vk::command_begin_rendering(p_cmd, draw_extent, draw_image, depth_image);
+
+	vk::command_end_rendering(p_cmd);
 }
 
 SceneGraph& Renderer::get_scene_graph() { return scene_graph; }

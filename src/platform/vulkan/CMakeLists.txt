@@ -12,7 +12,7 @@ target_include_directories(gl-vulkan-backend
     ${VMA_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
     PRIVATE
-    ${SPIRV_CROSS_INCLUDES}
+    ${SPIRV_REFLECT_INCLUDES}
     ${GLFW_INCLUDES}
     ${VK_BOOTSTRAP_INCLUDES}
 )
@@ -22,7 +22,7 @@ target_link_libraries(gl-vulkan-backend
     gl::core
     gl::renderer
     PRIVATE
-    ${SPIRV_CROSS_LIBS}
+    ${SPIRV_REFLECT_LIBS}
     ${GLFW_LIBS}
     ${VMA_LIBS}
     ${VK_BOOTSTRAP_LIBS}

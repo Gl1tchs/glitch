@@ -2,6 +2,7 @@
 
 #include "core/window.h"
 
+#include "renderer/material.h"
 #include "renderer/scene_graph.h"
 #include "renderer/types.h"
 
@@ -47,6 +48,9 @@ public:
 	static GraphicsAPI get_graphics_api();
 
 private:
+	void _geometry_pass(CommandBuffer p_cmd);
+
+private:
 	void _request_resize();
 
 	/**
@@ -68,6 +72,8 @@ private:
 	Swapchain swapchain;
 
 	Image draw_image;
+	Image depth_image;
+
 	Vec2u draw_extent;
 
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
@@ -75,7 +81,7 @@ private:
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 	uint32_t frame_number = 0;
 
-	Pipeline compute_pipeline;
+	Ref<Material> material;
 
 	SceneGraph scene_graph;
 

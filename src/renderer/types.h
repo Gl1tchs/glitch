@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/templates/vector_view.h"
+
 // defines handles that are not needed to be freed by user
 #define GL_DEFINE_HANDLE(object) typedef struct object##_T* object;
 
@@ -442,4 +444,20 @@ enum PipelineDynamicStateFlags {
 	DYNAMIC_STATE_STENCIL_COMPARE_MASK = (1 << 4),
 	DYNAMIC_STATE_STENCIL_WRITE_MASK = (1 << 5),
 	DYNAMIC_STATE_STENCIL_REFERENCE = (1 << 6),
+};
+
+enum ShaderStage {
+	SHADER_STAGE_VERTEX_BIT = 0x00000001,
+	SHADER_STAGE_TESSELLATION_CONTROL_BIT = 0x00000002,
+	SHADER_STAGE_TESSELLATION_EVALUATION_BIT = 0x00000004,
+	SHADER_STAGE_GEOMETRY_BIT = 0x00000008,
+	SHADER_STAGE_FRAGMENT_BIT = 0x00000010,
+	SHADER_STAGE_COMPUTE_BIT = 0x00000020,
+	SHADER_STAGE_ALL_GRAPHICS = 0x0000001F,
+	SHADER_STAGE_ALL = 0x7FFFFFFF,
+};
+
+struct SpirvData {
+	VectorView<uint32_t> byte_code;
+	ShaderStage stage;
 };

@@ -6,7 +6,7 @@ endif()
 
 set(GLSL_FLAGS -I. --target-env=vulkan1.3 -std=450 -O)
 
-set(SRC_DIR ${CMAKE_SOURCE_DIR}/shaders)
+set(SRC_DIR ${ENGINE_DIR}/shaders)
 set(BUILD_DIR ${CMAKE_BINARY_DIR}/shaders)
 
 file(GLOB_RECURSE VS_FILES ${SRC_DIR}/*.vert)
@@ -52,12 +52,12 @@ add_custom_target(gl-shaders ALL
 
 # bundle the shaders if any provided
 if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
-    set(BUNDLER_EXE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/programs/bundler)
+    set(BUNDLER_EXE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/programs/gl-bundler)
 
     set(BUNDLE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/include")
 
     add_custom_command(TARGET gl-shaders PRE_BUILD
-        DEPENDS bundler
+        DEPENDS gl-bundler
         COMMAND ${CMAKE_COMMAND} -E make_directory ${BUNDLE_OUTPUT_DIR}
         COMMAND ${BUNDLER_EXE}
             ${BUNDLE_OUTPUT_DIR}/shader_bundle.gen.h
