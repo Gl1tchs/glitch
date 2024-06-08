@@ -27,22 +27,12 @@ glm::vec3 Transform::get_scale() const {
 	}
 }
 
-void Transform::translate(glm::vec3 translation) {
-	local_position += translation;
+void Transform::translate(glm::vec3 p_translation) {
+	local_position += p_translation;
 }
 
-void Transform::rotate(const float angle, const glm::vec3 axis) {
-	local_rotation += angle * axis;
-}
-
-void Transform::look_at(const glm::vec3& target) {
-	glm::vec3 direction = glm::normalize(target - local_position);
-
-	// Compute pitch and yaw angles using trigonometry
-	float pitch = glm::degrees(asinf(-direction.y));
-	float yaw = glm::degrees(atan2f(-direction.x, -direction.z));
-
-	local_rotation = glm::vec3(pitch, yaw, 0.0f);
+void Transform::rotate(const float p_angle, const glm::vec3 p_axis) {
+	local_rotation += p_angle * p_axis;
 }
 
 glm::vec3 Transform::get_forward() const {

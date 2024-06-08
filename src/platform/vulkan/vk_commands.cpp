@@ -1,20 +1,29 @@
-#include "platform/vulkan/vk_commands.h"
+#include "platform/vulkan/vk_backend.h"
 
-#include "platform/vulkan/vk_descriptors.h"
-#include "renderer/types.h"
+void VulkanRenderBackend::command_immediate_submit(
+		std::function<void(CommandBuffer p_cmd)>&& p_function) {
+	VK_CHECK(vkResetFences(device, 1, (VkFence*)&imm_fence));
 
-#include "platform/vulkan/vk_buffer.h"
-#include "platform/vulkan/vk_common.h"
-#include "platform/vulkan/vk_context.h"
-#include "platform/vulkan/vk_image.h"
-#include "platform/vulkan/vk_shader.h"
+	command_reset(imm_command_buffer);
 
-#include <vulkan/vulkan_core.h>
+	command_begin(imm_command_buffer);
+	{
+		// run the command
+		p_function(imm_command_buffer);
+	}
+	command_end(imm_command_buffer);
 
-namespace vk {
+	// submit command buffer to the queue and execute it.
+	// imm_fence will now block until the graphic commands finish
+	// execution
+	queue_submit((CommandQueue)&graphics_queue, imm_command_buffer, imm_fence);
 
-CommandPool command_pool_create(Context p_context, CommandQueue p_queue) {
-	VulkanContext* context = (VulkanContext*)p_context;
+	// wait till the operation finishes
+	VK_CHECK(
+			vkWaitForFences(device, 1, (VkFence*)&imm_fence, true, UINT64_MAX));
+}
+
+CommandPool VulkanRenderBackend::command_pool_create(CommandQueue p_queue) {
 	VulkanQueue* queue = (VulkanQueue*)p_queue;
 
 	VkCommandPoolCreateInfo create_info = {};
@@ -24,23 +33,19 @@ CommandPool command_pool_create(Context p_context, CommandQueue p_queue) {
 
 	VkCommandPool vk_command_pool = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateCommandPool(
-			context->device, &create_info, nullptr, &vk_command_pool));
+			device, &create_info, nullptr, &vk_command_pool));
 
 	return CommandPool(vk_command_pool);
 }
 
-void command_pool_free(Context p_context, CommandPool p_command_pool) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
+void VulkanRenderBackend::command_pool_free(CommandPool p_command_pool) {
 	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
 
-	vkDestroyCommandPool(context->device, command_pool, nullptr);
+	vkDestroyCommandPool(device, command_pool, nullptr);
 }
 
-CommandBuffer command_pool_allocate(
-		Context p_context, CommandPool p_command_pool) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
+CommandBuffer VulkanRenderBackend::command_pool_allocate(
+		CommandPool p_command_pool) {
 	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
 
 	VkCommandBufferAllocateInfo alloc_info = {};
@@ -51,16 +56,13 @@ CommandBuffer command_pool_allocate(
 	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
 	VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
-	VK_CHECK(vkAllocateCommandBuffers(
-			context->device, &alloc_info, &vk_command_buffer));
+	VK_CHECK(vkAllocateCommandBuffers(device, &alloc_info, &vk_command_buffer));
 
 	return CommandBuffer(vk_command_buffer);
 }
 
-std::vector<CommandBuffer> command_pool_allocate(
-		Context p_context, CommandPool p_command_pool, const uint32_t p_count) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
+std::vector<CommandBuffer> VulkanRenderBackend::command_pool_allocate(
+		CommandPool p_command_pool, const uint32_t p_count) {
 	VkCommandPool command_pool = (VkCommandPool)p_command_pool;
 
 	VkCommandBufferAllocateInfo alloc_info = {};
@@ -71,20 +73,18 @@ std::vector<CommandBuffer> command_pool_allocate(
 	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
 	std::vector<CommandBuffer> command_buffers(p_count);
-	VK_CHECK(vkAllocateCommandBuffers(context->device, &alloc_info,
-			(VkCommandBuffer*)&command_buffers.front()));
+	VK_CHECK(vkAllocateCommandBuffers(
+			device, &alloc_info, (VkCommandBuffer*)&command_buffers.front()));
 
 	return command_buffers;
 }
 
-void command_pool_reset(Context p_context, CommandPool p_command_pool) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
-	vkResetCommandPool(context->device, (VkCommandPool)p_command_pool,
+void VulkanRenderBackend::command_pool_reset(CommandPool p_command_pool) {
+	vkResetCommandPool(device, (VkCommandPool)p_command_pool,
 			VK_COMMAND_POOL_RESET_FLAG_BITS_MAX_ENUM);
 }
 
-void command_begin(CommandBuffer p_cmd) {
+void VulkanRenderBackend::command_begin(CommandBuffer p_cmd) {
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.pNext = nullptr;
@@ -94,16 +94,17 @@ void command_begin(CommandBuffer p_cmd) {
 	vkBeginCommandBuffer((VkCommandBuffer)p_cmd, &begin_info);
 }
 
-void command_end(CommandBuffer p_cmd) {
+void VulkanRenderBackend::command_end(CommandBuffer p_cmd) {
 	vkEndCommandBuffer((VkCommandBuffer)p_cmd);
 }
 
-void command_reset(CommandBuffer p_cmd) {
+void VulkanRenderBackend::command_reset(CommandBuffer p_cmd) {
 	vkResetCommandBuffer((VkCommandBuffer)p_cmd, 0);
 }
 
-void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
-		VectorView<Image> p_color_attachments, Image p_depth_attachment) {
+void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
+		const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
+		Image p_depth_attachment) {
 	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
 			p_color_attachments.size());
 	for (uint32_t i = 0; i < p_color_attachments.size(); i++) {
@@ -146,12 +147,13 @@ void command_begin_rendering(CommandBuffer p_cmd, const Vec2u& p_draw_extent,
 	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);
 }
 
-void command_end_rendering(CommandBuffer p_cmd) {
+void VulkanRenderBackend::command_end_rendering(CommandBuffer p_cmd) {
 	vkCmdEndRendering((VkCommandBuffer)p_cmd);
 }
 
-void command_clear_color(CommandBuffer p_cmd, Image p_image,
-		const Color& p_clear_color, ImageAspectFlags p_image_aspect) {
+void VulkanRenderBackend::command_clear_color(CommandBuffer p_cmd,
+		Image p_image, const Color& p_clear_color,
+		ImageAspectFlags p_image_aspect) {
 	VulkanImage* image = (VulkanImage*)p_image;
 
 	VkClearColorValue clear_color = {};
@@ -176,18 +178,20 @@ void command_clear_color(CommandBuffer p_cmd, Image p_image,
 			VK_IMAGE_LAYOUT_GENERAL, &clear_color, 1, &image_range);
 }
 
-void command_bind_graphics_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline) {
+void VulkanRenderBackend::command_bind_graphics_pipeline(
+		CommandBuffer p_cmd, Pipeline p_pipeline) {
 	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			(VkPipeline)p_pipeline);
 }
 
-void command_bind_compute_pipeline(CommandBuffer p_cmd, Pipeline p_pipeline) {
+void VulkanRenderBackend::command_bind_compute_pipeline(
+		CommandBuffer p_cmd, Pipeline p_pipeline) {
 	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
 			(VkPipeline)p_pipeline);
 }
 
-void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
-		uint64_t p_offset, IndexType p_index_type) {
+void VulkanRenderBackend::command_bind_index_buffer(CommandBuffer p_cmd,
+		Buffer p_index_buffer, uint64_t p_offset, IndexType p_index_type) {
 	VulkanBuffer* index_buffer = (VulkanBuffer*)p_index_buffer;
 
 	vkCmdBindIndexBuffer((VkCommandBuffer)p_cmd, index_buffer->vk_buffer,
@@ -196,37 +200,40 @@ void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
 											  : VK_INDEX_TYPE_UINT32);
 }
 
-void command_draw(CommandBuffer p_cmd, uint32_t p_vertex_count,
-		uint32_t p_instance_count, uint32_t p_first_vertex,
-		uint32_t p_first_instance) {
+void VulkanRenderBackend::command_draw(CommandBuffer p_cmd,
+		uint32_t p_vertex_count, uint32_t p_instance_count,
+		uint32_t p_first_vertex, uint32_t p_first_instance) {
 	vkCmdDraw((VkCommandBuffer)p_cmd, p_vertex_count, p_instance_count,
 			p_first_vertex, p_first_instance);
 }
 
-void command_draw_indexed(CommandBuffer p_cmd, uint32_t p_index_count,
-		uint32_t p_instance_count, uint32_t p_first_index,
-		int32_t p_vertex_offset, uint32_t p_first_instance) {
+void VulkanRenderBackend::command_draw_indexed(CommandBuffer p_cmd,
+		uint32_t p_index_count, uint32_t p_instance_count,
+		uint32_t p_first_index, int32_t p_vertex_offset,
+		uint32_t p_first_instance) {
 	vkCmdDrawIndexed((VkCommandBuffer)p_cmd, p_index_count, p_instance_count,
 			p_first_index, p_vertex_offset, p_first_instance);
 }
 
-void command_draw_indexed_indirect(CommandBuffer p_cmd, Buffer p_buffer,
-		uint64_t p_offset, uint32_t p_draw_count, uint32_t p_stride) {
+void VulkanRenderBackend::command_draw_indexed_indirect(CommandBuffer p_cmd,
+		Buffer p_buffer, uint64_t p_offset, uint32_t p_draw_count,
+		uint32_t p_stride) {
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
 	vkCmdDrawIndexedIndirect((VkCommandBuffer)p_cmd, buffer->vk_buffer,
 			p_offset, p_draw_count, p_stride);
 }
 
-void command_dispatch(CommandBuffer p_cmd, uint32_t p_group_count_x,
-		uint32_t p_group_count_y, uint32_t p_group_count_z) {
+void VulkanRenderBackend::command_dispatch(CommandBuffer p_cmd,
+		uint32_t p_group_count_x, uint32_t p_group_count_y,
+		uint32_t p_group_count_z) {
 	vkCmdDispatch((VkCommandBuffer)p_cmd, p_group_count_x, p_group_count_y,
 			p_group_count_z);
 }
 
-void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
-		uint32_t p_first_set, VectorView<UniformSet> p_uniform_sets,
-		PipelineType p_type) {
+void VulkanRenderBackend::command_bind_uniform_sets(CommandBuffer p_cmd,
+		Shader p_shader, uint32_t p_first_set,
+		VectorView<UniformSet> p_uniform_sets, PipelineType p_type) {
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
 	std::vector<VkDescriptorSet> uniform_sets;
@@ -243,15 +250,17 @@ void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
 			uniform_sets.data(), 0, nullptr);
 }
 
-void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
-		uint64_t p_offset, uint32_t p_size, const void* p_push_constants) {
+void VulkanRenderBackend::command_push_constants(CommandBuffer p_cmd,
+		Shader p_shader, uint64_t p_offset, uint32_t p_size,
+		const void* p_push_constants) {
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
 	vkCmdPushConstants((VkCommandBuffer)p_cmd, shader->pipeline_layout,
 			shader->push_constant_stages, p_offset, p_size, p_push_constants);
 }
 
-void command_set_viewport(CommandBuffer p_cmd, const Vec2f& size) {
+void VulkanRenderBackend::command_set_viewport(
+		CommandBuffer p_cmd, const Vec2f& size) {
 	VkViewport viewport = {
 		.x = 0,
 		.y = 0,
@@ -264,7 +273,7 @@ void command_set_viewport(CommandBuffer p_cmd, const Vec2f& size) {
 	vkCmdSetViewport((VkCommandBuffer)p_cmd, 0, 1, &viewport);
 }
 
-void command_set_scissor(
+void VulkanRenderBackend::command_set_scissor(
 		CommandBuffer p_cmd, const Vec2u& p_size, const Vec2u& p_offset) {
 	VkRect2D scissor = {};
 	memcpy(&scissor.extent, &p_size, sizeof(VkExtent2D));
@@ -273,8 +282,9 @@ void command_set_scissor(
 	vkCmdSetScissor((VkCommandBuffer)p_cmd, 0, 1, &scissor);
 }
 
-void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
-		Buffer p_dst_buffer, VectorView<BufferCopyRegion> p_regions) {
+void VulkanRenderBackend::command_copy_buffer(CommandBuffer p_cmd,
+		Buffer p_src_buffer, Buffer p_dst_buffer,
+		VectorView<BufferCopyRegion> p_regions) {
 	VulkanBuffer* src_buffer = (VulkanBuffer*)p_src_buffer;
 	VulkanBuffer* dst_buffer = (VulkanBuffer*)p_dst_buffer;
 
@@ -290,8 +300,9 @@ void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
 			dst_buffer->vk_buffer, p_regions.size(), regions.data());
 }
 
-void command_copy_buffer_to_image(CommandBuffer p_cmd, Buffer p_src_buffer,
-		Image p_dst_image, VectorView<BufferImageCopyRegion> p_regions) {
+void VulkanRenderBackend::command_copy_buffer_to_image(CommandBuffer p_cmd,
+		Buffer p_src_buffer, Image p_dst_image,
+		VectorView<BufferImageCopyRegion> p_regions) {
 	VulkanBuffer* src_buffer = (VulkanBuffer*)p_src_buffer;
 	VulkanImage* dst_image = (VulkanImage*)p_dst_image;
 
@@ -308,8 +319,8 @@ void command_copy_buffer_to_image(CommandBuffer p_cmd, Buffer p_src_buffer,
 			p_regions.size(), regions.data());
 }
 
-void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
-		Image p_dst_image, const Vec2u& p_src_extent,
+void VulkanRenderBackend::command_copy_image_to_image(CommandBuffer p_cmd,
+		Image p_src_image, Image p_dst_image, const Vec2u& p_src_extent,
 		const Vec2u& p_dst_extent) {
 	VkImageBlit2 blit_region = {};
 	blit_region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
@@ -348,8 +359,8 @@ void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
 	vkCmdBlitImage2((VkCommandBuffer)p_cmd, &blit_info);
 }
 
-void command_transition_image(CommandBuffer p_cmd, Image p_image,
-		ImageLayout p_current_layout, ImageLayout p_new_layout) {
+void VulkanRenderBackend::command_transition_image(CommandBuffer p_cmd,
+		Image p_image, ImageLayout p_current_layout, ImageLayout p_new_layout) {
 	VkImageAspectFlags aspect_mask =
 			(p_new_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
 			? VK_IMAGE_ASPECT_DEPTH_BIT
@@ -389,5 +400,3 @@ void command_transition_image(CommandBuffer p_cmd, Image p_image,
 
 	vkCmdPipelineBarrier2((VkCommandBuffer)p_cmd, &dep_info);
 }
-
-} //namespace vk

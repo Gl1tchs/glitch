@@ -4,12 +4,12 @@ SceneGraph::SceneGraph() : root(create_ref<Node>()) {}
 
 Ref<Node> SceneGraph::get_root() { return root; }
 
-void SceneGraph::push_node(Ref<Node> node) { root->add_child(node); }
+void SceneGraph::push_node(Ref<Node> p_node) { root->add_child(p_node); }
 
-Node* SceneGraph::find_node(const UID& uid) {
+Node* SceneGraph::find_node(const UID& p_uid) {
 	Node* result = nullptr;
 	traverse([&](Node* node) {
-		if (node->uid == uid) {
+		if (node->uid == p_uid) {
 			result = node;
 			return true;
 		}
@@ -18,22 +18,22 @@ Node* SceneGraph::find_node(const UID& uid) {
 	return result;
 }
 
-bool SceneGraph::remove_node(const UID& uid) {
-	return _remove_node(root.get(), uid);
+bool SceneGraph::remove_node(const UID& p_uid) {
+	return _remove_node(root.get(), p_uid);
 }
 
-void SceneGraph::traverse(const std::function<bool(Node*)>& callback) {
-	_traverse_node(root.get(), callback);
+void SceneGraph::traverse(const std::function<bool(Node*)>& p_callback) {
+	_traverse_node(root.get(), p_callback);
 }
 
-bool SceneGraph::_remove_node(Node* parent, const UID& uid) {
-	auto& children = parent->children;
+bool SceneGraph::_remove_node(Node* p_parent, const UID& p_uid) {
+	auto& children = p_parent->children;
 	for (auto it = children.begin(); it != children.end(); ++it) {
-		if ((*it)->uid == uid) {
+		if ((*it)->uid == p_uid) {
 			children.erase(it);
 			return true;
 		} else {
-			if (_remove_node(it->get(), uid)) {
+			if (_remove_node(it->get(), p_uid)) {
 				return true;
 			}
 		}
@@ -42,17 +42,17 @@ bool SceneGraph::_remove_node(Node* parent, const UID& uid) {
 }
 
 void SceneGraph::_traverse_node(
-		Node* node, const std::function<bool(Node*)>& callback) {
-	if (!node) {
+		Node* p_node, const std::function<bool(Node*)>& p_callback) {
+	if (!p_node) {
 		return;
 	}
 
 	// end the recursion if callback resulted with `true`
-	if (callback(node)) {
+	if (p_callback(p_node)) {
 		return;
 	}
 
-	for (const auto& child : node->children) {
-		_traverse_node(child.get(), callback);
+	for (const auto& child : p_node->children) {
+		_traverse_node(child.get(), p_callback);
 	}
 }

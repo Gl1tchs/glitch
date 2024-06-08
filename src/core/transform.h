@@ -20,11 +20,9 @@ struct Transform final {
 	glm::vec3 get_rotation() const;
 	glm::vec3 get_scale() const;
 
-	void translate(glm::vec3 translation);
+	void translate(glm::vec3 p_translation);
 
-	void rotate(float angle, glm::vec3 axis);
-
-	void look_at(const glm::vec3& target);
+	void rotate(float p_angle, glm::vec3 p_axis);
 
 	glm::vec3 get_forward() const;
 

@@ -1,16 +1,8 @@
-#include "platform/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_backend.h"
 
-#include "platform/vulkan/vk_common.h"
-#include "platform/vulkan/vk_context.h"
-#include <vulkan/vulkan_core.h>
-
-namespace vk {
-
-Buffer buffer_create(Context p_context, uint64_t p_size,
+Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
 		BitField<BufferUsageBits> p_usage,
 		MemoryAllocationType p_allocation_type) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
 	VkBufferCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	create_info.pNext = nullptr;
@@ -42,13 +34,12 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 		case MEMORY_ALLOCATION_TYPE_GPU: {
 			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-			if (p_size <= VulkanContext::SMALL_ALLOCATION_MAX_SIZE) {
+			if (p_size <= SMALL_ALLOCATION_MAX_SIZE) {
 				uint32_t mem_type_index = 0;
-				vmaFindMemoryTypeIndexForBufferInfo(context->allocator,
-						&create_info, &alloc_create_info, &mem_type_index);
+				vmaFindMemoryTypeIndexForBufferInfo(allocator, &create_info,
+						&alloc_create_info, &mem_type_index);
 				alloc_create_info.pool =
-						context->find_or_create_small_allocs_pool(
-								mem_type_index);
+						_find_or_create_small_allocs_pool(mem_type_index);
 			}
 		} break;
 	}
@@ -58,12 +49,12 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 	VmaAllocation allocation = nullptr;
 	VmaAllocationInfo alloc_info = {};
 
-	VK_CHECK(vmaCreateBuffer(context->allocator, &create_info,
-			&alloc_create_info, &vk_buffer, &allocation, &alloc_info));
+	VK_CHECK(vmaCreateBuffer(allocator, &create_info, &alloc_create_info,
+			&vk_buffer, &allocation, &alloc_info));
 
 	// Bookkeep.
-	VulkanBuffer* buf_info = VersatileResource::allocate<VulkanBuffer>(
-			context->resources_allocator);
+	VulkanBuffer* buf_info =
+			VersatileResource::allocate<VulkanBuffer>(resources_allocator);
 	buf_info->vk_buffer = vk_buffer;
 	buf_info->allocation.handle = allocation;
 	buf_info->allocation.size = alloc_info.size;
@@ -72,49 +63,41 @@ Buffer buffer_create(Context p_context, uint64_t p_size,
 	return Buffer(buf_info);
 }
 
-void buffer_free(Context p_context, Buffer p_buffer) {
+void VulkanRenderBackend::buffer_free(Buffer p_buffer) {
 	if (!p_buffer) {
 		return;
 	}
 
-	VulkanContext* context = (VulkanContext*)p_context;
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
 	if (buffer->vk_view) {
-		vkDestroyBufferView(context->device, buffer->vk_view, nullptr);
+		vkDestroyBufferView(device, buffer->vk_view, nullptr);
 	}
-	vmaDestroyBuffer(
-			context->allocator, buffer->vk_buffer, buffer->allocation.handle);
-	VersatileResource::free(context->resources_allocator, buffer);
+	vmaDestroyBuffer(allocator, buffer->vk_buffer, buffer->allocation.handle);
+	VersatileResource::free(resources_allocator, buffer);
 }
 
-uint64_t buffer_get_device_address(Context p_context, Buffer p_buffer) {
-	const VulkanContext* context = (VulkanContext*)p_context;
+uint64_t VulkanRenderBackend::buffer_get_device_address(Buffer p_buffer) {
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
 	VkBufferDeviceAddressInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
 	info.buffer = buffer->vk_buffer;
 
-	return vkGetBufferDeviceAddress(context->device, &info);
+	return vkGetBufferDeviceAddress(device, &info);
 }
 
-uint8_t* buffer_map(Context p_context, Buffer p_buffer) {
-	const VulkanContext* context = (VulkanContext*)p_context;
+uint8_t* VulkanRenderBackend::buffer_map(Buffer p_buffer) {
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
 	void* data_ptr = nullptr;
-	VK_CHECK(vmaMapMemory(
-			context->allocator, buffer->allocation.handle, &data_ptr));
+	VK_CHECK(vmaMapMemory(allocator, buffer->allocation.handle, &data_ptr));
 
 	return (uint8_t*)data_ptr;
 }
 
-void buffer_unmap(Context p_context, Buffer p_buffer) {
-	const VulkanContext* context = (VulkanContext*)p_context;
+void VulkanRenderBackend::buffer_unmap(Buffer p_buffer) {
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
-	vmaUnmapMemory(context->allocator, buffer->allocation.handle);
+	vmaUnmapMemory(allocator, buffer->allocation.handle);
 }
-
-} //namespace vk

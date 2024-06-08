@@ -8,15 +8,15 @@ enum class LogLevel {
 	FATAL,
 };
 
-std::string deserialize_log_level(LogLevel level);
+std::string deserialize_log_level(LogLevel p_level);
 
 class Logger {
 public:
-	static void log(LogLevel level, const std::string& fmt);
+	static void log(LogLevel p_level, const std::string& p_fmt);
 
 private:
 	static std::string _get_colored_message(
-			const std::string& message, LogLevel level);
+			const std::string& p_message, LogLevel p_level);
 
 private:
 	static std::unordered_map<LogLevel, std::string> s_verbosity_colors;

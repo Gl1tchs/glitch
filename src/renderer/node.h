@@ -17,7 +17,7 @@ struct Node {
 	Node* parent = nullptr;
 	std::vector<Ref<Node>> children;
 
-	void add_child(Ref<Node> node);
+	void add_child(Ref<Node> p_node);
 
 	inline virtual NodeType get_type() const { return NodeType::NONE; }
 	inline static NodeType get_static_type() { return NodeType::NONE; }

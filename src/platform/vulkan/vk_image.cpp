@@ -1,12 +1,4 @@
-#include "platform/vulkan/vk_image.h"
-
-#include "platform/vulkan/vk_buffer.h"
-#include "platform/vulkan/vk_commands.h"
-#include "platform/vulkan/vk_context.h"
-
-#include <vulkan/vulkan_core.h>
-
-namespace vk {
+#include "platform/vulkan/vk_backend.h"
 
 static BitField<VkImageUsageFlags> _gl_to_vk_image_usage_flags(
 		BitField<ImageUsageBits> p_usage) {
@@ -33,9 +25,8 @@ static BitField<VkImageUsageFlags> _gl_to_vk_image_usage_flags(
 	return vk_usage;
 }
 
-static Image _image_create(VulkanContext* p_context, VkFormat p_format,
-		VkExtent3D p_size, BitField<VkImageUsageFlags> p_usage,
-		bool p_mipmapped) {
+Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
+		BitField<VkImageUsageFlags> p_usage, bool p_mipmapped) {
 	VkImageCreateInfo img_info = {};
 	img_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	img_info.pNext = nullptr;
@@ -66,8 +57,8 @@ static Image _image_create(VulkanContext* p_context, VkFormat p_format,
 	// allocate and create the image
 	VkImage vk_image = VK_NULL_HANDLE;
 	VmaAllocation vma_allocation = {};
-	VK_CHECK(vmaCreateImage(p_context->allocator, &img_info, &alloc_info,
-			&vk_image, &vma_allocation, nullptr));
+	VK_CHECK(vmaCreateImage(allocator, &img_info, &alloc_info, &vk_image,
+			&vma_allocation, nullptr));
 
 	// if the format is a depth format, we will need to have it use the correct
 	// aspect flag
@@ -91,12 +82,11 @@ static Image _image_create(VulkanContext* p_context, VkFormat p_format,
 	view_info.subresourceRange.aspectMask = aspect_flags;
 
 	VkImageView vk_image_view = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateImageView(
-			p_context->device, &view_info, nullptr, &vk_image_view));
+	VK_CHECK(vkCreateImageView(device, &view_info, nullptr, &vk_image_view));
 
 	// Bookkeep
-	VulkanImage* image = VersatileResource::allocate<VulkanImage>(
-			p_context->resources_allocator);
+	VulkanImage* image =
+			VersatileResource::allocate<VulkanImage>(resources_allocator);
 	image->vk_image = vk_image;
 	image->vk_image_view = vk_image_view;
 	image->allocation = vma_allocation;
@@ -106,39 +96,36 @@ static Image _image_create(VulkanContext* p_context, VkFormat p_format,
 	return Image(image);
 }
 
-Image image_create(Context p_context, DataFormat p_format, Vec2u p_size,
+Image VulkanRenderBackend::image_create(DataFormat p_format, Vec2u p_size,
 		const void* p_data, BitField<ImageUsageBits> p_usage,
 		bool p_mipmapped) {
-	VulkanContext* vk_context = (VulkanContext*)p_context;
-
 	VkExtent3D vk_size = { p_size.x, p_size.y, 1 };
 	VkFormat vk_format = static_cast<VkFormat>(p_format);
 
 	BitField<VkImageUsageFlags> vk_usage = _gl_to_vk_image_usage_flags(p_usage);
 
 	if (!p_data) {
-		return _image_create(
-				vk_context, vk_format, vk_size, vk_usage, p_mipmapped);
+		return _image_create(vk_format, vk_size, vk_usage, p_mipmapped);
 	} else {
 		const size_t data_size =
 				vk_size.depth * vk_size.width * vk_size.height * 4;
 
-		Buffer staging_buffer = vk::buffer_create(p_context, data_size,
+		Buffer staging_buffer = buffer_create(data_size,
 				BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
 
-		uint8_t* mapped_data = vk::buffer_map(p_context, staging_buffer);
+		uint8_t* mapped_data = buffer_map(staging_buffer);
 		{ memcpy(mapped_data, p_data, data_size); }
-		vk::buffer_unmap(p_context, staging_buffer);
+		buffer_unmap(staging_buffer);
 
 		VkImageUsageFlags image_usage = vk_usage;
 		image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		image_usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-		Image new_image = _image_create(
-				vk_context, vk_format, vk_size, image_usage, p_mipmapped);
+		Image new_image =
+				_image_create(vk_format, vk_size, image_usage, p_mipmapped);
 
-		vk::immediate_submit(p_context, [&](CommandBuffer cmd) {
-			vk::command_transition_image(cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
+		command_immediate_submit([&](CommandBuffer cmd) {
+			command_transition_image(cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
 					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 			BufferImageCopyRegion copy_region = {};
@@ -156,29 +143,28 @@ Image image_create(Context p_context, DataFormat p_format, Vec2u p_size,
 			VectorView<BufferImageCopyRegion> copy_view(copy_region);
 
 			// copy the buffer into the image
-			vk::command_copy_buffer_to_image(
+			command_copy_buffer_to_image(
 					cmd, staging_buffer, new_image, copy_view);
 
-			vk::command_transition_image(cmd, new_image,
+			command_transition_image(cmd, new_image,
 					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		});
 
-		vk::buffer_free(p_context, staging_buffer);
+		buffer_free(staging_buffer);
 
 		return Image(new_image);
 	}
 }
 
-void image_free(Context p_context, Image p_image) {
-	VulkanContext* context = (VulkanContext*)p_context;
+void VulkanRenderBackend::image_free(Image p_image) {
 	VulkanImage* image = (VulkanImage*)p_image;
 
-	vkDestroyImageView(context->device, image->vk_image_view, nullptr);
-	vmaDestroyImage(context->allocator, image->vk_image, image->allocation);
+	vkDestroyImageView(device, image->vk_image_view, nullptr);
+	vmaDestroyImage(allocator, image->vk_image, image->allocation);
 }
 
-Vec3u image_get_size(Image p_image) {
+Vec3u VulkanRenderBackend::image_get_size(Image p_image) {
 	VulkanImage* image = (VulkanImage*)p_image;
 
 	Vec3u size;
@@ -188,9 +174,7 @@ Vec3u image_get_size(Image p_image) {
 	return size;
 }
 
-Sampler sampler_create(Context p_context, ImageFiltering p_filtering) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
+Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_filtering) {
 	VkSamplerCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	create_info.minFilter = static_cast<VkFilter>(p_filtering);
@@ -198,16 +182,11 @@ Sampler sampler_create(Context p_context, ImageFiltering p_filtering) {
 	// TODO other fields
 
 	VkSampler vk_sampler = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateSampler(
-			context->device, &create_info, nullptr, &vk_sampler));
+	VK_CHECK(vkCreateSampler(device, &create_info, nullptr, &vk_sampler));
 
 	return Sampler(vk_sampler);
 }
 
-void sampler_free(Context p_context, Sampler p_sampler) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
-	vkDestroySampler(context->device, (VkSampler)p_sampler, nullptr);
+void VulkanRenderBackend::sampler_free(Sampler p_sampler) {
+	vkDestroySampler(device, (VkSampler)p_sampler, nullptr);
 }
-
-} //namespace vk

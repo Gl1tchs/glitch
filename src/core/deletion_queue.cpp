@@ -1,7 +1,7 @@
 #include "core/deletion_queue.h"
 
-void DeletionQueue::push_function(std::function<void()>&& func) {
-	deletors.push_back(func);
+void DeletionQueue::push_function(std::function<void()>&& p_function) {
+	deletors.push_back(p_function);
 }
 
 void DeletionQueue::flush() {

@@ -1,11 +1,8 @@
 #include "renderer/material.h"
 
-#include "platform/vulkan/vk_buffer.h"
-#include "platform/vulkan/vk_descriptors.h"
-#include "platform/vulkan/vk_pipeline.h"
+#include "renderer/render_backend.h"
+#include "renderer/renderer.h"
 #include "renderer/types.h"
-
-#include "platform/vulkan/vk_shader.h"
 
 #include "shader_bundle.gen.h"
 
@@ -30,7 +27,9 @@ static VectorView<uint32_t> _get_bundled_spirv_data(const char* file_path) {
 			(uint32_t*)&BUNDLE_DATA[shader_data.start_idx], shader_data.size);
 }
 
-Ref<Material> Material::create(Context p_context) {
+Ref<Material> Material::create() {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
 	SpirvData vertex_data = {};
 	vertex_data.stage = SHADER_STAGE_VERTEX_BIT;
 	vertex_data.byte_code = _get_bundled_spirv_data("mesh.vert.spv");
@@ -46,8 +45,7 @@ Ref<Material> Material::create(Context p_context) {
 
 	Ref<Material> material = create_ref<Material>();
 
-	material->shader =
-			vk::shader_create_from_bytecode(p_context, shader_stages);
+	material->shader = backend->shader_create_from_bytecode(shader_stages);
 
 	PipelineRasterizationState rasterization = {};
 
@@ -67,25 +65,29 @@ Ref<Material> Material::create(Context p_context) {
 			DATA_FORMAT_R16G16B16A16_SFLOAT);
 	rendering_state.depth_attachment = DATA_FORMAT_D32_SFLOAT;
 
-	material->pipeline = vk::render_pipeline_create(p_context, material->shader,
+	material->pipeline = backend->render_pipeline_create(material->shader,
 			RENDER_PRIMITIVE_TRIANGLES, rasterization, multisample,
 			depth_stencil_state, color_blend_state, 0, rendering_state);
 
 	return material;
 }
 
-void Material::destroy(Context p_context, Ref<Material> p_material) {
-	vk::pipeline_free(p_context, p_material->pipeline);
+void Material::destroy(Ref<Material> p_material) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
-	vk::shader_free(p_context, p_material->shader);
+	backend->pipeline_free(p_material->pipeline);
+
+	backend->shader_free(p_material->shader);
 
 	for (auto buffer : p_material->allocated_buffers) {
-		vk::buffer_free(p_context, buffer);
+		backend->buffer_free(buffer);
 	}
 }
 
 Ref<MaterialInstance> Material::create_instance(
-		Context p_context, const MaterialResources& resources) {
+		const MaterialResources& resources) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
 	Ref<MaterialInstance> instance = create_ref<MaterialInstance>();
 	instance->pipeline = pipeline;
 	instance->shader = shader;
@@ -96,8 +98,7 @@ Ref<MaterialInstance> Material::create_instance(
 	uniforms[0].ids.push_back(resources.color_sampler);
 	uniforms[0].ids.push_back(resources.color_image);
 
-	instance->uniform_set =
-			vk::uniform_set_create(p_context, uniforms, shader, 1);
+	instance->uniform_set = backend->uniform_set_create(uniforms, shader, 1);
 
 	return instance;
 }

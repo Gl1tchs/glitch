@@ -45,17 +45,17 @@ template <typename T>
 inline auto g_callbacks = std::vector<EventCallbackFunc<T>>();
 
 template <typename T>
-inline void subscribe(const EventCallbackFunc<T>& callback) {
-	g_callbacks<T>.push_back(callback);
+inline void subscribe(const EventCallbackFunc<T>& p_callback) {
+	g_callbacks<T>.push_back(p_callback);
 }
 
 template <typename T> inline void unsubscribe() { g_callbacks<T>.clear(); }
 
 template <typename T> inline void pop() { g_callbacks<T>.pop_back(); }
 
-template <typename T> inline void notify(T& event) {
+template <typename T> inline void notify(T& p_event) {
 	for (auto& callback : g_callbacks<T>) {
-		callback(event);
+		callback(p_event);
 	}
 }
 

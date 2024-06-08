@@ -8,10 +8,10 @@ struct Color {
 
 	constexpr Color() = default;
 
-	constexpr Color(float value) : r(value), g(value), b(value) {}
+	constexpr Color(float p_value) : r(p_value), g(p_value), b(p_value) {}
 
-	constexpr Color(float red, float green, float blue, float alpha) :
-			r(red), g(green), b(blue), a(alpha) {}
+	constexpr Color(float p_red, float p_green, float p_blue, float p_alpha) :
+			r(p_red), g(p_green), b(p_blue), a(p_alpha) {}
 };
 
 constexpr Color COLOR_BLACK(0.0f, 0.0f, 0.0f, 1.0f);

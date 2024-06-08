@@ -63,7 +63,7 @@ public:
 
 	static GraphicsAPI get_graphics_api();
 
-	Context get_render_context() { return context; }
+	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
 
 	SceneGraph& get_scene_graph() { return scene_graph; }
 
@@ -89,10 +89,12 @@ private:
 	};
 
 private:
+	static Renderer* s_instance;
+
 	Ref<Window> window;
+
 	Ref<RenderBackend> backend;
 
-	Context context;
 	Swapchain swapchain;
 
 	Image draw_image;

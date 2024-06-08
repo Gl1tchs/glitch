@@ -9,7 +9,6 @@
 #define GL_DEFINE_NON_DISPATCHABLE_HANDLE(object)                              \
 	typedef struct object##_T* object;
 
-GL_DEFINE_NON_DISPATCHABLE_HANDLE(Context)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Buffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Image)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Sampler)

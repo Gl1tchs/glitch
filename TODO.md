@@ -1,7 +1,6 @@
 # TODOS
 
 ## New Renderer
- - [ ] Abstract away functions
  - [ ] Use present queue for presenting images
 
 ## Renderer

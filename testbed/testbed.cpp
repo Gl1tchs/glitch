@@ -14,10 +14,9 @@ void TestBedApplication::_on_start() {
 
 	get_renderer()->get_scene_graph().push_node(camera);
 
-	material = Material::create(get_renderer()->get_render_context());
+	material = Material::create();
 
-	scene = Mesh::load(get_renderer()->get_render_context(),
-			"assets/just_a_girl.glb", material);
+	scene = Mesh::load("assets/just_a_girl.glb", material);
 	if (scene) {
 		for (auto& node : scene->children) {
 			node->transform.local_scale = glm::vec3(0.1f);
@@ -35,5 +34,5 @@ void TestBedApplication::_on_update(float dt) {
 void TestBedApplication::_on_destroy() {
 	get_renderer()->wait_for_device();
 
-	Material::destroy(get_renderer()->get_render_context(), material);
+	Material::destroy(material);
 }

@@ -1,11 +1,4 @@
-#include "platform/vulkan/vk_pipeline.h"
-#include "platform/vulkan/vk_common.h"
-#include "platform/vulkan/vk_context.h"
-#include "platform/vulkan/vk_shader.h"
-
-#include <vulkan/vulkan_core.h>
-
-namespace vk {
+#include "platform/vulkan/vk_backend.h"
 
 static const VkPrimitiveTopology GL_TO_VK_PRIMITIVE[RENDER_PRIMITIVE_MAX] = {
 	VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
@@ -105,7 +98,7 @@ static VkCullModeFlagBits _gl_to_vk_cull_mode(PolygonCullMode cull_mode) {
 	}
 }
 
-Pipeline render_pipeline_create(Context p_context, Shader p_shader,
+Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 		RenderPrimitive p_render_primitive,
 		PipelineRasterizationState p_rasterization_state,
 		PipelineMultisampleState p_multisample_state,
@@ -307,7 +300,6 @@ Pipeline render_pipeline_create(Context p_context, Shader p_shader,
 	viewport_state.viewportCount = 1;
 	viewport_state.scissorCount = 1;
 
-	VulkanContext* context = (VulkanContext*)p_context;
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
 	VkGraphicsPipelineCreateInfo create_info = {};
@@ -327,14 +319,13 @@ Pipeline render_pipeline_create(Context p_context, Shader p_shader,
 	create_info.layout = shader->pipeline_layout;
 
 	VkPipeline vk_pipeline = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateGraphicsPipelines(context->device, VK_NULL_HANDLE, 1,
-			&create_info, nullptr, &vk_pipeline));
+	VK_CHECK(vkCreateGraphicsPipelines(
+			device, VK_NULL_HANDLE, 1, &create_info, nullptr, &vk_pipeline));
 
 	return Pipeline(vk_pipeline);
 }
 
-Pipeline compute_pipeline_create(Context p_context, Shader p_shader) {
-	VulkanContext* context = (VulkanContext*)p_context;
+Pipeline VulkanRenderBackend::compute_pipeline_create(Shader p_shader) {
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
 	VkComputePipelineCreateInfo create_info = {};
@@ -344,16 +335,12 @@ Pipeline compute_pipeline_create(Context p_context, Shader p_shader) {
 
 	VkPipeline vk_pipeline = VK_NULL_HANDLE;
 
-	VK_CHECK(vkCreateComputePipelines(context->device, VK_NULL_HANDLE, 1,
-			&create_info, nullptr, &vk_pipeline));
+	VK_CHECK(vkCreateComputePipelines(
+			device, VK_NULL_HANDLE, 1, &create_info, nullptr, &vk_pipeline));
 
 	return Pipeline(vk_pipeline);
 }
 
-void pipeline_free(Context p_context, Pipeline p_pipeline) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
-	vkDestroyPipeline(context->device, (VkPipeline)p_pipeline, nullptr);
+void VulkanRenderBackend::pipeline_free(Pipeline p_pipeline) {
+	vkDestroyPipeline(device, (VkPipeline)p_pipeline, nullptr);
 }
-
-} //namespace vk

@@ -47,18 +47,18 @@ void Input::init() {
 	});
 }
 
-bool Input::is_key_pressed_once(KeyCode key) {
+bool Input::is_key_pressed_once(KeyCode p_key) {
 	// if key already held return
-	if (const auto it = keys_held_states.find(key);
-			it != keys_held_states.end() && keys_held_states[key]) {
+	if (const auto it = keys_held_states.find(p_key);
+			it != keys_held_states.end() && keys_held_states[p_key]) {
 		return false;
 	}
 
-	return is_key_pressed(key);
+	return is_key_pressed(p_key);
 }
 
-bool Input::is_key_pressed(KeyCode key) {
-	const auto it = key_press_states.find(key);
+bool Input::is_key_pressed(KeyCode p_key) {
+	const auto it = key_press_states.find(p_key);
 	if (it == key_press_states.end()) {
 		return false;
 	}
@@ -67,20 +67,21 @@ bool Input::is_key_pressed(KeyCode key) {
 
 	if (pressed) {
 		// if key haven't held add
-		if (const auto it = keys_held_states.find(key);
+		if (const auto it = keys_held_states.find(p_key);
 				it == keys_held_states.end() || // if doesn't exists
 				(it != keys_held_states.end() &&
-						!keys_held_states[key])) //if exists but havent pressed
+						!keys_held_states[p_key])) //if exists but havent
+												   //pressed
 		{
-			keys_held_states[key] = true;
+			keys_held_states[p_key] = true;
 		}
 	}
 
 	return pressed;
 }
 
-bool Input::is_key_released(KeyCode key) {
-	const auto it = key_release_states.find(key);
+bool Input::is_key_released(KeyCode p_key) {
+	const auto it = key_release_states.find(p_key);
 	if (it == key_release_states.end()) {
 		return false;
 	}
@@ -88,16 +89,16 @@ bool Input::is_key_released(KeyCode key) {
 	return it->second;
 }
 
-bool Input::is_mouse_pressed(MouseCode button) {
-	const auto it = mouse_press_states.find(button);
+bool Input::is_mouse_pressed(MouseCode p_button) {
+	const auto it = mouse_press_states.find(p_button);
 	if (it != mouse_press_states.end()) {
 		return it->second;
 	}
 	return false;
 }
 
-bool Input::is_mouse_released(MouseCode button) {
-	const auto it = mouse_release_states.find(button);
+bool Input::is_mouse_released(MouseCode p_button) {
+	const auto it = mouse_release_states.find(p_button);
 	if (it != mouse_release_states.end()) {
 		return it->second;
 	}

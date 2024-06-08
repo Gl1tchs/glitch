@@ -31,13 +31,12 @@ struct Mesh : public Node {
 	/**
 	 * @brief get scene graph representation of a model
 	 */
-	static Ref<Node> load(Context p_context, const fs::path& p_path,
-			Ref<Material> p_material);
+	static Ref<Node> load(const fs::path& p_path, Ref<Material> p_material);
 
-	static Ref<Mesh> create(Context p_context, std::span<Vertex> p_vertices,
-			std::span<uint32_t> p_indices);
+	static Ref<Mesh> create(
+			std::span<Vertex> p_vertices, std::span<uint32_t> p_indices);
 
-	static void destroy(Context p_context, const Mesh* p_mesh);
+	static void destroy(const Mesh* p_mesh);
 
 private:
 	bool destroyed;

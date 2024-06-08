@@ -2,7 +2,7 @@
 
 #include "core/application.h"
 
-extern Application* create_application(int argc, const char** argv);
+extern Application* create_application(int p_argc, const char** p_argv);
 
 #ifdef GL_MAIN_IMPLEMENTATION
 int main(int argc, const char** argv) {

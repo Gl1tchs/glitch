@@ -1,13 +1,8 @@
 #include "renderer/mesh.h"
 
-#include "core/templates/vector_view.h"
-
-#include "platform/vulkan/vk_image.h"
+#include "renderer/render_backend.h"
+#include "renderer/renderer.h"
 #include "renderer/types.h"
-
-#include "platform/vulkan/vk_buffer.h"
-#include "platform/vulkan/vk_commands.h"
-#include "platform/vulkan/vk_context.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -22,7 +17,7 @@ struct LoadedImage {
 static std::unordered_map<uint32_t, LoadedImage> s_loaded_images;
 
 static Image _load_material_image(
-		Context p_context, const tinygltf::Model& model, int texture_index) {
+		const tinygltf::Model& model, int texture_index) {
 	if (texture_index < 0) {
 		return nullptr;
 	}
@@ -43,8 +38,10 @@ static Image _load_material_image(
 		static_cast<uint32_t>(gltf_image.width),
 	};
 
-	Image image = vk::image_create(p_context, DATA_FORMAT_R8G8B8A8_UNORM, size,
-			(void*)gltf_image.image.data());
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	Image image = backend->image_create(
+			DATA_FORMAT_R8G8B8A8_UNORM, size, (void*)gltf_image.image.data());
 
 	s_loaded_images[texture_index] = LoadedImage{
 		.image = image,
@@ -56,8 +53,10 @@ static Image _load_material_image(
 
 static std::unordered_map<uint64_t, Sampler> s_loaded_samplers;
 
-static Sampler _get_sampler(Context p_context, uint64_t p_id) {
-	Sampler sampler = vk::sampler_create(p_context);
+static Sampler _get_sampler(uint64_t p_id) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	Sampler sampler = backend->sampler_create();
 	s_loaded_samplers[p_id] = sampler;
 
 	return sampler;
@@ -106,9 +105,9 @@ static Optional<GLTFAccessor<T>> _get_gltf_accessor(
 	return accessor;
 }
 
-static Ref<Mesh> _process_mesh(Context p_context,
-		const tinygltf::Model& p_model, const tinygltf::Primitive& p_primitive,
-		const fs::path& p_directory, Ref<Material> p_material) {
+static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
+		const tinygltf::Primitive& p_primitive, const fs::path& p_directory,
+		Ref<Material> p_material) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
@@ -163,7 +162,7 @@ static Ref<Mesh> _process_mesh(Context p_context,
 	indices = std::vector<uint32_t>(
 			indices_data, indices_data + indices_accessor.count);
 
-	Ref<Mesh> new_mesh = Mesh::create(p_context, vertices, indices);
+	Ref<Mesh> new_mesh = Mesh::create(vertices, indices);
 
 	if (p_primitive.material >= 0) {
 		const auto& gltf_material = p_model.materials[p_primitive.material];
@@ -175,17 +174,16 @@ static Ref<Mesh> _process_mesh(Context p_context,
 
 		Material::MaterialResources resources = {};
 		resources.color_image =
-				_load_material_image(p_context, p_model, new_mesh->color_index);
-		resources.color_sampler =
-				_get_sampler(p_context, new_mesh->vertex_buffer_address);
+				_load_material_image(p_model, new_mesh->color_index);
+		resources.color_sampler = _get_sampler(new_mesh->vertex_buffer_address);
 
-		new_mesh->material = p_material->create_instance(p_context, resources);
+		new_mesh->material = p_material->create_instance(resources);
 	}
 
 	return new_mesh;
 }
 
-static void _process_node(Context p_context, const tinygltf::Model& p_model,
+static void _process_node(const tinygltf::Model& p_model,
 		const tinygltf::Node& p_node, const fs::path& p_directory,
 		Ref<Material> p_material, Ref<Node> p_parent) {
 	Ref<Node> base_node = create_ref<Node>();
@@ -194,20 +192,18 @@ static void _process_node(Context p_context, const tinygltf::Model& p_model,
 	if (p_node.mesh >= 0) {
 		const auto& mesh = p_model.meshes[p_node.mesh];
 		for (const auto& primitive : mesh.primitives) {
-			base_node->add_child(_process_mesh(
-					p_context, p_model, primitive, p_directory, p_material));
+			base_node->add_child(
+					_process_mesh(p_model, primitive, p_directory, p_material));
 		}
 	}
 
 	for (const auto& child_index : p_node.children) {
 		const auto& child_node = p_model.nodes[child_index];
-		_process_node(p_context, p_model, child_node, p_directory, p_material,
-				base_node);
+		_process_node(p_model, child_node, p_directory, p_material, base_node);
 	}
 }
 
-Ref<Node> Mesh::load(
-		Context p_context, const fs::path& p_path, Ref<Material> p_material) {
+Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	tinygltf::TinyGLTF loader;
 	tinygltf::Model model;
 	std::string err, warn;
@@ -236,15 +232,16 @@ Ref<Node> Mesh::load(
 
 	for (const auto& node_index : model.scenes[model.defaultScene].nodes) {
 		const auto& node = model.nodes[node_index];
-		_process_node(
-				p_context, model, node, p_path.parent_path(), p_material, root);
+		_process_node(model, node, p_path.parent_path(), p_material, root);
 	}
 
 	return root;
 }
 
-Ref<Mesh> Mesh::create(Context p_context, std::span<Vertex> p_vertices,
-		std::span<uint32_t> p_indices) {
+Ref<Mesh> Mesh::create(
+		std::span<Vertex> p_vertices, std::span<uint32_t> p_indices) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
 	const uint32_t vertices_size = p_vertices.size() * sizeof(Vertex);
 	const uint32_t indices_size = p_indices.size() * sizeof(uint32_t);
 
@@ -252,39 +249,38 @@ Ref<Mesh> Mesh::create(Context p_context, std::span<Vertex> p_vertices,
 	mesh->index_count = p_indices.size();
 	mesh->vertex_count = p_vertices.size();
 
-	mesh->vertex_buffer = vk::buffer_create(p_context, vertices_size,
+	mesh->vertex_buffer = backend->buffer_create(vertices_size,
 			BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
 					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 			MEMORY_ALLOCATION_TYPE_GPU);
 
 	// get the address
 	mesh->vertex_buffer_address =
-			vk::buffer_get_device_address(p_context, mesh->vertex_buffer);
+			backend->buffer_get_device_address(mesh->vertex_buffer);
 
-	mesh->index_buffer = vk::buffer_create(p_context, indices_size,
+	mesh->index_buffer = backend->buffer_create(indices_size,
 			BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
 			MEMORY_ALLOCATION_TYPE_GPU);
 
-	Buffer staging_buffer =
-			vk::buffer_create(p_context, vertices_size + indices_size,
-					BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+	Buffer staging_buffer = backend->buffer_create(vertices_size + indices_size,
+			BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
 
-	void* data = vk::buffer_map(p_context, staging_buffer);
+	void* data = backend->buffer_map(staging_buffer);
 	{
 		// copy vertex data
 		memcpy(data, p_vertices.data(), vertices_size);
 		// copy index data
 		memcpy((uint8_t*)data + vertices_size, p_indices.data(), indices_size);
 	}
-	vk::buffer_unmap(p_context, staging_buffer);
+	backend->buffer_unmap(staging_buffer);
 
-	vk::immediate_submit(p_context, [&](CommandBuffer p_cmd) {
+	backend->command_immediate_submit([&](CommandBuffer p_cmd) {
 		BufferCopyRegion vertex_copy = {};
 		vertex_copy.src_offset = 0;
 		vertex_copy.dst_offset = 0;
 		vertex_copy.size = vertices_size;
 
-		vk::command_copy_buffer(
+		backend->command_copy_buffer(
 				p_cmd, staging_buffer, mesh->vertex_buffer, vertex_copy);
 
 		BufferCopyRegion index_copy = {};
@@ -292,16 +288,18 @@ Ref<Mesh> Mesh::create(Context p_context, std::span<Vertex> p_vertices,
 		index_copy.dst_offset = 0;
 		index_copy.size = indices_size;
 
-		vk::command_copy_buffer(
+		backend->command_copy_buffer(
 				p_cmd, staging_buffer, mesh->index_buffer, index_copy);
 	});
 
-	vk::buffer_free(p_context, staging_buffer);
+	backend->buffer_free(staging_buffer);
 
 	return mesh;
 }
 
-static void _destroy_loaded_image(Context p_context, const uint32_t p_index) {
+static void _destroy_loaded_image(const uint32_t p_index) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
 	const auto it = s_loaded_images.find(p_index);
 	if (it == s_loaded_images.end()) {
 		return;
@@ -310,16 +308,18 @@ static void _destroy_loaded_image(Context p_context, const uint32_t p_index) {
 	LoadedImage& loaded_image = it->second;
 
 	if (--loaded_image.usage_count < 1) {
-		vk::image_free(p_context, loaded_image.image);
+		backend->image_free(loaded_image.image);
 		s_loaded_images.erase(it);
 	}
 }
 
-void Mesh::destroy(Context p_context, const Mesh* p_mesh) {
-	_destroy_loaded_image(p_context, p_mesh->color_index);
-	vk::sampler_free(
-			p_context, s_loaded_samplers[p_mesh->vertex_buffer_address]);
+void Mesh::destroy(const Mesh* p_mesh) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
-	vk::buffer_free(p_context, p_mesh->vertex_buffer);
-	vk::buffer_free(p_context, p_mesh->index_buffer);
+	_destroy_loaded_image(p_mesh->color_index);
+
+	backend->sampler_free(s_loaded_samplers[p_mesh->vertex_buffer_address]);
+
+	backend->buffer_free(p_mesh->vertex_buffer);
+	backend->buffer_free(p_mesh->index_buffer);
 }

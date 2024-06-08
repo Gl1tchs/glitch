@@ -17,12 +17,11 @@ struct Material {
 		Sampler color_sampler;
 	};
 
-	static Ref<Material> create(Context p_context);
+	static Ref<Material> create();
 
-	static void destroy(Context p_context, Ref<Material> p_material);
+	static void destroy(Ref<Material> p_material);
 
-	Ref<MaterialInstance> create_instance(
-			Context p_context, const MaterialResources& resources);
+	Ref<MaterialInstance> create_instance(const MaterialResources& resources);
 
 private:
 	std::vector<Buffer> allocated_buffers;

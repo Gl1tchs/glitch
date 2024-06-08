@@ -7,25 +7,24 @@
 
 #include <GLFW/glfw3.h>
 
-static void glfw_error_callback(int error, const char* description) {
-	GL_LOG_ERROR("GLFW error {}: {}.", error, description);
+static void _glfw_error_callback(int p_error, const char* p_description) {
+	GL_LOG_ERROR("GLFW error {}: {}.", p_error, p_description);
 }
 
-Window::Window(WindowCreateInfo info) {
+Window::Window(WindowCreateInfo p_info) {
 	GL_ASSERT(glfwInit());
 
-#if GL_DEBUG
-	glfwSetErrorCallback(glfw_error_callback);
+#if GL_DEBUG_BUILD
+	glfwSetErrorCallback(_glfw_error_callback);
 #endif
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
-	window = glfwCreateWindow(info.w, info.h, info.title, nullptr, nullptr);
+	window = glfwCreateWindow(
+			p_info.w, p_info.h, p_info.title, nullptr, nullptr);
 	GL_ASSERT(window);
-
-	glfwMakeContextCurrent(window);
 
 	// initialize event system
 	_assign_event_delegates();
@@ -54,14 +53,14 @@ float Window::get_aspect_ratio() const {
 	return static_cast<float>(s.x) / static_cast<float>(s.y);
 }
 
-void Window::set_title(std::string_view title) {
-	glfwSetWindowTitle(window, title.data());
+void Window::set_title(std::string_view p_title) {
+	glfwSetWindowTitle(window, p_title.data());
 }
 
 WindowCursorMode Window::get_cursor_mode() const { return cursor_mode; }
 
-void Window::set_cursor_mode(WindowCursorMode mode) {
-	cursor_mode = mode;
+void Window::set_cursor_mode(WindowCursorMode p_mode) {
+	cursor_mode = p_mode;
 
 	switch (cursor_mode) {
 		case WindowCursorMode::NORMAL:

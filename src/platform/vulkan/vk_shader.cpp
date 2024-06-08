@@ -1,13 +1,6 @@
-#include "platform/vulkan/vk_shader.h"
-
-#include "platform/vulkan/vk_common.h"
-#include "platform/vulkan/vk_context.h"
-
-#include <vulkan/vulkan_core.h>
+#include "platform/vulkan/vk_backend.h"
 
 #include <spirv_reflect.h>
-
-namespace vk {
 
 static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 		SpvReflectDescriptorType p_type) {
@@ -98,10 +91,8 @@ static void _add_push_constant_range_if_not_exists(uint32_t p_size,
 	p_ranges.push_back(range);
 }
 
-Shader shader_create_from_bytecode(
-		Context p_context, const std::vector<SpirvData>& p_shaders) {
-	VulkanContext* context = (VulkanContext*)p_context;
-
+Shader VulkanRenderBackend::shader_create_from_bytecode(
+		const std::vector<SpirvData>& p_shaders) {
 	std::vector<VkShaderModule> vk_shaders;
 
 	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> set_bindings;
@@ -165,7 +156,7 @@ Shader shader_create_from_bytecode(
 
 		VkShaderModule vk_shader = VK_NULL_HANDLE;
 		VK_CHECK(vkCreateShaderModule(
-				context->device, &create_info, nullptr, &vk_shader));
+				device, &create_info, nullptr, &vk_shader));
 
 		vk_shaders.push_back(vk_shader);
 
@@ -187,7 +178,7 @@ Shader shader_create_from_bytecode(
 
 		VkDescriptorSetLayout vk_set;
 		VK_CHECK(vkCreateDescriptorSetLayout(
-				context->device, &create_info, nullptr, &vk_set));
+				device, &create_info, nullptr, &vk_set));
 
 		descriptor_set_layouts.push_back(vk_set);
 	}
@@ -202,8 +193,8 @@ Shader shader_create_from_bytecode(
 	pipeline_layout_info.pPushConstantRanges = push_constant_ranges.data();
 
 	VkPipelineLayout vk_pipeline_layout;
-	VK_CHECK(vkCreatePipelineLayout(context->device, &pipeline_layout_info,
-			nullptr, &vk_pipeline_layout));
+	VK_CHECK(vkCreatePipelineLayout(
+			device, &pipeline_layout_info, nullptr, &vk_pipeline_layout));
 
 	std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 	for (size_t i = 0; i < p_shaders.size(); i++) {
@@ -223,8 +214,8 @@ Shader shader_create_from_bytecode(
 	}
 
 	// Bookkeep
-	VulkanShader* shader_info = VersatileResource::allocate<VulkanShader>(
-			context->resources_allocator);
+	VulkanShader* shader_info =
+			VersatileResource::allocate<VulkanShader>(resources_allocator);
 	shader_info->stage_create_infos = shader_stages;
 	shader_info->push_constant_stages = push_constant_stages;
 	shader_info->descriptor_set_layouts = descriptor_set_layouts;
@@ -233,24 +224,20 @@ Shader shader_create_from_bytecode(
 	return Shader(shader_info);
 }
 
-void shader_free(Context p_context, Shader p_shader) {
-	VulkanContext* context = (VulkanContext*)p_context;
+void VulkanRenderBackend::shader_free(Shader p_shader) {
 	VulkanShader* shader_info = (VulkanShader*)p_shader;
 
 	for (size_t i = 0; i < shader_info->descriptor_set_layouts.size(); i++) {
-		vkDestroyDescriptorSetLayout(context->device,
-				shader_info->descriptor_set_layouts[i], nullptr);
+		vkDestroyDescriptorSetLayout(
+				device, shader_info->descriptor_set_layouts[i], nullptr);
 	}
 
-	vkDestroyPipelineLayout(
-			context->device, shader_info->pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(device, shader_info->pipeline_layout, nullptr);
 
 	for (size_t i = 0; i < shader_info->stage_create_infos.size(); i++) {
-		vkDestroyShaderModule(context->device,
-				shader_info->stage_create_infos[i].module, nullptr);
+		vkDestroyShaderModule(
+				device, shader_info->stage_create_infos[i].module, nullptr);
 	}
 
-	VersatileResource::free(context->resources_allocator, shader_info);
+	VersatileResource::free(resources_allocator, shader_info);
 }
-
-} //namespace vk

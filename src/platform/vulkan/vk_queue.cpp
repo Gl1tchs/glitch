@@ -1,11 +1,8 @@
-#include "platform/vulkan/vk_queue.h"
+#include "platform/vulkan/vk_backend.h"
 
-#include "platform/vulkan/vk_swapchain.h"
-
-namespace vk {
-
-void queue_submit(CommandQueue p_queue, CommandBuffer p_cmd, Fence p_fence,
-		Semaphore p_wait_semaphore, Semaphore p_signal_semaphore) {
+void VulkanRenderBackend::queue_submit(CommandQueue p_queue,
+		CommandBuffer p_cmd, Fence p_fence, Semaphore p_wait_semaphore,
+		Semaphore p_signal_semaphore) {
 	VkCommandBufferSubmitInfo cmd_info = {};
 	cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
 	cmd_info.pNext = nullptr;
@@ -48,7 +45,7 @@ void queue_submit(CommandQueue p_queue, CommandBuffer p_cmd, Fence p_fence,
 	VK_CHECK(vkQueueSubmit2(queue->queue, 1, &submit_info, (VkFence)p_fence));
 }
 
-bool queue_present(Context p_context, CommandQueue p_queue,
+bool VulkanRenderBackend::queue_present(CommandQueue p_queue,
 		Swapchain p_swapchain, Semaphore p_wait_semaphore) {
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 	VulkanQueue* queue = (VulkanQueue*)p_queue;
@@ -65,5 +62,3 @@ bool queue_present(Context p_context, CommandQueue p_queue,
 
 	return res != VK_SUCCESS;
 }
-
-} //namespace vk

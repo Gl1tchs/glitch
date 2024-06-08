@@ -17,7 +17,7 @@ struct WindowCreateInfo {
 
 class Window {
 public:
-	Window(WindowCreateInfo info);
+	Window(WindowCreateInfo p_info);
 	~Window();
 
 	void poll_events() const;
@@ -28,10 +28,10 @@ public:
 
 	float get_aspect_ratio() const;
 
-	void set_title(std::string_view title);
+	void set_title(std::string_view p_title);
 
 	WindowCursorMode get_cursor_mode() const;
-	void set_cursor_mode(WindowCursorMode mode);
+	void set_cursor_mode(WindowCursorMode p_mode);
 
 	GLFWwindow* get_native_window();
 

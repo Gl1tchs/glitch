@@ -13,7 +13,7 @@ typedef std::function<void(void)> MainThreadFunc;
 
 class Application {
 public:
-	Application(const ApplicationCreateInfo& info);
+	Application(const ApplicationCreateInfo& p_info);
 	virtual ~Application() = default;
 
 	void run();
@@ -24,19 +24,19 @@ public:
 
 	Ref<Renderer> get_renderer();
 
-	static void enqueue_main_thread(MainThreadFunc func);
+	static void enqueue_main_thread(MainThreadFunc p_function);
 
 	static Application* get_instance();
 
 private:
-	void _event_loop(float dt);
+	void _event_loop(float p_dt);
 
 	void _process_main_thread_queue();
 
 protected:
 	inline virtual void _on_start() {}
 
-	inline virtual void _on_update(float dt) {}
+	inline virtual void _on_update(float p_dt) {}
 
 	inline virtual void _on_destroy() {}
 
