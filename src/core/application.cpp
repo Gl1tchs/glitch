@@ -1,27 +1,24 @@
-#include "gl/core/application.h"
+#include "core/application.h"
 
-#include "gl/core/event_system.h"
-#include "gl/core/timer.h"
+#include "core/event/event_system.h"
+#include "core/timer.h"
 
 Application* Application::s_instance = nullptr;
 
-Application::Application(const ApplicationCreateInfo& info) {
+Application::Application(const ApplicationCreateInfo& p_info) {
 	GL_ASSERT(!s_instance, "Only one instance can exists at a time!");
 	s_instance = this;
 
 	WindowCreateInfo window_info{};
-	window_info.title = info.name;
+	window_info.title = p_info.name;
 	window = create_ref<Window>(window_info);
 
 	event::subscribe<WindowCloseEvent>(
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	const auto backend = find_proper_backend();
-	renderer = Renderer::create(backend, window);
+	renderer = create_ref<Renderer>(window);
 }
-
-Application::~Application() {}
 
 void Application::run() {
 	_on_start();
@@ -34,24 +31,24 @@ void Application::run() {
 	_on_destroy();
 }
 
-void Application::enqueue_main_thread(MainThreadFunc func) {
+void Application::enqueue_main_thread(MainThreadFunc p_function) {
 	Application* app = get_instance();
 	if (!app) {
 		return;
 	}
 
 	std::scoped_lock<std::mutex> lock(app->main_thread_queue_mutex);
-	app->main_thread_queue.push_back(func);
+	app->main_thread_queue.push_back(p_function);
 }
 
 Application* Application::get_instance() { return s_instance; }
 
-void Application::_event_loop(float dt) {
+void Application::_event_loop(float p_dt) {
 	window->poll_events();
 
 	_process_main_thread_queue();
 
-	_on_update(dt);
+	_on_update(p_dt);
 
 	renderer->wait_and_render();
 }

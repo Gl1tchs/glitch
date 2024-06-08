@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "gl/core/buffer.h"
+#include "core/buffer.h"
 
 constexpr uint8_t TEST_DATA[] = {
 	0x0,

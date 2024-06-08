@@ -1,6 +1,6 @@
 #include <catch2/catch_all.hpp>
 
-#include "gl/renderer/scene_graph.h"
+#include "renderer/scene_graph.h"
 
 TEST_CASE("SceneGraph Basic Operations", "[SceneGraph]") {
 	SceneGraph scene_graph;

@@ -1,91 +1,243 @@
-#include "platform/vulkan/vk_shader.h"
+#include "platform/vulkan/vk_backend.h"
 
-#include "shader_bundle.gen.h"
+#include <spirv_reflect.h>
 
-Ref<VulkanShader> VulkanShader::get(VkDevice device, const char* file_path) {
-	BundleFileData shader_data{};
-	bool shader_found = false;
+static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
+		SpvReflectDescriptorType p_type) {
+	switch (p_type) {
+		case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
+			return VK_DESCRIPTOR_TYPE_SAMPLER;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+		case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		default:
+			GL_ASSERT(false, "Unsupported descriptor type.");
+			return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+	}
+}
 
-	for (int i = 0; i < BUNDLE_FILE_COUNT; i++) {
-		BundleFileData data = BUNDLE_FILES[i];
-		if (strcmp(data.path, file_path) == 0) {
-			shader_data = data;
-			shader_found = true;
-			break;
+static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
+		uint32_t p_binding, VkDescriptorType p_type, ShaderStage p_stage,
+		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>&
+				p_bindings) {
+	const auto it = p_bindings.find(p_set);
+	if (it != p_bindings.end()) {
+		// set exists look for binding
+
+		std::vector<VkDescriptorSetLayoutBinding>& set_bindings = it->second;
+
+		const auto binding_it = std::find_if(set_bindings.begin(),
+				set_bindings.end(),
+				[=](const VkDescriptorSetLayoutBinding& set_binding) -> bool {
+					return set_binding.binding == p_binding;
+				});
+		if (binding_it != set_bindings.end()) {
+			// set, binding already exists now add stage if not exists
+			if (!(binding_it->stageFlags & p_stage)) {
+				binding_it->stageFlags |= p_stage;
+			}
+			return;
 		}
 	}
 
-	if (!shader_found) {
-		return nullptr;
-	}
+	VkDescriptorSetLayoutBinding layout_binding = {};
+	layout_binding.binding = p_binding;
+	layout_binding.descriptorType = p_type;
+	layout_binding.descriptorCount = 1;
+	layout_binding.stageFlags = p_stage;
+	layout_binding.pImmutableSamplers = nullptr;
 
-	// create a new shader module, using the buffer we loaded
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.pNext = nullptr;
-
-	// codeSize has to be in bytes, so multiply the ints in the buffer by size
-	// of int to know the real size of the buffer
-	create_info.codeSize = shader_data.size;
-	create_info.pCode = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
-
-	Ref<VulkanShader> shader = create_ref<VulkanShader>();
-
-	// check that the creation goes well.
-	if (vkCreateShaderModule(device, &create_info, nullptr, &shader->shader) !=
-			VK_SUCCESS) {
-		return nullptr;
-	}
-
-	return shader;
+	p_bindings[p_set].push_back(layout_binding);
 }
 
-Ref<VulkanShader> VulkanShader::create(VkDevice device, const char* file_path) {
-	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open()) {
-		return nullptr;
+static void _add_push_constant_range_if_not_exists(uint32_t p_size,
+		uint32_t p_offset, ShaderStage stage,
+		std::vector<VkPushConstantRange>& p_ranges) {
+	const auto it = std::find_if(p_ranges.begin(), p_ranges.end(),
+			[=](const VkPushConstantRange& push_constant) -> bool {
+				return push_constant.size == p_size &&
+						push_constant.offset == p_offset;
+			});
+	if (it != p_ranges.end()) {
+		// push constant already exists now add the stage
+		if (!(it->stageFlags & stage)) {
+			it->stageFlags |= stage;
+		}
+		return;
 	}
 
-	size_t file_size = (size_t)file.tellg();
+	VkPushConstantRange range = {};
+	range.size = p_size;
+	range.offset = p_offset;
+	range.stageFlags = stage;
 
-	std::vector<uint32_t> buffer(file_size / sizeof(uint32_t));
-
-	// put file cursor at beginning
-	file.seekg(0);
-
-	// load the entire file into the buffer
-	file.read((char*)buffer.data(), file_size);
-
-	file.close();
-
-	return VulkanShader::create(
-			device, buffer.size() * sizeof(uint32_t), buffer.data());
+	p_ranges.push_back(range);
 }
 
-Ref<VulkanShader> VulkanShader::create(
-		VkDevice device, uint32_t spirv_size, uint32_t* spirv_data) {
-	// create a new shader module, using the buffer we loaded
-	VkShaderModuleCreateInfo create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	create_info.pNext = nullptr;
+Shader VulkanRenderBackend::shader_create_from_bytecode(
+		const std::vector<SpirvData>& p_shaders) {
+	std::vector<VkShaderModule> vk_shaders;
 
-	// codeSize has to be in bytes, so multiply the ints in the buffer by size
-	// of int to know the real size of the buffer
-	create_info.codeSize = spirv_size;
-	create_info.pCode = spirv_data;
+	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> set_bindings;
+	std::vector<VkPushConstantRange> push_constant_ranges;
 
-	Ref<VulkanShader> shader = create_ref<VulkanShader>();
+	for (const auto& shader : p_shaders) {
+		SpvReflectShaderModule module = {};
+		GL_ASSERT(spvReflectCreateShaderModule(shader.byte_code.size(),
+						  shader.byte_code.data(),
+						  &module) == SPV_REFLECT_RESULT_SUCCESS);
 
-	// check that the creation goes well.
-	if (vkCreateShaderModule(device, &create_info, nullptr, &shader->shader) !=
-			VK_SUCCESS) {
-		return nullptr;
+		uint32_t spv_descriptor_set_count = 0;
+		GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,
+						  &spv_descriptor_set_count,
+						  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
+
+		std::vector<SpvReflectDescriptorSet*> spv_descriptor_sets(
+				spv_descriptor_set_count);
+		GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,
+						  &spv_descriptor_set_count,
+						  spv_descriptor_sets.data()) ==
+				SPV_REFLECT_RESULT_SUCCESS);
+
+		// add bindings
+		for (const auto* descriptor_set : spv_descriptor_sets) {
+			for (uint32_t i = 0; i < descriptor_set->binding_count; i++) {
+				const SpvReflectDescriptorBinding* binding =
+						descriptor_set->bindings[i];
+
+				_add_descriptor_set_layout_binding_if_not_exists(
+						descriptor_set->set, binding->binding,
+						_spv_reflect_descriptor_type_to_vk(
+								binding->descriptor_type),
+						shader.stage, set_bindings);
+			}
+		}
+
+		uint32_t spv_push_constant_count = 0;
+		GL_ASSERT(spvReflectEnumeratePushConstantBlocks(&module,
+						  &spv_push_constant_count,
+						  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
+
+		std::vector<SpvReflectBlockVariable*> spv_push_constants(
+				spv_push_constant_count);
+		GL_ASSERT(
+				spvReflectEnumeratePushConstantBlocks(&module,
+						&spv_push_constant_count, spv_push_constants.data()) ==
+				SPV_REFLECT_RESULT_SUCCESS);
+
+		for (const auto* push_constant : spv_push_constants) {
+			_add_push_constant_range_if_not_exists(push_constant->size,
+					push_constant->offset, shader.stage, push_constant_ranges);
+		}
+
+		// create a new shader module, using the buffer we loaded
+		VkShaderModuleCreateInfo create_info = {};
+		create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		create_info.pNext = nullptr;
+		create_info.codeSize = shader.byte_code.size();
+		create_info.pCode = shader.byte_code.data();
+
+		VkShaderModule vk_shader = VK_NULL_HANDLE;
+		VK_CHECK(vkCreateShaderModule(
+				device, &create_info, nullptr, &vk_shader));
+
+		vk_shaders.push_back(vk_shader);
+
+		spvReflectDestroyShaderModule(&module);
 	}
 
-	return shader;
+	std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+	for (auto& [_, bindings] : set_bindings) {
+		std::sort(bindings.begin(), bindings.end(),
+				[=](const VkDescriptorSetLayoutBinding& lhs,
+						const VkDescriptorSetLayoutBinding& rhs) -> bool {
+					return lhs.binding < rhs.binding;
+				});
+
+		VkDescriptorSetLayoutCreateInfo create_info = {};
+		create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		create_info.bindingCount = static_cast<uint32_t>(bindings.size());
+		create_info.pBindings = bindings.data();
+
+		VkDescriptorSetLayout vk_set;
+		VK_CHECK(vkCreateDescriptorSetLayout(
+				device, &create_info, nullptr, &vk_set));
+
+		descriptor_set_layouts.push_back(vk_set);
+	}
+
+	VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+	pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipeline_layout_info.setLayoutCount =
+			static_cast<uint32_t>(descriptor_set_layouts.size());
+	pipeline_layout_info.pSetLayouts = descriptor_set_layouts.data();
+	pipeline_layout_info.pushConstantRangeCount =
+			static_cast<uint32_t>(push_constant_ranges.size());
+	pipeline_layout_info.pPushConstantRanges = push_constant_ranges.data();
+
+	VkPipelineLayout vk_pipeline_layout;
+	VK_CHECK(vkCreatePipelineLayout(
+			device, &pipeline_layout_info, nullptr, &vk_pipeline_layout));
+
+	std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
+	for (size_t i = 0; i < p_shaders.size(); i++) {
+		VkPipelineShaderStageCreateInfo create_info = {};
+		create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		create_info.stage =
+				static_cast<VkShaderStageFlagBits>(p_shaders[i].stage);
+		create_info.pName = "main";
+		create_info.module = vk_shaders[i];
+
+		shader_stages.push_back(create_info);
+	}
+
+	uint32_t push_constant_stages = 0;
+	for (const auto& push_constant : push_constant_ranges) {
+		push_constant_stages |= push_constant.stageFlags;
+	}
+
+	// Bookkeep
+	VulkanShader* shader_info =
+			VersatileResource::allocate<VulkanShader>(resources_allocator);
+	shader_info->stage_create_infos = shader_stages;
+	shader_info->push_constant_stages = push_constant_stages;
+	shader_info->descriptor_set_layouts = descriptor_set_layouts;
+	shader_info->pipeline_layout = vk_pipeline_layout;
+
+	return Shader(shader_info);
 }
 
-void VulkanShader::destroy(VkDevice device, Ref<VulkanShader> shader) {
-	vkDestroyShaderModule(device, shader->shader, nullptr);
+void VulkanRenderBackend::shader_free(Shader p_shader) {
+	VulkanShader* shader_info = (VulkanShader*)p_shader;
+
+	for (size_t i = 0; i < shader_info->descriptor_set_layouts.size(); i++) {
+		vkDestroyDescriptorSetLayout(
+				device, shader_info->descriptor_set_layouts[i], nullptr);
+	}
+
+	vkDestroyPipelineLayout(device, shader_info->pipeline_layout, nullptr);
+
+	for (size_t i = 0; i < shader_info->stage_create_infos.size(); i++) {
+		vkDestroyShaderModule(
+				device, shader_info->stage_create_infos[i].module, nullptr);
+	}
+
+	VersatileResource::free(resources_allocator, shader_info);
 }

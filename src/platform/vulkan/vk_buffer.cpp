@@ -1,27 +1,103 @@
-#include "platform/vulkan/vk_buffer.h"
+#include "platform/vulkan/vk_backend.h"
 
-VulkanBuffer VulkanBuffer::create(VmaAllocator allocator, size_t alloc_size,
-		VkBufferUsageFlags usage, VmaMemoryUsage memory_usage) {
-	VkBufferCreateInfo info = {
-		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-		.pNext = nullptr,
-		.size = alloc_size,
-		.usage = usage,
-	};
+Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
+		BitField<BufferUsageBits> p_usage,
+		MemoryAllocationType p_allocation_type) {
+	VkBufferCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	create_info.pNext = nullptr;
+	create_info.size = p_size;
+	create_info.usage = p_usage;
 
-	VmaAllocationCreateInfo alloc_info = {
-		.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		.usage = memory_usage,
-	};
+	VmaAllocationCreateInfo alloc_create_info = {};
+	switch (p_allocation_type) {
+		case MEMORY_ALLOCATION_TYPE_CPU: {
+			bool is_src = p_usage.has_flag(BUFFER_USAGE_TRANSFER_SRC_BIT);
+			bool is_dst = p_usage.has_flag(BUFFER_USAGE_TRANSFER_DST_BIT);
+			if (is_src && !is_dst) {
+				// Looks like a staging buffer: CPU maps, writes sequentially,
+				// then GPU copies to VRAM.
+				alloc_create_info.flags =
+						VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+			}
+			if (is_dst && !is_src) {
+				// Looks like a readback buffer: GPU copies from VRAM, then CPU
+				// maps and reads.
+				alloc_create_info.flags =
+						VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+			}
+			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+			alloc_create_info.requiredFlags =
+					(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		} break;
+		case MEMORY_ALLOCATION_TYPE_GPU: {
+			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+			if (p_size <= SMALL_ALLOCATION_MAX_SIZE) {
+				uint32_t mem_type_index = 0;
+				vmaFindMemoryTypeIndexForBufferInfo(allocator, &create_info,
+						&alloc_create_info, &mem_type_index);
+				alloc_create_info.pool =
+						_find_or_create_small_allocs_pool(mem_type_index);
+			}
+		} break;
+	}
 
 	// allocate the buffer
-	VulkanBuffer buffer{};
-	VK_CHECK(vmaCreateBuffer(allocator, &info, &alloc_info, &buffer.buffer,
-			&buffer.allocation, &buffer.info));
+	VkBuffer vk_buffer = VK_NULL_HANDLE;
+	VmaAllocation allocation = nullptr;
+	VmaAllocationInfo alloc_info = {};
 
-	return buffer;
+	VK_CHECK(vmaCreateBuffer(allocator, &create_info, &alloc_create_info,
+			&vk_buffer, &allocation, &alloc_info));
+
+	// Bookkeep.
+	VulkanBuffer* buf_info =
+			VersatileResource::allocate<VulkanBuffer>(resources_allocator);
+	buf_info->vk_buffer = vk_buffer;
+	buf_info->allocation.handle = allocation;
+	buf_info->allocation.size = alloc_info.size;
+	buf_info->size = p_size;
+
+	return Buffer(buf_info);
 }
 
-void VulkanBuffer::destroy(VmaAllocator allocator, const VulkanBuffer& buffer) {
-	vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
+void VulkanRenderBackend::buffer_free(Buffer p_buffer) {
+	if (!p_buffer) {
+		return;
+	}
+
+	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
+
+	if (buffer->vk_view) {
+		vkDestroyBufferView(device, buffer->vk_view, nullptr);
+	}
+	vmaDestroyBuffer(allocator, buffer->vk_buffer, buffer->allocation.handle);
+	VersatileResource::free(resources_allocator, buffer);
+}
+
+uint64_t VulkanRenderBackend::buffer_get_device_address(Buffer p_buffer) {
+	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
+
+	VkBufferDeviceAddressInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+	info.buffer = buffer->vk_buffer;
+
+	return vkGetBufferDeviceAddress(device, &info);
+}
+
+uint8_t* VulkanRenderBackend::buffer_map(Buffer p_buffer) {
+	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
+
+	void* data_ptr = nullptr;
+	VK_CHECK(vmaMapMemory(allocator, buffer->allocation.handle, &data_ptr));
+
+	return (uint8_t*)data_ptr;
+}
+
+void VulkanRenderBackend::buffer_unmap(Buffer p_buffer) {
+	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
+
+	vmaUnmapMemory(allocator, buffer->allocation.handle);
 }

@@ -1,11 +1,8 @@
-#include "gl/renderer/mesh.h"
+#include "renderer/mesh.h"
 
-#include "gl/renderer/image.h"
-#include "gl/renderer/material.h"
-#include "gl/renderer/renderer.h"
-
-#include "platform/vulkan/vk_mesh.h"
-#include "platform/vulkan/vk_renderer.h"
+#include "renderer/render_backend.h"
+#include "renderer/renderer.h"
+#include "renderer/types.h"
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -13,12 +10,13 @@
 #include <tiny_gltf.h>
 
 struct LoadedImage {
-	Ref<Image> image;
+	Image image;
 	uint32_t usage_count;
 };
+
 static std::unordered_map<uint32_t, LoadedImage> s_loaded_images;
 
-static Ref<Image> load_material_image(
+static Image _load_material_image(
 		const tinygltf::Model& model, int texture_index) {
 	if (texture_index < 0) {
 		return nullptr;
@@ -35,16 +33,15 @@ static Ref<Image> load_material_image(
 	const auto& gltf_texture = model.textures[texture_index];
 	const auto& gltf_image = model.images[gltf_texture.source];
 
-	ImageCreateInfo info = {
-		.format = ImageFormat::R8G8B8A8_UNORM,
-		.size = { 
-            static_cast<uint32_t>(gltf_image.height),
-            static_cast<uint32_t>(gltf_image.width),
-        },
-		.data = (void*)gltf_image.image.data(),
-		.mipmapped = false,
+	const Vec2u size = {
+		static_cast<uint32_t>(gltf_image.height),
+		static_cast<uint32_t>(gltf_image.width),
 	};
-	Ref<Image> image = Image::create(&info);
+
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	Image image = backend->image_create(
+			DATA_FORMAT_R8G8B8A8_UNORM, size, (void*)gltf_image.image.data());
 
 	s_loaded_images[texture_index] = LoadedImage{
 		.image = image,
@@ -52,6 +49,17 @@ static Ref<Image> load_material_image(
 	};
 
 	return image;
+}
+
+static std::unordered_map<uint64_t, Sampler> s_loaded_samplers;
+
+static Sampler _get_sampler(uint64_t p_id) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	Sampler sampler = backend->sampler_create();
+	s_loaded_samplers[p_id] = sampler;
+
+	return sampler;
 }
 
 template <typename T> struct GLTFAccessor {
@@ -64,7 +72,7 @@ template <typename T> struct GLTFAccessor {
 };
 
 template <typename T>
-static const T* get_gltf_accessor_data(
+static const T* _get_gltf_accessor_data(
 		const tinygltf::Model& model, const tinygltf::Accessor* accessor) {
 	const tinygltf::BufferView& view = model.bufferViews[accessor->bufferView];
 	const tinygltf::Buffer& buffer = model.buffers[view.buffer];
@@ -75,8 +83,9 @@ static const T* get_gltf_accessor_data(
 }
 
 template <typename T>
-static Optional<GLTFAccessor<T>> get_gltf_accessor(const tinygltf::Model& model,
-		const tinygltf::Primitive& primitive, const std::string& name) {
+static Optional<GLTFAccessor<T>> _get_gltf_accessor(
+		const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+		const std::string& name) {
 	const bool accessor_exists =
 			primitive.attributes.find(name) != primitive.attributes.end();
 
@@ -86,7 +95,7 @@ static Optional<GLTFAccessor<T>> get_gltf_accessor(const tinygltf::Model& model,
 
 	const auto& gltf_accessor = model.accessors[primitive.attributes.at(name)];
 	const auto* gltf_data =
-			get_gltf_accessor_data<float>(model, &gltf_accessor);
+			_get_gltf_accessor_data<float>(model, &gltf_accessor);
 
 	GLTFAccessor accessor = {
 		.accessor = &gltf_accessor,
@@ -96,20 +105,20 @@ static Optional<GLTFAccessor<T>> get_gltf_accessor(const tinygltf::Model& model,
 	return accessor;
 }
 
-static Ref<Mesh> process_mesh(const tinygltf::Model& model,
-		const tinygltf::Primitive& primitive, const fs::path& directory,
-		Ref<MetallicRoughnessMaterial> material) {
+static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
+		const tinygltf::Primitive& p_primitive, const fs::path& p_directory,
+		Ref<Material> p_material) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
 	// position accessor is guaranteed to exists but the others are not
 	GLTFAccessor position_accessor =
-			get_gltf_accessor<float>(model, primitive, "POSITION").value();
+			_get_gltf_accessor<float>(p_model, p_primitive, "POSITION").value();
 
 	Optional<GLTFAccessor<float>> tex_coord_accessor =
-			get_gltf_accessor<float>(model, primitive, "TEXCOORD_0");
+			_get_gltf_accessor<float>(p_model, p_primitive, "TEXCOORD_0");
 	Optional<GLTFAccessor<float>> normal_accessor =
-			get_gltf_accessor<float>(model, primitive, "NORMAL");
+			_get_gltf_accessor<float>(p_model, p_primitive, "NORMAL");
 
 	static constexpr Vec2f DEFAULT_TEX_COORD = { 0.0f, 0.0f };
 	static constexpr Vec3f DEFAULT_NORMAL = { 0.0f, 0.0f, 0.0f };
@@ -140,11 +149,12 @@ static Ref<Mesh> process_mesh(const tinygltf::Model& model,
 
 	// Accessing indices
 	const tinygltf::Accessor& indices_accessor =
-			model.accessors[primitive.indices];
+			p_model.accessors[p_primitive.indices];
 	const tinygltf::BufferView& indices_view =
-			model.bufferViews[indices_accessor.bufferView];
+			p_model.bufferViews[indices_accessor.bufferView];
 
-	const tinygltf::Buffer& indices_buffer = model.buffers[indices_view.buffer];
+	const tinygltf::Buffer& indices_buffer =
+			p_model.buffers[indices_view.buffer];
 	const uint32_t* indices_data = reinterpret_cast<const uint32_t*>(
 			&indices_buffer.data[indices_accessor.byteOffset +
 					indices_view.byteOffset]);
@@ -154,66 +164,56 @@ static Ref<Mesh> process_mesh(const tinygltf::Model& model,
 
 	Ref<Mesh> new_mesh = Mesh::create(vertices, indices);
 
-	if (primitive.material >= 0) {
-		const auto& gltf_material = model.materials[primitive.material];
+	if (p_primitive.material >= 0) {
+		const auto& gltf_material = p_model.materials[p_primitive.material];
 
 		new_mesh->color_index =
 				gltf_material.pbrMetallicRoughness.baseColorTexture.index;
 		new_mesh->roughness_index = gltf_material.pbrMetallicRoughness
 											.metallicRoughnessTexture.index;
 
-		MetallicRoughnessMaterial::MaterialConstants constants = {
-			.color_factors = Vec4f(1.0f),
-			.metal_rough_factors = Vec4f(1.0f),
-		};
+		Material::MaterialResources resources = {};
+		resources.color_image =
+				_load_material_image(p_model, new_mesh->color_index);
+		resources.color_sampler = _get_sampler(new_mesh->vertex_buffer_address);
 
-		MetallicRoughnessMaterial::MaterialResources resources = {
-			.constants = constants,
-			.constants_offset = 0,
-			.color_image = load_material_image(model, new_mesh->color_index),
-			.color_filtering = ImageFilteringMode::LINEAR,
-			.roughness_image =
-					load_material_image(model, new_mesh->roughness_index),
-			.roughness_filtering = ImageFilteringMode::LINEAR,
-		};
-		new_mesh->material = material->create_instance(resources);
+		new_mesh->material = p_material->create_instance(resources);
 	}
 
 	return new_mesh;
 }
 
-void process_node(const tinygltf::Model& model, const tinygltf::Node& node,
-		const fs::path& directory, Ref<MetallicRoughnessMaterial> material,
-		Ref<Node> parent) {
+static void _process_node(const tinygltf::Model& p_model,
+		const tinygltf::Node& p_node, const fs::path& p_directory,
+		Ref<Material> p_material, Ref<Node> p_parent) {
 	Ref<Node> base_node = create_ref<Node>();
-	parent->add_child(base_node);
+	p_parent->add_child(base_node);
 
-	if (node.mesh >= 0) {
-		const auto& mesh = model.meshes[node.mesh];
+	if (p_node.mesh >= 0) {
+		const auto& mesh = p_model.meshes[p_node.mesh];
 		for (const auto& primitive : mesh.primitives) {
 			base_node->add_child(
-					process_mesh(model, primitive, directory, material));
+					_process_mesh(p_model, primitive, p_directory, p_material));
 		}
 	}
 
-	for (const auto& child_index : node.children) {
-		const auto& child_node = model.nodes[child_index];
-		process_node(model, child_node, directory, material, base_node);
+	for (const auto& child_index : p_node.children) {
+		const auto& child_node = p_model.nodes[child_index];
+		_process_node(p_model, child_node, p_directory, p_material, base_node);
 	}
 }
 
-Ref<Node> Mesh::load(
-		const fs::path& path, Ref<MetallicRoughnessMaterial> material) {
+Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	tinygltf::TinyGLTF loader;
 	tinygltf::Model model;
 	std::string err, warn;
 
 	bool ret;
 
-	if (path.extension() == ".glb") {
-		ret = loader.LoadBinaryFromFile(&model, &err, &warn, path.string());
-	} else if (path.extension() == ".gltf") {
-		ret = loader.LoadASCIIFromFile(&model, &err, &warn, path.string());
+	if (p_path.extension() == ".glb") {
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
+	} else if (p_path.extension() == ".gltf") {
+		ret = loader.LoadASCIIFromFile(&model, &err, &warn, p_path.string());
 	} else {
 		GL_LOG_ERROR("Unknown file format!");
 		return nullptr;
@@ -232,31 +232,75 @@ Ref<Node> Mesh::load(
 
 	for (const auto& node_index : model.scenes[model.defaultScene].nodes) {
 		const auto& node = model.nodes[node_index];
-		process_node(model, node, path.parent_path(), material, root);
+		_process_node(model, node, p_path.parent_path(), p_material, root);
 	}
 
 	return root;
 }
 
 Ref<Mesh> Mesh::create(
-		const std::span<Vertex> vertices, const std::span<uint32_t> indices) {
-	switch (Renderer::get_backend()) {
-		case RenderBackend::Vulkan: {
-			Ref<VulkanMesh> vk_mesh = VulkanMesh::create(
-					VulkanRenderer::get_context(), vertices, indices);
-			vk_mesh->index_count = indices.size();
-			vk_mesh->vertex_count = vertices.size();
-			return vk_mesh;
-		}
+		std::span<Vertex> p_vertices, std::span<uint32_t> p_indices) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
-		default: {
-			return nullptr;
-		}
+	const uint32_t vertices_size = p_vertices.size() * sizeof(Vertex);
+	const uint32_t indices_size = p_indices.size() * sizeof(uint32_t);
+
+	Ref<Mesh> mesh = create_ref<Mesh>();
+	mesh->index_count = p_indices.size();
+	mesh->vertex_count = p_vertices.size();
+
+	mesh->vertex_buffer = backend->buffer_create(vertices_size,
+			BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT |
+					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+			MEMORY_ALLOCATION_TYPE_GPU);
+
+	// get the address
+	mesh->vertex_buffer_address =
+			backend->buffer_get_device_address(mesh->vertex_buffer);
+
+	mesh->index_buffer = backend->buffer_create(indices_size,
+			BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
+			MEMORY_ALLOCATION_TYPE_GPU);
+
+	Buffer staging_buffer = backend->buffer_create(vertices_size + indices_size,
+			BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+
+	void* data = backend->buffer_map(staging_buffer);
+	{
+		// copy vertex data
+		memcpy(data, p_vertices.data(), vertices_size);
+		// copy index data
+		memcpy((uint8_t*)data + vertices_size, p_indices.data(), indices_size);
 	}
+	backend->buffer_unmap(staging_buffer);
+
+	backend->command_immediate_submit([&](CommandBuffer p_cmd) {
+		BufferCopyRegion vertex_copy = {};
+		vertex_copy.src_offset = 0;
+		vertex_copy.dst_offset = 0;
+		vertex_copy.size = vertices_size;
+
+		backend->command_copy_buffer(
+				p_cmd, staging_buffer, mesh->vertex_buffer, vertex_copy);
+
+		BufferCopyRegion index_copy = {};
+		index_copy.src_offset = vertices_size;
+		index_copy.dst_offset = 0;
+		index_copy.size = indices_size;
+
+		backend->command_copy_buffer(
+				p_cmd, staging_buffer, mesh->index_buffer, index_copy);
+	});
+
+	backend->buffer_free(staging_buffer);
+
+	return mesh;
 }
 
-static void destroy_loaded_image(const uint32_t index) {
-	const auto it = s_loaded_images.find(index);
+static void _destroy_loaded_image(const uint32_t p_index) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	const auto it = s_loaded_images.find(p_index);
 	if (it == s_loaded_images.end()) {
 		return;
 	}
@@ -264,29 +308,18 @@ static void destroy_loaded_image(const uint32_t index) {
 	LoadedImage& loaded_image = it->second;
 
 	if (--loaded_image.usage_count < 1) {
-		Image::destroy(loaded_image.image);
+		backend->image_free(loaded_image.image);
 		s_loaded_images.erase(it);
 	}
 }
 
-void Mesh::destroy(Mesh* mesh) {
-	if (mesh->destroyed) {
-		return;
-	}
+void Mesh::destroy(const Mesh* p_mesh) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
-	switch (Renderer::get_backend()) {
-		case RenderBackend::Vulkan: {
-			destroy_loaded_image(mesh->color_index);
-			destroy_loaded_image(mesh->roughness_index);
+	_destroy_loaded_image(p_mesh->color_index);
 
-			VulkanMesh* vk_mesh = reinterpret_cast<VulkanMesh*>(mesh);
-			VulkanMesh::destroy(VulkanRenderer::get_context(), vk_mesh);
+	backend->sampler_free(s_loaded_samplers[p_mesh->vertex_buffer_address]);
 
-			mesh->destroyed = true;
-			break;
-		}
-		default: {
-			break;
-		}
-	}
+	backend->buffer_free(p_mesh->vertex_buffer);
+	backend->buffer_free(p_mesh->index_buffer);
 }

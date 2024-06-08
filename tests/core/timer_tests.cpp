@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-#include "gl/core/timer.h"
+#include "core/timer.h"
 
 using namespace std::chrono_literals;
 

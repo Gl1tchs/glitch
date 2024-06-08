@@ -2,11 +2,7 @@
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vk_enum_string_helper.h>
-#include <vulkan/vulkan.h>
-
-#include "platform/vulkan/vk_context.h"
-
-#include "gl/renderer/vertex.h"
+#include <vulkan/vulkan_core.h>
 
 #define VK_CHECK(x)                                                            \
 	do {                                                                       \
@@ -16,8 +12,3 @@
 			GL_ASSERT(false);                                                  \
 		}                                                                      \
 	} while (false)
-
-struct DrawPushConstants {
-	glm::mat4 transform;
-	VkDeviceAddress vertex_buffer;
-};
