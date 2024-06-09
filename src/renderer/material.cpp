@@ -73,6 +73,10 @@ Ref<Material> Material::create() {
 }
 
 void Material::destroy(Ref<Material> p_material) {
+	if (!p_material) {
+		return;
+	}
+
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	backend->pipeline_free(p_material->pipeline);

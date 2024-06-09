@@ -58,7 +58,7 @@ struct LoadedImage {
 	uint32_t usage_count;
 };
 
-static std::unordered_map<uint32_t, LoadedImage> s_loaded_images;
+static std::unordered_map<int, LoadedImage> s_loaded_images;
 
 static Image _load_material_image(
 		const tinygltf::Model& model, int texture_index) {
@@ -158,7 +158,6 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		const uint16_t* indices_data = reinterpret_cast<const uint16_t*>(
 				&indices_buffer.data[indices_offset]);
 		indices.assign(indices_data, indices_data + indices_accessor.count);
-
 	} else if (indices_accessor.componentType ==
 			TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT) {
 		index_type = INDEX_TYPE_UINT16;
@@ -166,7 +165,6 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		const uint32_t* indices_data = reinterpret_cast<const uint32_t*>(
 				&indices_buffer.data[indices_offset]);
 		indices.assign(indices_data, indices_data + indices_accessor.count);
-
 	} else {
 		GL_LOG_ERROR("Unsupported index component type: {}",
 				indices_accessor.componentType);
@@ -344,6 +342,8 @@ void Mesh::destroy(const Mesh* p_mesh) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	_destroy_loaded_image(p_mesh->color_index);
+	_destroy_loaded_image(p_mesh->roughness_index);
+	_destroy_loaded_image(p_mesh->normal_index);
 
 	backend->buffer_free(p_mesh->vertex_buffer);
 	backend->buffer_free(p_mesh->index_buffer);
