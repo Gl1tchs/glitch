@@ -16,11 +16,10 @@ void TestBedApplication::_on_start() {
 
 	material = Material::create();
 
-	scene = Mesh::load("assets/just_a_girl.glb", material);
+	scene = Mesh::load("assets/DamagedHelmet.glb", material);
 	if (scene) {
-		for (auto& node : scene->children) {
-			node->transform.local_scale = glm::vec3(0.1f);
-			node->transform.local_rotation.x = -90.0;
+		for (auto& child : scene->children) {
+			child->transform.local_rotation.x = 90.0f;
 		}
 		get_renderer()->get_scene_graph().push_node(scene);
 	}

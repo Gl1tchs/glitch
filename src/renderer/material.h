@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/color.h"
+
 #include "renderer/types.h"
 
 struct MaterialInstance {
@@ -8,14 +10,26 @@ struct MaterialInstance {
 	UniformSet uniform_set;
 };
 
+struct MaterialConstants {
+	Color color_factor = COLOR_WHITE;
+	float metallic_factor = 1.0f;
+	float roughness_factor = 1.0f;
+
+private:
+	float __padding[18];
+};
+
+struct MaterialResources {
+	MaterialConstants constants;
+	Image color_image = GL_NULL_HANDLE;
+	Image roughness_image = GL_NULL_HANDLE;
+	Image normal_image = GL_NULL_HANDLE;
+	Sampler sampler = GL_NULL_HANDLE;
+};
+
 struct Material {
 	Pipeline pipeline;
 	Shader shader;
-
-	struct MaterialResources {
-		Image color_image;
-		Sampler color_sampler;
-	};
 
 	static Ref<Material> create();
 

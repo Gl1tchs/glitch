@@ -17,7 +17,7 @@ public:
 
 	virtual void device_wait() = 0;
 
-	virtual CommandQueue device_get_queue(QueueType p_type) = 0;
+	virtual CommandQueue queue_get(QueueType p_type) = 0;
 
 	// Buffer
 

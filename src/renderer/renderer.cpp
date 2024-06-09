@@ -28,7 +28,7 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	backend->init(p_window);
 
 	swapchain = backend->swapchain_create();
-	backend->swapchain_resize(backend->device_get_queue(QUEUE_TYPE_PRESENT),
+	backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_PRESENT),
 			swapchain, p_window->get_size());
 
 	draw_image = backend->image_create(DATA_FORMAT_R16G16B16A16_SFLOAT,
@@ -44,7 +44,7 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 		FrameData& frame_data = frames[i];
 
 		frame_data.command_pool = backend->command_pool_create(
-				backend->device_get_queue(QUEUE_TYPE_GRAPHICS));
+				backend->queue_get(QUEUE_TYPE_GRAPHICS));
 		frame_data.command_buffer =
 				backend->command_pool_allocate(frame_data.command_pool);
 
@@ -56,15 +56,15 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 
 	default_material = Material::create();
 
-	constexpr uint32_t magenta_color = 0xFF00FF;
+	constexpr uint32_t gray_color = 0x808080;
 
-	magenta_image = backend->image_create(
-			DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &magenta_color);
+	default_image = backend->image_create(
+			DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &gray_color);
 	default_sampler = backend->sampler_create();
 
-	Material::MaterialResources resources = {};
-	resources.color_image = magenta_image;
-	resources.color_sampler = default_sampler;
+	MaterialResources resources = {};
+	resources.color_image = default_image;
+	resources.sampler = default_sampler;
 
 	default_material_instance = default_material->create_instance(resources);
 }
@@ -74,7 +74,7 @@ Renderer::~Renderer() {
 
 	Material::destroy(default_material);
 
-	backend->image_free(magenta_image);
+	backend->image_free(default_image);
 	backend->sampler_free(default_sampler);
 
 	_destroy_scene_graph();
@@ -156,12 +156,12 @@ void Renderer::wait_and_render() {
 	}
 	backend->command_end(cmd);
 
-	backend->queue_submit(backend->device_get_queue(QUEUE_TYPE_GRAPHICS), cmd,
+	backend->queue_submit(backend->queue_get(QUEUE_TYPE_GRAPHICS), cmd,
 			_get_current_frame().render_fence,
 			_get_current_frame().image_available_semaphore,
 			_get_current_frame().render_finished_semaphore);
 
-	if (!backend->queue_present(backend->device_get_queue(QUEUE_TYPE_GRAPHICS),
+	if (!backend->queue_present(backend->queue_get(QUEUE_TYPE_GRAPHICS),
 				swapchain, _get_current_frame().render_finished_semaphore)) {
 		_request_resize();
 	}
@@ -256,7 +256,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 
 			for (const auto& mesh : meshes) {
 				backend->command_bind_index_buffer(
-						p_cmd, mesh->index_buffer, 0, INDEX_TYPE_UINT32);
+						p_cmd, mesh->index_buffer, 0, mesh->index_type);
 
 				GPUDrawPushConstants push_constants = {
 					.transform = mesh->transform.get_transform_matrix(),
@@ -277,7 +277,7 @@ GraphicsAPI Renderer::get_graphics_api() { return s_api; }
 
 void Renderer::_request_resize() {
 	Application::get_instance()->enqueue_main_thread([&]() {
-		backend->swapchain_resize(backend->device_get_queue(QUEUE_TYPE_PRESENT),
+		backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_PRESENT),
 				swapchain, window->get_size());
 	});
 }

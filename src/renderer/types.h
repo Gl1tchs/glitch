@@ -18,7 +18,6 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandQueue)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Swapchain)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Pipeline)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Shader)
-GL_DEFINE_NON_DISPATCHABLE_HANDLE(UniformPool)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(UniformSet)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Fence)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore)
@@ -206,8 +205,9 @@ enum QueueType {
 };
 
 enum IndexType {
-	INDEX_TYPE_UINT16,
-	INDEX_TYPE_UINT32,
+	INDEX_TYPE_UINT16 = 0x00000001,
+	INDEX_TYPE_UINT32 = 0x00000002,
+	INDEX_TYPE_MAX = 0xffffffff,
 };
 
 enum PipelineType {
@@ -244,8 +244,6 @@ enum UniformType {
 	UNIFORM_TYPE_STORAGE_BUFFER, // Storage buffer ("buffer" qualifier) like
 								 // UBO, but supports storage, for compute
 								 // mostly.
-	UNIFORM_TYPE_INPUT_ATTACHMENT, // Used for sub-pass read/write, for
-								   // mobile mostly.
 	UNIFORM_TYPE_MAX
 };
 

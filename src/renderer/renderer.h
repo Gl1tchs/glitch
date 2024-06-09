@@ -61,15 +61,18 @@ public:
 
 	void wait_for_device();
 
-	static GraphicsAPI get_graphics_api();
-
-	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
-
 	SceneGraph& get_scene_graph() { return scene_graph; }
 
 	RendererSettings& get_settings() { return settings; }
 
 	RendererStats& get_stats() { return stats; }
+
+	static Image get_default_image() { return s_instance->default_image; }
+	static Sampler get_default_sampler() { return s_instance->default_sampler; }
+
+	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
+
+	static GraphicsAPI get_graphics_api();
 
 private:
 	void _geometry_pass(CommandBuffer p_cmd);
@@ -91,6 +94,10 @@ private:
 private:
 	static Renderer* s_instance;
 
+	// default data
+	Image default_image;
+	Sampler default_sampler;
+
 	Ref<Window> window;
 
 	Ref<RenderBackend> backend;
@@ -109,9 +116,6 @@ private:
 
 	Ref<Material> default_material;
 	Ref<MaterialInstance> default_material_instance;
-
-	Sampler default_sampler;
-	Image magenta_image;
 
 	SceneGraph scene_graph;
 

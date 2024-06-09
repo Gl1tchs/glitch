@@ -7,68 +7,11 @@
 
 #include "platform/vulkan/vk_common.h"
 
-struct VulkanBuffer {
-	VkBuffer vk_buffer;
-	struct {
-		VmaAllocation handle;
-		uint64_t size = UINT64_MAX;
-	} allocation;
-	uint64_t size = 0;
-	VkBufferView vk_view = VK_NULL_HANDLE;
-};
-
-struct VulkanImage {
-	VkImage vk_image;
-	VkImageView vk_image_view;
-	VmaAllocation allocation;
-	VkExtent3D image_extent;
-	VkFormat image_format;
-};
-
-struct VulkanQueue {
-	VkQueue queue;
-	uint32_t queue_family;
-};
-
-struct VulkanShader {
-	std::vector<VkPipelineShaderStageCreateInfo> stage_create_infos;
-	uint32_t push_constant_stages = 0;
-	std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
-	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-};
-
-struct VulkanSwapchain {
-	VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
-	VkFormat format = VK_FORMAT_UNDEFINED;
-	VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-	VkExtent2D extent;
-	std::vector<VulkanImage> images;
-	uint32_t image_index;
-};
-
-static const uint32_t MAX_UNIFORM_POOL_ELEMENT = 65535;
-
-struct DescriptorSetPoolKey {
-	uint16_t uniform_type[UNIFORM_TYPE_MAX] = {};
-
-	bool operator<(const DescriptorSetPoolKey& p_other) const {
-		return memcmp(uniform_type, p_other.uniform_type,
-					   sizeof(uniform_type)) < 0;
-	}
-};
-
-using DescriptorSetPools = std::map<DescriptorSetPoolKey,
-		std::unordered_map<VkDescriptorPool, uint32_t>>;
-
-struct VulkanUniformSet {
-	VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
-	VkDescriptorPool vk_descriptor_pool = VK_NULL_HANDLE;
-	DescriptorSetPools::iterator pool_sets_it = {};
-};
-
 class VulkanRenderBackend : public RenderBackend {
 public:
 	~VulkanRenderBackend() = default;
+
+	// Generic
 
 	void init(Ref<Window> p_window) override;
 	void shutdown() override;
@@ -77,9 +20,17 @@ public:
 
 	void device_wait() override;
 
-	CommandQueue device_get_queue(QueueType p_type) override;
-
 	// Buffer
+
+	struct VulkanBuffer {
+		VkBuffer vk_buffer;
+		struct {
+			VmaAllocation handle;
+			uint64_t size = UINT64_MAX;
+		} allocation;
+		uint64_t size = 0;
+		VkBufferView vk_view = VK_NULL_HANDLE;
+	};
 
 	Buffer buffer_create(uint64_t p_size, BitField<BufferUsageBits> p_usage,
 			MemoryAllocationType p_allocation_type) override;
@@ -93,6 +44,14 @@ public:
 	void buffer_unmap(Buffer p_buffer) override;
 
 	// Image
+
+	struct VulkanImage {
+		VkImage vk_image;
+		VkImageView vk_image_view;
+		VmaAllocation allocation;
+		VkExtent3D image_extent;
+		VkFormat image_format;
+	};
 
 	Image image_create(DataFormat p_format, Vec2u p_size,
 			const void* p_data = nullptr,
@@ -110,12 +69,28 @@ public:
 
 	// Shader
 
+	struct VulkanShader {
+		std::vector<VkPipelineShaderStageCreateInfo> stage_create_infos;
+		uint32_t push_constant_stages = 0;
+		std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+	};
+
 	Shader shader_create_from_bytecode(
 			const std::vector<SpirvData>& p_shaders) override;
 
 	void shader_free(Shader p_shader) override;
 
 	// Swapchain
+
+	struct VulkanSwapchain {
+		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
+		VkFormat format = VK_FORMAT_UNDEFINED;
+		VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+		VkExtent2D extent;
+		std::vector<VulkanImage> images;
+		uint32_t image_index;
+	};
 
 	Swapchain swapchain_create() override;
 
@@ -132,6 +107,26 @@ public:
 	void swapchain_free(Swapchain p_swapchain) override;
 
 	// UniformSet
+
+	static const uint32_t MAX_UNIFORM_POOL_ELEMENT = 65535;
+
+	struct DescriptorSetPoolKey {
+		uint16_t uniform_type[UNIFORM_TYPE_MAX] = {};
+
+		bool operator<(const DescriptorSetPoolKey& p_other) const {
+			return memcmp(uniform_type, p_other.uniform_type,
+						   sizeof(uniform_type)) < 0;
+		}
+	};
+
+	using DescriptorSetPools = std::map<DescriptorSetPoolKey,
+			std::unordered_map<VkDescriptorPool, uint32_t>>;
+
+	struct VulkanUniformSet {
+		VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
+		VkDescriptorPool vk_descriptor_pool = VK_NULL_HANDLE;
+		DescriptorSetPools::iterator pool_sets_it = {};
+	};
 
 	UniformSet uniform_set_create(VectorView<BoundUniform> p_uniforms,
 			Shader p_shader, uint32_t p_set_index) override;
@@ -168,6 +163,13 @@ public:
 	void pipeline_free(Pipeline p_pipeline) override;
 
 	// Command Queue
+
+	struct VulkanQueue {
+		VkQueue queue;
+		uint32_t queue_family;
+	};
+
+	CommandQueue queue_get(QueueType p_type) override;
 
 	void queue_submit(CommandQueue p_queue, CommandBuffer p_cmd,
 			Fence p_fence = nullptr, Semaphore p_wait_semaphore = nullptr,

@@ -1,5 +1,10 @@
 #include "platform/vulkan/vk_backend.h"
 
+CommandQueue VulkanRenderBackend::queue_get(QueueType p_type) {
+	return CommandQueue(
+			p_type == QUEUE_TYPE_GRAPHICS ? &graphics_queue : &present_queue);
+}
+
 void VulkanRenderBackend::queue_submit(CommandQueue p_queue,
 		CommandBuffer p_cmd, Fence p_fence, Semaphore p_wait_semaphore,
 		Semaphore p_signal_semaphore) {

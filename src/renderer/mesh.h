@@ -21,10 +21,13 @@ struct Mesh : public Node {
 	uint32_t index_count;
 	uint32_t vertex_count;
 
+	IndexType index_type;
+
 	Ref<MaterialInstance> material;
 
 	int color_index;
 	int roughness_index;
+	int normal_index;
 
 	virtual ~Mesh() = default;
 

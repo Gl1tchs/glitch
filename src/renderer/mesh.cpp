@@ -1,5 +1,6 @@
 #include "renderer/mesh.h"
 
+#include "renderer/material.h"
 #include "renderer/render_backend.h"
 #include "renderer/renderer.h"
 #include "renderer/types.h"
@@ -8,59 +9,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
-
-struct LoadedImage {
-	Image image;
-	uint32_t usage_count;
-};
-
-static std::unordered_map<uint32_t, LoadedImage> s_loaded_images;
-
-static Image _load_material_image(
-		const tinygltf::Model& model, int texture_index) {
-	if (texture_index < 0) {
-		return nullptr;
-	}
-
-	const auto it = s_loaded_images.find(texture_index);
-	if (it != s_loaded_images.end()) {
-		LoadedImage& loaded_image = it->second;
-		loaded_image.usage_count++;
-
-		return loaded_image.image;
-	}
-
-	const auto& gltf_texture = model.textures[texture_index];
-	const auto& gltf_image = model.images[gltf_texture.source];
-
-	const Vec2u size = {
-		static_cast<uint32_t>(gltf_image.height),
-		static_cast<uint32_t>(gltf_image.width),
-	};
-
-	Ref<RenderBackend> backend = Renderer::get_backend();
-
-	Image image = backend->image_create(
-			DATA_FORMAT_R8G8B8A8_UNORM, size, (void*)gltf_image.image.data());
-
-	s_loaded_images[texture_index] = LoadedImage{
-		.image = image,
-		.usage_count = 1,
-	};
-
-	return image;
-}
-
-static std::unordered_map<uint64_t, Sampler> s_loaded_samplers;
-
-static Sampler _get_sampler(uint64_t p_id) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
-
-	Sampler sampler = backend->sampler_create();
-	s_loaded_samplers[p_id] = sampler;
-
-	return sampler;
-}
 
 template <typename T> struct GLTFAccessor {
 	const tinygltf::Accessor* accessor;
@@ -103,6 +51,48 @@ static Optional<GLTFAccessor<T>> _get_gltf_accessor(
 	};
 
 	return accessor;
+}
+
+struct LoadedImage {
+	Image image;
+	uint32_t usage_count;
+};
+
+static std::unordered_map<uint32_t, LoadedImage> s_loaded_images;
+
+static Image _load_material_image(
+		const tinygltf::Model& model, int texture_index) {
+	if (texture_index < 0) {
+		return nullptr;
+	}
+
+	const auto it = s_loaded_images.find(texture_index);
+	if (it != s_loaded_images.end()) {
+		LoadedImage& loaded_image = it->second;
+		loaded_image.usage_count++;
+
+		return loaded_image.image;
+	}
+
+	const auto& gltf_texture = model.textures[texture_index];
+	const auto& gltf_image = model.images[gltf_texture.source];
+
+	const Vec2u size = {
+		static_cast<uint32_t>(gltf_image.height),
+		static_cast<uint32_t>(gltf_image.width),
+	};
+
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	Image image = backend->image_create(
+			DATA_FORMAT_R8G8B8A8_UNORM, size, (void*)gltf_image.image.data());
+
+	s_loaded_images[texture_index] = LoadedImage{
+		.image = image,
+		.usage_count = 1,
+	};
+
+	return image;
 }
 
 static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
@@ -155,27 +145,65 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 
 	const tinygltf::Buffer& indices_buffer =
 			p_model.buffers[indices_view.buffer];
-	const uint32_t* indices_data = reinterpret_cast<const uint32_t*>(
-			&indices_buffer.data[indices_accessor.byteOffset +
-					indices_view.byteOffset]);
 
-	indices = std::vector<uint32_t>(
-			indices_data, indices_data + indices_accessor.count);
+	const size_t indices_offset =
+			indices_accessor.byteOffset + indices_view.byteOffset;
+
+	IndexType index_type = INDEX_TYPE_MAX;
+
+	if (indices_accessor.componentType ==
+			TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT) {
+		index_type = INDEX_TYPE_UINT32;
+
+		const uint16_t* indices_data = reinterpret_cast<const uint16_t*>(
+				&indices_buffer.data[indices_offset]);
+		indices.assign(indices_data, indices_data + indices_accessor.count);
+
+	} else if (indices_accessor.componentType ==
+			TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT) {
+		index_type = INDEX_TYPE_UINT16;
+
+		const uint32_t* indices_data = reinterpret_cast<const uint32_t*>(
+				&indices_buffer.data[indices_offset]);
+		indices.assign(indices_data, indices_data + indices_accessor.count);
+
+	} else {
+		GL_LOG_ERROR("Unsupported index component type: {}",
+				indices_accessor.componentType);
+		GL_ASSERT(false);
+	}
 
 	Ref<Mesh> new_mesh = Mesh::create(vertices, indices);
+	new_mesh->index_type = index_type;
 
 	if (p_primitive.material >= 0) {
 		const auto& gltf_material = p_model.materials[p_primitive.material];
 
+		// use pbr texture if available if not try to use normal texture
 		new_mesh->color_index =
 				gltf_material.pbrMetallicRoughness.baseColorTexture.index;
 		new_mesh->roughness_index = gltf_material.pbrMetallicRoughness
 											.metallicRoughnessTexture.index;
+		new_mesh->normal_index = gltf_material.normalTexture.index;
 
-		Material::MaterialResources resources = {};
+		MaterialConstants constants = {};
+		memcpy(&constants.color_factor,
+				gltf_material.pbrMetallicRoughness.baseColorFactor.data(),
+				sizeof(Color));
+		constants.metallic_factor =
+				gltf_material.pbrMetallicRoughness.metallicFactor;
+		constants.roughness_factor =
+				gltf_material.pbrMetallicRoughness.roughnessFactor;
+
+		MaterialResources resources = {};
 		resources.color_image =
 				_load_material_image(p_model, new_mesh->color_index);
-		resources.color_sampler = _get_sampler(new_mesh->vertex_buffer_address);
+		resources.roughness_image =
+				_load_material_image(p_model, new_mesh->roughness_index);
+		resources.normal_image =
+				_load_material_image(p_model, new_mesh->normal_index);
+		// TODO get sampler from gltf
+		resources.sampler = Renderer::get_default_sampler();
 
 		new_mesh->material = p_material->create_instance(resources);
 	}
@@ -208,12 +236,13 @@ Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	tinygltf::Model model;
 	std::string err, warn;
 
-	bool ret;
-
+	bool gltf_ret;
 	if (p_path.extension() == ".glb") {
-		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
+		gltf_ret =
+				loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
 	} else if (p_path.extension() == ".gltf") {
-		ret = loader.LoadASCIIFromFile(&model, &err, &warn, p_path.string());
+		gltf_ret =
+				loader.LoadASCIIFromFile(&model, &err, &warn, p_path.string());
 	} else {
 		GL_LOG_ERROR("Unknown file format!");
 		return nullptr;
@@ -223,7 +252,7 @@ Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 		GL_LOG_WARNING("Warning: {}", warn);
 	}
 
-	if (!ret) {
+	if (!gltf_ret) {
 		GL_LOG_ERROR("Error: {}", err);
 		return nullptr;
 	}
@@ -298,8 +327,6 @@ Ref<Mesh> Mesh::create(
 }
 
 static void _destroy_loaded_image(const uint32_t p_index) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
-
 	const auto it = s_loaded_images.find(p_index);
 	if (it == s_loaded_images.end()) {
 		return;
@@ -308,7 +335,7 @@ static void _destroy_loaded_image(const uint32_t p_index) {
 	LoadedImage& loaded_image = it->second;
 
 	if (--loaded_image.usage_count < 1) {
-		backend->image_free(loaded_image.image);
+		Renderer::get_backend()->image_free(loaded_image.image);
 		s_loaded_images.erase(it);
 	}
 }
@@ -317,8 +344,6 @@ void Mesh::destroy(const Mesh* p_mesh) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	_destroy_loaded_image(p_mesh->color_index);
-
-	backend->sampler_free(s_loaded_samplers[p_mesh->vertex_buffer_address]);
 
 	backend->buffer_free(p_mesh->vertex_buffer);
 	backend->buffer_free(p_mesh->index_buffer);
