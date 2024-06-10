@@ -1,14 +1,16 @@
 # TODOS
 
-## New Renderer
- - [ ] Use present queue for presenting images
-
 ## Renderer
 - [ ] Implement more detailed scene graph system with components (proper ECS)
-- [ ] ID based resource management for Material, Image and etc. so that we
-don't need to worry about deletion of the objects.
 - [ ] Get rid of material instances and bind textures as a list to the shaders
 and use texture indexing.
+- [ ] Use present queue for presenting images
 
 ## Vulkan Renderer
+- [ ] Instanced rendering.
+- [ ] Frustum/Occulusion culling using compute shaders.
+- [ ] Indirect drawing.
+- [ ] Cubemapping.
+- [ ] Shadow mapping.
+- [ ] Other light sources.
 - [ ] Font rendering
