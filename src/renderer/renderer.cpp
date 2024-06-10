@@ -117,6 +117,8 @@ Renderer::~Renderer() {
 }
 
 void Renderer::wait_and_render() {
+	_reset_stats();
+
 	backend->fence_wait(_get_current_frame().render_fence);
 
 	_get_current_frame().deletion_queue.flush();
@@ -310,6 +312,9 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 						sizeof(GPUDrawPushConstants), &push_constants);
 
 				backend->command_draw_indexed(p_cmd, mesh->index_count);
+
+				stats.draw_calls++;
+				stats.triangle_count = mesh->index_count / 3;
 			}
 		}
 	}
@@ -345,6 +350,8 @@ void Renderer::_request_resize() {
 				swapchain, window->get_size());
 	});
 }
+
+void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }
 
 void Renderer::_destroy_scene_graph() {
 	scene_graph.traverse([this](Node* node) {

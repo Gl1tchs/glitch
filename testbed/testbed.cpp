@@ -8,8 +8,8 @@
 
 #include <imgui.h>
 
-TestBedApplication::TestBedApplication(const ApplicationCreateInfo& info) :
-		Application(info) {}
+TestBedApplication::TestBedApplication(const ApplicationCreateInfo& p_info) :
+		Application(p_info) {}
 
 void TestBedApplication::_on_start() {
 	camera = create_ref<PerspectiveCameraNode>();
@@ -20,19 +20,28 @@ void TestBedApplication::_on_start() {
 
 	material = Material::create();
 
-	scene = Mesh::load("assets/DamagedHelmet.glb", material);
-	if (scene) {
-		for (auto& child : scene->children) {
-			child->transform.local_position.y = 0.75f;
-			child->transform.local_rotation.x = 90.0f;
-		}
-		get_renderer()->get_scene_graph().push_node(scene);
+	Ref<Node> helmet = Mesh::load("assets/DamagedHelmet.glb", material);
+	if (helmet) {
+		helmet->transform.local_position.y = 0.75f;
+		helmet->transform.local_rotation.x = 90.0f;
+
+		get_renderer()->get_scene_graph().push_node(helmet);
+	}
+
+	Ref<Node> suzanne = Mesh::load("assets/Suzanne.glb", material);
+	if (suzanne) {
+		suzanne->transform.local_position.x = 2.5f;
+		suzanne->transform.local_position.z = 4.5f;
+
+		suzanne->transform.local_rotation.y = -30.0f;
+
+		get_renderer()->get_scene_graph().push_node(suzanne);
 	}
 
 	grid = create_ref<Grid>(get_renderer());
 }
 
-void TestBedApplication::_on_update(float dt) {
+void TestBedApplication::_on_update(float p_dt) {
 	camera->aspect_ratio = get_window()->get_aspect_ratio();
 
 	static bool mouse_disabled = false;
@@ -42,7 +51,7 @@ void TestBedApplication::_on_update(float dt) {
 			mouse_disabled = true;
 		}
 
-		camera_controller.update(dt);
+		camera_controller.update(p_dt);
 	} else {
 		camera_controller.last_mouse_pos.x = Input::get_mouse_position().x;
 		camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
@@ -71,12 +80,14 @@ void TestBedApplication::_on_update(float dt) {
 	if (imgui_active) {
 		get_renderer()->imgui_begin();
 
-		_imgui_render();
+		_imgui_render(p_dt);
 
 		get_renderer()->imgui_end();
 	}
 
-	grid->render();
+	if (draw_grid) {
+		grid->render();
+	}
 }
 
 void TestBedApplication::_on_destroy() {
@@ -85,25 +96,40 @@ void TestBedApplication::_on_destroy() {
 	Material::destroy(material);
 }
 
-static Ref<Node> s_selected_node = nullptr;
+void TestBedApplication::_imgui_render(float p_dt) {
+	// render imgui elements
 
-static void _draw_node(const Ref<Node>& node) {
-	std::string uid_str = "Node " + std::to_string(node->uid.value);
+	_draw_hierarchy();
+	_draw_inspector();
 
-	bool is_selected = s_selected_node && s_selected_node->uid == node->uid;
+	_draw_settings();
+
+	_draw_stats(p_dt);
+}
+
+void TestBedApplication::_draw_hierarchy() {
+	ImGui::Begin("Scene");
+	_draw_node(get_renderer()->get_scene_graph().get_root());
+	ImGui::End();
+}
+
+void TestBedApplication::_draw_node(const Ref<Node> p_node) {
+	std::string uid_str = "Node " + std::to_string(p_node->uid.value);
+
+	bool is_selected = selected_node && selected_node->uid == p_node->uid;
 
 	int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow;
 	if (is_selected) {
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}
 
-	if (node->children.size() >= 1) {
+	if (p_node->children.size() >= 1) {
 		if (ImGui::TreeNodeEx(uid_str.c_str(), flags)) {
 			if (ImGui::IsItemClicked()) {
-				s_selected_node = node;
+				selected_node = p_node;
 			}
 
-			for (const auto& child : node->children) {
+			for (const auto& child : p_node->children) {
 				_draw_node(child);
 			}
 
@@ -111,19 +137,13 @@ static void _draw_node(const Ref<Node>& node) {
 		}
 	} else {
 		if (ImGui::Selectable(uid_str.c_str(), is_selected)) {
-			s_selected_node = node;
+			selected_node = p_node;
 		}
 	}
 }
 
-static void _draw_hierarchy(const Ref<Node>& root) {
-	ImGui::Begin("Scene");
-	_draw_node(root);
-	ImGui::End();
-}
-
-static void _draw_inspector(const Ref<Node> node) {
-	if (node == nullptr) {
+void TestBedApplication::_draw_inspector() {
+	if (selected_node == nullptr) {
 		return;
 	}
 
@@ -131,16 +151,30 @@ static void _draw_inspector(const Ref<Node> node) {
 
 	ImGui::SeparatorText("Transform");
 
-	ImGui::DragFloat3("Position", &node->transform.local_position.x);
-	ImGui::DragFloat3("Rotation", &node->transform.local_rotation.x);
-	ImGui::DragFloat3("Scale", &node->transform.local_scale.x);
+	ImGui::DragFloat3("Position", &selected_node->transform.local_position.x);
+	ImGui::DragFloat3("Rotation", &selected_node->transform.local_rotation.x);
+	ImGui::DragFloat3("Scale", &selected_node->transform.local_scale.x);
 
 	ImGui::End();
 }
 
-void TestBedApplication::_imgui_render() {
-	// render imgui elements
+void TestBedApplication::_draw_stats(float dt) {
+	const RenderStats& stats = get_renderer()->get_stats();
 
-	_draw_hierarchy(get_renderer()->get_scene_graph().get_root());
-	_draw_inspector(s_selected_node);
+	ImGui::Begin("Stats");
+
+	ImGui::Text("Delta Time: %.4f", dt);
+
+	ImGui::Text("Draw Calls: %d", stats.draw_calls);
+	ImGui::Text("Triangle Count: %d", stats.triangle_count);
+
+	ImGui::End();
+}
+
+void TestBedApplication::_draw_settings() {
+	ImGui::Begin("Settings");
+
+	ImGui::Checkbox("Draw Grid", &draw_grid);
+
+	ImGui::End();
 }

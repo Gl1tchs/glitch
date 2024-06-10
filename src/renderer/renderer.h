@@ -37,7 +37,7 @@ struct RendererSettings {
 	// bool msaa;
 };
 
-struct RendererStats {
+struct RenderStats {
 	uint32_t draw_calls;
 	uint32_t triangle_count;
 };
@@ -88,7 +88,7 @@ public:
 
 	RendererSettings& get_settings() { return settings; }
 
-	RendererStats& get_stats() { return stats; }
+	RenderStats& get_stats() { return stats; }
 
 	static Image get_default_image() { return s_instance->default_image; }
 	static Sampler get_default_sampler() { return s_instance->default_sampler; }
@@ -104,6 +104,8 @@ private:
 	void _imgui_init();
 
 	void _request_resize();
+
+	void _reset_stats();
 
 	/**
 	 * @brief destroys scene graph with it's dependencies,
@@ -152,5 +154,5 @@ private:
 
 	// misc
 	RendererSettings settings = {};
-	RendererStats stats = {};
+	RenderStats stats = {};
 };
