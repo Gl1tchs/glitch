@@ -28,8 +28,8 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	backend->init(p_window);
 
 	swapchain = backend->swapchain_create();
-	backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_PRESENT),
-			swapchain, p_window->get_size());
+	backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_PRESENT), swapchain,
+			p_window->get_size());
 
 	draw_image = backend->image_create(DATA_FORMAT_R16G16B16A16_SFLOAT,
 			p_window->get_size(), nullptr,
@@ -171,6 +171,10 @@ void Renderer::wait_and_render() {
 
 void Renderer::wait_for_device() { backend->device_wait(); }
 
+void Renderer::submit(RenderState p_state, RenderFunc p_function) {
+	submit_funcs[p_state].push_back(p_function);
+}
+
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	backend->command_begin_rendering(
 			p_cmd, draw_extent, draw_image, depth_image);
@@ -229,13 +233,13 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 			}
 
 			if (!global_descriptor_set) {
-				BoundUniform scene_data_uniform;
-				scene_data_uniform.binding = 0;
-				scene_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
-				scene_data_uniform.ids.push_back(scene_data_buffer);
+				std::vector<BoundUniform> scene_data_uniforms(1);
+				scene_data_uniforms[0].binding = 0;
+				scene_data_uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
+				scene_data_uniforms[0].ids.push_back(scene_data_buffer);
 
 				scene_data_set = backend->uniform_set_create(
-						scene_data_uniform, material->shader, 0);
+						scene_data_uniforms, material->shader, 0);
 
 				global_descriptor_set = true;
 			}
@@ -270,6 +274,15 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 			}
 		}
 	}
+
+	if (const auto it = submit_funcs.find(RENDER_STATE_GEOMETRY);
+			it != submit_funcs.end()) {
+		for (const auto& submit : it->second) {
+			submit(backend, p_cmd, _get_current_frame().deletion_queue);
+		}
+		submit_funcs[RENDER_STATE_GEOMETRY].clear();
+	}
+
 	backend->command_end_rendering(p_cmd);
 }
 

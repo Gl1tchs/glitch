@@ -11,7 +11,7 @@ class VulkanRenderBackend : public RenderBackend {
 public:
 	~VulkanRenderBackend() = default;
 
-	// Generic
+    // Generic
 
 	void init(Ref<Window> p_window) override;
 	void shutdown() override;

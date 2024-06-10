@@ -22,6 +22,16 @@ private:
 	Ref<Node> scene;
 	Ref<Material> material;
 
+	Pipeline grid_pipeline;
+	Shader grid_shader;
+
+	struct GridCameraUniform {
+		glm::mat4 view;
+		glm::mat4 proj;
+		float near_plane;
+		float far_plane;
+	};
+
 	CameraController camera_controller;
 	Ref<PerspectiveCameraNode> camera;
 };

@@ -52,6 +52,14 @@ struct FrameData {
 	DeletionQueue deletion_queue;
 };
 
+enum RenderState {
+	RENDER_STATE_GEOMETRY,
+};
+
+typedef std::function<void(Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
+		DeletionQueue& frame_deletion)>
+		RenderFunc;
+
 class Renderer {
 public:
 	Renderer(Ref<Window> p_window);
@@ -60,6 +68,11 @@ public:
 	void wait_and_render();
 
 	void wait_for_device();
+
+	/**
+	 * @brief submits function to run at specified pass
+	 */
+	void submit(RenderState p_state, RenderFunc p_function);
 
 	SceneGraph& get_scene_graph() { return scene_graph; }
 
@@ -116,6 +129,8 @@ private:
 
 	Ref<Material> default_material;
 	Ref<MaterialInstance> default_material_instance;
+
+	std::unordered_map<RenderState, std::vector<RenderFunc>> submit_funcs;
 
 	SceneGraph scene_graph;
 

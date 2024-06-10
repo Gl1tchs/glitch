@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -73,8 +74,10 @@ static void bundle(const std::string& file_path,
 			return;
 		}
 
-		file << "\t" << std::filesystem::path(input_files[idx]).filename()
-			 << ", " << total_size << ", " << size << ",\n";
+		assert(size % 4 == 0);
+
+		file << "\t{ " << std::filesystem::path(input_files[idx]).filename()
+			 << ", " << total_size << ", " << size << " }, \n";
 		total_size += size;
 	}
 	file << "};\n\n";
@@ -90,7 +93,7 @@ static void bundle(const std::string& file_path,
 			return;
 		}
 
-		file << "\n/* " << current_file << " */\n\t";
+		file << "\n\t/* " << current_file << " */\n\t";
 
 		uint8_t byte;
 		while (f.get(reinterpret_cast<char&>(byte))) {

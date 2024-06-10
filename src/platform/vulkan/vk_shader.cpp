@@ -100,9 +100,10 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 
 	for (const auto& shader : p_shaders) {
 		SpvReflectShaderModule module = {};
-		GL_ASSERT(spvReflectCreateShaderModule(shader.byte_code.size(),
-						  shader.byte_code.data(),
-						  &module) == SPV_REFLECT_RESULT_SUCCESS);
+
+		SpvReflectResult result = spvReflectCreateShaderModule(
+				shader.byte_code.size(), shader.byte_code.data(), &module);
+		GL_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
 		uint32_t spv_descriptor_set_count = 0;
 		GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,

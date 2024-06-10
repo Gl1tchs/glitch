@@ -3,6 +3,11 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+OrthographicCameraNode::OrthographicCameraNode() : CameraNode() {
+	near_clip = -1.0f;
+	far_clip = 1.0f;
+}
+
 glm::mat4 OrthographicCameraNode::get_view_matrix() const {
 	return glm::inverse(transform.get_transform_matrix());
 }
@@ -10,6 +15,11 @@ glm::mat4 OrthographicCameraNode::get_view_matrix() const {
 glm::mat4 OrthographicCameraNode::get_projection_matrix() const {
 	return glm::ortho(-aspect_ratio * zoom_level, aspect_ratio * zoom_level,
 			-zoom_level, zoom_level, near_clip, far_clip);
+}
+
+PerspectiveCameraNode::PerspectiveCameraNode() : CameraNode() {
+	near_clip = 0.01f;
+	far_clip = 10000.0f;
 }
 
 glm::mat4 PerspectiveCameraNode::get_view_matrix() const {
