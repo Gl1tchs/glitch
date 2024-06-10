@@ -146,7 +146,7 @@ public:
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
 			const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
-			Image p_depth_attachment) = 0;
+			Image p_depth_attachment = nullptr) = 0;
 
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
 
@@ -209,4 +209,12 @@ public:
 
 	virtual void command_transition_image(CommandBuffer p_cmd, Image p_image,
 			ImageLayout p_current_layout, ImageLayout p_new_layout) = 0;
+
+	// ImGui
+
+	virtual void imgui_init_for_platform() = 0;
+
+	virtual void imgui_render_for_platform(CommandBuffer p_cmd) = 0;
+
+	virtual void imgui_new_frame_for_platform() = 0;
 };

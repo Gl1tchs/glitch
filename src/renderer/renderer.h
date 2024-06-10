@@ -74,6 +74,16 @@ public:
 	 */
 	void submit(RenderState p_state, RenderFunc p_function);
 
+	/**
+	 * @brief begin imgui rendering context
+	 */
+	void imgui_begin();
+
+	/**
+	 * @brief ends imgui rendering context
+	 */
+	void imgui_end();
+
 	SceneGraph& get_scene_graph() { return scene_graph; }
 
 	RendererSettings& get_settings() { return settings; }
@@ -85,12 +95,14 @@ public:
 
 	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
 
-	static GraphicsAPI get_graphics_api();
-
 private:
 	void _geometry_pass(CommandBuffer p_cmd);
 
+	void _imgui_pass(CommandBuffer p_cmd, Image p_target_image);
+
 private:
+	void _imgui_init();
+
 	void _request_resize();
 
 	/**
@@ -107,12 +119,9 @@ private:
 private:
 	static Renderer* s_instance;
 
-	// default data
-	Image default_image;
-	Sampler default_sampler;
-
 	Ref<Window> window;
 
+	// drawing data
 	Ref<RenderBackend> backend;
 
 	Swapchain swapchain;
@@ -127,13 +136,21 @@ private:
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 	uint32_t frame_number = 0;
 
-	Ref<Material> default_material;
-	Ref<MaterialInstance> default_material_instance;
-
 	std::unordered_map<RenderState, std::vector<RenderFunc>> submit_funcs;
 
 	SceneGraph scene_graph;
 
+	// imgui data
+	bool imgui_being_used = false;
+
+	// default data
+	Image default_image;
+	Sampler default_sampler;
+
+	Ref<Material> default_material;
+	Ref<MaterialInstance> default_material_instance;
+
+	// misc
 	RendererSettings settings = {};
 	RendererStats stats = {};
 };

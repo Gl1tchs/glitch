@@ -21,12 +21,7 @@ set(GLM_INCLUDES ${VENDOR_DIR}/glm PARENT_SCOPE)
 set(GLM_LIBS glm::glm PARENT_SCOPE)
 
 set(IMGUI_DIR ${VENDOR_DIR}/imgui PARENT_SCOPE)
-set(IMGUI_INCLUDES
-    ${IMGUI_DIR}
-    ${IMGUI_DIR}/backends
-    ${IMGUI_DIR}/misc/cpp
-    PARENT_SCOPE
-)
+set(IMGUI_LIBS imgui PARENT_SCOPE)
 
 set(STB_INCLUDES ${VENDOR_DIR}/stb/include PARENT_SCOPE)
 
@@ -53,6 +48,8 @@ add_subdirectory(VulkanMemoryAllocator)
 add_subdirectory(glfw)
 
 add_subdirectory(glm)
+
+add_subdirectory(imgui)
 
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "Test Vk-Bootstrap using Catch2 as well as build examples" FORCE)
 add_subdirectory(vk-bootstrap)

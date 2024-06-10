@@ -121,17 +121,20 @@ void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 		// info.clearValue = clear_value; // TODO
 	}
 
-	VulkanImage* vk_depth_image = (VulkanImage*)p_depth_attachment;
-
 	VkRenderingAttachmentInfo depth_attachment_info{};
-	depth_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	depth_attachment_info.pNext = nullptr;
-	depth_attachment_info.imageView = vk_depth_image->vk_image_view;
-	depth_attachment_info.imageLayout =
-			VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-	depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depth_attachment_info.clearValue.depthStencil.depth = 1.0f;
+	if (p_depth_attachment) {
+		VulkanImage* vk_depth_image = (VulkanImage*)p_depth_attachment;
+
+		depth_attachment_info.sType =
+				VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		depth_attachment_info.pNext = nullptr;
+		depth_attachment_info.imageView = vk_depth_image->vk_image_view;
+		depth_attachment_info.imageLayout =
+				VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		depth_attachment_info.clearValue.depthStencil.depth = 1.0f;
+	}
 
 	VkRenderingInfo render_info = {};
 	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -141,7 +144,8 @@ void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 	render_info.layerCount = 1;
 	render_info.colorAttachmentCount = p_color_attachments.size();
 	render_info.pColorAttachments = color_attachment_infos.data();
-	render_info.pDepthAttachment = &depth_attachment_info;
+	render_info.pDepthAttachment =
+			p_depth_attachment == nullptr ? nullptr : &depth_attachment_info;
 	render_info.pStencilAttachment = nullptr;
 
 	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);

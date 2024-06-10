@@ -20,6 +20,9 @@ protected:
 	void _on_destroy() override;
 
 private:
+	void _imgui_render();
+
+private:
 	Ref<Node> scene;
 	Ref<Material> material;
 	Ref<Grid> grid;

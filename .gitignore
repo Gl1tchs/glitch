@@ -45,6 +45,8 @@
 *.VC.db
 *.VC.opendb
 
+imgui.ini
+
 [Bb]uild/
 [Bb]in/
 Testing/

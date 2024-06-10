@@ -15,6 +15,7 @@ target_include_directories(gl-vulkan-backend
     ${SPIRV_REFLECT_INCLUDES}
     ${GLFW_INCLUDES}
     ${VK_BOOTSTRAP_INCLUDES}
+    ${IMGUI_INCLUDES}
 )
 
 target_link_libraries(gl-vulkan-backend
@@ -27,6 +28,7 @@ target_link_libraries(gl-vulkan-backend
     ${VMA_LIBS}
     ${VK_BOOTSTRAP_LIBS}
     ${Vulkan_LIBRARIES}
+    ${IMGUI_LIBS}
 )
 
 target_precompile_headers(gl-vulkan-backend PUBLIC ${ENGINE_DIR}/pch.h)

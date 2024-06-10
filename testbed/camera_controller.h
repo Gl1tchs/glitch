@@ -27,4 +27,6 @@ private:
 	float sensitivity = 0.05f;
 
 	glm::vec2 last_mouse_pos;
+
+	friend class TestBedApplication;
 };

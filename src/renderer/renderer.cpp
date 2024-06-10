@@ -9,6 +9,15 @@
 
 #include "platform/vulkan/vk_backend.h"
 
+#include <GLFW/glfw3.h>
+#include <backends/imgui_impl_glfw.h>
+#include <imgui.h>
+
+#ifndef IMGUI_BUILD_FOR_GLFW
+#define IMGUI_BUILD_FOR_GLFW
+#include <backends/imgui_impl_glfw.cpp>
+#endif
+
 [[nodiscard]] GraphicsAPI find_proper_api() noexcept {
 	return GRAPHICS_API_VULKAN;
 }
@@ -54,6 +63,10 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 		frame_data.render_fence = backend->fence_create();
 	}
 
+	// initialize imgui context
+	_imgui_init();
+
+	// initialize default data
 	default_material = Material::create();
 
 	constexpr uint32_t gray_color = 0x808080;
@@ -96,6 +109,9 @@ Renderer::~Renderer() {
 	backend->image_free(draw_image);
 
 	backend->swapchain_free(swapchain);
+
+	// destroy imgui
+	ImGui_ImplGlfw_Shutdown();
 
 	backend->shutdown();
 }
@@ -151,8 +167,18 @@ void Renderer::wait_and_render() {
 		backend->command_copy_image_to_image(cmd, draw_image,
 				swapchain_image.value(), draw_extent, swapchain_extent);
 
+		if (imgui_being_used) {
+			backend->command_transition_image(cmd, swapchain_image.value(),
+					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+			_imgui_pass(cmd, swapchain_image.value());
+		}
+
 		backend->command_transition_image(cmd, swapchain_image.value(),
-				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, IMAGE_LAYOUT_PRESENT_SRC);
+				imgui_being_used ? IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+								 : IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				IMAGE_LAYOUT_PRESENT_SRC);
 	}
 	backend->command_end(cmd);
 
@@ -166,6 +192,9 @@ void Renderer::wait_and_render() {
 		_request_resize();
 	}
 
+	// reset the state
+	imgui_being_used = false;
+
 	frame_number++;
 }
 
@@ -174,6 +203,16 @@ void Renderer::wait_for_device() { backend->device_wait(); }
 void Renderer::submit(RenderState p_state, RenderFunc p_function) {
 	submit_funcs[p_state].push_back(p_function);
 }
+
+void Renderer::imgui_begin() {
+	imgui_being_used = true;
+
+	backend->imgui_new_frame_for_platform();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+}
+
+void Renderer::imgui_end() { ImGui::Render(); }
 
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	backend->command_begin_rendering(
@@ -286,7 +325,19 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	backend->command_end_rendering(p_cmd);
 }
 
-GraphicsAPI Renderer::get_graphics_api() { return s_api; }
+void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
+	backend->command_begin_rendering(p_cmd, draw_extent, p_target_image);
+	{ backend->imgui_render_for_platform(p_cmd); }
+	backend->command_end_rendering(p_cmd);
+}
+
+void Renderer::_imgui_init() {
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_Init(window->get_native_window(), true,
+			s_api == GRAPHICS_API_VULKAN ? GlfwClientApi_Vulkan
+										 : GlfwClientApi_Unknown);
+	backend->imgui_init_for_platform();
+}
 
 void Renderer::_request_resize() {
 	Application::get_instance()->enqueue_main_thread([&]() {

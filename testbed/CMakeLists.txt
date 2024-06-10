@@ -9,12 +9,15 @@ target_include_directories(glitch-testbed
     PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${STB_INCLUDES}
+    ${IMGUI_INCLUDES}
 )
 
 target_link_libraries(glitch-testbed
     PRIVATE
     gl::core
     gl::renderer
+    PRIVATE
+    ${IMGUI_LIBS}
 )
 
 target_precompile_headers(glitch-testbed

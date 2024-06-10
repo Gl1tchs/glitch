@@ -11,7 +11,7 @@ class VulkanRenderBackend : public RenderBackend {
 public:
 	~VulkanRenderBackend() = default;
 
-    // Generic
+	// Generic
 
 	void init(Ref<Window> p_window) override;
 	void shutdown() override;
@@ -202,7 +202,7 @@ public:
 
 	void command_begin_rendering(CommandBuffer p_cmd,
 			const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
-			Image p_depth_attachment) override;
+			Image p_depth_attachment = nullptr) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
 
@@ -263,6 +263,14 @@ public:
 
 	void command_transition_image(CommandBuffer p_cmd, Image p_image,
 			ImageLayout p_current_layout, ImageLayout p_new_layout) override;
+
+	// ImGui
+
+	void imgui_init_for_platform() override;
+
+	void imgui_render_for_platform(CommandBuffer p_cmd) override;
+
+	void imgui_new_frame_for_platform() override;
 
 private:
 	Image _image_create(VkFormat p_format, VkExtent3D p_size,
