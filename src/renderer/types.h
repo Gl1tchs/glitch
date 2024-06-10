@@ -461,6 +461,6 @@ enum ShaderStage {
 };
 
 struct SpirvData {
-	VectorView<uint32_t> byte_code;
+	std::vector<uint32_t> byte_code;
 	ShaderStage stage;
 };

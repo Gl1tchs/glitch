@@ -3,16 +3,32 @@
 #include <renderer/camera.h>
 #include <renderer/render_backend.h>
 
+static std::vector<uint32_t> _get_spirv_data(const fs::path& p_filepath) {
+	size_t file_size = fs::file_size(p_filepath);
+
+	std::ifstream file(p_filepath, std::ios::in | std::ios::binary);
+
+	if (!file.is_open()) {
+		return {};
+	}
+
+	std::vector<uint32_t> buffer(file_size);
+	file.read(reinterpret_cast<char*>(buffer.data()), file_size);
+
+	return buffer;
+}
+
 Grid::Grid(Ref<Renderer> p_renderer) : renderer(p_renderer) {
 	Ref<RenderBackend> backend = renderer->get_backend();
 
 	SpirvData vertex_data = {};
 	vertex_data.stage = SHADER_STAGE_VERTEX_BIT;
-	vertex_data.byte_code = get_bundled_spirv_data("xy_plane.vert.spv");
+	vertex_data.byte_code = _get_spirv_data("assets/shaders/xy_plane.vert.spv");
 
 	SpirvData fragment_data = {};
 	fragment_data.stage = SHADER_STAGE_FRAGMENT_BIT;
-	fragment_data.byte_code = get_bundled_spirv_data("xy_plane.frag.spv");
+	fragment_data.byte_code =
+			_get_spirv_data("assets/shaders/xy_plane.frag.spv");
 
 	std::vector<SpirvData> shader_stages = {
 		vertex_data,

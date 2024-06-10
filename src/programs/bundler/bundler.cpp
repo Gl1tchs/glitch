@@ -19,27 +19,6 @@ struct BundleFileData {
 	size_t size;
 };
 
-#ifdef _WIN32
-static bool get_file_size(const std::string& file_path, size_t& file_size) {
-	WIN32_FILE_ATTRIBUTE_DATA file_attrs;
-	if (!GetFileAttributesExA(
-				file_path.c_str(), GetFileExInfoStandard, &file_attrs)) {
-		return false;
-	}
-	file_size = static_cast<size_t>(file_attrs.nFileSizeLow);
-	return true;
-}
-#else
-static bool get_file_size(const std::string& file_path, size_t& file_size) {
-	struct stat st {};
-	if (stat(file_path.c_str(), &st) != 0) {
-		return false;
-	}
-	file_size = static_cast<size_t>(st.st_size);
-	return true;
-}
-#endif
-
 static void bundle(const std::string& file_path,
 		const std::vector<std::string>& input_files) {
 	const std::string file_name =
@@ -67,12 +46,7 @@ static void bundle(const std::string& file_path,
 
 	size_t total_size = 0;
 	for (size_t idx = 0; idx < input_files.size(); ++idx) {
-		size_t size;
-		if (!get_file_size(input_files[idx], size)) {
-			std::cerr << "Error: Unable to get file size for "
-					  << input_files[idx] << std::endl;
-			return;
-		}
+		size_t size = std::filesystem::file_size(input_files[idx]);
 
 		assert(size % 4 == 0);
 

@@ -40,5 +40,3 @@ struct Material {
 private:
 	std::vector<Buffer> allocated_buffers;
 };
-
-VectorView<uint32_t> get_bundled_spirv_data(const char* file_path);
