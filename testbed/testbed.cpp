@@ -13,6 +13,7 @@ TestBedApplication::TestBedApplication(const ApplicationCreateInfo& p_info) :
 
 void TestBedApplication::_on_start() {
 	camera = create_ref<PerspectiveCameraNode>();
+	camera->name = "Main Camera";
 
 	camera_controller.set_camera(camera.get());
 
@@ -22,7 +23,7 @@ void TestBedApplication::_on_start() {
 
 	Ref<Node> helmet = Mesh::load("assets/DamagedHelmet.glb", material);
 	if (helmet) {
-		helmet->transform.local_position.y = 0.75f;
+		helmet->transform.local_position.y = 1.25f;
 		helmet->transform.local_rotation.x = 90.0f;
 
 		get_renderer()->get_scene_graph().push_node(helmet);
@@ -31,6 +32,7 @@ void TestBedApplication::_on_start() {
 	Ref<Node> suzanne = Mesh::load("assets/Suzanne.glb", material);
 	if (suzanne) {
 		suzanne->transform.local_position.x = 2.5f;
+		suzanne->transform.local_position.y = 1.25f;
 		suzanne->transform.local_position.z = 4.5f;
 
 		suzanne->transform.local_rotation.y = -30.0f;
@@ -114,17 +116,19 @@ void TestBedApplication::_draw_hierarchy() {
 }
 
 void TestBedApplication::_draw_node(const Ref<Node> p_node) {
-	std::string uid_str = "Node " + std::to_string(p_node->uid.value);
+	ImGui::PushID(p_node->uid.value);
 
 	bool is_selected = selected_node && selected_node->uid == p_node->uid;
 
-	int flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow;
+	int flags = ImGuiTreeNodeFlags_DefaultOpen |
+			ImGuiTreeNodeFlags_OpenOnArrow |
+			ImGuiTreeNodeFlags_OpenOnDoubleClick;
 	if (is_selected) {
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}
 
 	if (p_node->children.size() >= 1) {
-		if (ImGui::TreeNodeEx(uid_str.c_str(), flags)) {
+		if (ImGui::TreeNodeEx(p_node->name.c_str(), flags)) {
 			if (ImGui::IsItemClicked()) {
 				selected_node = p_node;
 			}
@@ -136,10 +140,12 @@ void TestBedApplication::_draw_node(const Ref<Node> p_node) {
 			ImGui::TreePop();
 		}
 	} else {
-		if (ImGui::Selectable(uid_str.c_str(), is_selected)) {
+		if (ImGui::Selectable(p_node->name.c_str(), is_selected)) {
 			selected_node = p_node;
 		}
 	}
+
+	ImGui::PopID();
 }
 
 void TestBedApplication::_draw_inspector() {
@@ -148,6 +154,8 @@ void TestBedApplication::_draw_inspector() {
 	}
 
 	ImGui::Begin("Inspector");
+
+	ImGui::Text("%s", selected_node->name.c_str());
 
 	ImGui::SeparatorText("Transform");
 
@@ -175,6 +183,9 @@ void TestBedApplication::_draw_settings() {
 	ImGui::Begin("Settings");
 
 	ImGui::Checkbox("Draw Grid", &draw_grid);
+
+	ImGui::DragFloat("Render Scale",
+			&get_renderer()->get_settings().render_scale, 0.01f, 0.1f, 1.0f);
 
 	ImGui::End();
 }

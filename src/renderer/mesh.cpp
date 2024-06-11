@@ -97,7 +97,7 @@ static Image _load_material_image(
 
 static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		const tinygltf::Primitive& p_primitive, const fs::path& p_directory,
-		Ref<Material> p_material) {
+		Ref<Material> p_material, const std::string& p_name) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
@@ -172,6 +172,7 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 	}
 
 	Ref<Mesh> new_mesh = Mesh::create(vertices, indices);
+	new_mesh->name = p_name;
 	new_mesh->index_type = index_type;
 
 	if (p_primitive.material >= 0) {
@@ -213,13 +214,15 @@ static void _process_node(const tinygltf::Model& p_model,
 		const tinygltf::Node& p_node, const fs::path& p_directory,
 		Ref<Material> p_material, Ref<Node> p_parent) {
 	Ref<Node> base_node = create_ref<Node>();
+	base_node->name = p_node.name;
+
 	p_parent->add_child(base_node);
 
 	if (p_node.mesh >= 0) {
 		const auto& mesh = p_model.meshes[p_node.mesh];
 		for (const auto& primitive : mesh.primitives) {
-			base_node->add_child(
-					_process_mesh(p_model, primitive, p_directory, p_material));
+			base_node->add_child(_process_mesh(
+					p_model, primitive, p_directory, p_material, mesh.name));
 		}
 	}
 
@@ -256,6 +259,7 @@ Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	}
 
 	Ref<Node> root = create_ref<Node>();
+	root->name = p_path.filename();
 
 	for (const auto& node_index : model.scenes[model.defaultScene].nodes) {
 		const auto& node = model.nodes[node_index];

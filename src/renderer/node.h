@@ -11,6 +11,7 @@ enum class NodeType { NONE, GEOMETRY, COMPUTE, CAMERA, LIGHT };
 
 struct Node {
 	UID uid;
+	std::string name = "Node";
 
 	Transform transform;
 

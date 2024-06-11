@@ -331,7 +331,8 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 }
 
 void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
-	backend->command_begin_rendering(p_cmd, draw_extent, p_target_image);
+	backend->command_begin_rendering(
+			p_cmd, backend->swapchain_get_extent(swapchain), p_target_image);
 	{ backend->imgui_render_for_platform(p_cmd); }
 	backend->command_end_rendering(p_cmd);
 }
