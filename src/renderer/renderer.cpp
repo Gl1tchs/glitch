@@ -37,16 +37,16 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	backend->init(p_window);
 
 	swapchain = backend->swapchain_create();
-	backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_PRESENT), swapchain,
-			p_window->get_size());
+	backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_GRAPHICS),
+			swapchain, p_window->get_size());
 
-	draw_image = backend->image_create(DATA_FORMAT_R16G16B16A16_SFLOAT,
-			p_window->get_size(), nullptr,
+	draw_image = backend->image_create(draw_image_format, p_window->get_size(),
+			nullptr,
 			IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT |
 					IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
 	depth_image =
-			backend->image_create(DATA_FORMAT_D32_SFLOAT, p_window->get_size(),
+			backend->image_create(depth_image_format, p_window->get_size(),
 					nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
@@ -85,13 +85,14 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 Renderer::~Renderer() {
 	backend->device_wait();
 
+	// destroy default data
 	Material::destroy(default_material);
-
 	backend->image_free(default_image);
 	backend->sampler_free(default_sampler);
 
 	_destroy_scene_graph();
 
+	// destroy per-frame data
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
@@ -105,6 +106,7 @@ Renderer::~Renderer() {
 		backend->fence_free(frame_data.render_fence);
 	}
 
+	// swapchain cleanup
 	backend->image_free(depth_image);
 	backend->image_free(draw_image);
 
@@ -152,6 +154,15 @@ void Renderer::wait_and_render() {
 
 		backend->command_clear_color(
 				cmd, draw_image, { 0.1f, 0.1f, 0.1f, 1.0f });
+
+		if (const auto it = submit_funcs.find(RENDER_STATE_CLEAR);
+				it != submit_funcs.end()) {
+			for (const auto& submit : it->second) {
+				submit(backend, cmd, draw_image,
+						_get_current_frame().deletion_queue);
+			}
+			submit_funcs[RENDER_STATE_CLEAR].clear();
+		}
 
 		backend->command_transition_image(cmd, draw_image, IMAGE_LAYOUT_GENERAL,
 				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -274,10 +285,10 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 			}
 
 			if (!global_descriptor_set) {
-				std::vector<BoundUniform> scene_data_uniforms(1);
+				std::vector<ShaderUniform> scene_data_uniforms(1);
 				scene_data_uniforms[0].binding = 0;
 				scene_data_uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
-				scene_data_uniforms[0].ids.push_back(scene_data_buffer);
+				scene_data_uniforms[0].data.push_back(scene_data_buffer);
 
 				scene_data_set = backend->uniform_set_create(
 						scene_data_uniforms, material->shader, 0);
@@ -322,7 +333,8 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	if (const auto it = submit_funcs.find(RENDER_STATE_GEOMETRY);
 			it != submit_funcs.end()) {
 		for (const auto& submit : it->second) {
-			submit(backend, p_cmd, _get_current_frame().deletion_queue);
+			submit(backend, p_cmd, draw_image,
+					_get_current_frame().deletion_queue);
 		}
 		submit_funcs[RENDER_STATE_GEOMETRY].clear();
 	}

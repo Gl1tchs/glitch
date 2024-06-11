@@ -53,11 +53,12 @@ struct FrameData {
 };
 
 enum RenderState {
+	RENDER_STATE_CLEAR,
 	RENDER_STATE_GEOMETRY,
 };
 
 typedef std::function<void(Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
-		DeletionQueue& frame_deletion)>
+		Image p_draw_image, DeletionQueue& frame_deletion)>
 		RenderFunc;
 
 class Renderer {
@@ -83,6 +84,10 @@ public:
 	 * @brief ends imgui rendering context
 	 */
 	void imgui_end();
+
+	DataFormat get_draw_image_format() const { return draw_image_format; }
+
+	DataFormat get_depth_image_format() const { return depth_image_format; }
 
 	SceneGraph& get_scene_graph() { return scene_graph; }
 
@@ -129,7 +134,10 @@ private:
 	Swapchain swapchain;
 
 	Image draw_image;
+	const DataFormat draw_image_format = DATA_FORMAT_R16G16B16A16_SFLOAT;
+
 	Image depth_image;
+	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;
 
 	Vec2u draw_extent;
 

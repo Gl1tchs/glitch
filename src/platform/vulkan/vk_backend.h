@@ -128,7 +128,7 @@ public:
 		DescriptorSetPools::iterator pool_sets_it = {};
 	};
 
-	UniformSet uniform_set_create(VectorView<BoundUniform> p_uniforms,
+	UniformSet uniform_set_create(VectorView<ShaderUniform> p_uniforms,
 			Shader p_shader, uint32_t p_set_index) override;
 
 	void uniform_set_free(UniformSet p_uniform_set) override;

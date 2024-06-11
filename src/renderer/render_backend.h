@@ -78,7 +78,7 @@ public:
 
 	// UniformSet
 
-	virtual UniformSet uniform_set_create(VectorView<BoundUniform> p_uniforms,
+	virtual UniformSet uniform_set_create(VectorView<ShaderUniform> p_uniforms,
 			Shader p_shader, uint32_t p_set_index) = 0;
 
 	virtual void uniform_set_free(UniformSet p_uniform_set) = 0;

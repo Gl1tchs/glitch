@@ -52,8 +52,8 @@ Grid::Grid(Ref<Renderer> p_renderer) : renderer(p_renderer) {
 
 	RenderingState rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			DATA_FORMAT_R16G16B16A16_SFLOAT);
-	rendering_state.depth_attachment = DATA_FORMAT_D32_SFLOAT;
+			renderer->get_draw_image_format());
+	rendering_state.depth_attachment = renderer->get_depth_image_format();
 
 	grid_pipeline = backend->render_pipeline_create(grid_shader,
 			RENDER_PRIMITIVE_TRIANGLES, rasterization, multisample,
@@ -71,19 +71,20 @@ Grid::~Grid() {
 
 void Grid::render() {
 	renderer->submit(RENDER_STATE_GEOMETRY,
-			[this](Ref<RenderBackend> backend, CommandBuffer cmd,
-					DeletionQueue& frame_deletion) {
+			[this](Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
+					Image p_draw_image, DeletionQueue& p_frame_deletion) {
 				Buffer camera_uniform_buffer =
-						backend->buffer_create(sizeof(GridCameraUniform),
+						p_backend->buffer_create(sizeof(GridCameraUniform),
 								BUFFER_USAGE_UNIFORM_BUFFER_BIT |
 										BUFFER_USAGE_TRANSFER_SRC_BIT,
 								MEMORY_ALLOCATION_TYPE_CPU);
 
-				frame_deletion.push_function(
-						[=]() { backend->buffer_free(camera_uniform_buffer); });
+				p_frame_deletion.push_function([=]() {
+					p_backend->buffer_free(camera_uniform_buffer);
+				});
 
 				GridCameraUniform* camera_uniform_data =
-						(GridCameraUniform*)backend->buffer_map(
+						(GridCameraUniform*)p_backend->buffer_map(
 								camera_uniform_buffer);
 				{
 					renderer->get_scene_graph().traverse<CameraNode>(
@@ -99,23 +100,23 @@ void Grid::render() {
 								return true;
 							});
 				}
-				backend->buffer_unmap(camera_uniform_buffer);
+				p_backend->buffer_unmap(camera_uniform_buffer);
 
-				BoundUniform uniform;
+				ShaderUniform uniform;
 				uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
 				uniform.binding = 0;
-				uniform.ids.push_back(camera_uniform_buffer);
+				uniform.data.push_back(camera_uniform_buffer);
 
 				UniformSet camera_uniform =
-						backend->uniform_set_create(uniform, grid_shader, 0);
-				frame_deletion.push_function(
-						[=]() { backend->uniform_set_free(camera_uniform); });
+						p_backend->uniform_set_create(uniform, grid_shader, 0);
+				p_frame_deletion.push_function(
+						[=]() { p_backend->uniform_set_free(camera_uniform); });
 
-				backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
+				p_backend->command_bind_graphics_pipeline(p_cmd, grid_pipeline);
 
-				backend->command_bind_uniform_sets(
-						cmd, grid_shader, 0, camera_uniform);
+				p_backend->command_bind_uniform_sets(
+						p_cmd, grid_shader, 0, camera_uniform);
 
-				backend->command_draw(cmd, 6);
+				p_backend->command_draw(p_cmd, 6);
 			});
 }

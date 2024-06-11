@@ -107,36 +107,36 @@ Ref<MaterialInstance> Material::create_instance(
 	*ptr_constants = resources.constants;
 	backend->buffer_unmap(constants_buffer);
 
-	std::vector<BoundUniform> uniforms(4);
+	std::vector<ShaderUniform> uniforms(4);
 
 	uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
 	uniforms[0].binding = 0;
-	uniforms[0].ids.push_back(constants_buffer);
+	uniforms[0].data.push_back(constants_buffer);
 
 	uniforms[1].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
 	uniforms[1].binding = 1;
-	uniforms[1].ids.push_back(resources.sampler
+	uniforms[1].data.push_back(resources.sampler
 					? resources.sampler
 					: Renderer::get_default_sampler());
-	uniforms[1].ids.push_back(resources.color_image
+	uniforms[1].data.push_back(resources.color_image
 					? resources.color_image
 					: Renderer::get_default_image());
 
 	uniforms[2].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
 	uniforms[2].binding = 2;
-	uniforms[2].ids.push_back(resources.sampler
+	uniforms[2].data.push_back(resources.sampler
 					? resources.sampler
 					: Renderer::get_default_sampler());
-	uniforms[2].ids.push_back(resources.roughness_image
+	uniforms[2].data.push_back(resources.roughness_image
 					? resources.roughness_image
 					: Renderer::get_default_image());
 
 	uniforms[3].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
 	uniforms[3].binding = 3;
-	uniforms[3].ids.push_back(resources.sampler
+	uniforms[3].data.push_back(resources.sampler
 					? resources.sampler
 					: Renderer::get_default_sampler());
-	uniforms[3].ids.push_back(resources.normal_image
+	uniforms[3].data.push_back(resources.normal_image
 					? resources.normal_image
 					: Renderer::get_default_image());
 

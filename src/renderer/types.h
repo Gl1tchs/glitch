@@ -232,7 +232,7 @@ struct BufferImageCopyRegion {
 
 inline const uint32_t MAX_UNIFORM_SETS = 16;
 
-enum UniformType {
+enum ShaderUniformType {
 	UNIFORM_TYPE_SAMPLER, // For sampling only (sampler GLSL type).
 	UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, // For sampling only, but includes a
 									   // texture, (samplerXX GLSL type),
@@ -247,10 +247,10 @@ enum UniformType {
 	UNIFORM_TYPE_MAX
 };
 
-struct BoundUniform {
-	UniformType type = UNIFORM_TYPE_MAX;
+struct ShaderUniform {
+	ShaderUniformType type = UNIFORM_TYPE_MAX;
 	uint32_t binding = 0xffffffff; // Binding index as specified in shader.
-	std::vector<void*> ids;
+	std::vector<void*> data;
 };
 
 enum RenderPrimitive {
