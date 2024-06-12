@@ -5,14 +5,22 @@
 #include "renderer/types.h"
 
 struct Vertex {
-	Vec3f position;
+	glm::vec3 position;
 	float uv_x;
-	Vec3f normal;
+	glm::vec3 normal;
 	float uv_y;
+};
+
+struct Bounds {
+	glm::vec3 origin;
+	float sphere_radius;
+	glm::vec3 extents;
 };
 
 struct Mesh : public Node {
 	GL_IMPL_NODE(NodeType::GEOMETRY)
+
+	Bounds bounds;
 
 	Buffer vertex_buffer;
 	Buffer index_buffer;

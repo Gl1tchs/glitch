@@ -110,13 +110,13 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 	Optional<GLTFAccessor<float>> normal_accessor =
 			_get_gltf_accessor<float>(p_model, p_primitive, "NORMAL");
 
-	static constexpr Vec2f DEFAULT_TEX_COORD = { 0.0f, 0.0f };
-	static constexpr Vec3f DEFAULT_NORMAL = { 0.0f, 0.0f, 0.0f };
+	static constexpr glm::vec2 DEFAULT_TEX_COORD = { 0.0f, 0.0f };
+	static constexpr glm::vec3 DEFAULT_NORMAL = { 0.0f, 0.0f, 0.0f };
 
 	for (size_t i = 0; i < position_accessor.accessor->count; ++i) {
 		Vertex v;
 		{
-			memcpy(&v.position, position_accessor.get(i), sizeof(Vec3f));
+			memcpy(&v.position, position_accessor.get(i), sizeof(glm::vec3));
 
 			if (tex_coord_accessor.has_value()) {
 				const float* tex_coord = tex_coord_accessor->get(i);
@@ -128,7 +128,7 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 			}
 
 			if (normal_accessor.has_value()) {
-				memcpy(&v.normal, normal_accessor->get(i), sizeof(Vec3f));
+				memcpy(&v.normal, normal_accessor->get(i), sizeof(glm::vec3));
 			} else {
 				v.normal = DEFAULT_NORMAL;
 			}
@@ -174,6 +174,18 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 	Ref<Mesh> new_mesh = Mesh::create(vertices, indices);
 	new_mesh->name = p_name;
 	new_mesh->index_type = index_type;
+
+	glm::vec3 min_pos = vertices.front().position;
+	glm::vec3 max_pos = vertices.front().position;
+
+	for (size_t i = 0; i < vertices.size(); i++) {
+		min_pos = glm::min(min_pos, vertices[i].position);
+		max_pos = glm::max(max_pos, vertices[i].position);
+	}
+
+	new_mesh->bounds.origin = (min_pos + max_pos) / 2.0f;
+	new_mesh->bounds.extents = (max_pos - min_pos) / 2.0f;
+	new_mesh->bounds.sphere_radius = glm::length(new_mesh->bounds.extents);
 
 	if (p_primitive.material >= 0) {
 		const auto& gltf_material = p_model.materials[p_primitive.material];

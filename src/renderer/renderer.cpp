@@ -227,6 +227,48 @@ void Renderer::imgui_begin() {
 
 void Renderer::imgui_end() { ImGui::Render(); }
 
+static bool _is_mesh_visible(const Mesh* mesh, const glm::mat4& viewproj) {
+	constexpr std::array<glm::vec3, 8> corners{
+		glm::vec3{ 1.0f, 1.0f, 1.0f },
+		glm::vec3{ 1.0f, 1.0f, -1.0f },
+		glm::vec3{ 1.0f, -1.0f, 1.0f },
+		glm::vec3{ 1.0f, -1.0f, -1.0f },
+		glm::vec3{ -1.0f, 1.0f, 1.0f },
+		glm::vec3{ -1.0f, 1.0f, -1.0f },
+		glm::vec3{ -1.0f, -1.0f, 1.0f },
+		glm::vec3{ -1.0f, -1.0f, -1.0f },
+	};
+
+	glm::mat4 matrix = viewproj * mesh->transform.get_transform_matrix();
+
+	glm::vec3 min = { 1.5, 1.5, 1.5 };
+	glm::vec3 max = { -1.5, -1.5, -1.5 };
+
+	for (int c = 0; c < 8; c++) {
+		// project each corner into clip space
+		glm::vec4 v = matrix *
+				glm::vec4(mesh->bounds.origin +
+								(corners[c] * mesh->bounds.extents),
+						1.f);
+
+		// perspective correction
+		v.x = v.x / v.w;
+		v.y = v.y / v.w;
+		v.z = v.z / v.w;
+
+		min = glm::min(glm::vec3{ v.x, v.y, v.z }, min);
+		max = glm::max(glm::vec3{ v.x, v.y, v.z }, max);
+	}
+
+	// check the clip space box is within the view
+	if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
+			min.y > 1.f || max.y < -1.f) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	backend->command_begin_rendering(
 			p_cmd, draw_extent, draw_image, depth_image);
@@ -311,6 +353,10 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 					p_cmd, material->shader, 0, descriptors);
 
 			for (const auto& mesh : meshes) {
+				if (!_is_mesh_visible(mesh, scene_uniform_data->view_proj)) {
+					continue;
+				}
+
 				backend->command_bind_index_buffer(
 						p_cmd, mesh->index_buffer, 0, mesh->index_type);
 
