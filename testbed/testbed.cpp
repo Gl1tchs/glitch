@@ -1,4 +1,5 @@
 #include "testbed.h"
+#include "core/window.h"
 
 #include <core/event/input.h>
 #include <renderer/mesh.h>
@@ -47,9 +48,9 @@ void TestBedApplication::_on_update(float p_dt) {
 	camera->aspect_ratio = get_window()->get_aspect_ratio();
 
 	static bool mouse_disabled = false;
-	if (Input::is_mouse_pressed(MouseCode::RIGHT)) {
+	if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
 		if (!mouse_disabled) {
-			get_window()->set_cursor_mode(WindowCursorMode::DISABLED);
+			get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_DISABLED);
 			mouse_disabled = true;
 		}
 
@@ -59,9 +60,9 @@ void TestBedApplication::_on_update(float p_dt) {
 		camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
 	}
 
-	if (Input::is_mouse_released(MouseCode::RIGHT)) {
+	if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
 		if (mouse_disabled) {
-			get_window()->set_cursor_mode(WindowCursorMode::NORMAL);
+			get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
 			mouse_disabled = false;
 		}
 	}
@@ -70,12 +71,12 @@ void TestBedApplication::_on_update(float p_dt) {
 
 	// show/unshow imgui by pressing F1
 	static bool f1_key_pressed = false;
-	if (!f1_key_pressed && Input::is_key_pressed(KeyCode::F1)) {
+	if (!f1_key_pressed && Input::is_key_pressed(KEY_CODE_F1)) {
 		imgui_active = !imgui_active;
 
 		f1_key_pressed = true;
 	}
-	if (f1_key_pressed && Input::is_key_released(KeyCode::F1)) {
+	if (f1_key_pressed && Input::is_key_released(KEY_CODE_F1)) {
 		f1_key_pressed = false;
 	}
 
@@ -118,7 +119,7 @@ void TestBedApplication::_draw_hierarchy() {
 void TestBedApplication::_draw_node(const Ref<Node> p_node) {
 	ImGui::PushID(p_node->uid.value);
 
-	bool is_selected = selected_node && selected_node->uid == p_node->uid;
+	const bool is_selected = selected_node && selected_node->uid == p_node->uid;
 
 	int flags = ImGuiTreeNodeFlags_DefaultOpen |
 			ImGuiTreeNodeFlags_OpenOnArrow |
@@ -184,8 +185,8 @@ void TestBedApplication::_draw_settings() {
 
 	ImGui::Checkbox("Draw Grid", &draw_grid);
 
-	ImGui::DragFloat("Render Scale",
-			&get_renderer()->get_settings().render_scale, 0.01f, 0.1f, 1.0f);
+	ImGui::SliderFloat("Render Scale",
+			&get_renderer()->get_settings().render_scale, 0.1f, 1.0f);
 
 	ImGui::End();
 }

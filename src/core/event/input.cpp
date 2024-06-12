@@ -6,8 +6,8 @@ inline static std::unordered_map<KeyCode, bool> key_press_states = {};
 inline static std::unordered_map<KeyCode, bool> key_release_states = {};
 inline static std::unordered_map<KeyCode, bool> keys_held_states = {};
 
-inline static std::unordered_map<MouseCode, bool> mouse_press_states = {};
-inline static std::unordered_map<MouseCode, bool> mouse_release_states = {};
+inline static std::unordered_map<MouseButton, bool> mouse_press_states = {};
+inline static std::unordered_map<MouseButton, bool> mouse_release_states = {};
 inline static Vec2f mouse_position = Vec2f(0.0f);
 inline static Vec2f scroll_offset = Vec2f(0.0f);
 
@@ -89,7 +89,7 @@ bool Input::is_key_released(KeyCode p_key) {
 	return it->second;
 }
 
-bool Input::is_mouse_pressed(MouseCode p_button) {
+bool Input::is_mouse_pressed(MouseButton p_button) {
 	const auto it = mouse_press_states.find(p_button);
 	if (it != mouse_press_states.end()) {
 		return it->second;
@@ -97,7 +97,7 @@ bool Input::is_mouse_pressed(MouseCode p_button) {
 	return false;
 }
 
-bool Input::is_mouse_released(MouseCode p_button) {
+bool Input::is_mouse_released(MouseButton p_button) {
 	const auto it = mouse_release_states.find(p_button);
 	if (it != mouse_release_states.end()) {
 		return it->second;

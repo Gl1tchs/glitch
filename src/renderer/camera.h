@@ -3,7 +3,7 @@
 #include "renderer/node.h"
 
 struct CameraNode : public Node {
-	GL_IMPL_NODE(NodeType::CAMERA)
+	GL_IMPL_NODE(NODE_TYPE_CAMERA)
 
 	float aspect_ratio = 1.0f;
 	float near_clip = -1.0f;

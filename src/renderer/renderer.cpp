@@ -127,7 +127,7 @@ void Renderer::wait_and_render() {
 
 	Optional<Image> swapchain_image = backend->swapchain_acquire_image(
 			swapchain, _get_current_frame().image_available_semaphore);
-	if (!swapchain_image.has_value()) {
+	if (!swapchain_image) {
 		_request_resize();
 		return;
 	}
@@ -139,9 +139,10 @@ void Renderer::wait_and_render() {
 
 	// set render scale
 	const float render_scale = get_settings().render_scale;
-	draw_extent = Vec2u(
-			std::min(swapchain_extent.x, draw_image_extent.x) * render_scale,
-			std::min(swapchain_extent.y, draw_image_extent.y) * render_scale);
+	draw_extent = {
+		std::min(swapchain_extent.x, draw_image_extent.x) * render_scale,
+		std::min(swapchain_extent.y, draw_image_extent.y) * render_scale,
+	};
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
@@ -174,14 +175,14 @@ void Renderer::wait_and_render() {
 		backend->command_transition_image(cmd, draw_image,
 				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		backend->command_transition_image(cmd, swapchain_image.value(),
+		backend->command_transition_image(cmd, *swapchain_image,
 				IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-		backend->command_copy_image_to_image(cmd, draw_image,
-				swapchain_image.value(), draw_extent, swapchain_extent);
+		backend->command_copy_image_to_image(cmd, draw_image, *swapchain_image,
+				draw_extent, swapchain_extent);
 
 		if (imgui_being_used) {
-			backend->command_transition_image(cmd, swapchain_image.value(),
+			backend->command_transition_image(cmd, *swapchain_image,
 					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
@@ -370,8 +371,8 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 
 				backend->command_draw_indexed(p_cmd, mesh->index_count);
 
-				stats.draw_calls++;
 				stats.triangle_count = mesh->index_count / 3;
+				stats.draw_calls++;
 			}
 		}
 	}
@@ -415,20 +416,20 @@ void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }
 void Renderer::_destroy_scene_graph() {
 	scene_graph.traverse([this](Node* node) {
 		switch (node->get_type()) {
-			case NodeType::NONE: {
+			case NODE_TYPE_NONE: {
 				break;
 			}
-			case NodeType::GEOMETRY: {
+			case NODE_TYPE_GEOMETRY: {
 				Mesh::destroy((const Mesh*)node);
 				break;
 			}
-			case NodeType::COMPUTE: {
+			case NODE_TYPE_COMPUTE: {
 				break;
 			}
-			case NodeType::CAMERA: {
+			case NODE_TYPE_CAMERA: {
 				break;
 			}
-			case NodeType::LIGHT: {
+			case NODE_TYPE_LIGHT: {
 				break;
 			}
 		}

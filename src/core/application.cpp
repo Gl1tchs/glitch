@@ -31,6 +31,8 @@ void Application::run() {
 	_on_destroy();
 }
 
+void Application::quit() { running = false; }
+
 void Application::enqueue_main_thread(MainThreadFunc p_function) {
 	Application* app = get_instance();
 	if (!app) {
@@ -40,8 +42,6 @@ void Application::enqueue_main_thread(MainThreadFunc p_function) {
 	std::scoped_lock<std::mutex> lock(app->main_thread_queue_mutex);
 	app->main_thread_queue.push_back(p_function);
 }
-
-Application* Application::get_instance() { return s_instance; }
 
 void Application::_event_loop(float p_dt) {
 	window->poll_events();
@@ -62,8 +62,4 @@ void Application::_process_main_thread_queue() {
 	main_thread_queue.clear();
 }
 
-void Application::quit() { running = false; }
-
-Ref<Window> Application::get_window() { return window; }
-
-Ref<Renderer> Application::get_renderer() { return renderer; }
+Application* Application::get_instance() { return s_instance; }

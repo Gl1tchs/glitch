@@ -3,7 +3,13 @@
 #include "core/transform.h"
 #include "core/uid.h"
 
-enum class NodeType { NONE, GEOMETRY, COMPUTE, CAMERA, LIGHT };
+enum NodeType {
+	NODE_TYPE_NONE,
+	NODE_TYPE_GEOMETRY,
+	NODE_TYPE_COMPUTE,
+	NODE_TYPE_CAMERA,
+	NODE_TYPE_LIGHT,
+};
 
 #define GL_IMPL_NODE(type)                                                     \
 	inline NodeType get_type() const override { return type; }                 \
@@ -20,8 +26,8 @@ struct Node {
 
 	void add_child(Ref<Node> p_node);
 
-	inline virtual NodeType get_type() const { return NodeType::NONE; }
-	inline static NodeType get_static_type() { return NodeType::NONE; }
+	inline virtual NodeType get_type() const { return NODE_TYPE_NONE; }
+	inline static NodeType get_static_type() { return NODE_TYPE_NONE; }
 };
 
 template <typename T>

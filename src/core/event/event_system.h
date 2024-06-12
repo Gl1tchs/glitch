@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/event/key_code.h"
-#include "core/event/mouse_code.h"
+#include "core/event/mouse_button.h"
 
 struct KeyPressEvent {
 	KeyCode key_code;
@@ -24,11 +24,11 @@ struct MouseScrollEvent {
 };
 
 struct MousePressEvent {
-	MouseCode button_code;
+	MouseButton button_code;
 };
 
 struct MouseReleaseEvent {
-	MouseCode button_code;
+	MouseButton button_code;
 };
 
 struct WindowResizeEvent {

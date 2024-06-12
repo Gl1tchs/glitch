@@ -7,26 +7,20 @@
 #include <string>
 #include <vector>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <sys/stat.h>
-#endif
-
 struct BundleFileData {
 	const char* path;
 	size_t start_idx;
 	size_t size;
 };
 
-static void bundle(const std::string& file_path,
-		const std::vector<std::string>& input_files) {
+static void _bundle(const std::string& p_file_path,
+		const std::vector<std::string>& p_input_files) {
 	const std::string file_name =
-			file_path.substr(0, file_path.find_last_of('.'));
+			p_file_path.substr(0, p_file_path.find_last_of('.'));
 
-	std::ofstream file(file_path);
+	std::ofstream file(p_file_path);
 	if (!file.is_open()) {
-		std::cerr << "Error: Unable to open file " << file_path << std::endl;
+		std::cerr << "Error: Unable to open file " << p_file_path << std::endl;
 		return;
 	}
 
@@ -41,16 +35,17 @@ static void bundle(const std::string& file_path,
 	file << "\tsize_t size;\n";
 	file << "};\n\n";
 
-	file << "inline size_t BUNDLE_FILE_COUNT = " << input_files.size() << ";\n";
+	file << "inline size_t BUNDLE_FILE_COUNT = " << p_input_files.size()
+		 << ";\n";
 	file << "inline BundleFileData BUNDLE_FILES[] = {\n";
 
 	size_t total_size = 0;
-	for (size_t idx = 0; idx < input_files.size(); ++idx) {
-		size_t size = std::filesystem::file_size(input_files[idx]);
+	for (size_t idx = 0; idx < p_input_files.size(); ++idx) {
+		size_t size = std::filesystem::file_size(p_input_files[idx]);
 
 		assert(size % 4 == 0);
 
-		file << "\t{ " << std::filesystem::path(input_files[idx]).filename()
+		file << "\t{ " << std::filesystem::path(p_input_files[idx]).filename()
 			 << ", " << total_size << ", " << size << " }, \n";
 		total_size += size;
 	}
@@ -59,7 +54,7 @@ static void bundle(const std::string& file_path,
 	uint8_t hex_counter = 0;
 
 	file << "inline uint8_t BUNDLE_DATA[] = {";
-	for (const std::string& current_file : input_files) {
+	for (const std::string& current_file : p_input_files) {
 		std::ifstream f(current_file, std::ios::binary);
 		if (!f.is_open()) {
 			std::cerr << "Error: Unable to open file " << current_file
@@ -106,7 +101,5 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	bundle(output_file, input_files);
-
-	return 0;
+	_bundle(output_file, input_files);
 }

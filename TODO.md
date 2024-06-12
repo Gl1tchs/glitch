@@ -1,5 +1,8 @@
 # TODOS
 
+## Core
+- [ ] CVAR Initial value.
+
 ## Renderer
 - [ ] Implement more detailed scene graph system with components (proper ECS)
 - [ ] Get rid of material instances and bind textures as a list to the shaders
@@ -9,6 +12,7 @@ and use texture indexing.
 ## Vulkan Renderer
 - [ ] Instanced rendering.
 - [ ] Frustum/Occulusion culling using compute shaders.
+- [ ] Mipmaps
 - [ ] Indirect drawing.
 - [ ] Cubemapping.
 - [ ] Shadow mapping.

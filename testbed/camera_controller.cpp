@@ -39,37 +39,37 @@ void CameraController::update(float dt) {
 	last_mouse_pos = glm::vec2(
 			Input::get_mouse_position().x, Input::get_mouse_position().y);
 
-	if (Input::is_key_pressed(KeyCode::LEFT_SHIFT)) {
+	if (Input::is_key_pressed(KEY_CODE_LEFT_SHIFT)) {
 		speed = SPEED_TURBO;
-	} else if (Input::is_key_released(KeyCode::LEFT_SHIFT)) {
+	} else if (Input::is_key_released(KEY_CODE_LEFT_SHIFT)) {
 		speed = SPEED_DEFAULT;
 	}
 
 	// forward / backward controls
-	if (Input::is_key_pressed(KeyCode::W)) {
+	if (Input::is_key_pressed(KEY_CODE_W)) {
 		camera->transform.local_position +=
 				camera->transform.get_forward() * speed * dt;
 	}
-	if (Input::is_key_pressed(KeyCode::S)) {
+	if (Input::is_key_pressed(KEY_CODE_S)) {
 		camera->transform.local_position -=
 				camera->transform.get_forward() * speed * dt;
 	}
 
 	// right / left controls
-	if (Input::is_key_pressed(KeyCode::D)) {
+	if (Input::is_key_pressed(KEY_CODE_D)) {
 		camera->transform.local_position +=
 				camera->transform.get_right() * speed * dt;
 	}
-	if (Input::is_key_pressed(KeyCode::A)) {
+	if (Input::is_key_pressed(KEY_CODE_A)) {
 		camera->transform.local_position -=
 				camera->transform.get_right() * speed * dt;
 	}
 
 	// up / down controls
-	if (Input::is_key_pressed(KeyCode::E)) {
+	if (Input::is_key_pressed(KEY_CODE_E)) {
 		camera->transform.local_position += WORLD_UP * speed * dt;
 	}
-	if (Input::is_key_pressed(KeyCode::Q)) {
+	if (Input::is_key_pressed(KEY_CODE_Q)) {
 		camera->transform.local_position -= WORLD_UP * speed * dt;
 	}
 }

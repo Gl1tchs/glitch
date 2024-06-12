@@ -2,15 +2,15 @@
 
 struct GLFWwindow;
 
-enum class WindowCursorMode {
-	NORMAL = 0,
-	HIDDEN = 1,
-	DISABLED = 2,
-	CAPTURED = 3,
+enum WindowCursorMode {
+	WINDOW_CURSOR_MODE_NORMAL = 0,
+	WINDOW_CURSOR_MODE_HIDDEN = 1,
+	WINDOW_CURSOR_MODE_DISABLED = 2,
+	WINDOW_CURSOR_MODE_CAPTURED = 3,
 };
 
 struct WindowCreateInfo {
-	const char* title = "eve game";
+	const char* title = "glitch";
 	uint32_t w = 1280;
 	uint32_t h = 768;
 };
@@ -41,5 +41,5 @@ private:
 private:
 	GLFWwindow* window;
 
-	WindowCursorMode cursor_mode = WindowCursorMode::NORMAL;
+	WindowCursorMode cursor_mode = WINDOW_CURSOR_MODE_NORMAL;
 };

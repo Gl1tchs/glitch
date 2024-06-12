@@ -2,15 +2,15 @@
 
 std::string deserialize_log_level(LogLevel p_level) {
 	switch (p_level) {
-		case LogLevel::TRACE:
+		case LOG_LEVEL_TRACE:
 			return "TRACE";
-		case LogLevel::INFO:
+		case LOG_LEVEL_INFO:
 			return "INFO";
-		case LogLevel::WARNING:
+		case LOG_LEVEL_WARNING:
 			return "WARNING";
-		case LogLevel::ERROR:
+		case LOG_LEVEL_ERROR:
 			return "ERROR";
-		case LogLevel::FATAL:
+		case LOG_LEVEL_FATAL:
 			return "FATAL";
 		default:
 			return "";
@@ -23,7 +23,7 @@ inline static std::string get_timestamp() {
 
 	std::tm tm_now{};
 	std::stringstream ss;
-#if EVE_PLATFORM_WINDOWS
+#if GL_PLATFORM_WINDOWS
 	localtime_s(&tm_now, &now);
 #else
 	localtime_r(&now, &tm_now);
@@ -35,11 +35,11 @@ inline static std::string get_timestamp() {
 }
 
 std::unordered_map<LogLevel, std::string> Logger::s_verbosity_colors = {
-	{ LogLevel::TRACE, "\x1B[1m" }, // None
-	{ LogLevel::INFO, "\x1B[32m" }, // Green
-	{ LogLevel::WARNING, "\x1B[93m" }, // Yellow
-	{ LogLevel::ERROR, "\x1B[91m" }, // Light Red
-	{ LogLevel::FATAL, "\x1B[31m" }, // Red
+	{ LOG_LEVEL_TRACE, "\x1B[1m" }, // None
+	{ LOG_LEVEL_INFO, "\x1B[32m" }, // Green
+	{ LOG_LEVEL_WARNING, "\x1B[93m" }, // Yellow
+	{ LOG_LEVEL_ERROR, "\x1B[91m" }, // Light Red
+	{ LOG_LEVEL_FATAL, "\x1B[31m" }, // Red
 };
 
 void Logger::log(LogLevel p_level, const std::string& p_fmt) {

@@ -3,7 +3,7 @@
 #include "core/event/event_system.h"
 #include "core/event/input.h"
 #include "core/event/key_code.h"
-#include "core/event/mouse_code.h"
+#include "core/event/mouse_button.h"
 
 #include <GLFW/glfw3.h>
 
@@ -63,16 +63,16 @@ void Window::set_cursor_mode(WindowCursorMode p_mode) {
 	cursor_mode = p_mode;
 
 	switch (cursor_mode) {
-		case WindowCursorMode::NORMAL:
+		case WINDOW_CURSOR_MODE_NORMAL:
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 			break;
-		case WindowCursorMode::HIDDEN:
+		case WINDOW_CURSOR_MODE_HIDDEN:
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 			break;
-		case WindowCursorMode::DISABLED:
+		case WINDOW_CURSOR_MODE_DISABLED:
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			break;
-		case WindowCursorMode::CAPTURED:
+		case WINDOW_CURSOR_MODE_CAPTURED:
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_CAPTURED);
 			break;
 		default:
@@ -129,14 +129,14 @@ void Window::_assign_event_delegates() {
 					case GLFW_PRESS: {
 						MousePressEvent mouse_event{};
 						mouse_event.button_code =
-								static_cast<MouseCode>(button);
+								static_cast<MouseButton>(button);
 						event::notify(mouse_event);
 						break;
 					}
 					case GLFW_RELEASE: {
 						MouseReleaseEvent mouse_event{};
 						mouse_event.button_code =
-								static_cast<MouseCode>(button);
+								static_cast<MouseButton>(button);
 						event::notify(mouse_event);
 						break;
 					}

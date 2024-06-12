@@ -18,7 +18,7 @@ struct Bounds {
 };
 
 struct Mesh : public Node {
-	GL_IMPL_NODE(NodeType::GEOMETRY)
+	GL_IMPL_NODE(NODE_TYPE_GEOMETRY)
 
 	Bounds bounds;
 
@@ -27,9 +27,9 @@ struct Mesh : public Node {
 	uint64_t vertex_buffer_address;
 
 	uint32_t index_count;
-	uint32_t vertex_count;
-
 	IndexType index_type;
+
+	uint32_t vertex_count;
 
 	Ref<MaterialInstance> material;
 

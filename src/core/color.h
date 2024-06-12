@@ -6,12 +6,13 @@ struct Color {
 	float b = 0.0f;
 	float a = 1.0f;
 
-	constexpr Color() = default;
-
 	constexpr Color(float p_value) : r(p_value), g(p_value), b(p_value) {}
 
-	constexpr Color(float p_red, float p_green, float p_blue, float p_alpha) :
+	constexpr Color(float p_red = 0.0f, float p_green = 0.0f,
+			float p_blue = 0.0f, float p_alpha = 1.0f) :
 			r(p_red), g(p_green), b(p_blue), a(p_alpha) {}
+
+	const float* get_ptr() const { return &r; }
 };
 
 constexpr Color COLOR_BLACK(0.0f, 0.0f, 0.0f, 1.0f);

@@ -20,11 +20,11 @@ public:
 
 	void quit();
 
-	Ref<Window> get_window();
-
-	Ref<Renderer> get_renderer();
-
 	static void enqueue_main_thread(MainThreadFunc p_function);
+
+	Ref<Window> get_window() { return window; }
+
+	Ref<Renderer> get_renderer() { return renderer; }
 
 	static Application* get_instance();
 

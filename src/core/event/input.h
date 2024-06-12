@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/event/key_code.h"
-#include "core/event/mouse_code.h"
+#include "core/event/mouse_button.h"
 
 struct Input {
 	static void init();
@@ -12,9 +12,9 @@ struct Input {
 
 	static bool is_key_released(KeyCode p_key);
 
-	static bool is_mouse_pressed(MouseCode p_button);
+	static bool is_mouse_pressed(MouseButton p_button);
 
-	static bool is_mouse_released(MouseCode p_button);
+	static bool is_mouse_released(MouseButton p_button);
 
 	static Vec2f get_mouse_position();
 

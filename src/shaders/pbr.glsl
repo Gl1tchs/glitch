@@ -2,7 +2,7 @@
 #define PBR_GLSL
 
 const float PI = 3.14159265359;
-const float epsilon = 0.0001;
+const float EPSILON = 0.0001;
 
 vec3 get_normal(vec3 p_frag_pos, vec3 p_view_pos, vec3 p_normal,
     vec3 p_normal_image, vec2 p_uv) {
