@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core/templates/vector_view.h"
-
 // defines handles that are not needed to be freed by user
 #define GL_DEFINE_HANDLE(object) typedef struct object##_T* object;
 
@@ -464,3 +462,5 @@ struct SpirvData {
 	std::vector<uint32_t> byte_code;
 	ShaderStage stage;
 };
+
+typedef uint64_t BufferDeviceAddress;

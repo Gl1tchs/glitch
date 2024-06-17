@@ -22,7 +22,7 @@ void TestBedApplication::_on_start() {
 
 	material = Material::create();
 
-#if 1
+#if 0
 	Ref<Node> sponza =
 			Mesh::load("/home/gl1tch/Documents/sponza.glb", material);
 	if (sponza) {

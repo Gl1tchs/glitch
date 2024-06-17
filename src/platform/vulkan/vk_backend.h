@@ -37,7 +37,7 @@ public:
 
 	void buffer_free(Buffer p_buffer) override;
 
-	uint64_t buffer_get_device_address(Buffer p_buffer) override;
+	BufferDeviceAddress buffer_get_device_address(Buffer p_buffer) override;
 
 	uint8_t* buffer_map(Buffer p_buffer) override;
 

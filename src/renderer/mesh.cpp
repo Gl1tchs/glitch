@@ -174,18 +174,6 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 	Ref<Mesh> new_mesh = Mesh::create(vertices, indices, index_type);
 	new_mesh->name = p_name;
 
-	glm::vec3 min_pos = vertices.front().position;
-	glm::vec3 max_pos = vertices.front().position;
-
-	for (size_t i = 0; i < vertices.size(); i++) {
-		min_pos = glm::min(min_pos, vertices[i].position);
-		max_pos = glm::max(max_pos, vertices[i].position);
-	}
-
-	new_mesh->bounds.origin = (min_pos + max_pos) / 2.0f;
-	new_mesh->bounds.extents = (max_pos - min_pos) / 2.0f;
-	new_mesh->bounds.sphere_radius = glm::length(new_mesh->bounds.extents);
-
 	if (p_primitive.material >= 0) {
 		const auto& gltf_material = p_model.materials[p_primitive.material];
 
@@ -280,6 +268,23 @@ Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	return root;
 }
 
+static Bounds _calculate_mesh_bounds(const std::span<Vertex>& p_vertices) {
+	glm::vec3 min_pos = p_vertices.front().position;
+	glm::vec3 max_pos = p_vertices.front().position;
+
+	for (size_t i = 0; i < p_vertices.size(); i++) {
+		min_pos = glm::min(min_pos, p_vertices[i].position);
+		max_pos = glm::max(max_pos, p_vertices[i].position);
+	}
+
+	Bounds bounds;
+	bounds.origin = (min_pos + max_pos) / 2.0f;
+	bounds.extents = (max_pos - min_pos) / 2.0f;
+	bounds.sphere_radius = glm::length(bounds.extents);
+
+	return bounds;
+}
+
 Ref<Mesh> Mesh::create(std::span<Vertex> p_vertices,
 		std::span<uint32_t> p_indices, IndexType p_index_type) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
@@ -290,8 +295,9 @@ Ref<Mesh> Mesh::create(std::span<Vertex> p_vertices,
 											   : sizeof(uint32_t));
 
 	Ref<Mesh> mesh = create_ref<Mesh>();
-	mesh->index_type = p_index_type;
+	mesh->bounds = _calculate_mesh_bounds(p_vertices);
 	mesh->index_count = p_indices.size();
+	mesh->index_type = p_index_type;
 	mesh->vertex_count = p_vertices.size();
 
 	mesh->vertex_buffer = backend->buffer_create(vertices_size,

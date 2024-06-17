@@ -77,7 +77,8 @@ void VulkanRenderBackend::buffer_free(Buffer p_buffer) {
 	VersatileResource::free(resources_allocator, buffer);
 }
 
-uint64_t VulkanRenderBackend::buffer_get_device_address(Buffer p_buffer) {
+BufferDeviceAddress VulkanRenderBackend::buffer_get_device_address(
+		Buffer p_buffer) {
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
 	VkBufferDeviceAddressInfo info = {};

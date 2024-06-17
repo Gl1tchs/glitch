@@ -29,7 +29,7 @@ struct GPUSceneData {
 
 struct GPUDrawPushConstants {
 	glm::mat4 transform;
-	uint64_t vertex_buffer;
+	BufferDeviceAddress vertex_buffer;
 };
 
 struct RendererSettings {

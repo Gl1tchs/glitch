@@ -2,6 +2,7 @@
 
 #include "core/color.h"
 #include "core/templates/bit_field.h"
+#include "core/templates/vector_view.h"
 #include "core/window.h"
 
 #include "renderer/types.h"
@@ -27,7 +28,7 @@ public:
 
 	virtual void buffer_free(Buffer p_buffer) = 0;
 
-	virtual uint64_t buffer_get_device_address(Buffer p_buffer) = 0;
+	virtual BufferDeviceAddress buffer_get_device_address(Buffer p_buffer) = 0;
 
 	virtual uint8_t* buffer_map(Buffer p_buffer) = 0;
 

@@ -24,7 +24,7 @@ struct Mesh : public Node {
 
 	Buffer vertex_buffer;
 	Buffer index_buffer;
-	uint64_t vertex_buffer_address;
+	BufferDeviceAddress vertex_buffer_address;
 
 	uint32_t index_count;
 	IndexType index_type;
