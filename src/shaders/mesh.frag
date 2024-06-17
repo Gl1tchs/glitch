@@ -42,7 +42,7 @@ void main() {
     // Calculate specular term
     vec3 numerator = D * G * F;
     float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0)
-            + epsilon;
+            + EPSILON;
 
     vec3 specular = numerator / denominator;
 

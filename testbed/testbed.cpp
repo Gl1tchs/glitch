@@ -22,6 +22,16 @@ void TestBedApplication::_on_start() {
 
 	material = Material::create();
 
+#if 1
+	Ref<Node> sponza =
+			Mesh::load("/home/gl1tch/Documents/sponza.glb", material);
+	if (sponza) {
+		sponza->transform.local_scale *= 0.01f;
+
+		get_renderer()->get_scene_graph().push_node(sponza);
+	}
+#endif
+
 	Ref<Node> helmet = Mesh::load("assets/DamagedHelmet.glb", material);
 	if (helmet) {
 		helmet->transform.local_position.y = 1.25f;

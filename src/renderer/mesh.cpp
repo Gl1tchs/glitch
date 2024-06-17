@@ -153,14 +153,14 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 
 	if (indices_accessor.componentType ==
 			TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT) {
-		index_type = INDEX_TYPE_UINT32;
+		index_type = INDEX_TYPE_UINT16;
 
-		const uint16_t* indices_data = reinterpret_cast<const uint16_t*>(
+		const uint32_t* indices_data = reinterpret_cast<const uint32_t*>(
 				&indices_buffer.data[indices_offset]);
 		indices.assign(indices_data, indices_data + indices_accessor.count);
 	} else if (indices_accessor.componentType ==
 			TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT) {
-		index_type = INDEX_TYPE_UINT16;
+		index_type = INDEX_TYPE_UINT32;
 
 		const uint32_t* indices_data = reinterpret_cast<const uint32_t*>(
 				&indices_buffer.data[indices_offset]);
@@ -171,9 +171,8 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		GL_ASSERT(false);
 	}
 
-	Ref<Mesh> new_mesh = Mesh::create(vertices, indices);
+	Ref<Mesh> new_mesh = Mesh::create(vertices, indices, index_type);
 	new_mesh->name = p_name;
-	new_mesh->index_type = index_type;
 
 	glm::vec3 min_pos = vertices.front().position;
 	glm::vec3 max_pos = vertices.front().position;
@@ -281,14 +280,17 @@ Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	return root;
 }
 
-Ref<Mesh> Mesh::create(
-		std::span<Vertex> p_vertices, std::span<uint32_t> p_indices) {
+Ref<Mesh> Mesh::create(std::span<Vertex> p_vertices,
+		std::span<uint32_t> p_indices, IndexType p_index_type) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	const uint32_t vertices_size = p_vertices.size() * sizeof(Vertex);
-	const uint32_t indices_size = p_indices.size() * sizeof(uint32_t);
+	const uint32_t indices_size = p_indices.size() *
+			(p_index_type == INDEX_TYPE_UINT16 ? sizeof(uint16_t)
+											   : sizeof(uint32_t));
 
 	Ref<Mesh> mesh = create_ref<Mesh>();
+	mesh->index_type = p_index_type;
 	mesh->index_count = p_indices.size();
 	mesh->vertex_count = p_vertices.size();
 

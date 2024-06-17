@@ -44,8 +44,8 @@ struct Mesh : public Node {
 	 */
 	static Ref<Node> load(const fs::path& p_path, Ref<Material> p_material);
 
-	static Ref<Mesh> create(
-			std::span<Vertex> p_vertices, std::span<uint32_t> p_indices);
+	static Ref<Mesh> create(std::span<Vertex> p_vertices,
+			std::span<uint32_t> p_indices, IndexType p_index_type);
 
 	static void destroy(const Mesh* p_mesh);
 
