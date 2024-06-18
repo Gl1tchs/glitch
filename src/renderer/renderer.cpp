@@ -32,13 +32,22 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	s_instance = this;
 
 	s_api = find_proper_api();
+	switch (s_api) {
+		case GRAPHICS_API_VULKAN:
+			backend = create_ref<VulkanRenderBackend>();
+			break;
+		default:
+			GL_ASSERT(false, "Selected graphics API not implemented.");
+			break;
+	}
 
-	backend = create_ref<VulkanRenderBackend>();
 	backend->init(p_window);
 
+	graphics_queue = backend->queue_get(QUEUE_TYPE_GRAPHICS);
+	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
+
 	swapchain = backend->swapchain_create();
-	backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_GRAPHICS),
-			swapchain, p_window->get_size());
+	backend->swapchain_resize(graphics_queue, swapchain, p_window->get_size());
 
 	draw_image = backend->image_create(draw_image_format, p_window->get_size(),
 			nullptr,
@@ -52,8 +61,7 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
-		frame_data.command_pool = backend->command_pool_create(
-				backend->queue_get(QUEUE_TYPE_GRAPHICS));
+		frame_data.command_pool = backend->command_pool_create(graphics_queue);
 		frame_data.command_buffer =
 				backend->command_pool_allocate(frame_data.command_pool);
 
@@ -196,13 +204,13 @@ void Renderer::wait_and_render() {
 	}
 	backend->command_end(cmd);
 
-	backend->queue_submit(backend->queue_get(QUEUE_TYPE_GRAPHICS), cmd,
+	backend->queue_submit(graphics_queue, cmd,
 			_get_current_frame().render_fence,
 			_get_current_frame().image_available_semaphore,
 			_get_current_frame().render_finished_semaphore);
 
-	if (!backend->queue_present(backend->queue_get(QUEUE_TYPE_GRAPHICS),
-				swapchain, _get_current_frame().render_finished_semaphore)) {
+	if (!backend->queue_present(graphics_queue, swapchain,
+				_get_current_frame().render_finished_semaphore)) {
 		_request_resize();
 	}
 
@@ -346,7 +354,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 					p_cmd, { (float)draw_extent.x, (float)draw_extent.y });
 			backend->command_set_scissor(p_cmd, draw_extent);
 
-			std::vector<UniformSet> descriptors = {
+			const std::vector<UniformSet> descriptors = {
 				scene_data_set,
 				material->uniform_set,
 			};
@@ -371,7 +379,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 
 				backend->command_draw_indexed(p_cmd, mesh->index_count);
 
-				stats.triangle_count = mesh->index_count / 3;
+				stats.triangle_count += mesh->index_count / 3;
 				stats.draw_calls++;
 			}
 		}
@@ -406,8 +414,7 @@ void Renderer::_imgui_init() {
 
 void Renderer::_request_resize() {
 	Application::get_instance()->enqueue_main_thread([&]() {
-		backend->swapchain_resize(backend->queue_get(QUEUE_TYPE_PRESENT),
-				swapchain, window->get_size());
+		backend->swapchain_resize(present_queue, swapchain, window->get_size());
 	});
 }
 

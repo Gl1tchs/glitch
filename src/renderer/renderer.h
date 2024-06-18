@@ -135,6 +135,9 @@ private:
 	// drawing data
 	Ref<RenderBackend> backend;
 
+	CommandQueue graphics_queue;
+	CommandQueue present_queue;
+
 	Swapchain swapchain;
 
 	Image draw_image;
