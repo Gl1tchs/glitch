@@ -33,6 +33,8 @@ struct Mesh : public Node {
 
 	Ref<MaterialInstance> material;
 
+	int model_index;
+
 	int color_index;
 	int roughness_index;
 	int normal_index;

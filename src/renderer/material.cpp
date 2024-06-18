@@ -63,8 +63,8 @@ Ref<Material> Material::create() {
 
 	RenderingState rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			DATA_FORMAT_R16G16B16A16_SFLOAT);
-	rendering_state.depth_attachment = DATA_FORMAT_D32_SFLOAT;
+			Renderer::get_draw_image_format());
+	rendering_state.depth_attachment = Renderer::get_depth_image_format();
 
 	material->pipeline = backend->render_pipeline_create(material->shader,
 			RENDER_PRIMITIVE_TRIANGLES, rasterization, multisample,

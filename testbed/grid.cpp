@@ -52,8 +52,8 @@ Grid::Grid(Ref<Renderer> p_renderer) : renderer(p_renderer) {
 
 	RenderingState rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			renderer->get_draw_image_format());
-	rendering_state.depth_attachment = renderer->get_depth_image_format();
+			Renderer::get_draw_image_format());
+	rendering_state.depth_attachment = Renderer::get_depth_image_format();
 
 	grid_pipeline = backend->render_pipeline_create(grid_shader,
 			RENDER_PRIMITIVE_TRIANGLES, rasterization, multisample,

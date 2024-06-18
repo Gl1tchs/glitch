@@ -85,15 +85,19 @@ public:
 	 */
 	void imgui_end();
 
-	DataFormat get_draw_image_format() const { return draw_image_format; }
-
-	DataFormat get_depth_image_format() const { return depth_image_format; }
-
 	SceneGraph& get_scene_graph() { return scene_graph; }
 
 	RendererSettings& get_settings() { return settings; }
 
 	RenderStats& get_stats() { return stats; }
+
+	static DataFormat get_draw_image_format() {
+		return s_instance->draw_image_format;
+	}
+
+	static DataFormat get_depth_image_format() {
+		return s_instance->depth_image_format;
+	}
 
 	static Image get_default_image() { return s_instance->default_image; }
 	static Sampler get_default_sampler() { return s_instance->default_sampler; }

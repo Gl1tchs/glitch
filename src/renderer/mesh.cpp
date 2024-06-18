@@ -58,15 +58,24 @@ struct LoadedImage {
 	uint32_t usage_count;
 };
 
-static std::unordered_map<int, LoadedImage> s_loaded_images;
+// hash, image
+static std::unordered_map<size_t, LoadedImage> s_loaded_images;
 
-static Image _load_material_image(
-		const tinygltf::Model& model, int texture_index) {
-	if (texture_index < 0) {
+static size_t _calculate_material_hash(int p_mesh_index, int p_texture_index) {
+	return static_cast<size_t>(p_mesh_index) ^
+			(static_cast<size_t>(p_texture_index) << 1);
+}
+
+static Image _load_material_image(const tinygltf::Model& p_model,
+		int p_model_index, int p_texture_index) {
+	if (p_texture_index < 0) {
 		return nullptr;
 	}
 
-	const auto it = s_loaded_images.find(texture_index);
+	const size_t hash =
+			_calculate_material_hash(p_model_index, p_texture_index);
+
+	const auto it = s_loaded_images.find(hash);
 	if (it != s_loaded_images.end()) {
 		LoadedImage& loaded_image = it->second;
 		loaded_image.usage_count++;
@@ -74,8 +83,8 @@ static Image _load_material_image(
 		return loaded_image.image;
 	}
 
-	const auto& gltf_texture = model.textures[texture_index];
-	const auto& gltf_image = model.images[gltf_texture.source];
+	const auto& gltf_texture = p_model.textures[p_texture_index];
+	const auto& gltf_image = p_model.images[gltf_texture.source];
 
 	const Vec2u size = {
 		static_cast<uint32_t>(gltf_image.height),
@@ -87,7 +96,7 @@ static Image _load_material_image(
 	Image image = backend->image_create(
 			DATA_FORMAT_R8G8B8A8_UNORM, size, (void*)gltf_image.image.data());
 
-	s_loaded_images[texture_index] = LoadedImage{
+	s_loaded_images[hash] = LoadedImage{
 		.image = image,
 		.usage_count = 1,
 	};
@@ -97,7 +106,8 @@ static Image _load_material_image(
 
 static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		const tinygltf::Primitive& p_primitive, const fs::path& p_directory,
-		Ref<Material> p_material, const std::string& p_name) {
+		Ref<Material> p_material, const std::string& p_name,
+		int p_model_index) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
@@ -172,6 +182,7 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 	}
 
 	Ref<Mesh> new_mesh = Mesh::create(vertices, indices, index_type);
+	new_mesh->model_index = p_model_index;
 	new_mesh->name = p_name;
 
 	if (p_primitive.material >= 0) {
@@ -194,12 +205,12 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 				gltf_material.pbrMetallicRoughness.roughnessFactor;
 
 		MaterialResources resources = {};
-		resources.color_image =
-				_load_material_image(p_model, new_mesh->color_index);
-		resources.roughness_image =
-				_load_material_image(p_model, new_mesh->roughness_index);
-		resources.normal_image =
-				_load_material_image(p_model, new_mesh->normal_index);
+		resources.color_image = _load_material_image(
+				p_model, new_mesh->model_index, new_mesh->color_index);
+		resources.roughness_image = _load_material_image(
+				p_model, new_mesh->model_index, new_mesh->roughness_index);
+		resources.normal_image = _load_material_image(
+				p_model, new_mesh->model_index, new_mesh->normal_index);
 		// TODO get sampler from gltf
 		resources.sampler = Renderer::get_default_sampler();
 
@@ -211,7 +222,7 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 
 static void _process_node(const tinygltf::Model& p_model,
 		const tinygltf::Node& p_node, const fs::path& p_directory,
-		Ref<Material> p_material, Ref<Node> p_parent) {
+		Ref<Material> p_material, Ref<Node> p_parent, int p_model_index) {
 	Ref<Node> base_node = create_ref<Node>();
 	base_node->name = p_node.name;
 
@@ -220,14 +231,15 @@ static void _process_node(const tinygltf::Model& p_model,
 	if (p_node.mesh >= 0) {
 		const auto& mesh = p_model.meshes[p_node.mesh];
 		for (const auto& primitive : mesh.primitives) {
-			base_node->add_child(_process_mesh(
-					p_model, primitive, p_directory, p_material, mesh.name));
+			base_node->add_child(_process_mesh(p_model, primitive, p_directory,
+					p_material, mesh.name, p_model_index));
 		}
 	}
 
 	for (const auto& child_index : p_node.children) {
 		const auto& child_node = p_model.nodes[child_index];
-		_process_node(p_model, child_node, p_directory, p_material, base_node);
+		_process_node(p_model, child_node, p_directory, p_material, base_node,
+				p_model_index);
 	}
 }
 
@@ -260,9 +272,12 @@ Ref<Node> Mesh::load(const fs::path& p_path, Ref<Material> p_material) {
 	Ref<Node> root = create_ref<Node>();
 	root->name = p_path.filename();
 
+	static int s_mesh_counter = 0;
+
 	for (const auto& node_index : model.scenes[model.defaultScene].nodes) {
 		const auto& node = model.nodes[node_index];
-		_process_node(model, node, p_path.parent_path(), p_material, root);
+		_process_node(model, node, p_path.parent_path(), p_material, root,
+				s_mesh_counter++);
 	}
 
 	return root;
@@ -348,8 +363,11 @@ Ref<Mesh> Mesh::create(std::span<Vertex> p_vertices,
 	return mesh;
 }
 
-static void _destroy_loaded_image(const uint32_t p_index) {
-	const auto it = s_loaded_images.find(p_index);
+static void _destroy_loaded_image(
+		uint32_t p_model_index, uint32_t p_texture_index) {
+	size_t hash = _calculate_material_hash(p_model_index, p_texture_index);
+
+	const auto it = s_loaded_images.find(hash);
 	if (it == s_loaded_images.end()) {
 		return;
 	}
@@ -365,9 +383,9 @@ static void _destroy_loaded_image(const uint32_t p_index) {
 void Mesh::destroy(const Mesh* p_mesh) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
-	_destroy_loaded_image(p_mesh->color_index);
-	_destroy_loaded_image(p_mesh->roughness_index);
-	_destroy_loaded_image(p_mesh->normal_index);
+	_destroy_loaded_image(p_mesh->model_index, p_mesh->color_index);
+	_destroy_loaded_image(p_mesh->model_index, p_mesh->roughness_index);
+	_destroy_loaded_image(p_mesh->model_index, p_mesh->normal_index);
 
 	backend->buffer_free(p_mesh->vertex_buffer);
 	backend->buffer_free(p_mesh->index_buffer);
