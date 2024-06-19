@@ -91,6 +91,11 @@ static void _add_push_constant_range_if_not_exists(uint32_t p_size,
 	p_ranges.push_back(range);
 }
 
+template <typename T> void _hash_combine(std::size_t& seed, const T& value) {
+	std::hash<T> hasher;
+	seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 Shader VulkanRenderBackend::shader_create_from_bytecode(
 		const std::vector<SpirvData>& p_shaders) {
 	std::vector<VkShaderModule> vk_shaders;
@@ -214,6 +219,28 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 		push_constant_stages |= push_constant.stageFlags;
 	}
 
+	// prepare hash
+	size_t shader_hash = 0;
+	{
+		for (const auto& shader : p_shaders) {
+			_hash_combine(shader_hash, shader.stage);
+			_hash_combine(shader_hash, shader.byte_code.size());
+		}
+		for (const auto& [_, bindings] : set_bindings) {
+			for (const auto& binding : bindings) {
+				_hash_combine(shader_hash, binding.binding);
+				_hash_combine(shader_hash, binding.stageFlags);
+				_hash_combine(shader_hash, binding.descriptorCount);
+				_hash_combine(shader_hash, binding.descriptorType);
+			}
+		}
+		for (const auto& push_constant : push_constant_ranges) {
+			_hash_combine(shader_hash, push_constant.stageFlags);
+			_hash_combine(shader_hash, push_constant.offset);
+			_hash_combine(shader_hash, push_constant.size);
+		}
+	}
+
 	// Bookkeep
 	VulkanShader* shader_info =
 			VersatileResource::allocate<VulkanShader>(resources_allocator);
@@ -221,6 +248,7 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 	shader_info->push_constant_stages = push_constant_stages;
 	shader_info->descriptor_set_layouts = descriptor_set_layouts;
 	shader_info->pipeline_layout = vk_pipeline_layout;
+	shader_info->shader_hash = shader_hash;
 
 	return Shader(shader_info);
 }

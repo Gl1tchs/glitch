@@ -184,14 +184,18 @@ void VulkanRenderBackend::command_clear_color(CommandBuffer p_cmd,
 
 void VulkanRenderBackend::command_bind_graphics_pipeline(
 		CommandBuffer p_cmd, Pipeline p_pipeline) {
+	VulkanPipeline* pipeline = (VulkanPipeline*)p_pipeline;
+
 	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			(VkPipeline)p_pipeline);
+			pipeline->vk_pipeline);
 }
 
 void VulkanRenderBackend::command_bind_compute_pipeline(
 		CommandBuffer p_cmd, Pipeline p_pipeline) {
+	VulkanPipeline* pipeline = (VulkanPipeline*)p_pipeline;
+
 	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-			(VkPipeline)p_pipeline);
+			pipeline->vk_pipeline);
 }
 
 void VulkanRenderBackend::command_bind_index_buffer(CommandBuffer p_cmd,

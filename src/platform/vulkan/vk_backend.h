@@ -74,6 +74,11 @@ public:
 		uint32_t push_constant_stages = 0;
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+
+		// hash of the vulkan shader object defined as the
+		// combination of the names of the shaders with
+		// the pipeline layout
+		uint64_t shader_hash;
 	};
 
 	Shader shader_create_from_bytecode(
@@ -148,6 +153,12 @@ public:
 	void semaphore_free(Semaphore p_semaphore) override;
 
 	// Pipeline
+
+	struct VulkanPipeline {
+		VkPipeline vk_pipeline;
+		VkPipelineCache vk_pipeline_cache;
+		size_t shader_hash;
+	};
 
 	Pipeline render_pipeline_create(Shader p_shader,
 			RenderPrimitive p_render_primitive,
@@ -291,7 +302,7 @@ private:
 	static VulkanRenderBackend* s_instance;
 
 	using VersatileResource = VersatileResourceTemplate<VulkanBuffer,
-			VulkanImage, VulkanShader, VulkanUniformSet>;
+			VulkanImage, VulkanShader, VulkanUniformSet, VulkanPipeline>;
 
 	VkInstance instance;
 	VkDevice device;

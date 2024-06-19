@@ -98,6 +98,45 @@ static VkCullModeFlagBits _gl_to_vk_cull_mode(PolygonCullMode cull_mode) {
 	}
 }
 
+static std::vector<char> _get_pipeline_cache_data(const fs::path& p_path) {
+	std::ifstream file(p_path, std::ios::binary);
+	if (!file) {
+		GL_LOG_ERROR("Unable to parse pipeline cache: {}", p_path.string());
+		return {};
+	}
+
+	file.seekg(0, std::ios::end);
+	const size_t cache_size = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	std::vector<char> cache_data(cache_size);
+	file.read(cache_data.data(), cache_size);
+
+	return cache_data;
+}
+
+static VkPipelineCache _try_load_pipeline_cache(
+		VkDevice p_device, const fs::path& p_path) {
+	VkPipelineCacheCreateInfo cache_create_info = {};
+	cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+	// if cache already exists on disk try to load it
+	const bool cache_exists = fs::exists(p_path);
+	if (cache_exists) {
+		const std::vector<char> cache_data = _get_pipeline_cache_data(p_path);
+		if (!cache_data.empty()) {
+			cache_create_info.initialDataSize = cache_data.size();
+			cache_create_info.pInitialData = cache_data.data();
+		}
+	}
+
+	VkPipelineCache vk_pipeline_cache = VK_NULL_HANDLE;
+	VK_CHECK(vkCreatePipelineCache(
+			p_device, &cache_create_info, nullptr, &vk_pipeline_cache));
+
+	return vk_pipeline_cache;
+}
+
 Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 		RenderPrimitive p_render_primitive,
 		PipelineRasterizationState p_rasterization_state,
@@ -318,11 +357,23 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 	create_info.pDynamicState = &dynamic_state;
 	create_info.layout = shader->pipeline_layout;
 
+	std::string cache_path =
+			std::format(".glitch/cache/{}.cache", shader->shader_hash);
+
+	VkPipelineCache vk_pipeline_cache =
+			_try_load_pipeline_cache(device, cache_path);
+
 	VkPipeline vk_pipeline = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateGraphicsPipelines(
-			device, VK_NULL_HANDLE, 1, &create_info, nullptr, &vk_pipeline));
+			device, vk_pipeline_cache, 1, &create_info, nullptr, &vk_pipeline));
 
-	return Pipeline(vk_pipeline);
+	VulkanPipeline* pipeline =
+			VersatileResource::allocate<VulkanPipeline>(resources_allocator);
+	pipeline->vk_pipeline = vk_pipeline;
+	pipeline->vk_pipeline_cache = vk_pipeline_cache;
+	pipeline->shader_hash = shader->shader_hash;
+
+	return Pipeline(pipeline);
 }
 
 Pipeline VulkanRenderBackend::compute_pipeline_create(Shader p_shader) {
@@ -333,14 +384,57 @@ Pipeline VulkanRenderBackend::compute_pipeline_create(Shader p_shader) {
 	create_info.stage = shader->stage_create_infos[0];
 	create_info.layout = shader->pipeline_layout;
 
+	std::string cache_path =
+			std::format(".glitch/cache/{}.cache", shader->shader_hash);
+
+	VkPipelineCache vk_pipeline_cache =
+			_try_load_pipeline_cache(device, cache_path);
+
 	VkPipeline vk_pipeline = VK_NULL_HANDLE;
-
 	VK_CHECK(vkCreateComputePipelines(
-			device, VK_NULL_HANDLE, 1, &create_info, nullptr, &vk_pipeline));
+			device, vk_pipeline_cache, 1, &create_info, nullptr, &vk_pipeline));
 
-	return Pipeline(vk_pipeline);
+	VulkanPipeline* pipeline =
+			VersatileResource::allocate<VulkanPipeline>(resources_allocator);
+	pipeline->vk_pipeline = vk_pipeline;
+	pipeline->vk_pipeline_cache = vk_pipeline_cache;
+	pipeline->shader_hash = shader->shader_hash;
+
+	return Pipeline(pipeline);
 }
 
 void VulkanRenderBackend::pipeline_free(Pipeline p_pipeline) {
-	vkDestroyPipeline(device, (VkPipeline)p_pipeline, nullptr);
+	VulkanPipeline* pipeline = (VulkanPipeline*)p_pipeline;
+
+	// save the pipeline cache
+	if (pipeline->vk_pipeline_cache != VK_NULL_HANDLE) {
+		size_t cache_size;
+		VK_CHECK(vkGetPipelineCacheData(
+				device, pipeline->vk_pipeline_cache, &cache_size, nullptr));
+
+		std::vector<char> cache_data(cache_size);
+		VK_CHECK(vkGetPipelineCacheData(device, pipeline->vk_pipeline_cache,
+				&cache_size, cache_data.data()));
+
+		fs::path path =
+				std::format(".glitch/cache/{}.cache", pipeline->shader_hash);
+
+		// if directory not exists create it
+		if (!fs::exists(path.parent_path())) {
+			// TODO: this should always be at the executable directory
+			fs::create_directories(path.parent_path());
+		}
+
+		std::ofstream file(path, std::ios::binary);
+		if (file) {
+			file.write(cache_data.data(), cache_size);
+		} else {
+			GL_LOG_ERROR("Unable to write pipeline cache data to file!");
+		}
+	}
+
+	vkDestroyPipeline(device, pipeline->vk_pipeline, nullptr);
+	vkDestroyPipelineCache(device, pipeline->vk_pipeline_cache, nullptr);
+
+	VersatileResource::free(resources_allocator, pipeline);
 }

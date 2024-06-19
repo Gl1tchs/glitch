@@ -50,3 +50,5 @@ imgui.ini
 [Bb]uild/
 [Bb]in/
 Testing/
+
+.glitch/
