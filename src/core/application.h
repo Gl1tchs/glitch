@@ -20,6 +20,10 @@ public:
 
 	void quit();
 
+	/**
+	 * @brief enqueue a function to be runned for the
+	 * next frame.
+	 */
 	static void enqueue_main_thread(MainThreadFunc p_function);
 
 	Ref<Window> get_window() { return window; }

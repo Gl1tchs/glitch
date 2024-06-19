@@ -1,6 +1,30 @@
 #include "renderer/scene_graph.h"
 
+#include "renderer/mesh.h"
+
 SceneGraph::SceneGraph() : root(create_ref<Node>()) {}
+
+SceneGraph::~SceneGraph() {
+	traverse([this](Node* node) {
+		switch (node->get_type()) {
+			case NODE_TYPE_NONE: {
+				break;
+			}
+			case NODE_TYPE_GEOMETRY: {
+				Mesh::destroy((const Mesh*)node);
+				break;
+			}
+			case NODE_TYPE_LIGHT: {
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+
+		return false;
+	});
+}
 
 Ref<Node> SceneGraph::get_root() { return root; }
 

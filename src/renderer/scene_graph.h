@@ -5,7 +5,7 @@
 class SceneGraph {
 public:
 	SceneGraph();
-	~SceneGraph() = default;
+	~SceneGraph();
 
 	Ref<Node> get_root();
 

@@ -4,7 +4,6 @@
 #include "core/window.h"
 
 #include "renderer/material.h"
-#include "renderer/scene_graph.h"
 #include "renderer/types.h"
 
 class RenderBackend;
@@ -61,13 +60,22 @@ typedef std::function<void(Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
 		Image p_draw_image, DeletionQueue& frame_deletion)>
 		RenderFunc;
 
+class SceneGraph;
+
 class Renderer {
 public:
 	Renderer(Ref<Window> p_window);
 	~Renderer();
 
+	/**
+	 * @brief wait for the previous frame to be rendered and presented
+	 * and then render the current frame.
+	 */
 	void wait_and_render();
 
+	/**
+	 * @brief wait for rendering device operations to finish
+	 */
 	void wait_for_device();
 
 	/**
@@ -76,7 +84,9 @@ public:
 	void submit(RenderState p_state, RenderFunc p_function);
 
 	/**
-	 * @brief begin imgui rendering context
+	 * @brief begin imgui rendering context, all imgui functions
+	 * must be runned inside of this scope and this operation is
+	 * defined as 1 imgui frame.
 	 */
 	void imgui_begin();
 
@@ -85,7 +95,7 @@ public:
 	 */
 	void imgui_end();
 
-	SceneGraph& get_scene_graph() { return scene_graph; }
+	void set_scene(SceneGraph* p_scene_graph) { scene_graph = p_scene_graph; }
 
 	RendererSettings& get_settings() { return settings; }
 
@@ -116,13 +126,6 @@ private:
 
 	void _reset_stats();
 
-	/**
-	 * @brief destroys scene graph with it's dependencies,
-	 * this function must be called before the uninitialization
-	 * state of the graphics API
-	 */
-	void _destroy_scene_graph();
-
 	inline FrameData& _get_current_frame() {
 		return frames[frame_number % SWAPCHAIN_BUFFER_SIZE];
 	};
@@ -131,6 +134,8 @@ private:
 	static Renderer* s_instance;
 
 	Ref<Window> window;
+
+	SceneGraph* scene_graph = nullptr;
 
 	// drawing data
 	Ref<RenderBackend> backend;
@@ -154,8 +159,6 @@ private:
 	uint32_t frame_number = 0;
 
 	std::unordered_map<RenderState, std::vector<RenderFunc>> submit_funcs;
-
-	SceneGraph scene_graph;
 
 	// imgui data
 	bool imgui_being_used = false;

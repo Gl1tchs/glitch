@@ -6,6 +6,7 @@
 #include <core/application.h>
 #include <core/timer.h>
 #include <renderer/camera.h>
+#include <renderer/scene_graph.h>
 
 class TestBedApplication : public Application {
 public:
@@ -33,6 +34,8 @@ private:
 	void _draw_settings();
 
 private:
+	SceneGraph scene_graph;
+
 	Ref<Material> material;
 	Ref<Grid> grid;
 

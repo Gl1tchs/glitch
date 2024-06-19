@@ -5,6 +5,7 @@
 #include "renderer/camera.h"
 #include "renderer/mesh.h"
 #include "renderer/node.h"
+#include "renderer/scene_graph.h"
 #include "renderer/types.h"
 
 #include "platform/vulkan/vk_backend.h"
@@ -98,8 +99,6 @@ Renderer::~Renderer() {
 	backend->image_free(default_image);
 	backend->sampler_free(default_sampler);
 
-	_destroy_scene_graph();
-
 	// destroy per-frame data
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
@@ -127,6 +126,11 @@ Renderer::~Renderer() {
 }
 
 void Renderer::wait_and_render() {
+	if (!scene_graph) {
+		GL_LOG_WARNING("No scene graph found to render skipping!");
+		return;
+	}
+
 	_reset_stats();
 
 	backend->fence_wait(_get_current_frame().render_fence);
@@ -293,8 +297,8 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 		GPUSceneData* scene_uniform_data =
 				(GPUSceneData*)backend->buffer_map(scene_data_buffer);
 		{
-			get_scene_graph().traverse<CameraNode>([scene_uniform_data](
-														   CameraNode* camera) {
+			scene_graph->traverse<CameraNode>([scene_uniform_data](
+													  CameraNode* camera) {
 				scene_uniform_data->camera_pos =
 						glm::vec4(camera->transform.get_position(), 1.0f);
 				scene_uniform_data->view = camera->get_view_matrix();
@@ -319,7 +323,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 		};
 
 		std::map<Ref<MaterialInstance>, std::vector<Mesh*>> mesh_map;
-		get_scene_graph().traverse<Mesh>([&](Mesh* mesh) {
+		scene_graph->traverse<Mesh>([&](Mesh* mesh) {
 			mesh_map[get_proper_material(mesh->material)].push_back(mesh);
 			return false;
 		});
@@ -419,28 +423,3 @@ void Renderer::_request_resize() {
 }
 
 void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }
-
-void Renderer::_destroy_scene_graph() {
-	scene_graph.traverse([this](Node* node) {
-		switch (node->get_type()) {
-			case NODE_TYPE_NONE: {
-				break;
-			}
-			case NODE_TYPE_GEOMETRY: {
-				Mesh::destroy((const Mesh*)node);
-				break;
-			}
-			case NODE_TYPE_COMPUTE: {
-				break;
-			}
-			case NODE_TYPE_CAMERA: {
-				break;
-			}
-			case NODE_TYPE_LIGHT: {
-				break;
-			}
-		}
-
-		return false;
-	});
-}

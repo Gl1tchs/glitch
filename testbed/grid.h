@@ -4,14 +4,12 @@
 
 class Grid {
 public:
-	Grid(Ref<Renderer> p_renderer);
+	Grid();
 	~Grid();
 
-	void render();
+	void render(Ref<Renderer> p_renderer, SceneGraph* p_scene_graph);
 
 private:
-	Ref<Renderer> renderer;
-
 	Pipeline grid_pipeline;
 	Shader grid_shader;
 

@@ -2,6 +2,7 @@
 
 #include <renderer/camera.h>
 #include <renderer/render_backend.h>
+#include <renderer/scene_graph.h>
 
 static std::vector<uint32_t> _get_spirv_data(const fs::path& p_filepath) {
 	size_t file_size = fs::file_size(p_filepath);
@@ -18,8 +19,8 @@ static std::vector<uint32_t> _get_spirv_data(const fs::path& p_filepath) {
 	return buffer;
 }
 
-Grid::Grid(Ref<Renderer> p_renderer) : renderer(p_renderer) {
-	Ref<RenderBackend> backend = renderer->get_backend();
+Grid::Grid() {
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	SpirvData vertex_data = {};
 	vertex_data.stage = SHADER_STAGE_VERTEX_BIT;
@@ -61,18 +62,17 @@ Grid::Grid(Ref<Renderer> p_renderer) : renderer(p_renderer) {
 }
 
 Grid::~Grid() {
-	renderer->wait_for_device();
-
-	Ref<RenderBackend> backend = renderer->get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	backend->pipeline_free(grid_pipeline);
 	backend->shader_free(grid_shader);
 }
 
-void Grid::render() {
-	renderer->submit(RENDER_STATE_GEOMETRY,
-			[this](Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
-					Image p_draw_image, DeletionQueue& p_frame_deletion) {
+void Grid::render(Ref<Renderer> p_renderer, SceneGraph* p_scene_graph) {
+	p_renderer->submit(RENDER_STATE_GEOMETRY,
+			[this, p_scene_graph](Ref<RenderBackend> p_backend,
+					CommandBuffer p_cmd, Image p_draw_image,
+					DeletionQueue& p_frame_deletion) {
 				Buffer camera_uniform_buffer =
 						p_backend->buffer_create(sizeof(GridCameraUniform),
 								BUFFER_USAGE_UNIFORM_BUFFER_BIT |
@@ -87,7 +87,7 @@ void Grid::render() {
 						(GridCameraUniform*)p_backend->buffer_map(
 								camera_uniform_buffer);
 				{
-					renderer->get_scene_graph().traverse<CameraNode>(
+					p_scene_graph->traverse<CameraNode>(
 							[camera_uniform_data](CameraNode* camera) {
 								camera_uniform_data->view =
 										camera->get_view_matrix();

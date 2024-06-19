@@ -13,22 +13,24 @@ TestBedApplication::TestBedApplication(const ApplicationCreateInfo& p_info) :
 		Application(p_info) {}
 
 void TestBedApplication::_on_start() {
+	// assign the scene to the renderer
+	get_renderer()->set_scene(&scene_graph);
+
 	camera = create_ref<PerspectiveCameraNode>();
 	camera->name = "Main Camera";
+	scene_graph.push_node(camera);
 
 	camera_controller.set_camera(camera.get());
 
-	get_renderer()->get_scene_graph().push_node(camera);
-
 	material = Material::create();
 
-#if 0
+#if 1
 	Ref<Node> sponza =
 			Mesh::load("/home/gl1tch/Documents/sponza.glb", material);
 	if (sponza) {
 		sponza->transform.local_scale *= 0.01f;
 
-		get_renderer()->get_scene_graph().push_node(sponza);
+		scene_graph.push_node(sponza);
 	}
 #endif
 
@@ -37,7 +39,7 @@ void TestBedApplication::_on_start() {
 		helmet->transform.local_position.y = 1.25f;
 		helmet->transform.local_rotation.x = 90.0f;
 
-		get_renderer()->get_scene_graph().push_node(helmet);
+		scene_graph.push_node(helmet);
 	}
 
 	Ref<Node> suzanne = Mesh::load("assets/Suzanne.glb", material);
@@ -48,10 +50,10 @@ void TestBedApplication::_on_start() {
 
 		suzanne->transform.local_rotation.y = -30.0f;
 
-		get_renderer()->get_scene_graph().push_node(suzanne);
+		scene_graph.push_node(suzanne);
 	}
 
-	grid = create_ref<Grid>(get_renderer());
+	grid = create_ref<Grid>();
 }
 
 void TestBedApplication::_on_update(float p_dt) {
@@ -99,7 +101,7 @@ void TestBedApplication::_on_update(float p_dt) {
 	}
 
 	if (draw_grid) {
-		grid->render();
+		grid->render(get_renderer(), &scene_graph);
 	}
 }
 
@@ -122,7 +124,7 @@ void TestBedApplication::_imgui_render(float p_dt) {
 
 void TestBedApplication::_draw_hierarchy() {
 	ImGui::Begin("Scene");
-	_draw_node(get_renderer()->get_scene_graph().get_root());
+	_draw_node(scene_graph.get_root());
 	ImGui::End();
 }
 
