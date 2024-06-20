@@ -5,8 +5,12 @@ and simulations.
 
 ## Building
 
-In order to build the engine you need to have [Ninja](https://ninja-build.org/)
-and [Clang](https://clang.llvm.org/) installed on your system.
+In order to build the engine you need to have the dependencies installed on your
+system:
+- [Ninja](https://ninja-build.org/): cmake build target.
+- [Clang](https://clang.llvm.org/): C/C++ compiler.
+- [GLSLC](https://github.com/google/shaderc): shader compiler.
+- [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/): vulkan backend.
 
 **Clonning and building:**
 ```
