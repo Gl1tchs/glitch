@@ -78,7 +78,7 @@ public:
 		// hash of the vulkan shader object defined as the
 		// combination of the names of the shaders with
 		// the pipeline layout
-		uint64_t shader_hash;
+		size_t shader_hash;
 	};
 
 	Shader shader_create_from_bytecode(

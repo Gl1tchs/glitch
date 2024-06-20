@@ -1,12 +1,11 @@
 #pragma once
 
-#include "camera_controller.h"
-#include "grid.h"
-
 #include <core/application.h>
-#include <core/timer.h>
 #include <renderer/camera.h>
 #include <renderer/scene_graph.h>
+
+#include "camera_controller.h"
+#include "grid.h"
 
 class TestBedApplication : public Application {
 public:

@@ -1,11 +1,8 @@
 #include "testbed.h"
-#include "core/window.h"
 
 #include <core/event/input.h>
 #include <renderer/mesh.h>
-#include <renderer/render_backend.h>
 #include <renderer/renderer.h>
-#include <renderer/types.h>
 
 #include <imgui.h>
 
