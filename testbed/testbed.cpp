@@ -23,11 +23,18 @@ void TestBedApplication::_on_start() {
 
 	Ref<Node> plane = Mesh::load("assets/plane.glb", material);
 	if (plane) {
+		plane->transform.local_position = { 3.9f, 2.4f, 0.0f };
+		plane->transform.local_rotation = { 7.5f, 7.9f, -0.9f };
+
 		scene_graph.push_node(plane);
 	}
 
 	Ref<Node> gentelman = Mesh::load("assets/gentelman.glb", material);
 	if (gentelman) {
+		gentelman->transform.local_position = { -0.6f, 0.8f, 1.9f };
+		gentelman->transform.local_rotation = { 0.0f, 80.0f, 0.0f };
+		gentelman->transform.local_scale = { 1.5f, 1.5f, 1.5f };
+
 		scene_graph.push_node(gentelman);
 	}
 
@@ -150,9 +157,11 @@ void TestBedApplication::_draw_inspector() {
 
 	ImGui::SeparatorText("Transform");
 
-	ImGui::DragFloat3("Position", &selected_node->transform.local_position.x);
-	ImGui::DragFloat3("Rotation", &selected_node->transform.local_rotation.x);
-	ImGui::DragFloat3("Scale", &selected_node->transform.local_scale.x);
+	ImGui::DragFloat3(
+			"Position", &selected_node->transform.local_position.x, 0.1f);
+	ImGui::DragFloat3(
+			"Rotation", &selected_node->transform.local_rotation.x, 0.1f);
+	ImGui::DragFloat3("Scale", &selected_node->transform.local_scale.x, 0.1f);
 
 	ImGui::End();
 }
