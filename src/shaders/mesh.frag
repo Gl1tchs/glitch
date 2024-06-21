@@ -1,7 +1,9 @@
 #version 450
+#extension GL_OES_standard_derivatives : enable
+
+precision highp float;
 
 #include "input_structures.glsl"
-#include "pbr.glsl"
 
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_normal;
@@ -9,60 +11,39 @@ layout(location = 2) in vec2 v_uv;
 
 layout(location = 0) out vec4 o_color;
 
+const float AMBIENT_STRENGTH = 0.1f;
+
+vec3 get_dir_light(vec3 p_normal, vec3 p_view_dir) {
+    vec3 ambient = AMBIENT_STRENGTH * scene_data.sun_color.rgb
+            * material_data.diffuse_factor.rgb
+            * texture(diffuse_texture, v_uv).rgb;
+
+    vec3 light_dir = normalize(-scene_data.sun_direction.xyz);
+
+    float diff = max(dot(p_normal, light_dir), 0.0);
+    vec3 diffuse = scene_data.sun_color.rgb * diff
+            * material_data.diffuse_factor.rgb
+            * texture(diffuse_texture, v_uv).rgb;
+
+    // vec3 reflect_dir = reflect(-light_dir, p_normal);
+
+    // Blinn-Phong
+    vec3 halfway_dir = normalize(light_dir + p_view_dir);
+
+    float spec = pow(max(dot(p_view_dir, halfway_dir), 0.0), material_data.shininess);
+    vec3 specular = scene_data.sun_color.rgb * spec
+            * texture(specular_texture, v_uv).rgb;
+
+    return ambient + diffuse + specular;
+}
+
 void main() {
-    vec3 N = get_normal(v_position, scene_data.camera_pos.xyz, v_normal,
-            texture(normal_texture, v_uv).rgb, v_uv);
-    vec3 V = normalize(scene_data.camera_pos.xyz - v_position);
-    vec3 L = normalize(-scene_data.sun_direction.xyz);
-    vec3 H = normalize(V + L);
+    mat3 normal_mat = transpose(inverse(mat3(push_constants.transform)));
+    vec3 normal = normalize(normal_mat * v_normal);
 
-    vec3 base_color = mix(material_data.color_factor.rgb,
-            texture(color_texture, v_uv).rgb,
-            material_data.color_factor.a);
+    vec3 view_dir = normalize(scene_data.camera_pos.xyz - v_position);
 
-    float metallic = material_data.metallic_factor;
+    vec3 light_result = get_dir_light(normal, view_dir);
 
-    float roughness = mix(material_data.roughness_factor,
-            texture(roughness_texture, v_uv).r,
-            material_data.roughness_factor);
-
-    // Calculate reflectance at normal incidence
-    vec3 F0 = vec3(0.04);
-    F0 = mix(F0, base_color, metallic);
-
-    // Calculate the Fresnel effect
-    vec3 F = fresnel_schlick(max(dot(H, V), 0.0), F0);
-
-    // Calculate normal distribution function
-    float D = distribution_ggx(N, H, roughness);
-
-    // Calculate geometry function
-    float G = geometry_smith(N, V, L, roughness);
-
-    // Calculate specular term
-    vec3 numerator = D * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0)
-            + EPSILON;
-
-    vec3 specular = numerator / denominator;
-
-    // Calculate the kS and kD terms
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    // Calculate final color
-    float NdotL = max(dot(N, L), 0.0);
-    vec3 Lo = (kD * base_color / PI + specular) * scene_data.sun_color.rgb
-            * NdotL;
-
-    // Ambient lighting (assuming a simple ambient factor)
-    vec3 ambient = vec3(0.03) * base_color;
-    vec3 color = ambient + Lo;
-
-    // Gamma correction
-    color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0 / 2.2));
-
-    o_color = vec4(color, 1.0f);
+    o_color = vec4(light_result, 1.0);
 }

@@ -21,33 +21,14 @@ void TestBedApplication::_on_start() {
 
 	material = Material::create();
 
-#if 0
-	Ref<Node> sponza =
-			Mesh::load("/home/gl1tch/Documents/sponza.glb", material);
-	if (sponza) {
-		sponza->transform.local_scale *= 0.01f;
-
-		scene_graph.push_node(sponza);
-	}
-#endif
-
-	Ref<Node> helmet = Mesh::load("assets/DamagedHelmet.glb", material);
-	if (helmet) {
-		helmet->transform.local_position.y = 1.25f;
-		helmet->transform.local_rotation.x = 90.0f;
-
-		scene_graph.push_node(helmet);
+	Ref<Node> plane = Mesh::load("assets/plane.glb", material);
+	if (plane) {
+		scene_graph.push_node(plane);
 	}
 
-	Ref<Node> suzanne = Mesh::load("assets/Suzanne.glb", material);
-	if (suzanne) {
-		suzanne->transform.local_position.x = 2.5f;
-		suzanne->transform.local_position.y = 1.25f;
-		suzanne->transform.local_position.z = 4.5f;
-
-		suzanne->transform.local_rotation.y = -30.0f;
-
-		scene_graph.push_node(suzanne);
+	Ref<Node> gentelman = Mesh::load("assets/gentelman.glb", material);
+	if (gentelman) {
+		scene_graph.push_node(gentelman);
 	}
 
 	grid = create_ref<Grid>();

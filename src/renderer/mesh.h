@@ -35,8 +35,8 @@ struct Mesh : public Node {
 
 	int model_index;
 
-	int color_index;
-	int roughness_index;
+	int diffuse_index;
+	int specular_index;
 	int normal_index;
 
 	virtual ~Mesh() = default;

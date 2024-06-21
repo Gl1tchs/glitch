@@ -189,28 +189,55 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		const auto& gltf_material = p_model.materials[p_primitive.material];
 
 		// use pbr texture if available if not try to use normal texture
-		new_mesh->color_index =
+		new_mesh->diffuse_index =
 				gltf_material.pbrMetallicRoughness.baseColorTexture.index;
-		new_mesh->roughness_index = gltf_material.pbrMetallicRoughness
-											.metallicRoughnessTexture.index;
+
+		// select specular index based on metallicity
+		// use color texture directly for non-metallic
+		// materials and use normal (white) texture
+		// otherwise
+		new_mesh->specular_index =
+				(gltf_material.pbrMetallicRoughness.metallicFactor < 0.5f)
+				? new_mesh->diffuse_index
+				: -1;
+
 		new_mesh->normal_index = gltf_material.normalTexture.index;
 
 		MaterialConstants constants = {};
-		memcpy(&constants.color_factor,
-				gltf_material.pbrMetallicRoughness.baseColorFactor.data(),
-				sizeof(Color));
-		constants.metallic_factor =
-				gltf_material.pbrMetallicRoughness.metallicFactor;
-		constants.roughness_factor =
-				gltf_material.pbrMetallicRoughness.roughnessFactor;
+		constants.diffuse_factor = Color{
+			(float)gltf_material.pbrMetallicRoughness.baseColorFactor[0],
+			(float)gltf_material.pbrMetallicRoughness.baseColorFactor[1],
+			(float)gltf_material.pbrMetallicRoughness.baseColorFactor[2],
+			// it is not guaranteed this to be vec4
+			gltf_material.pbrMetallicRoughness.baseColorFactor.size() > 3
+					? (float)gltf_material.pbrMetallicRoughness
+							  .baseColorFactor[3]
+					: 1.0f,
+		};
+
+		// clamp roughness factor to be used as shininess at phong model
+		const float r = gltf_material.pbrMetallicRoughness.roughnessFactor;
+		if (r < 0.125f) {
+			constants.shininess = 8.0;
+		} else if (r < 0.375f) {
+			constants.shininess = 16.0;
+		} else if (r < 0.625f) {
+			constants.shininess = 32.0;
+		} else if (r < 0.875f) {
+			constants.shininess = 64.0;
+		} else {
+			constants.shininess = 128.0;
+		}
 
 		MaterialResources resources = {};
-		resources.color_image = _load_material_image(
-				p_model, new_mesh->model_index, new_mesh->color_index);
-		resources.roughness_image = _load_material_image(
-				p_model, new_mesh->model_index, new_mesh->roughness_index);
+		resources.constants = constants;
+		resources.diffuse_image = _load_material_image(
+				p_model, new_mesh->model_index, new_mesh->diffuse_index);
+		resources.specular_image = _load_material_image(
+				p_model, new_mesh->model_index, new_mesh->specular_index);
 		resources.normal_image = _load_material_image(
 				p_model, new_mesh->model_index, new_mesh->normal_index);
+
 		// TODO get sampler from gltf
 		resources.sampler = Renderer::get_default_sampler();
 
@@ -383,8 +410,8 @@ static void _destroy_loaded_image(
 void Mesh::destroy(const Mesh* p_mesh) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
-	_destroy_loaded_image(p_mesh->model_index, p_mesh->color_index);
-	_destroy_loaded_image(p_mesh->model_index, p_mesh->roughness_index);
+	_destroy_loaded_image(p_mesh->model_index, p_mesh->diffuse_index);
+	_destroy_loaded_image(p_mesh->model_index, p_mesh->specular_index);
 	_destroy_loaded_image(p_mesh->model_index, p_mesh->normal_index);
 
 	backend->buffer_free(p_mesh->vertex_buffer);

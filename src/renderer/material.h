@@ -11,9 +11,8 @@ struct MaterialInstance {
 };
 
 struct MaterialConstants {
-	Color color_factor = COLOR_WHITE;
-	float metallic_factor = 1.0f;
-	float roughness_factor = 1.0f;
+	Color diffuse_factor = COLOR_WHITE;
+	float shininess = 1.0f;
 
 private:
 	float __padding[18];
@@ -21,8 +20,8 @@ private:
 
 struct MaterialResources {
 	MaterialConstants constants;
-	Image color_image = GL_NULL_HANDLE;
-	Image roughness_image = GL_NULL_HANDLE;
+	Image diffuse_image = GL_NULL_HANDLE;
+	Image specular_image = GL_NULL_HANDLE;
 	Image normal_image = GL_NULL_HANDLE;
 	Sampler sampler = GL_NULL_HANDLE;
 };

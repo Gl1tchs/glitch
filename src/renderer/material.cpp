@@ -118,8 +118,8 @@ Ref<MaterialInstance> Material::create_instance(
 	uniforms[1].data.push_back(resources.sampler
 					? resources.sampler
 					: Renderer::get_default_sampler());
-	uniforms[1].data.push_back(resources.color_image
-					? resources.color_image
+	uniforms[1].data.push_back(resources.diffuse_image
+					? resources.diffuse_image
 					: Renderer::get_default_image());
 
 	uniforms[2].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
@@ -127,8 +127,8 @@ Ref<MaterialInstance> Material::create_instance(
 	uniforms[2].data.push_back(resources.sampler
 					? resources.sampler
 					: Renderer::get_default_sampler());
-	uniforms[2].data.push_back(resources.roughness_image
-					? resources.roughness_image
+	uniforms[2].data.push_back(resources.specular_image
+					? resources.specular_image
 					: Renderer::get_default_image());
 
 	uniforms[3].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;

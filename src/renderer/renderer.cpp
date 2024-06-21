@@ -78,14 +78,14 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	// initialize default data
 	default_material = Material::create();
 
-	constexpr uint32_t gray_color = 0x808080;
+	constexpr uint32_t white_color = 0xffffffff;
 
 	default_image = backend->image_create(
-			DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &gray_color);
+			DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &white_color);
 	default_sampler = backend->sampler_create();
 
 	MaterialResources resources = {};
-	resources.color_image = default_image;
+	resources.diffuse_image = default_image;
 	resources.sampler = default_sampler;
 
 	default_material_instance = default_material->create_instance(resources);
