@@ -4,7 +4,6 @@
 
 #include "renderer/camera.h"
 #include "renderer/mesh.h"
-#include "renderer/node.h"
 #include "renderer/scene_graph.h"
 #include "renderer/types.h"
 

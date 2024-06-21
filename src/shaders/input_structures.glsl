@@ -14,7 +14,8 @@ layout(set = 0, binding = 0) uniform SceneData {
 
 layout(set = 1, binding = 0) uniform MaterialData {
     vec4 diffuse_factor;
-    float shininess;
+    float metallic_factor;
+    float shininess_factor;
 } material_data;
 
 layout(set = 1, binding = 1) uniform sampler2D diffuse_texture;

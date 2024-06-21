@@ -11,10 +11,10 @@ layout(location = 2) in vec2 v_uv;
 
 layout(location = 0) out vec4 o_color;
 
-const float AMBIENT_STRENGTH = 0.1f;
+const float AMBIENT_CONSTANT = 0.2f;
 
 vec3 get_dir_light(vec3 p_normal, vec3 p_view_dir) {
-    vec3 ambient = AMBIENT_STRENGTH * scene_data.sun_color.rgb
+    vec3 ambient = AMBIENT_CONSTANT * scene_data.sun_color.rgb
             * material_data.diffuse_factor.rgb
             * texture(diffuse_texture, v_uv).rgb;
 
@@ -30,8 +30,10 @@ vec3 get_dir_light(vec3 p_normal, vec3 p_view_dir) {
     // Blinn-Phong
     vec3 halfway_dir = normalize(light_dir + p_view_dir);
 
-    float spec = pow(max(dot(p_view_dir, halfway_dir), 0.0), material_data.shininess);
+    float spec = pow(max(dot(p_view_dir, halfway_dir), 0.0),
+            material_data.shininess_factor);
     vec3 specular = scene_data.sun_color.rgb * spec
+            * (material_data.metallic_factor / 2.0f)
             * texture(specular_texture, v_uv).rgb;
 
     return ambient + diffuse + specular;

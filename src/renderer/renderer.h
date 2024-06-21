@@ -85,9 +85,9 @@ public:
 
 	/**
 	 * @brief begin imgui rendering context, all imgui functions
-	 * must be runned inside of this scope and this operation is
-	 * defined as 1 imgui frame.
-	 */
+     * must be runned inside of this scope and this operation is
+     * defined as 1 imgui frame.
+     */
 	void imgui_begin();
 
 	/**

@@ -12,7 +12,10 @@ struct MaterialInstance {
 
 struct MaterialConstants {
 	Color diffuse_factor = COLOR_WHITE;
-	float shininess = 1.0f;
+	// This will effect the specular component.
+	// The higher it is shinier the material
+	float metallic_factor = 0.0f;
+	float shininess_factor = 1.0f;
 
 private:
 	float __padding[18];

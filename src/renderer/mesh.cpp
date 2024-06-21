@@ -196,10 +196,7 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		// use color texture directly for non-metallic
 		// materials and use normal (white) texture
 		// otherwise
-		new_mesh->specular_index =
-				(gltf_material.pbrMetallicRoughness.metallicFactor < 0.5f)
-				? new_mesh->diffuse_index
-				: -1;
+		new_mesh->specular_index = new_mesh->diffuse_index;
 
 		new_mesh->normal_index = gltf_material.normalTexture.index;
 
@@ -215,19 +212,11 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 					: 1.0f,
 		};
 
-		// clamp roughness factor to be used as shininess at phong model
-		const float r = gltf_material.pbrMetallicRoughness.roughnessFactor;
-		if (r < 0.125f) {
-			constants.shininess = 8.0;
-		} else if (r < 0.375f) {
-			constants.shininess = 16.0;
-		} else if (r < 0.625f) {
-			constants.shininess = 32.0;
-		} else if (r < 0.875f) {
-			constants.shininess = 64.0;
-		} else {
-			constants.shininess = 128.0;
-		}
+		constants.metallic_factor =
+				gltf_material.pbrMetallicRoughness.metallicFactor;
+
+		// TODO: dynamically set this from roughness factor.
+		constants.shininess_factor = 64.0;
 
 		MaterialResources resources = {};
 		resources.constants = constants;
