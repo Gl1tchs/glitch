@@ -20,7 +20,6 @@ layout(set = 1, binding = 0) uniform MaterialData {
 
 layout(set = 1, binding = 1) uniform sampler2D diffuse_texture;
 layout(set = 1, binding = 2) uniform sampler2D specular_texture;
-layout(set = 1, binding = 3) uniform sampler2D normal_texture;
 
 struct Vertex {
     vec3 position;

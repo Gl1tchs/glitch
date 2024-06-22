@@ -25,7 +25,6 @@ struct MaterialResources {
 	MaterialConstants constants;
 	Image diffuse_image = GL_NULL_HANDLE;
 	Image specular_image = GL_NULL_HANDLE;
-	Image normal_image = GL_NULL_HANDLE;
 	Sampler sampler = GL_NULL_HANDLE;
 };
 

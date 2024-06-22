@@ -84,7 +84,7 @@ void Material::destroy(Ref<Material> p_material) {
 
 	backend->shader_free(p_material->shader);
 
-	for (auto buffer : p_material->allocated_buffers) {
+	for (const auto buffer : p_material->allocated_buffers) {
 		backend->buffer_free(buffer);
 	}
 }
@@ -107,7 +107,7 @@ Ref<MaterialInstance> Material::create_instance(
 	*ptr_constants = resources.constants;
 	backend->buffer_unmap(constants_buffer);
 
-	std::vector<ShaderUniform> uniforms(4);
+	std::vector<ShaderUniform> uniforms(3);
 
 	uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
 	uniforms[0].binding = 0;
@@ -129,15 +129,6 @@ Ref<MaterialInstance> Material::create_instance(
 					: Renderer::get_default_sampler());
 	uniforms[2].data.push_back(resources.specular_image
 					? resources.specular_image
-					: Renderer::get_default_image());
-
-	uniforms[3].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
-	uniforms[3].binding = 3;
-	uniforms[3].data.push_back(resources.sampler
-					? resources.sampler
-					: Renderer::get_default_sampler());
-	uniforms[3].data.push_back(resources.normal_image
-					? resources.normal_image
 					: Renderer::get_default_image());
 
 	instance->uniform_set = backend->uniform_set_create(uniforms, shader, 1);

@@ -198,8 +198,6 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		// otherwise
 		new_mesh->specular_index = new_mesh->diffuse_index;
 
-		new_mesh->normal_index = gltf_material.normalTexture.index;
-
 		MaterialConstants constants = {};
 		constants.diffuse_factor = Color{
 			(float)gltf_material.pbrMetallicRoughness.baseColorFactor[0],
@@ -224,8 +222,6 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 				p_model, new_mesh->model_index, new_mesh->diffuse_index);
 		resources.specular_image = _load_material_image(
 				p_model, new_mesh->model_index, new_mesh->specular_index);
-		resources.normal_image = _load_material_image(
-				p_model, new_mesh->model_index, new_mesh->normal_index);
 
 		// TODO get sampler from gltf
 		resources.sampler = Renderer::get_default_sampler();
@@ -401,7 +397,6 @@ void Mesh::destroy(const Mesh* p_mesh) {
 
 	_destroy_loaded_image(p_mesh->model_index, p_mesh->diffuse_index);
 	_destroy_loaded_image(p_mesh->model_index, p_mesh->specular_index);
-	_destroy_loaded_image(p_mesh->model_index, p_mesh->normal_index);
 
 	backend->buffer_free(p_mesh->vertex_buffer);
 	backend->buffer_free(p_mesh->index_buffer);

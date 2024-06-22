@@ -37,7 +37,6 @@ struct Mesh : public Node {
 
 	int diffuse_index;
 	int specular_index;
-	int normal_index;
 
 	virtual ~Mesh() = default;
 
