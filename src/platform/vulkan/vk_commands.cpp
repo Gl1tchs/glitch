@@ -105,9 +105,13 @@ void VulkanRenderBackend::command_reset(CommandBuffer p_cmd) {
 void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 		const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
 		Image p_depth_attachment) {
+	uint32_t attachments_size = p_color_attachments.data() == nullptr
+			? 0
+			: p_color_attachments.size();
+
 	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
-			p_color_attachments.size());
-	for (uint32_t i = 0; i < p_color_attachments.size(); i++) {
+			attachments_size);
+	for (uint32_t i = 0; i < attachments_size; i++) {
 		VulkanImage* vk_image = (VulkanImage*)p_color_attachments[i];
 
 		auto& info = color_attachment_infos[i];
@@ -138,11 +142,10 @@ void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 
 	VkRenderingInfo render_info = {};
 	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-	render_info.pNext = nullptr;
 	render_info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 },
 		{ p_draw_extent.x, p_draw_extent.y } };
 	render_info.layerCount = 1;
-	render_info.colorAttachmentCount = p_color_attachments.size();
+	render_info.colorAttachmentCount = attachments_size;
 	render_info.pColorAttachments = color_attachment_infos.data();
 	render_info.pDepthAttachment =
 			p_depth_attachment == nullptr ? nullptr : &depth_attachment_info;
@@ -268,12 +271,12 @@ void VulkanRenderBackend::command_push_constants(CommandBuffer p_cmd,
 }
 
 void VulkanRenderBackend::command_set_viewport(
-		CommandBuffer p_cmd, const Vec2f& size) {
+		CommandBuffer p_cmd, const Vec2u& size) {
 	VkViewport viewport = {
 		.x = 0,
 		.y = 0,
-		.width = size.x,
-		.height = size.y,
+		.width = (float)size.x,
+		.height = (float)size.y,
 		.minDepth = 0.0f,
 		.maxDepth = 1.0f,
 	};
@@ -288,6 +291,13 @@ void VulkanRenderBackend::command_set_scissor(
 	memcpy(&scissor.offset, &p_offset, sizeof(VkExtent2D));
 
 	vkCmdSetScissor((VkCommandBuffer)p_cmd, 0, 1, &scissor);
+}
+
+void VulkanRenderBackend::command_set_depth_bias(CommandBuffer p_cmd,
+		float p_depth_bias_constant_factor, float p_depth_bias_clamp,
+		float p_depth_bias_slope_factor) {
+	vkCmdSetDepthBias((VkCommandBuffer)p_cmd, p_depth_bias_constant_factor,
+			p_depth_bias_clamp, p_depth_bias_slope_factor);
 }
 
 void VulkanRenderBackend::command_copy_buffer(CommandBuffer p_cmd,
@@ -370,7 +380,8 @@ void VulkanRenderBackend::command_copy_image_to_image(CommandBuffer p_cmd,
 void VulkanRenderBackend::command_transition_image(CommandBuffer p_cmd,
 		Image p_image, ImageLayout p_current_layout, ImageLayout p_new_layout) {
 	VkImageAspectFlags aspect_mask =
-			(p_new_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+			(p_current_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL ||
+					p_new_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
 			? VK_IMAGE_ASPECT_DEPTH_BIT
 			: VK_IMAGE_ASPECT_COLOR_BIT;
 

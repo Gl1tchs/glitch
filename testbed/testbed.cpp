@@ -38,6 +38,13 @@ void TestBedApplication::_on_start() {
 		scene_graph.push_node(gentelman);
 	}
 
+	Ref<Node> floor = Mesh::load("assets/floor.glb", material);
+	if (floor) {
+		floor->transform.local_scale = { 25, 1, 25 };
+
+		scene_graph.push_node(floor);
+	}
+
 	grid = create_ref<Grid>();
 }
 

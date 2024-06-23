@@ -46,7 +46,11 @@ public:
 	virtual Vec3u image_get_size(Image p_image) = 0;
 
 	virtual Sampler sampler_create(
-			ImageFiltering p_filtering = IMAGE_FILTERING_LINEAR) = 0;
+			ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
+			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
+			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE) = 0;
 
 	virtual void sampler_free(Sampler p_sampler) = 0;
 
@@ -191,10 +195,15 @@ public:
 			const void* p_push_constants) = 0;
 
 	virtual void command_set_viewport(
-			CommandBuffer p_cmd, const Vec2f& size) = 0;
+			CommandBuffer p_cmd, const Vec2u& size) = 0;
 
 	virtual void command_set_scissor(CommandBuffer p_cmd, const Vec2u& p_size,
 			const Vec2u& p_offset = { 0, 0 }) = 0;
+
+	// NOTE: dynamic state must be enabled for this
+	virtual void command_set_depth_bias(CommandBuffer p_cmd,
+			float p_depth_bias_constant_factor, float p_depth_bias_clamp,
+			float p_depth_bias_slope_factor) = 0;
 
 	virtual void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
 			Buffer p_dst_buffer, VectorView<BufferCopyRegion> p_regions) = 0;

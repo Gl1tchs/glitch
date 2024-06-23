@@ -4,6 +4,8 @@
 
 #include "renderer/types.h"
 
+std::vector<uint32_t> get_bundled_spirv_data(const char* file_path);
+
 struct MaterialInstance {
 	Pipeline pipeline;
 	Shader shader;

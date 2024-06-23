@@ -6,7 +6,7 @@
 
 #include "shader_bundle.gen.h"
 
-static std::vector<uint32_t> _get_bundled_spirv_data(const char* file_path) {
+std::vector<uint32_t> get_bundled_spirv_data(const char* file_path) {
 	BundleFileData shader_data = {};
 	bool shader_found = false;
 
@@ -33,11 +33,11 @@ Ref<Material> Material::create() {
 
 	SpirvData vertex_data = {};
 	vertex_data.stage = SHADER_STAGE_VERTEX_BIT;
-	vertex_data.byte_code = _get_bundled_spirv_data("mesh.vert.spv");
+	vertex_data.byte_code = get_bundled_spirv_data("mesh.vert.spv");
 
 	SpirvData fragment_data = {};
 	fragment_data.stage = SHADER_STAGE_FRAGMENT_BIT;
-	fragment_data.byte_code = _get_bundled_spirv_data("mesh.frag.spv");
+	fragment_data.byte_code = get_bundled_spirv_data("mesh.frag.spv");
 
 	std::vector<SpirvData> shader_stages = {
 		vertex_data,

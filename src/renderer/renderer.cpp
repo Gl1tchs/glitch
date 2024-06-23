@@ -93,6 +93,10 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 Renderer::~Renderer() {
 	backend->device_wait();
 
+	// destroy geometry pipeline resources
+	backend->image_free(draw_image);
+	backend->image_free(depth_image);
+
 	// destroy default data
 	Material::destroy(default_material);
 	backend->image_free(default_image);
@@ -113,9 +117,6 @@ Renderer::~Renderer() {
 	}
 
 	// swapchain cleanup
-	backend->image_free(depth_image);
-	backend->image_free(draw_image);
-
 	backend->swapchain_free(swapchain);
 
 	// destroy imgui
@@ -284,107 +285,105 @@ static bool _is_mesh_visible(const Mesh* mesh, const glm::mat4& viewproj) {
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	backend->command_begin_rendering(
 			p_cmd, draw_extent, draw_image, depth_image);
+
+	// scene data
+	Buffer scene_buffer = backend->buffer_create(sizeof(GeometrySceneData),
+			BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+			MEMORY_ALLOCATION_TYPE_CPU);
+
+	_get_current_frame().deletion_queue.push_function(
+			[=, this]() { backend->buffer_free(scene_buffer); });
+
+	GeometrySceneData* scene_buffer_data =
+			(GeometrySceneData*)backend->buffer_map(scene_buffer);
 	{
-		// scene data
-		Buffer scene_data_buffer = backend->buffer_create(sizeof(GPUSceneData),
-				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
-				MEMORY_ALLOCATION_TYPE_CPU);
+		scene_graph->traverse<CameraNode>(
+				[scene_buffer_data, this](CameraNode* camera) {
+					scene_buffer_data->camera_pos =
+							glm::vec4(camera->transform.get_position(), 1.0f);
+					scene_buffer_data->view = camera->get_view_matrix();
+					scene_buffer_data->proj = camera->get_projection_matrix();
+					scene_buffer_data->view_proj =
+							scene_buffer_data->proj * scene_buffer_data->view;
+					scene_buffer_data->sun_direction = SUN_DIRECTION;
+					scene_buffer_data->sun_power = SUN_POWER;
+					scene_buffer_data->sun_color = SUN_COLOR;
+					return true;
+				});
+	}
+	backend->buffer_unmap(scene_buffer);
 
-		_get_current_frame().deletion_queue.push_function(
-				[=, this]() { backend->buffer_free(scene_data_buffer); });
+	// start rendering
+	static const auto get_proper_material =
+			[this](Ref<MaterialInstance> material) -> Ref<MaterialInstance> {
+		return !material
+				? default_material_instance
+				: std::dynamic_pointer_cast<MaterialInstance>(material);
+	};
 
-		GPUSceneData* scene_uniform_data =
-				(GPUSceneData*)backend->buffer_map(scene_data_buffer);
-		{
-			scene_graph->traverse<CameraNode>([scene_uniform_data](
-													  CameraNode* camera) {
-				scene_uniform_data->camera_pos =
-						glm::vec4(camera->transform.get_position(), 1.0f);
-				scene_uniform_data->view = camera->get_view_matrix();
-				scene_uniform_data->proj = camera->get_projection_matrix();
-				scene_uniform_data->view_proj =
-						scene_uniform_data->proj * scene_uniform_data->view;
-				scene_uniform_data->sun_direction = { -1, -1, -1 };
-				scene_uniform_data->sun_power = 1.0f;
-				scene_uniform_data->sun_color = { 1, 1, 1, 1 };
-				return true;
-			});
+	std::map<Ref<MaterialInstance>, std::vector<Mesh*>> mesh_map;
+	scene_graph->traverse<Mesh>([&](Mesh* mesh) {
+		mesh_map[get_proper_material(mesh->material)].push_back(mesh);
+		return false;
+	});
+
+	UniformSet scene_data_set = GL_NULL_HANDLE;
+	_get_current_frame().deletion_queue.push_function(
+			[=, this]() { backend->uniform_set_free(scene_data_set); });
+
+	bool global_descriptor_set = false;
+
+	for (const auto& [material, meshes] : mesh_map) {
+		if (meshes.empty()) {
+			continue;
 		}
-		backend->buffer_unmap(scene_data_buffer);
 
-		// start rendering
-		static const auto get_proper_material =
-				[this](Ref<MaterialInstance> material)
-				-> Ref<MaterialInstance> {
-			return !material
-					? default_material_instance
-					: std::dynamic_pointer_cast<MaterialInstance>(material);
+		if (!global_descriptor_set) {
+			std::vector<ShaderUniform> scene_data_uniforms(1);
+
+			scene_data_uniforms[0].binding = 0;
+			scene_data_uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
+			scene_data_uniforms[0].data.push_back(scene_buffer);
+
+			scene_data_set = backend->uniform_set_create(
+					scene_data_uniforms, material->shader, 0);
+
+			global_descriptor_set = true;
+		}
+
+		backend->command_bind_graphics_pipeline(p_cmd, material->pipeline);
+
+		// set dynamic state
+		backend->command_set_viewport(p_cmd, draw_extent);
+		backend->command_set_scissor(p_cmd, draw_extent);
+
+		const std::vector<UniformSet> descriptors = {
+			scene_data_set,
+			material->uniform_set,
 		};
+		backend->command_bind_uniform_sets(
+				p_cmd, material->shader, 0, descriptors);
 
-		std::map<Ref<MaterialInstance>, std::vector<Mesh*>> mesh_map;
-		scene_graph->traverse<Mesh>([&](Mesh* mesh) {
-			mesh_map[get_proper_material(mesh->material)].push_back(mesh);
-			return false;
-		});
-
-		UniformSet scene_data_set = GL_NULL_HANDLE;
-		_get_current_frame().deletion_queue.push_function(
-				[=, this]() { backend->uniform_set_free(scene_data_set); });
-
-		bool global_descriptor_set = false;
-
-		for (const auto& [material, meshes] : mesh_map) {
-			if (meshes.empty()) {
+		for (const auto& mesh : meshes) {
+			if (!_is_mesh_visible(mesh, scene_buffer_data->view_proj)) {
 				continue;
 			}
 
-			if (!global_descriptor_set) {
-				std::vector<ShaderUniform> scene_data_uniforms(1);
-				scene_data_uniforms[0].binding = 0;
-				scene_data_uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
-				scene_data_uniforms[0].data.push_back(scene_data_buffer);
+			backend->command_bind_index_buffer(
+					p_cmd, mesh->index_buffer, 0, mesh->index_type);
 
-				scene_data_set = backend->uniform_set_create(
-						scene_data_uniforms, material->shader, 0);
-
-				global_descriptor_set = true;
-			}
-
-			backend->command_bind_graphics_pipeline(p_cmd, material->pipeline);
-
-			// set dynamic state
-			backend->command_set_viewport(
-					p_cmd, { (float)draw_extent.x, (float)draw_extent.y });
-			backend->command_set_scissor(p_cmd, draw_extent);
-
-			const std::vector<UniformSet> descriptors = {
-				scene_data_set,
-				material->uniform_set,
+			GeometryPushConstants push_constants = {
+				.transform = mesh->transform.get_transform_matrix(),
+				.vertex_buffer = mesh->vertex_buffer_address,
 			};
-			backend->command_bind_uniform_sets(
-					p_cmd, material->shader, 0, descriptors);
 
-			for (const auto& mesh : meshes) {
-				if (!_is_mesh_visible(mesh, scene_uniform_data->view_proj)) {
-					continue;
-				}
+			backend->command_push_constants(p_cmd, material->shader, 0,
+					sizeof(GeometryPushConstants), &push_constants);
 
-				backend->command_bind_index_buffer(
-						p_cmd, mesh->index_buffer, 0, mesh->index_type);
+			backend->command_draw_indexed(p_cmd, mesh->index_count);
 
-				GPUDrawPushConstants push_constants = {
-					.transform = mesh->transform.get_transform_matrix(),
-					.vertex_buffer = mesh->vertex_buffer_address,
-				};
-
-				backend->command_push_constants(p_cmd, material->shader, 0,
-						sizeof(GPUDrawPushConstants), &push_constants);
-
-				backend->command_draw_indexed(p_cmd, mesh->index_count);
-
-				stats.triangle_count += mesh->index_count / 3;
-				stats.draw_calls++;
-			}
+			stats.triangle_count += mesh->index_count / 3;
+			stats.draw_calls++;
 		}
 	}
 

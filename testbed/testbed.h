@@ -43,5 +43,5 @@ private:
 
 	Ref<Node> selected_node = nullptr;
 
-	bool draw_grid = true;
+	bool draw_grid = false;
 };

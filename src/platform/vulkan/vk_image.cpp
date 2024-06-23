@@ -174,12 +174,17 @@ Vec3u VulkanRenderBackend::image_get_size(Image p_image) {
 	return size;
 }
 
-Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_filtering) {
+Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_min_filter,
+		ImageFiltering p_mag_filter, ImageWrappingMode p_wrap_u,
+		ImageWrappingMode p_wrap_v, ImageWrappingMode p_wrap_w) {
 	VkSamplerCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	create_info.minFilter = static_cast<VkFilter>(p_filtering);
-	create_info.magFilter = static_cast<VkFilter>(p_filtering);
-	// TODO other fields
+	create_info.minFilter = static_cast<VkFilter>(p_min_filter);
+	create_info.magFilter = static_cast<VkFilter>(p_mag_filter);
+
+	create_info.addressModeU = static_cast<VkSamplerAddressMode>(p_wrap_u);
+	create_info.addressModeV = static_cast<VkSamplerAddressMode>(p_wrap_v);
+	create_info.addressModeW = static_cast<VkSamplerAddressMode>(p_wrap_w);
 
 	VkSampler vk_sampler = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateSampler(device, &create_info, nullptr, &vk_sampler));

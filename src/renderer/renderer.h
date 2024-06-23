@@ -14,23 +14,6 @@ enum GraphicsAPI {
 
 [[nodiscard]] GraphicsAPI find_proper_api() noexcept;
 
-struct GPUSceneData {
-	glm::vec4 camera_pos;
-	glm::mat4 view;
-	glm::mat4 proj;
-	glm::mat4 view_proj;
-	glm::vec3 sun_direction;
-	// in glsl this will be the w component
-	// of the `sun_direction`
-	float sun_power;
-	glm::vec4 sun_color;
-};
-
-struct GPUDrawPushConstants {
-	glm::mat4 transform;
-	BufferDeviceAddress vertex_buffer;
-};
-
 struct RendererSettings {
 	float render_scale = 1.0f;
 	// bool msaa;
@@ -145,20 +128,44 @@ private:
 
 	Swapchain swapchain;
 
+	Vec2u draw_extent;
+
+	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
+	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
+
+	uint32_t frame_number = 0;
+
+	std::unordered_map<RenderState, std::vector<RenderFunc>> submit_funcs;
+
+	static constexpr glm::vec3 SUN_DIRECTION = glm::vec3(-1, -1, -1);
+	static constexpr float SUN_POWER = 1.0f;
+	static constexpr Color SUN_COLOR = COLOR_WHITE;
+	static constexpr float SUN_DISTANCE_FROM_CAMERA = 50.0f;
+
+	// geometry pass resources
+	struct GeometrySceneData {
+		glm::vec4 camera_pos;
+		glm::mat4 view;
+		glm::mat4 proj;
+		glm::mat4 view_proj;
+		glm::vec3 sun_direction;
+		// in glsl this will be the w component
+		// of the `sun_direction`
+		float sun_power;
+		Color sun_color;
+		glm::mat4 light_space_matrix;
+	};
+
+	struct GeometryPushConstants {
+		glm::mat4 transform;
+		BufferDeviceAddress vertex_buffer;
+	};
+
 	Image draw_image;
 	const DataFormat draw_image_format = DATA_FORMAT_R16G16B16A16_SFLOAT;
 
 	Image depth_image;
 	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;
-
-	Vec2u draw_extent;
-
-	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
-
-	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
-	uint32_t frame_number = 0;
-
-	std::unordered_map<RenderState, std::vector<RenderFunc>> submit_funcs;
 
 	// imgui data
 	bool imgui_being_used = false;

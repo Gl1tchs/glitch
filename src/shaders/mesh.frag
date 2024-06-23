@@ -11,32 +11,25 @@ layout(location = 2) in vec2 v_uv;
 
 layout(location = 0) out vec4 o_color;
 
-const float AMBIENT_CONSTANT = 0.2f;
+const float AMBIENT_CONSTANT = 0.15f;
 
 vec3 get_dir_light(vec3 p_normal, vec3 p_view_dir) {
-    vec3 ambient = AMBIENT_CONSTANT * scene_data.sun_color.rgb
-            * material_data.diffuse_factor.rgb
-            * texture(diffuse_texture, v_uv).rgb;
-
     vec3 light_dir = normalize(-scene_data.sun_direction.xyz);
-
-    float diff = max(dot(p_normal, light_dir), 0.0);
-    vec3 diffuse = scene_data.sun_color.rgb * diff
-            * material_data.diffuse_factor.rgb
-            * texture(diffuse_texture, v_uv).rgb;
-
-    // vec3 reflect_dir = reflect(-light_dir, p_normal);
-
-    // Blinn-Phong
     vec3 halfway_dir = normalize(light_dir + p_view_dir);
 
-    float spec = pow(max(dot(p_view_dir, halfway_dir), 0.0),
-            material_data.shininess_factor);
-    vec3 specular = scene_data.sun_color.rgb * spec
-            * (material_data.metallic_factor / 2.0f)
-            * texture(specular_texture, v_uv).rgb;
+    vec3 color = texture(diffuse_texture, v_uv).rgb
+            * material_data.diffuse_factor.rgb;
 
-    return ambient + diffuse + specular;
+    float diff = max(dot(light_dir, p_normal), 0.0);
+    float spec = pow(max(dot(p_normal, halfway_dir), 0.0),
+            material_data.shininess_factor);
+
+    vec3 ambient = AMBIENT_CONSTANT * scene_data.sun_color.rgb;
+    vec3 diffuse = scene_data.sun_color.rgb * diff;
+    vec3 specular = scene_data.sun_color.rgb * spec
+            * (material_data.metallic_factor / 2.0f);
+
+    return (ambient + (diffuse + specular)) * color;
 }
 
 void main() {

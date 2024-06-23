@@ -62,8 +62,12 @@ public:
 
 	Vec3u image_get_size(Image p_image) override;
 
-	Sampler sampler_create(
-			ImageFiltering p_filtering = IMAGE_FILTERING_LINEAR) override;
+	Sampler sampler_create(ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
+			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
+			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_w =
+					IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE) override;
 
 	void sampler_free(Sampler p_sampler) override;
 
@@ -255,10 +259,14 @@ public:
 			uint64_t p_offset, uint32_t p_size,
 			const void* p_push_constants) override;
 
-	void command_set_viewport(CommandBuffer p_cmd, const Vec2f& size) override;
+	void command_set_viewport(CommandBuffer p_cmd, const Vec2u& size) override;
 
 	void command_set_scissor(CommandBuffer p_cmd, const Vec2u& p_size,
 			const Vec2u& p_offset = { 0, 0 }) override;
+
+	void command_set_depth_bias(CommandBuffer p_cmd,
+			float p_depth_bias_constant_factor, float p_depth_bias_clamp,
+			float p_depth_bias_slope_factor) override;
 
 	void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
 			Buffer p_dst_buffer,
