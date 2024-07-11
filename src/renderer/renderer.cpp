@@ -12,14 +12,7 @@
 
 #include "platform/vulkan/vk_backend.h"
 
-#include <GLFW/glfw3.h>
-#include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
-
-#ifndef IMGUI_BUILD_FOR_GLFW
-#define IMGUI_BUILD_FOR_GLFW
-#include <backends/imgui_impl_glfw.cpp>
-#endif
 
 [[nodiscard]] GraphicsAPI find_proper_api() noexcept {
 	return GRAPHICS_API_VULKAN;
@@ -47,10 +40,12 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	backend->init(p_window);
 
 	graphics_queue = backend->queue_get(QUEUE_TYPE_GRAPHICS);
+	// TODO: this is not being used right now
 	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
 
 	swapchain = backend->swapchain_create();
-	backend->swapchain_resize(graphics_queue, swapchain, p_window->get_size());
+	// initialize
+	backend->swapchain_resize(present_queue, swapchain, p_window->get_size());
 
 	draw_image = backend->image_create(draw_image_format, p_window->get_size(),
 			nullptr,
@@ -121,9 +116,6 @@ Renderer::~Renderer() {
 
 	// swapchain cleanup
 	backend->swapchain_free(swapchain);
-
-	// destroy imgui
-	ImGui_ImplGlfw_Shutdown();
 
 	backend->shutdown();
 }
@@ -228,7 +220,7 @@ void Renderer::imgui_begin() {
 	imgui_being_used = true;
 
 	backend->imgui_new_frame_for_platform();
-	ImGui_ImplGlfw_NewFrame();
+
 	ImGui::NewFrame();
 }
 
@@ -411,10 +403,8 @@ void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 
 void Renderer::_imgui_init() {
 	ImGui::CreateContext();
-	ImGui_ImplGlfw_Init(window->get_native_window(), true,
-			s_api == GRAPHICS_API_VULKAN ? GlfwClientApi_Vulkan
-										 : GlfwClientApi_Unknown);
-	backend->imgui_init_for_platform();
+
+	backend->imgui_init_for_platform(window->get_native_window());
 }
 
 void Renderer::_request_resize() {

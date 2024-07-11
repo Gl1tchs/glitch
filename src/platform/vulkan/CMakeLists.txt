@@ -2,6 +2,11 @@ find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE VULKAN_BACKEND_SOURCES "*.h" "*.cpp")
 
+list(APPEND VULKAN_BACKEND_SOURCES
+    ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+)
+
 add_library(gl-vulkan-backend ${VULKAN_BACKEND_SOURCES})
 add_library(gl::vulkan-backend ALIAS gl-vulkan-backend)
 

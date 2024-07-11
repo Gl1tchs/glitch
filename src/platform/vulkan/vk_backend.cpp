@@ -1,7 +1,8 @@
 #include "platform/vulkan/vk_backend.h"
 
-#include "platform/vulkan/vk_common.h"
 #include "renderer/types.h"
+
+#include "platform/vulkan/vk_common.h"
 
 #include <VkBootstrap.h>
 #include <vk_mem_alloc.h>
@@ -11,13 +12,9 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
-
-#ifndef IMGUI_BUILD_FOR_VULKAN
-#define IMGUI_BUILD_FOR_VULKAN
-#include <backends/imgui_impl_vulkan.cpp>
-#endif
 
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL _vk_debug_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -46,14 +43,15 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 	s_instance = this;
 
 	vkb::InstanceBuilder vkb_builder;
-	auto vkb_instance_result = vkb_builder
-									   .set_app_name("glitch")
+	const auto vkb_instance_result =
+			vkb_builder
+					.set_app_name("glitch")
 #ifdef GL_DEBUG_BUILD
-									   .enable_validation_layers()
-									   .set_debug_callback(_vk_debug_callback)
+					.enable_validation_layers()
+					.set_debug_callback(_vk_debug_callback)
 #endif
-									   .require_api_version(1, 3, 0)
-									   .build();
+					.require_api_version(1, 3, 0)
+					.build();
 
 	if (!vkb_instance_result.has_value()) {
 		GL_ASSERT(false, "Unable to create Vulkan instance of version 1.3.0!");
@@ -155,9 +153,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 #endif
 
 	imm_fence = fence_create();
-
 	imm_command_pool = command_pool_create((CommandQueue)&command_queue);
-
 	imm_command_buffer = command_pool_allocate(imm_command_pool);
 
 	deletion_queue.push_function([this]() {
@@ -178,10 +174,7 @@ void VulkanRenderBackend::shutdown() { deletion_queue.flush(); }
 
 void VulkanRenderBackend::device_wait() { vkDeviceWaitIdle(device); }
 
-void VulkanRenderBackend::imgui_init_for_platform() {
-	// 1: create descriptor pool for IMGUI
-	//  the size of the pool is very oversize, but it's copied from imgui demo
-	//  itself.
+void VulkanRenderBackend::imgui_init_for_platform(GLFWwindow* p_glfw_window) {
 	VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
@@ -229,13 +222,16 @@ void VulkanRenderBackend::imgui_init_for_platform() {
 
 	ImGui_ImplVulkan_Init(&init_info);
 
-	ImGui_ImplVulkan_CreateFontsTexture();
-
 	// add the destroy the imgui created structures
 	deletion_queue.push_function([this, imgui_pool]() {
+		ImGui_ImplGlfw_Shutdown();
 		ImGui_ImplVulkan_Shutdown();
+
 		vkDestroyDescriptorPool(device, imgui_pool, nullptr);
 	});
+
+	// init for glfw as well
+	ImGui_ImplGlfw_InitForVulkan(p_glfw_window, true);
 }
 
 void VulkanRenderBackend::imgui_render_for_platform(CommandBuffer p_cmd) {
@@ -245,4 +241,5 @@ void VulkanRenderBackend::imgui_render_for_platform(CommandBuffer p_cmd) {
 
 void VulkanRenderBackend::imgui_new_frame_for_platform() {
 	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
 }

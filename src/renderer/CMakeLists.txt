@@ -16,7 +16,6 @@ target_include_directories(gl-renderer
     ${Vulkan_INCLUDE_DIRS}
     ${TINYGLTF_INCLUDES}
     ${IMGUI_INCLUDES}
-    ${GLFW_INCLUDES}
 )
 
 target_link_libraries(gl-renderer
@@ -26,12 +25,9 @@ target_link_libraries(gl-renderer
     PRIVATE
     ${TINYGLTF_LIBS}
     ${IMGUI_LIBS}
-    ${GLFW_LIBS}
 )
 
 target_precompile_headers(gl-renderer PUBLIC ${ENGINE_DIR}/pch.h)
-
-target_compile_definitions(gl-renderer PRIVATE GLFW_INCLUDE_NONE)
 
 # make sure shaders has been builded before building the engine
 add_dependencies(gl-renderer gl-shaders)
