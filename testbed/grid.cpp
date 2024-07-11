@@ -1,8 +1,10 @@
 #include "grid.h"
+#include "scene/components.h"
 
 #include <renderer/camera.h>
 #include <renderer/render_backend.h>
-#include <renderer/scene_graph.h>
+#include <scene/scene.h>
+#include <scene/view.h>
 
 static std::vector<uint32_t> _get_spirv_data(const fs::path& p_filepath) {
 	size_t file_size = fs::file_size(p_filepath);
@@ -68,55 +70,54 @@ Grid::~Grid() {
 	backend->shader_free(grid_shader);
 }
 
-void Grid::render(Ref<Renderer> p_renderer, SceneGraph* p_scene_graph) {
-	p_renderer->submit(RENDER_STATE_GEOMETRY,
-			[this, p_scene_graph](Ref<RenderBackend> p_backend,
-					CommandBuffer p_cmd, Image p_draw_image,
-					DeletionQueue& p_frame_deletion) {
-				Buffer camera_uniform_buffer =
-						p_backend->buffer_create(sizeof(GridCameraUniform),
-								BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-										BUFFER_USAGE_TRANSFER_SRC_BIT,
-								MEMORY_ALLOCATION_TYPE_CPU);
+void Grid::render(Ref<Renderer> p_renderer, Scene* p_scene) {
+	p_renderer->submit([this, p_scene](Ref<RenderBackend> p_backend,
+							   CommandBuffer p_cmd, Image p_draw_image,
+							   DeletionQueue& p_frame_deletion) {
+		Buffer camera_uniform_buffer = p_backend->buffer_create(
+				sizeof(GridCameraUniform),
+				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+				MEMORY_ALLOCATION_TYPE_CPU);
 
-				p_frame_deletion.push_function([=]() {
-					p_backend->buffer_free(camera_uniform_buffer);
-				});
+		p_frame_deletion.push_function(
+				[=]() { p_backend->buffer_free(camera_uniform_buffer); });
 
-				GridCameraUniform* camera_uniform_data =
-						(GridCameraUniform*)p_backend->buffer_map(
-								camera_uniform_buffer);
-				{
-					p_scene_graph->traverse<CameraNode>(
-							[camera_uniform_data](CameraNode* camera) {
-								camera_uniform_data->view =
-										camera->get_view_matrix();
-								camera_uniform_data->proj =
-										camera->get_projection_matrix();
-								camera_uniform_data->near_plane =
-										camera->near_clip;
-								camera_uniform_data->far_plane =
-										camera->far_clip;
-								return true;
-							});
-				}
-				p_backend->buffer_unmap(camera_uniform_buffer);
+		GridCameraUniform* camera_uniform_data =
+				(GridCameraUniform*)p_backend->buffer_map(
+						camera_uniform_buffer);
+		for (const Entity entity :
+				SceneView<CameraComponent, Transform>(*p_scene)) {
+			CameraComponent& cc = *p_scene->get<CameraComponent>(entity);
 
-				ShaderUniform uniform;
-				uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
-				uniform.binding = 0;
-				uniform.data.push_back(camera_uniform_buffer);
+			if (cc.is_primary) {
+				Transform& transform = *p_scene->get<Transform>(entity);
 
-				UniformSet camera_uniform =
-						p_backend->uniform_set_create(uniform, grid_shader, 0);
-				p_frame_deletion.push_function(
-						[=]() { p_backend->uniform_set_free(camera_uniform); });
+				camera_uniform_data->view =
+						cc.camera.get_view_matrix(transform);
+				camera_uniform_data->proj = cc.camera.get_projection_matrix();
+				camera_uniform_data->near_plane = cc.camera.near_clip;
+				camera_uniform_data->far_plane = cc.camera.far_clip;
 
-				p_backend->command_bind_graphics_pipeline(p_cmd, grid_pipeline);
+				break;
+			}
+		}
+		p_backend->buffer_unmap(camera_uniform_buffer);
 
-				p_backend->command_bind_uniform_sets(
-						p_cmd, grid_shader, 0, camera_uniform);
+		ShaderUniform uniform;
+		uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
+		uniform.binding = 0;
+		uniform.data.push_back(camera_uniform_buffer);
 
-				p_backend->command_draw(p_cmd, 6);
-			});
+		UniformSet camera_uniform =
+				p_backend->uniform_set_create(uniform, grid_shader, 0);
+		p_frame_deletion.push_function(
+				[=]() { p_backend->uniform_set_free(camera_uniform); });
+
+		p_backend->command_bind_graphics_pipeline(p_cmd, grid_pipeline);
+
+		p_backend->command_bind_uniform_sets(
+				p_cmd, grid_shader, 0, camera_uniform);
+
+		p_backend->command_draw(p_cmd, 6);
+	});
 }

@@ -14,6 +14,7 @@ target_link_libraries(glitch-tests
     PRIVATE
     gl::core
     gl::renderer
+    gl::scene
     PRIVATE
     ${CATCH2_LIBS}
 )

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "core/vector.h"
+#include "core/templates/vector.h"
 
 TEST_CASE("Vec2 Dot Product", "[vec2]") {
 	Vec2f v1(9.0f, 5.0f);

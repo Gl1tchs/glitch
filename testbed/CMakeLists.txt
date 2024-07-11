@@ -16,6 +16,7 @@ target_link_libraries(glitch-testbed
     PRIVATE
     gl::core
     gl::renderer
+    gl::scene
     PRIVATE
     ${IMGUI_LIBS}
 )

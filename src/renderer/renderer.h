@@ -6,6 +6,8 @@
 #include "renderer/material.h"
 #include "renderer/types.h"
 
+#include "scene/scene.h"
+
 class RenderBackend;
 
 enum GraphicsAPI {
@@ -34,16 +36,9 @@ struct FrameData {
 	DeletionQueue deletion_queue;
 };
 
-enum RenderState {
-	RENDER_STATE_CLEAR,
-	RENDER_STATE_GEOMETRY,
-};
-
 typedef std::function<void(Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
 		Image p_draw_image, DeletionQueue& frame_deletion)>
 		RenderFunc;
-
-class SceneGraph;
 
 class Renderer {
 public:
@@ -62,9 +57,9 @@ public:
 	void wait_for_device();
 
 	/**
-	 * @brief submits function to run at specified pass
+	 * @brief submits function to rendering.
 	 */
-	void submit(RenderState p_state, RenderFunc p_function);
+	void submit(RenderFunc&& p_function);
 
 	/**
 	 * @brief begin imgui rendering context, all imgui functions
@@ -78,7 +73,7 @@ public:
 	 */
 	void imgui_end();
 
-	void set_scene(SceneGraph* p_scene_graph) { scene_graph = p_scene_graph; }
+	void set_scene(Scene* p_scene) { scene = p_scene; }
 
 	RendererSettings& get_settings() { return settings; }
 
@@ -118,7 +113,7 @@ private:
 
 	Ref<Window> window;
 
-	SceneGraph* scene_graph = nullptr;
+	Scene* scene = nullptr;
 
 	// drawing data
 	Ref<RenderBackend> backend;
@@ -135,7 +130,7 @@ private:
 
 	uint32_t frame_number = 0;
 
-	std::unordered_map<RenderState, std::vector<RenderFunc>> submit_funcs;
+	std::vector<RenderFunc> submit_funcs;
 
 	static constexpr glm::vec3 SUN_DIRECTION = glm::vec3(-1, -1, -1);
 	static constexpr float SUN_POWER = 1.0f;

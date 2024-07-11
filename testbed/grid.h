@@ -7,7 +7,7 @@ public:
 	Grid();
 	~Grid();
 
-	void render(Ref<Renderer> p_renderer, SceneGraph* p_scene_graph);
+	void render(Ref<Renderer> p_renderer, Scene* p_scene);
 
 private:
 	Pipeline grid_pipeline;

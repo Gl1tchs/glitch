@@ -3,6 +3,9 @@
 #include <core/event/input.h>
 #include <renderer/mesh.h>
 #include <renderer/renderer.h>
+#include <scene/components.h>
+#include <scene/scene.h>
+#include <scene/view.h>
 
 #include <imgui.h>
 
@@ -11,45 +14,71 @@ TestBedApplication::TestBedApplication(const ApplicationCreateInfo& p_info) :
 
 void TestBedApplication::_on_start() {
 	// assign the scene to the renderer
-	get_renderer()->set_scene(&scene_graph);
-
-	camera = create_ref<PerspectiveCameraNode>();
-	camera->name = "Main Camera";
-	scene_graph.push_node(camera);
-
-	camera_controller.set_camera(camera.get());
+	get_renderer()->set_scene(&scene);
 
 	material = Material::create();
 
-	Ref<Node> plane = Mesh::load("assets/plane.glb", material);
+	camera_entity = scene.create();
+	scene.assign<TagComponent>(camera_entity)->name = "Camera";
+	{
+		CameraComponent* cc = scene.assign<CameraComponent>(camera_entity);
+		cc->is_primary = true;
+
+		Transform* transform = scene.assign<Transform>(camera_entity);
+
+		camera_controller.set_camera(&cc->camera, transform);
+	}
+
+	plane = Model::load("assets/plane.glb", material);
 	if (plane) {
-		plane->transform.local_position = { 3.9f, 2.4f, 0.0f };
-		plane->transform.local_rotation = { 7.5f, 7.9f, -0.9f };
+		Entity plane_entity = scene.create();
+		scene.assign<TagComponent>(plane_entity)->name = "Plane";
 
-		scene_graph.push_node(plane);
+		Transform& transform = *scene.assign<Transform>(plane_entity);
+		transform.local_position = { 3.9f, 2.4f, 0.0f };
+		transform.local_rotation = { 7.5f, 7.9f, -0.9f };
+
+		MeshRendererComponent& mesh =
+				*scene.assign<MeshRendererComponent>(plane_entity);
+		mesh.model = plane;
 	}
 
-	Ref<Node> gentelman = Mesh::load("assets/gentelman.glb", material);
+	gentelman = Model::load("assets/gentelman.glb", material);
 	if (gentelman) {
-		gentelman->transform.local_position = { -0.6f, 0.8f, 1.9f };
-		gentelman->transform.local_rotation = { 0.0f, 80.0f, 0.0f };
-		gentelman->transform.local_scale = { 1.5f, 1.5f, 1.5f };
+		Entity gentelman_entity = scene.create();
+		scene.assign<TagComponent>(gentelman_entity)->name = "Gentelman";
 
-		scene_graph.push_node(gentelman);
+		Transform& transform = *scene.assign<Transform>(gentelman_entity);
+		transform.local_position = { -0.6f, 0.8f, 1.9f };
+		transform.local_rotation = { 0.0f, 80.0f, 0.0f };
+		transform.local_scale = { 1.5f, 1.5f, 1.5f };
+
+		MeshRendererComponent& mesh =
+				*scene.assign<MeshRendererComponent>(gentelman_entity);
+		mesh.model = gentelman;
 	}
 
-	Ref<Node> floor = Mesh::load("assets/floor.glb", material);
+	floor = Model::load("assets/floor.glb", material);
 	if (floor) {
-		floor->transform.local_scale = { 25, 1, 25 };
+		Entity floor_entity = scene.create();
+		scene.assign<TagComponent>(floor_entity)->name = "Floor";
 
-		scene_graph.push_node(floor);
+		Transform& transform = *scene.assign<Transform>(floor_entity);
+		transform.local_scale = { 25, 1, 25 };
+
+		MeshRendererComponent& mesh =
+				*scene.assign<MeshRendererComponent>(floor_entity);
+		mesh.model = floor;
 	}
 
 	grid = create_ref<Grid>();
 }
 
 void TestBedApplication::_on_update(float p_dt) {
-	camera->aspect_ratio = get_window()->get_aspect_ratio();
+	if (scene.has<CameraComponent>(camera_entity)) {
+		scene.get<CameraComponent>(camera_entity)->camera.aspect_ratio =
+				get_window()->get_aspect_ratio();
+	}
 
 	static bool mouse_disabled = false;
 	if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
@@ -93,12 +122,22 @@ void TestBedApplication::_on_update(float p_dt) {
 	}
 
 	if (draw_grid) {
-		grid->render(get_renderer(), &scene_graph);
+		grid->render(get_renderer(), &scene);
 	}
 }
 
 void TestBedApplication::_on_destroy() {
 	get_renderer()->wait_for_device();
+
+	if (plane) {
+		Model::destroy(plane);
+	}
+	if (gentelman) {
+		Model::destroy(gentelman);
+	}
+	if (floor) {
+		Model::destroy(floor);
+	}
 
 	Material::destroy(material);
 }
@@ -116,14 +155,19 @@ void TestBedApplication::_imgui_render(float p_dt) {
 
 void TestBedApplication::_draw_hierarchy() {
 	ImGui::Begin("Scene");
-	_draw_node(scene_graph.get_root());
+
+	for (auto e : SceneView(scene)) {
+		_draw_entity(e);
+	}
+
 	ImGui::End();
 }
 
-void TestBedApplication::_draw_node(const Ref<Node> p_node) {
-	ImGui::PushID(p_node->uid.value);
+void TestBedApplication::_draw_entity(const Entity p_entity) {
+	ImGui::PushID(p_entity);
 
-	const bool is_selected = selected_node && selected_node->uid == p_node->uid;
+	const bool is_selected =
+			selected_entity != INVALID_ENTITY && selected_entity == p_entity;
 
 	int flags = ImGuiTreeNodeFlags_DefaultOpen |
 			ImGuiTreeNodeFlags_OpenOnArrow |
@@ -132,43 +176,51 @@ void TestBedApplication::_draw_node(const Ref<Node> p_node) {
 		flags |= ImGuiTreeNodeFlags_Selected;
 	}
 
-	if (p_node->children.size() >= 1) {
-		if (ImGui::TreeNodeEx(p_node->name.c_str(), flags)) {
-			if (ImGui::IsItemClicked()) {
-				selected_node = p_node;
-			}
+	const std::string name = scene.has<TagComponent>(p_entity)
+			? scene.get<TagComponent>(p_entity)->name
+			: std::to_string(p_entity);
 
-			for (const auto& child : p_node->children) {
-				_draw_node(child);
-			}
-
-			ImGui::TreePop();
-		}
-	} else {
-		if (ImGui::Selectable(p_node->name.c_str(), is_selected)) {
-			selected_node = p_node;
-		}
+	if (ImGui::Selectable(name.c_str(), is_selected)) {
+		selected_entity = p_entity;
 	}
 
 	ImGui::PopID();
 }
 
 void TestBedApplication::_draw_inspector() {
-	if (selected_node == nullptr) {
+	if (selected_entity == INVALID_ENTITY) {
 		return;
 	}
 
 	ImGui::Begin("Inspector");
 
-	ImGui::Text("%s", selected_node->name.c_str());
+	if (scene.has<TagComponent>(selected_entity)) {
+		ImGui::TextUnformatted(
+				scene.get<TagComponent>(selected_entity)->name.c_str());
+	} else {
+		ImGui::Text("%s", std::to_string(selected_entity).c_str());
+	}
 
-	ImGui::SeparatorText("Transform");
+	if (scene.has<Transform>(selected_entity)) {
+		Transform* transform = scene.get<Transform>(selected_entity);
 
-	ImGui::DragFloat3(
-			"Position", &selected_node->transform.local_position.x, 0.1f);
-	ImGui::DragFloat3(
-			"Rotation", &selected_node->transform.local_rotation.x, 0.1f);
-	ImGui::DragFloat3("Scale", &selected_node->transform.local_scale.x, 0.1f);
+		ImGui::SeparatorText("Transform");
+
+		ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
+		ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
+		ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
+	}
+
+	if (scene.has<MeshRendererComponent>(selected_entity)) {
+		const MeshRendererComponent& mesh_renderer =
+				*scene.get<MeshRendererComponent>(selected_entity);
+
+		if (Ref<Model> model = mesh_renderer.model.lock()) {
+			ImGui::SeparatorText("Mesh Renderer");
+
+			ImGui::TextUnformatted(model->name.c_str());
+		}
+	}
 
 	ImGui::End();
 }

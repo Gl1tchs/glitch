@@ -1,34 +1,32 @@
 #pragma once
 
-#include "renderer/node.h"
+#include "core/transform.h"
 
-struct CameraNode : public Node {
-	GL_IMPL_NODE(NODE_TYPE_CAMERA)
-
+struct Camera {
 	float aspect_ratio = 1.0f;
 	float near_clip = -1.0f;
 	float far_clip = 1.0f;
 
-	virtual glm::mat4 get_view_matrix() const = 0;
+	virtual glm::mat4 get_view_matrix(Transform& p_transform) const = 0;
 	virtual glm::mat4 get_projection_matrix() const = 0;
 };
 
-struct OrthographicCameraNode : CameraNode {
+struct OrthographicCamera : Camera {
 	float zoom_level = 1.0f;
 
-	OrthographicCameraNode();
-	~OrthographicCameraNode() = default;
+	OrthographicCamera();
+	~OrthographicCamera() = default;
 
-	glm::mat4 get_view_matrix() const override;
+	glm::mat4 get_view_matrix(Transform& p_transform) const override;
 	glm::mat4 get_projection_matrix() const override;
 };
 
-struct PerspectiveCameraNode : CameraNode {
+struct PerspectiveCamera : Camera {
 	float fov = 45.0f;
 
-	PerspectiveCameraNode();
-	~PerspectiveCameraNode() = default;
+	PerspectiveCamera();
+	~PerspectiveCamera() = default;
 
-	glm::mat4 get_view_matrix() const override;
+	glm::mat4 get_view_matrix(Transform& p_transform) const override;
 	glm::mat4 get_projection_matrix() const override;
 };

@@ -6,18 +6,19 @@ class CameraController {
 public:
 	CameraController();
 
-	void set_camera(CameraNode* camera);
+	void set_camera(Camera* p_camera, Transform* p_transform);
 
-	void update(float dt);
+	void update(float p_dt);
 
-	void set_speed(float value);
+	void set_speed(float p_value);
 	float get_speed() const;
 
-	void set_sensitivity(float value);
+	void set_sensitivity(float p_value);
 	float get_sensitivity() const;
 
 private:
-	CameraNode* camera;
+	Camera* camera;
+	Transform* transform;
 
 	const float SPEED_DEFAULT = 10.0f;
 	const float SPEED_TURBO = 30.0f;

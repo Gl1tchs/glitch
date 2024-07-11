@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.29)
 
 project(glitch)
 
-option(GL_BUILD_TESTS "Build tests!" OFF)
+option(GL_BUILD_TESTS "Build tests!" ON)
 set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
 
 option(GL_BUILD_TESTBED "Build testbed application!" ON)

@@ -21,6 +21,7 @@ target_include_directories(gl-renderer
 
 target_link_libraries(gl-renderer
     PRIVATE
+    gl::scene
     gl::vulkan-backend
     PRIVATE
     ${TINYGLTF_LIBS}

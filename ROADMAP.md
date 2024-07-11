@@ -24,7 +24,7 @@
 - [x] Understand render passes and subpasses
 
 ## Advanced Rendering
-- [ ] Implement various lighting models (Phong, Blinn-Phong, PBR)
+- [x] Implement various lighting models (Phong, Blinn-Phong, PBR)
 - [ ] Shadow mapping techniques
 - [ ] Screen-space ambient occlusion (SSAO)
 - [ ] Instanced rendering to draw multiple objects efficiently

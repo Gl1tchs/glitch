@@ -6,19 +6,20 @@ CameraController::CameraController() :
 		last_mouse_pos(
 				Input::get_mouse_position().x, Input::get_mouse_position().y) {}
 
-void CameraController::set_camera(CameraNode* camera) {
-	if (!camera) {
+void CameraController::set_camera(Camera* p_camera, Transform* p_transform) {
+	if (!p_camera || !p_transform) {
 		return;
 	}
 
-	this->camera = camera;
+	camera = p_camera;
+	transform = p_transform;
 
-	camera->transform.local_position = { -5, 3, 10 };
-	camera->transform.local_rotation = { -15, -30, 0 };
-	camera->transform.local_scale = { 1, 1, 1 };
+	p_transform->local_position = { -5, 3, 10 };
+	p_transform->local_rotation = { -15, -30, 0 };
+	p_transform->local_scale = { 1, 1, 1 };
 }
 
-void CameraController::update(float dt) {
+void CameraController::update(float p_dt) {
 	if (!camera) {
 		return;
 	}
@@ -27,13 +28,13 @@ void CameraController::update(float dt) {
 									Input::get_mouse_position().y) -
 			last_mouse_pos;
 
-	glm::vec3 new_rotation = camera->transform.local_rotation +
+	glm::vec3 new_rotation = transform->local_rotation +
 			glm::vec3(-mouse_delta.y, -mouse_delta.x, 0.0f) * sensitivity;
 
 	// clamp between (-90,90) to make it realistic :)
 	new_rotation.x = glm::clamp(new_rotation.x, -89.0f, 89.0f);
 
-	camera->transform.local_rotation = new_rotation;
+	transform->local_rotation = new_rotation;
 
 	// store last mouse pos to prevent instant rotations
 	last_mouse_pos = glm::vec2(
@@ -47,37 +48,33 @@ void CameraController::update(float dt) {
 
 	// forward / backward controls
 	if (Input::is_key_pressed(KEY_CODE_W)) {
-		camera->transform.local_position +=
-				camera->transform.get_forward() * speed * dt;
+		transform->local_position += transform->get_forward() * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_S)) {
-		camera->transform.local_position -=
-				camera->transform.get_forward() * speed * dt;
+		transform->local_position -= transform->get_forward() * speed * p_dt;
 	}
 
 	// right / left controls
 	if (Input::is_key_pressed(KEY_CODE_D)) {
-		camera->transform.local_position +=
-				camera->transform.get_right() * speed * dt;
+		transform->local_position += transform->get_right() * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_A)) {
-		camera->transform.local_position -=
-				camera->transform.get_right() * speed * dt;
+		transform->local_position -= transform->get_right() * speed * p_dt;
 	}
 
 	// up / down controls
 	if (Input::is_key_pressed(KEY_CODE_E)) {
-		camera->transform.local_position += WORLD_UP * speed * dt;
+		transform->local_position += WORLD_UP * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_Q)) {
-		camera->transform.local_position -= WORLD_UP * speed * dt;
+		transform->local_position -= WORLD_UP * speed * p_dt;
 	}
 }
 
-void CameraController::set_speed(float value) { speed = value; }
+void CameraController::set_speed(float p_value) { speed = p_value; }
 
 float CameraController::get_speed() const { return speed; }
 
-void CameraController::set_sensitivity(float value) { sensitivity = value; }
+void CameraController::set_sensitivity(float p_value) { sensitivity = p_value; }
 
 float CameraController::get_sensitivity() const { return sensitivity; }

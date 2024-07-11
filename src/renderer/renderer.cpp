@@ -4,8 +4,11 @@
 
 #include "renderer/camera.h"
 #include "renderer/mesh.h"
-#include "renderer/scene_graph.h"
 #include "renderer/types.h"
+
+#include "scene/components.h"
+#include "scene/scene.h"
+#include "scene/view.h"
 
 #include "platform/vulkan/vk_backend.h"
 
@@ -126,7 +129,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::wait_and_render() {
-	if (!scene_graph) {
+	if (!scene) {
 		GL_LOG_WARNING("No scene graph found to render skipping!");
 		return;
 	}
@@ -167,15 +170,6 @@ void Renderer::wait_and_render() {
 
 		backend->command_clear_color(
 				cmd, draw_image, { 0.1f, 0.1f, 0.1f, 1.0f });
-
-		if (const auto it = submit_funcs.find(RENDER_STATE_CLEAR);
-				it != submit_funcs.end()) {
-			for (const auto& submit : it->second) {
-				submit(backend, cmd, draw_image,
-						_get_current_frame().deletion_queue);
-			}
-			submit_funcs[RENDER_STATE_CLEAR].clear();
-		}
 
 		backend->command_transition_image(cmd, draw_image, IMAGE_LAYOUT_GENERAL,
 				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -226,8 +220,8 @@ void Renderer::wait_and_render() {
 
 void Renderer::wait_for_device() { backend->device_wait(); }
 
-void Renderer::submit(RenderState p_state, RenderFunc p_function) {
-	submit_funcs[p_state].push_back(p_function);
+void Renderer::submit(RenderFunc&& p_function) {
+	submit_funcs.push_back(std::move(p_function));
 }
 
 void Renderer::imgui_begin() {
@@ -240,7 +234,8 @@ void Renderer::imgui_begin() {
 
 void Renderer::imgui_end() { ImGui::Render(); }
 
-static bool _is_mesh_visible(const Mesh* mesh, const glm::mat4& viewproj) {
+static bool _is_mesh_visible(const Transform& transform, const Ref<Mesh> mesh,
+		const glm::mat4& viewproj) {
 	constexpr std::array<glm::vec3, 8> corners{
 		glm::vec3{ 1.0f, 1.0f, 1.0f },
 		glm::vec3{ 1.0f, 1.0f, -1.0f },
@@ -252,7 +247,7 @@ static bool _is_mesh_visible(const Mesh* mesh, const glm::mat4& viewproj) {
 		glm::vec3{ -1.0f, -1.0f, -1.0f },
 	};
 
-	glm::mat4 matrix = viewproj * mesh->transform.get_transform_matrix();
+	glm::mat4 matrix = viewproj * transform.get_transform_matrix();
 
 	glm::vec3 min = { 1.5, 1.5, 1.5 };
 	glm::vec3 max = { -1.5, -1.5, -1.5 };
@@ -297,19 +292,26 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	GeometrySceneData* scene_buffer_data =
 			(GeometrySceneData*)backend->buffer_map(scene_buffer);
 	{
-		scene_graph->traverse<CameraNode>(
-				[scene_buffer_data, this](CameraNode* camera) {
-					scene_buffer_data->camera_pos =
-							glm::vec4(camera->transform.get_position(), 1.0f);
-					scene_buffer_data->view = camera->get_view_matrix();
-					scene_buffer_data->proj = camera->get_projection_matrix();
-					scene_buffer_data->view_proj =
-							scene_buffer_data->proj * scene_buffer_data->view;
-					scene_buffer_data->sun_direction = SUN_DIRECTION;
-					scene_buffer_data->sun_power = SUN_POWER;
-					scene_buffer_data->sun_color = SUN_COLOR;
-					return true;
-				});
+		for (const Entity entity :
+				SceneView<CameraComponent, Transform>(*scene)) {
+			const CameraComponent& cc = *scene->get<CameraComponent>(entity);
+
+			if (cc.is_primary) {
+				Transform& transform = *scene->get<Transform>(entity);
+
+				scene_buffer_data->camera_pos =
+						glm::vec4(transform.get_position(), 1.0f);
+				scene_buffer_data->view = cc.camera.get_view_matrix(transform);
+				scene_buffer_data->proj = cc.camera.get_projection_matrix();
+				scene_buffer_data->view_proj =
+						scene_buffer_data->proj * scene_buffer_data->view;
+				scene_buffer_data->sun_direction = SUN_DIRECTION;
+				scene_buffer_data->sun_power = SUN_POWER;
+				scene_buffer_data->sun_color = SUN_COLOR;
+
+				break;
+			}
+		}
 	}
 	backend->buffer_unmap(scene_buffer);
 
@@ -321,17 +323,33 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 				: std::dynamic_pointer_cast<MaterialInstance>(material);
 	};
 
-	std::map<Ref<MaterialInstance>, std::vector<Mesh*>> mesh_map;
-	scene_graph->traverse<Mesh>([&](Mesh* mesh) {
-		mesh_map[get_proper_material(mesh->material)].push_back(mesh);
-		return false;
-	});
+	std::map<Ref<MaterialInstance>,
+			std::vector<std::pair<Transform, Ref<Mesh>>>>
+			mesh_map;
+
+	for (const Entity entity :
+			SceneView<MeshRendererComponent, Transform>(*scene)) {
+		const MeshRendererComponent& mesh_component =
+				*scene->get<MeshRendererComponent>(entity);
+		const Transform& transform = *scene->get<Transform>(entity);
+
+		if (Ref<Model> model = mesh_component.model.lock()) {
+			for (auto mesh : model->meshes) {
+				mesh_map[get_proper_material(mesh->material)].push_back(
+						std::make_pair(transform, mesh));
+			}
+		}
+	}
 
 	UniformSet scene_data_set = GL_NULL_HANDLE;
 	_get_current_frame().deletion_queue.push_function(
 			[=, this]() { backend->uniform_set_free(scene_data_set); });
 
 	bool global_descriptor_set = false;
+
+	// set dynamic state
+	backend->command_set_viewport(p_cmd, draw_extent);
+	backend->command_set_scissor(p_cmd, draw_extent);
 
 	for (const auto& [material, meshes] : mesh_map) {
 		if (meshes.empty()) {
@@ -353,10 +371,6 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 
 		backend->command_bind_graphics_pipeline(p_cmd, material->pipeline);
 
-		// set dynamic state
-		backend->command_set_viewport(p_cmd, draw_extent);
-		backend->command_set_scissor(p_cmd, draw_extent);
-
 		const std::vector<UniformSet> descriptors = {
 			scene_data_set,
 			material->uniform_set,
@@ -364,8 +378,9 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 		backend->command_bind_uniform_sets(
 				p_cmd, material->shader, 0, descriptors);
 
-		for (const auto& mesh : meshes) {
-			if (!_is_mesh_visible(mesh, scene_buffer_data->view_proj)) {
+		for (const auto& [transform, mesh] : meshes) {
+			if (!_is_mesh_visible(
+						transform, mesh, scene_buffer_data->view_proj)) {
 				continue;
 			}
 
@@ -373,7 +388,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 					p_cmd, mesh->index_buffer, 0, mesh->index_type);
 
 			GeometryPushConstants push_constants = {
-				.transform = mesh->transform.get_transform_matrix(),
+				.transform = transform.get_transform_matrix(),
 				.vertex_buffer = mesh->vertex_buffer_address,
 			};
 
@@ -387,14 +402,10 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 		}
 	}
 
-	if (const auto it = submit_funcs.find(RENDER_STATE_GEOMETRY);
-			it != submit_funcs.end()) {
-		for (const auto& submit : it->second) {
-			submit(backend, p_cmd, draw_image,
-					_get_current_frame().deletion_queue);
-		}
-		submit_funcs[RENDER_STATE_GEOMETRY].clear();
+	for (const auto& submit : submit_funcs) {
+		submit(backend, p_cmd, draw_image, _get_current_frame().deletion_queue);
 	}
+	submit_funcs.clear();
 
 	backend->command_end_rendering(p_cmd);
 }
