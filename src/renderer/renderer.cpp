@@ -333,19 +333,24 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 				*scene->get<MeshRendererComponent>(entity);
 		const Transform& transform = *scene->get<Transform>(entity);
 
-		if (Ref<Model> model = mesh_component.model.lock()) {
-			for (auto mesh : model->meshes) {
+		if (mesh_component.model) {
+			for (const auto& mesh : mesh_component.model->meshes) {
 				mesh_map[get_proper_material(mesh->material)].push_back(
 						std::make_pair(transform, mesh));
 			}
 		}
 	}
 
-	UniformSet scene_data_set = GL_NULL_HANDLE;
+	ShaderUniform scene_data_uniform;
+	scene_data_uniform.binding = 0;
+	scene_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
+	scene_data_uniform.data.push_back(scene_buffer);
+
+	UniformSet scene_data_set = backend->uniform_set_create(
+			scene_data_uniform, default_material->shader, 0);
+
 	_get_current_frame().deletion_queue.push_function(
 			[=, this]() { backend->uniform_set_free(scene_data_set); });
-
-	bool global_descriptor_set = false;
 
 	// set dynamic state
 	backend->command_set_viewport(p_cmd, draw_extent);
@@ -354,19 +359,6 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	for (const auto& [material, meshes] : mesh_map) {
 		if (meshes.empty()) {
 			continue;
-		}
-
-		if (!global_descriptor_set) {
-			std::vector<ShaderUniform> scene_data_uniforms(1);
-
-			scene_data_uniforms[0].binding = 0;
-			scene_data_uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
-			scene_data_uniforms[0].data.push_back(scene_buffer);
-
-			scene_data_set = backend->uniform_set_create(
-					scene_data_uniforms, material->shader, 0);
-
-			global_descriptor_set = true;
 		}
 
 		backend->command_bind_graphics_pipeline(p_cmd, material->pipeline);

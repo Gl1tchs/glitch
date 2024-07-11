@@ -215,10 +215,10 @@ void TestBedApplication::_draw_inspector() {
 		const MeshRendererComponent& mesh_renderer =
 				*scene.get<MeshRendererComponent>(selected_entity);
 
-		if (Ref<Model> model = mesh_renderer.model.lock()) {
+		if (mesh_renderer.model) {
 			ImGui::SeparatorText("Mesh Renderer");
 
-			ImGui::TextUnformatted(model->name.c_str());
+			ImGui::TextUnformatted(mesh_renderer.model->name.c_str());
 		}
 	}
 

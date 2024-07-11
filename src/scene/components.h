@@ -13,5 +13,5 @@ struct CameraComponent {
 };
 
 struct MeshRendererComponent {
-	Weak<Model> model;
+	Ref<Model> model;
 };
