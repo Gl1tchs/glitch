@@ -1,79 +1,79 @@
 #pragma once
 
-inline constexpr uint32_t MAX_ENTITIES = 1000; // TODO: dynamically allocate
-inline constexpr uint32_t MAX_COMPONENTS = 32;
-
-// first 32 bits is index and last 32 bits are version
-typedef uint64_t Entity;
-
-constexpr inline Entity create_entity_id(uint32_t p_index, uint32_t p_version) {
-	return ((Entity)p_index << 32) | p_version;
-}
-
-constexpr inline uint32_t get_entity_index(Entity p_entity) {
-	return p_entity >> 32;
-}
-
-constexpr inline uint32_t get_entity_version(Entity p_entity) {
-	// this conversation will loose the top 32 bits
-	return (uint32_t)p_entity;
-}
-
-constexpr inline bool is_entity_valid(Entity p_entity) {
-	return (p_entity >> 32) != -1;
-}
-
-inline constexpr Entity INVALID_ENTITY = create_entity_id(UINT32_MAX, 0);
-
-typedef std::bitset<MAX_COMPONENTS> ComponentMask;
-
-extern uint32_t s_component_counter;
-
-// returns different id for different component types
-template <class T> inline uint32_t get_component_id() {
-	static uint32_t s_component_id = s_component_counter++;
-	return s_component_id;
-}
-
-class ComponentPool {
-public:
-	ComponentPool(size_t p_element_size) : element_size(p_element_size) {
-		data = new uint8_t[element_size * MAX_ENTITIES];
-	}
-
-	~ComponentPool() { delete[] data; }
-
-	void* get(size_t p_index) { return data + p_index * element_size; }
-
-private:
-	uint8_t* data = nullptr;
-	size_t element_size = 0;
-};
+#include "scene/component_lookup.h"
+#include "scene/entity.h"
+#include "scene/view.h"
 
 class Scene {
 public:
+	/**
+	 * @brief create new entity instance on the scene
+	 */
 	Entity create();
 
+	/**
+	 * @brief find out wether the entity is valid or not
+	 */
 	bool is_valid(Entity p_entity);
 
+	/**
+	 * @brief removes entity from the scene and increments
+	 * version
+	 */
 	void destroy(Entity p_entity);
 
+	/**
+	 * @brief assigns specified component to the entity
+	 */
 	template <typename T> T* assign(Entity p_entity);
 
+	/**
+	 * @brief assigns specified components to the entity
+	 */
+	template <typename... TComponents>
+		requires MultiParameter<TComponents...>
+	std::tuple<TComponents*...> assign(Entity p_entity);
+
+	/**
+	 * @brief remove specified component from the entity
+	 */
 	template <typename T> void remove(Entity p_entity);
 
+	/**
+	 * @brief remove specified components from the entity
+	 */
+	template <typename... TComponents>
+		requires MultiParameter<TComponents...>
+	void remove(Entity p_entity);
+
+	/**
+	 * @brief get specified component from the entity
+	 */
 	template <typename T> T* get(Entity p_entity);
 
-	template <typename T> bool has(Entity p_entity);
+	/**
+	 * @brief get specified components from the entity
+	 */
+	template <typename... TComponents>
+		requires MultiParameter<TComponents...>
+	std::tuple<TComponents*...> get(Entity p_entity);
+
+	/**
+	 * @brief find out wether an entity has the specified components
+	 */
+	template <typename... TComponents> bool has(Entity p_entity);
+
+	/**
+	 * @brief get entities with specified components,
+	 * if any component not provided it will return all
+	 * of the entities
+	 */
+	template <typename... TComponents> SceneView<TComponents...> view();
 
 private:
 	uint32_t entity_counter = 0;
 
-	struct EntityDesc {
-		Entity id;
-		ComponentMask mask;
-	};
-	std::vector<EntityDesc> entities;
+	EntityContainer entities;
 
 	// indices of the `entities` list which are available
 	std::queue<Entity> free_indices;
@@ -106,6 +106,16 @@ template <typename T> T* Scene::assign(Entity p_entity) {
 	return component;
 }
 
+template <typename... TComponents>
+	requires MultiParameter<TComponents...>
+std::tuple<TComponents*...> Scene::assign(Entity p_entity) {
+	if (!is_valid(p_entity)) {
+		return std::make_tuple(static_cast<TComponents*>(nullptr)...);
+	}
+
+	return std::make_tuple(assign<TComponents>(p_entity)...);
+}
+
 template <typename T> void Scene::remove(Entity p_entity) {
 	if (!is_valid(p_entity)) {
 		return;
@@ -113,6 +123,16 @@ template <typename T> void Scene::remove(Entity p_entity) {
 
 	const uint32_t component_id = get_component_id<T>();
 	entities[get_entity_index(p_entity)].mask.reset(component_id);
+}
+
+template <typename... TComponents>
+	requires MultiParameter<TComponents...>
+void Scene::remove(Entity p_entity) {
+	if (!is_valid(p_entity)) {
+		return;
+	}
+
+	(remove<TComponents>(p_entity), ...);
 }
 
 template <typename T> T* Scene::get(Entity p_entity) {
@@ -131,11 +151,31 @@ template <typename T> T* Scene::get(Entity p_entity) {
 	return component;
 }
 
-template <typename T> bool Scene::has(Entity p_entity) {
+template <typename... TComponents>
+	requires MultiParameter<TComponents...>
+std::tuple<TComponents*...> Scene::get(Entity p_entity) {
+	if (!is_valid(p_entity)) {
+		return std::make_tuple(static_cast<TComponents*>(nullptr)...);
+	}
+
+	return std::make_tuple(get<TComponents>(p_entity)...);
+}
+
+template <typename... TComponents> bool Scene::has(Entity p_entity) {
 	if (!is_valid(p_entity)) {
 		return false;
 	}
 
-	const uint32_t component_id = get_component_id<T>();
-	return entities[get_entity_index(p_entity)].mask.test(component_id);
+	const uint32_t component_ids[] = { get_component_id<TComponents>()... };
+	for (int i = 0; i < sizeof...(TComponents); i++) {
+		if (!entities[get_entity_index(p_entity)].mask.test(component_ids[i])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+template <typename... TComponents> SceneView<TComponents...> Scene::view() {
+	return SceneView<TComponents...>(&entities);
 }

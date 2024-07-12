@@ -103,10 +103,9 @@ static Image _load_material_image(const tinygltf::Model& p_model,
 	return image;
 }
 
-static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
+static Ref<Mesh> _process_gltf_mesh(const tinygltf::Model& p_model,
 		const tinygltf::Primitive& p_primitive, const fs::path& p_directory,
-		Ref<Material> p_material, const std::string& p_name,
-		int p_model_index) {
+		const std::string& p_name, int p_model_index) {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
@@ -225,31 +224,32 @@ static Ref<Mesh> _process_mesh(const tinygltf::Model& p_model,
 		// TODO get sampler from gltf
 		resources.sampler = Renderer::get_default_sampler();
 
-		new_mesh->material = p_material->create_instance(resources);
+		new_mesh->material =
+				Renderer::get_default_material()->create_instance(resources);
 	}
 
 	return new_mesh;
 }
 
-static void _process_node(const tinygltf::Model& p_model,
+static void _process_gltf_node(const tinygltf::Model& p_model,
 		const tinygltf::Node& p_node, const fs::path& p_directory,
-		Ref<Material> p_material, Ref<Model> p_parent, int p_model_index) {
+		Ref<Model> p_parent, int p_model_index) {
 	if (p_node.mesh >= 0) {
 		const auto& mesh = p_model.meshes[p_node.mesh];
 		for (const auto& primitive : mesh.primitives) {
-			p_parent->meshes.push_back(_process_mesh(p_model, primitive,
-					p_directory, p_material, mesh.name, p_model_index));
+			p_parent->meshes.push_back(_process_gltf_mesh(
+					p_model, primitive, p_directory, mesh.name, p_model_index));
 		}
 	}
 
 	for (const auto& child_index : p_node.children) {
 		const auto& child_node = p_model.nodes[child_index];
-		_process_node(p_model, child_node, p_directory, p_material, p_parent,
-				p_model_index);
+		_process_gltf_node(
+				p_model, child_node, p_directory, p_parent, p_model_index);
 	}
 }
 
-Ref<Model> Model::load(const fs::path& p_path, Ref<Material> p_material) {
+Ref<Model> Model::load_gltf(const fs::path& p_path) {
 	tinygltf::TinyGLTF loader;
 	tinygltf::Model gltf;
 	std::string err, warn;
@@ -282,8 +282,8 @@ Ref<Model> Model::load(const fs::path& p_path, Ref<Material> p_material) {
 
 	for (const auto& node_index : gltf.scenes[gltf.defaultScene].nodes) {
 		const auto& node = gltf.nodes[node_index];
-		_process_node(gltf, node, p_path.parent_path(), p_material, model,
-				s_mesh_counter++);
+		_process_gltf_node(
+				gltf, node, p_path.parent_path(), model, s_mesh_counter++);
 	}
 
 	return model;

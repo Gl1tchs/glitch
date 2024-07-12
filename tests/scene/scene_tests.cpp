@@ -3,7 +3,6 @@
 #include "core/transform.h"
 
 #include "scene/scene.h"
-#include "scene/view.h"
 
 TEST_CASE("Scene entity creation and destruction", "[Scene]") {
 	Scene scene;
@@ -124,14 +123,11 @@ TEST_CASE("Scene views", "[Scene]") {
 	Entity e2 = scene.create();
 	Entity e3 = scene.create();
 
-	scene.assign<TestComponent1>(e1);
-	scene.assign<TestComponent1>(e2);
+	scene.assign<TestComponent1, TestComponent2>(e1);
+	scene.assign<TestComponent1, TestComponent2>(e2);
 	scene.assign<TestComponent1>(e3);
 
-	scene.assign<TestComponent2>(e1);
-	scene.assign<TestComponent2>(e2);
-
-	const auto view1 = SceneView<TestComponent1>(scene);
+	const auto view1 = scene.view<TestComponent1>();
 	{
 		auto it = view1.begin();
 
@@ -150,7 +146,7 @@ TEST_CASE("Scene views", "[Scene]") {
 		REQUIRE(it == view1.end());
 	}
 
-	const auto view2 = SceneView<TestComponent2>(scene);
+	const auto view2 = scene.view<TestComponent2>();
 	{
 		auto it = view2.begin();
 
@@ -165,7 +161,7 @@ TEST_CASE("Scene views", "[Scene]") {
 		REQUIRE(it == view2.end());
 	}
 
-	const auto view3 = SceneView(scene);
+	const auto view3 = scene.view();
 	{
 		auto it = view3.begin();
 

@@ -14,3 +14,4 @@ and use texture indexing.
 - [ ] Shadow mapping.
 - [ ] Other light sources.
 - [ ] Font rendering
+- [ ] Infinite far plane

@@ -86,17 +86,16 @@ void Grid::render(Ref<Renderer> p_renderer, Scene* p_scene) {
 				(GridCameraUniform*)p_backend->buffer_map(
 						camera_uniform_buffer);
 		for (const Entity entity :
-				SceneView<CameraComponent, Transform>(*p_scene)) {
-			CameraComponent& cc = *p_scene->get<CameraComponent>(entity);
+				p_scene->view<CameraComponent, Transform>()) {
+			auto [cc, transform] =
+					p_scene->get<CameraComponent, Transform>(entity);
 
-			if (cc.is_primary) {
-				Transform& transform = *p_scene->get<Transform>(entity);
-
+			if (cc->is_primary) {
 				camera_uniform_data->view =
-						cc.camera.get_view_matrix(transform);
-				camera_uniform_data->proj = cc.camera.get_projection_matrix();
-				camera_uniform_data->near_plane = cc.camera.near_clip;
-				camera_uniform_data->far_plane = cc.camera.far_clip;
+						cc->camera.get_view_matrix(*transform);
+				camera_uniform_data->proj = cc->camera.get_projection_matrix();
+				camera_uniform_data->near_plane = cc->camera.near_clip;
+				camera_uniform_data->far_plane = cc->camera.far_clip;
 
 				break;
 			}

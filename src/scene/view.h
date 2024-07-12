@@ -1,17 +1,18 @@
 #pragma once
 
-#include "scene/scene.h"
+#include "scene/component_lookup.h"
+#include "scene/entity.h"
 
 template <typename... TComponents> class SceneViewIterator {
 public:
-	SceneViewIterator(Scene* p_scene, uint32_t p_index, ComponentMask p_mask,
-			bool p_all) :
-			scene(p_scene), index(p_index), mask(p_mask), all(p_all) {}
+	SceneViewIterator(EntityContainer* p_entities, uint32_t p_index,
+			ComponentMask p_mask, bool p_all) :
+			entities(p_entities), index(p_index), mask(p_mask), all(p_all) {}
 
-	Entity operator*() const { return scene->entities[index].id; }
+	Entity operator*() const { return entities->at(index).id; }
 
 	bool operator==(const SceneViewIterator& p_other) const {
-		return index == p_other.index || index == scene->entities.size();
+		return index == p_other.index || index == entities->size();
 	}
 
 	bool operator!=(const SceneViewIterator& p_other) const {
@@ -21,7 +22,7 @@ public:
 	SceneViewIterator operator++() {
 		do {
 			index++;
-		} while (index < scene->entities.size() && !_is_index_valid());
+		} while (index < entities->size() && !_is_index_valid());
 
 		return *this;
 	}
@@ -30,13 +31,13 @@ private:
 	bool _is_index_valid() {
 		return
 				// It's a valid entity ID
-				is_entity_valid(scene->entities[index].id) &&
+				is_entity_valid(entities->at(index).id) &&
 				// It has the correct component mask
-				(all || mask == (mask & scene->entities[index].mask));
+				(all || mask == (mask & entities->at(index).mask));
 	}
 
 private:
-	Scene* scene;
+	EntityContainer* entities;
 
 	uint32_t index;
 	ComponentMask mask;
@@ -46,14 +47,15 @@ private:
 
 template <typename... TComponents> class SceneView {
 public:
-	SceneView(Scene& p_scene) : scene(&p_scene) {
+	SceneView(EntityContainer* p_entities) : entities(p_entities) {
 		if (sizeof...(TComponents) == 0) {
 			all = true;
 		} else {
 			// unpack the parameter list and set the component mask accordingly
-			uint32_t component_ids[] = { 0,
-				get_component_id<TComponents>()... };
-			for (int i = 1; i < (sizeof...(TComponents) + 1); i++) {
+			const uint32_t component_ids[] = {
+				get_component_id<TComponents>()...
+			};
+			for (int i = 0; i < sizeof...(TComponents); i++) {
 				component_mask.set(component_ids[i]);
 			}
 		}
@@ -61,25 +63,25 @@ public:
 
 	const SceneViewIterator<TComponents...> begin() const {
 		uint32_t first_index = 0;
-		while (first_index < scene->entities.size() &&
+		while (first_index < entities->size() &&
 				(component_mask !=
 								(component_mask &
-										scene->entities[first_index].mask) ||
-						!is_entity_valid(scene->entities[first_index].id))) {
+										entities->at(first_index).mask) ||
+						!is_entity_valid(entities->at(first_index).id))) {
 			first_index++;
 		}
 
 		return SceneViewIterator<TComponents...>(
-				scene, first_index, component_mask, all);
+				entities, first_index, component_mask, all);
 	}
 
 	const SceneViewIterator<TComponents...> end() const {
 		return SceneViewIterator<TComponents...>(
-				scene, scene->entities.size(), component_mask, all);
+				entities, entities->size(), component_mask, all);
 	}
 
 private:
-	Scene* scene = nullptr;
+	EntityContainer* entities = nullptr;
 	ComponentMask component_mask;
 	bool all = false;
 };

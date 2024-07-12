@@ -16,59 +16,65 @@ void TestBedApplication::_on_start() {
 	// assign the scene to the renderer
 	get_renderer()->set_scene(&scene);
 
-	material = Material::create();
-
 	camera_entity = scene.create();
-	scene.assign<TagComponent>(camera_entity)->name = "Camera";
 	{
-		CameraComponent* cc = scene.assign<CameraComponent>(camera_entity);
-		cc->is_primary = true;
+		auto [tag, cc, transform] =
+				scene.assign<TagComponent, CameraComponent, Transform>(
+						camera_entity);
 
-		Transform* transform = scene.assign<Transform>(camera_entity);
+		tag->name = "Camera";
+
+		cc->is_primary = true;
 
 		camera_controller.set_camera(&cc->camera, transform);
 	}
 
-	plane = Model::load("assets/plane.glb", material);
+	plane = Model::load_gltf("assets/plane.glb");
 	if (plane) {
 		Entity plane_entity = scene.create();
-		scene.assign<TagComponent>(plane_entity)->name = "Plane";
 
-		Transform& transform = *scene.assign<Transform>(plane_entity);
-		transform.local_position = { 3.9f, 2.4f, 0.0f };
-		transform.local_rotation = { 7.5f, 7.9f, -0.9f };
+		auto [tag, transform, mesh] =
+				scene.assign<TagComponent, Transform, MeshRendererComponent>(
+						plane_entity);
 
-		MeshRendererComponent& mesh =
-				*scene.assign<MeshRendererComponent>(plane_entity);
-		mesh.model = plane;
+		tag->name = "Plane";
+
+		transform->local_position = { 3.9f, 2.4f, 0.0f };
+		transform->local_rotation = { 7.5f, 7.9f, -0.9f };
+
+		mesh->model = plane;
 	}
 
-	gentelman = Model::load("assets/gentelman.glb", material);
+	gentelman = Model::load_gltf("assets/gentelman.glb");
 	if (gentelman) {
 		Entity gentelman_entity = scene.create();
-		scene.assign<TagComponent>(gentelman_entity)->name = "Gentelman";
 
-		Transform& transform = *scene.assign<Transform>(gentelman_entity);
-		transform.local_position = { -0.6f, 0.8f, 1.9f };
-		transform.local_rotation = { 0.0f, 80.0f, 0.0f };
-		transform.local_scale = { 1.5f, 1.5f, 1.5f };
+		auto [tag, transform, mesh] =
+				scene.assign<TagComponent, Transform, MeshRendererComponent>(
+						gentelman_entity);
 
-		MeshRendererComponent& mesh =
-				*scene.assign<MeshRendererComponent>(gentelman_entity);
-		mesh.model = gentelman;
+		tag->name = "Gentelman";
+
+		transform->local_position = { -0.6f, 0.8f, 1.9f };
+		transform->local_rotation = { 0.0f, 80.0f, 0.0f };
+		transform->local_scale = { 1.5f, 1.5f, 1.5f };
+
+		mesh->model = gentelman;
 	}
 
-	floor = Model::load("assets/floor.glb", material);
+	floor = Model::load_gltf("assets/floor.glb");
 	if (floor) {
 		Entity floor_entity = scene.create();
-		scene.assign<TagComponent>(floor_entity)->name = "Floor";
 
-		Transform& transform = *scene.assign<Transform>(floor_entity);
-		transform.local_scale = { 25, 1, 25 };
+		auto [tag, transform, mesh] =
+				scene.assign<TagComponent, Transform, MeshRendererComponent>(
+						floor_entity);
 
-		MeshRendererComponent& mesh =
-				*scene.assign<MeshRendererComponent>(floor_entity);
-		mesh.model = floor;
+		tag->name = "Floor";
+
+		transform->local_scale = { 25, 1, 25 };
+
+		mesh->model = floor;
 	}
 
 	grid = create_ref<Grid>();
@@ -138,26 +144,21 @@ void TestBedApplication::_on_destroy() {
 	if (floor) {
 		Model::destroy(floor);
 	}
-
-	Material::destroy(material);
 }
 
 void TestBedApplication::_imgui_render(float p_dt) {
 	// render imgui elements
-
 	_draw_hierarchy();
 	_draw_inspector();
-
 	_draw_settings();
-
 	_draw_stats(p_dt);
 }
 
 void TestBedApplication::_draw_hierarchy() {
 	ImGui::Begin("Scene");
 
-	for (auto e : SceneView(scene)) {
-		_draw_entity(e);
+	for (const Entity entity : scene.view()) {
+		_draw_entity(entity);
 	}
 
 	ImGui::End();

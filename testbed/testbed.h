@@ -42,7 +42,6 @@ private:
 	Ref<Model> gentelman;
 	Ref<Model> floor;
 
-	Ref<Material> material;
 	Ref<Grid> grid;
 
 	CameraController camera_controller;

@@ -90,6 +90,10 @@ public:
 	static Image get_default_image() { return s_instance->default_image; }
 	static Sampler get_default_sampler() { return s_instance->default_sampler; }
 
+	static Ref<Material> get_default_material() {
+		return s_instance->default_material;
+	}
+
 	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
 
 private:

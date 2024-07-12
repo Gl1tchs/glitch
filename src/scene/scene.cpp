@@ -1,7 +1,5 @@
 #include "scene/scene.h"
 
-uint32_t s_component_counter = 0;
-
 Entity Scene::create() {
 	if (!free_indices.empty()) {
 		uint32_t new_idx = free_indices.front();

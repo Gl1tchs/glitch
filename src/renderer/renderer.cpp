@@ -8,7 +8,6 @@
 
 #include "scene/components.h"
 #include "scene/scene.h"
-#include "scene/view.h"
 
 #include "platform/vulkan/vk_backend.h"
 
@@ -284,17 +283,16 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	GeometrySceneData* scene_buffer_data =
 			(GeometrySceneData*)backend->buffer_map(scene_buffer);
 	{
-		for (const Entity entity :
-				SceneView<CameraComponent, Transform>(*scene)) {
-			const CameraComponent& cc = *scene->get<CameraComponent>(entity);
+		for (const Entity entity : scene->view<CameraComponent, Transform>()) {
+			auto [cc, transform] =
+					scene->get<CameraComponent, Transform>(entity);
 
-			if (cc.is_primary) {
-				Transform& transform = *scene->get<Transform>(entity);
-
+			if (cc->is_primary) {
 				scene_buffer_data->camera_pos =
-						glm::vec4(transform.get_position(), 1.0f);
-				scene_buffer_data->view = cc.camera.get_view_matrix(transform);
-				scene_buffer_data->proj = cc.camera.get_projection_matrix();
+						glm::vec4(transform->get_position(), 1.0f);
+				scene_buffer_data->view =
+						cc->camera.get_view_matrix(*transform);
+				scene_buffer_data->proj = cc->camera.get_projection_matrix();
 				scene_buffer_data->view_proj =
 						scene_buffer_data->proj * scene_buffer_data->view;
 				scene_buffer_data->sun_direction = SUN_DIRECTION;
@@ -320,15 +318,14 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 			mesh_map;
 
 	for (const Entity entity :
-			SceneView<MeshRendererComponent, Transform>(*scene)) {
-		const MeshRendererComponent& mesh_component =
-				*scene->get<MeshRendererComponent>(entity);
-		const Transform& transform = *scene->get<Transform>(entity);
+			scene->view<MeshRendererComponent, Transform>()) {
+		const auto [mesh_component, transform] =
+				scene->get<MeshRendererComponent, Transform>(entity);
 
-		if (mesh_component.model) {
-			for (const auto& mesh : mesh_component.model->meshes) {
+		if (mesh_component->model) {
+			for (const auto& mesh : mesh_component->model->meshes) {
 				mesh_map[get_proper_material(mesh->material)].push_back(
-						std::make_pair(transform, mesh));
+						std::make_pair(*transform, mesh));
 			}
 		}
 	}

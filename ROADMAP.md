@@ -42,4 +42,3 @@
 - [ ] Handle platform-specific optimizations
 
 ## Small Tweaks
-- [ ] Infinite far plane
