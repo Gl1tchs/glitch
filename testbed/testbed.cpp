@@ -154,8 +154,11 @@ void TestBedApplication::_imgui_render(float p_dt) {
 	_draw_stats(p_dt);
 }
 
+constexpr int IMGUI_WINDOW_FLAGS = ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+
 void TestBedApplication::_draw_hierarchy() {
-	ImGui::Begin("Scene");
+	ImGui::Begin("Scene", nullptr, IMGUI_WINDOW_FLAGS);
 
 	for (const Entity entity : scene.view()) {
 		_draw_entity(entity);
@@ -189,11 +192,12 @@ void TestBedApplication::_draw_entity(const Entity p_entity) {
 }
 
 void TestBedApplication::_draw_inspector() {
+	ImGui::Begin("Inspector", nullptr, IMGUI_WINDOW_FLAGS);
+
 	if (selected_entity == INVALID_ENTITY) {
+		ImGui::End();
 		return;
 	}
-
-	ImGui::Begin("Inspector");
 
 	if (scene.has<TagComponent>(selected_entity)) {
 		ImGui::TextUnformatted(
@@ -229,7 +233,7 @@ void TestBedApplication::_draw_inspector() {
 void TestBedApplication::_draw_stats(float dt) {
 	const RenderStats& stats = get_renderer()->get_stats();
 
-	ImGui::Begin("Stats");
+	ImGui::Begin("Stats", nullptr, IMGUI_WINDOW_FLAGS);
 
 	ImGui::Text("Delta Time: %.4f", dt);
 
@@ -240,7 +244,7 @@ void TestBedApplication::_draw_stats(float dt) {
 }
 
 void TestBedApplication::_draw_settings() {
-	ImGui::Begin("Settings");
+	ImGui::Begin("Settings", nullptr, IMGUI_WINDOW_FLAGS);
 
 	ImGui::Checkbox("Draw Grid", &draw_grid);
 
