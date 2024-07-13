@@ -50,4 +50,6 @@ private:
 	Entity selected_entity = INVALID_ENTITY;
 
 	bool draw_grid = false;
+
+	DeletionQueue deletion_queue;
 };

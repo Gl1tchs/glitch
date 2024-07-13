@@ -243,3 +243,14 @@ void VulkanRenderBackend::imgui_new_frame_for_platform() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 }
+
+void* VulkanRenderBackend::imgui_image_upload(
+		Image p_image, Sampler p_sampler) {
+	VulkanImage* image = (VulkanImage*)p_image;
+	return ImGui_ImplVulkan_AddTexture((VkSampler)p_sampler,
+			image->vk_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
+void VulkanRenderBackend::imgui_image_free(void* p_set) {
+	ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)p_set);
+}

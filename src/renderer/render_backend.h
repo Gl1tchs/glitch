@@ -227,4 +227,8 @@ public:
 	virtual void imgui_render_for_platform(CommandBuffer p_cmd) = 0;
 
 	virtual void imgui_new_frame_for_platform() = 0;
+
+	virtual void* imgui_image_upload(Image p_image, Sampler p_sampler) = 0;
+
+	virtual void imgui_image_free(void* p_set) = 0;
 };

@@ -291,6 +291,10 @@ public:
 
 	void imgui_new_frame_for_platform() override;
 
+	void* imgui_image_upload(Image p_image, Sampler p_sampler) override;
+
+	void imgui_image_free(void* p_set) override;
+
 private:
 	Image _image_create(VkFormat p_format, VkExtent3D p_size,
 			BitField<VkImageUsageFlags> p_usage, bool p_mipmapped);

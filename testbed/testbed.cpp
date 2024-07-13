@@ -2,6 +2,7 @@
 
 #include <core/event/input.h>
 #include <renderer/mesh.h>
+#include <renderer/render_backend.h>
 #include <renderer/renderer.h>
 #include <scene/components.h>
 #include <scene/scene.h>
@@ -136,6 +137,8 @@ void TestBedApplication::_on_update(float p_dt) {
 void TestBedApplication::_on_destroy() {
 	get_renderer()->wait_for_device();
 
+	deletion_queue.flush();
+
 	if (plane) {
 		Model::destroy(plane);
 	}
@@ -153,6 +156,36 @@ void TestBedApplication::_imgui_render(float p_dt) {
 	_draw_inspector();
 	_draw_settings();
 	_draw_stats(p_dt);
+
+	ImGui::SetNextWindowPos(ImVec2(500, 30), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_Once);
+	ImGui::Begin("Image Example", nullptr,
+			ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse |
+					ImGuiWindowFlags_NoScrollbar);
+	{
+		Ref<RenderBackend> backend = Renderer::get_backend();
+
+		deletion_queue.flush();
+
+		constexpr uint32_t color = 0xabcdefff;
+		Image image = backend->image_create(
+				DATA_FORMAT_R8G8B8A8_UNORM, Vec2u{ 1, 1 }, &color);
+		deletion_queue.push_function([=]() { backend->image_free(image); });
+
+		ImTextureID imgui_image = backend->imgui_image_upload(
+				image, get_renderer()->get_default_sampler());
+		deletion_queue.push_function(
+				[=]() { backend->imgui_image_free(imgui_image); });
+
+		{
+			ImVec2 pos = ImGui::GetCursorScreenPos();
+			ImVec2 max_pos = ImGui::GetWindowPos() + ImGui::GetWindowSize();
+
+			ImGui::GetWindowDrawList()->AddImage(
+					imgui_image, pos, max_pos - ImVec2(8, 8));
+		}
+	}
+	ImGui::End();
 }
 
 constexpr int IMGUI_WINDOW_FLAGS = ImGuiWindowFlags_NoMove |
