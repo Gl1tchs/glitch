@@ -407,6 +407,9 @@ void Renderer::_imgui_init() {
 	ImGuiIO& io = ImGui::GetIO();
 	(void)io;
 
+	io.IniFilename = nullptr;
+	ImGui::LoadIniSettingsFromDisk("config/ui.ini");
+
 	io.Fonts->Clear();
 
 	ImGui::Spectrum::LoadFont();

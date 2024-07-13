@@ -9,30 +9,6 @@ if (GL_BUILD_TESTS)
     add_subdirectory(doctest)
 endif()
 
-# TinyGLTF
-set(TINYGLTF_INCLUDES ${VENDOR_DIR}/tinygltf PARENT_SCOPE)
-set(TINYGLTF_LIBS tinygltf PARENT_SCOPE)
-
-set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE INTERNAL "" FORCE)
-set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
-set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
-add_subdirectory(tinygltf)
-
-# SPIRV-Reflect
-set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/spirv-reflect PARENT_SCOPE)
-set(SPIRV_REFLECT_LIBS spirv-reflect-static PARENT_SCOPE)
-
-set(SPIRV_REFLECT_EXECUTABLE OFF CACHE INTERNAL "" FORCE)
-set(SPIRV_REFLECT_STATIC_LIB ON CACHE INTERNAL "" FORCE)
-add_subdirectory(spirv-reflect)
-
-# VulkanMemoryAllocator
-set(VMA_INCLUDES ${VENDOR_DIR}/vulkan-memory-allocator/include PARENT_SCOPE)
-set(VMA_LIBS GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
-
-set(VMA_BUILD_SAMPLES OFF CACHE BOOL "Build samples" FORCE)
-add_subdirectory(vulkan-memory-allocator)
-
 # GLFW
 set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
 set(GLFW_LIBS glfw PARENT_SCOPE)
@@ -52,8 +28,25 @@ set(IMGUI_LIBS imgui PARENT_SCOPE)
 set(IMGUI_USE_DARK_THEME ON CACHE BOOL "" FORCE)
 add_subdirectory(imgui)
 
+# SPIRV-Reflect
+set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/spirv-reflect PARENT_SCOPE)
+set(SPIRV_REFLECT_LIBS spirv-reflect-static PARENT_SCOPE)
+
+set(SPIRV_REFLECT_EXECUTABLE OFF CACHE INTERNAL "" FORCE)
+set(SPIRV_REFLECT_STATIC_LIB ON CACHE INTERNAL "" FORCE)
+add_subdirectory(spirv-reflect)
+
 # STB
 set(STB_INCLUDES ${VENDOR_DIR}/stb/include PARENT_SCOPE)
+
+# TinyGLTF
+set(TINYGLTF_INCLUDES ${VENDOR_DIR}/tinygltf PARENT_SCOPE)
+set(TINYGLTF_LIBS tinygltf PARENT_SCOPE)
+
+set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE INTERNAL "" FORCE)
+set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(tinygltf)
 
 # VkBootstrap
 set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
@@ -61,3 +54,10 @@ set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap PARENT_SCOPE)
 
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "Test Vk-Bootstrap using Catch2 as well as build examples" FORCE)
 add_subdirectory(vk-bootstrap)
+
+# VulkanMemoryAllocator
+set(VMA_INCLUDES ${VENDOR_DIR}/vulkan-memory-allocator/include PARENT_SCOPE)
+set(VMA_LIBS GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
+
+set(VMA_BUILD_SAMPLES OFF CACHE BOOL "Build samples" FORCE)
+add_subdirectory(vulkan-memory-allocator)
