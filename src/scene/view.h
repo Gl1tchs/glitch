@@ -3,48 +3,6 @@
 #include "scene/component_lookup.h"
 #include "scene/entity.h"
 
-template <typename... TComponents> class SceneViewIterator {
-public:
-	SceneViewIterator(EntityContainer* p_entities, uint32_t p_index,
-			ComponentMask p_mask, bool p_all) :
-			entities(p_entities), index(p_index), mask(p_mask), all(p_all) {}
-
-	Entity operator*() const { return entities->at(index).id; }
-
-	bool operator==(const SceneViewIterator& p_other) const {
-		return index == p_other.index || index == entities->size();
-	}
-
-	bool operator!=(const SceneViewIterator& p_other) const {
-		return !(*this == p_other);
-	}
-
-	SceneViewIterator operator++() {
-		do {
-			index++;
-		} while (index < entities->size() && !_is_index_valid());
-
-		return *this;
-	}
-
-private:
-	bool _is_index_valid() {
-		return
-				// It's a valid entity ID
-				is_entity_valid(entities->at(index).id) &&
-				// It has the correct component mask
-				(all || mask == (mask & entities->at(index).mask));
-	}
-
-private:
-	EntityContainer* entities;
-
-	uint32_t index;
-	ComponentMask mask;
-
-	bool all = false;
-};
-
 template <typename... TComponents> class SceneView {
 public:
 	SceneView(EntityContainer* p_entities) : entities(p_entities) {
@@ -61,7 +19,52 @@ public:
 		}
 	}
 
-	const SceneViewIterator<TComponents...> begin() const {
+	class Iterator {
+	public:
+		Iterator(EntityContainer* p_entities, uint32_t p_index,
+				ComponentMask p_mask, bool p_all) :
+				entities(p_entities),
+				index(p_index),
+				mask(p_mask),
+				all(p_all) {}
+
+		Entity operator*() const { return entities->at(index).id; }
+
+		bool operator==(const Iterator& p_other) const {
+			return index == p_other.index || index == entities->size();
+		}
+
+		bool operator!=(const Iterator& p_other) const {
+			return !(*this == p_other);
+		}
+
+		Iterator operator++() {
+			do {
+				index++;
+			} while (index < entities->size() && !_is_index_valid());
+
+			return *this;
+		}
+
+	private:
+		bool _is_index_valid() {
+			return
+					// It's a valid entity ID
+					is_entity_valid(entities->at(index).id) &&
+					// It has the correct component mask
+					(all || mask == (mask & entities->at(index).mask));
+		}
+
+	private:
+		EntityContainer* entities;
+
+		uint32_t index;
+		ComponentMask mask;
+
+		bool all = false;
+	};
+
+	const Iterator begin() const {
 		uint32_t first_index = 0;
 		while (first_index < entities->size() &&
 				(component_mask !=
@@ -71,13 +74,11 @@ public:
 			first_index++;
 		}
 
-		return SceneViewIterator<TComponents...>(
-				entities, first_index, component_mask, all);
+		return Iterator(entities, first_index, component_mask, all);
 	}
 
-	const SceneViewIterator<TComponents...> end() const {
-		return SceneViewIterator<TComponents...>(
-				entities, entities->size(), component_mask, all);
+	const Iterator end() const {
+		return Iterator(entities, entities->size(), component_mask, all);
 	}
 
 private:
