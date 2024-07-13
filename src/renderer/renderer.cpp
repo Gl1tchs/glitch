@@ -401,6 +401,16 @@ void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 void Renderer::_imgui_init() {
 	ImGui::CreateContext();
 
+	ImGui::StyleColorsDark();
+	ImGui::Spectrum::StyleColorsSpectrum();
+
+	ImGuiIO& io = ImGui::GetIO();
+	(void)io;
+
+	io.Fonts->Clear();
+
+	ImGui::Spectrum::LoadFont();
+
 	backend->imgui_init_for_platform(window->get_native_window());
 }
 

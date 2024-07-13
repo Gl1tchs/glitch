@@ -7,7 +7,7 @@ add_executable(glitch-tests ${TEST_SOURCES})
 target_include_directories(glitch-tests
     PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${CATCH2_INCLUDES}
+    ${DOCTEST_INCLUDES}
 )
 
 target_link_libraries(glitch-tests
@@ -16,11 +16,5 @@ target_link_libraries(glitch-tests
     gl::renderer
     gl::scene
     PRIVATE
-    ${CATCH2_LIBS}
+    ${DOCTEST_LIBS}
 )
-
-list(APPEND CMAKE_MODULE_PATH ${CATCH2_SOURCE_DIR}/extras)
-
-include(CTest)
-include(Catch)
-catch_discover_tests(glitch-tests)

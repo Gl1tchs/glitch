@@ -1,6 +1,14 @@
 # define include dirs and library targets
 set(VENDOR_DIR ${CMAKE_SOURCE_DIR}/third_party)
 
+# doctest
+set(DOCTEST_INCLUDES ${VENDOR_DIR}/doctest/doctest PARENT_SCOPE)
+set(DOCTEST_LIBS doctest::doctest PARENT_SCOPE)
+
+if (GL_BUILD_TESTS)
+    add_subdirectory(doctest)
+endif()
+
 # TinyGLTF
 set(TINYGLTF_INCLUDES ${VENDOR_DIR}/tinygltf PARENT_SCOPE)
 set(TINYGLTF_LIBS tinygltf PARENT_SCOPE)
@@ -9,15 +17,6 @@ set(TINYGLTF_BUILD_LOADER_EXAMPLE OFF CACHE INTERNAL "" FORCE)
 set(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
 set(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(tinygltf)
-
-# Catch2
-set(CATCH2_SOURCE_DIR ${VENDOR_DIR}/catch2 PARENT_SCOPE)
-set(CATCH2_INCLUDES ${VENDOR_DIR}/catch2/src PARENT_SCOPE)
-set(CATCH2_LIBS Catch2::Catch2WithMain PARENT_SCOPE)
-
-if (GL_BUILD_TESTS)
-    add_subdirectory(catch2)
-endif()
 
 # SPIRV-Reflect
 set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/spirv-reflect PARENT_SCOPE)
@@ -50,6 +49,7 @@ add_subdirectory(glm)
 set(IMGUI_DIR ${VENDOR_DIR}/imgui PARENT_SCOPE)
 set(IMGUI_LIBS imgui PARENT_SCOPE)
 
+set(IMGUI_USE_DARK_THEME ON CACHE BOOL "" FORCE)
 add_subdirectory(imgui)
 
 # STB
