@@ -17,7 +17,6 @@ enum GraphicsAPI {
 [[nodiscard]] GraphicsAPI find_proper_api() noexcept;
 
 struct RendererSettings {
-	float render_scale = 1.0f;
 	// bool msaa;
 };
 

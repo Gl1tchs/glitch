@@ -296,8 +296,5 @@ void TestBedApplication::_draw_settings() {
 
 	ImGui::Checkbox("Draw Grid", &draw_grid);
 
-	ImGui::SliderFloat("Render Scale",
-			&get_renderer()->get_settings().render_scale, 0.1f, 1.0f);
-
 	ImGui::End();
 }

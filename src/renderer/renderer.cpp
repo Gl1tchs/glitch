@@ -144,10 +144,9 @@ void Renderer::wait_and_render() {
 	const Vec3u draw_image_extent = backend->image_get_size(draw_image);
 
 	// set render scale
-	const float render_scale = get_settings().render_scale;
 	draw_extent = {
-		std::min(swapchain_extent.x, draw_image_extent.x) * render_scale,
-		std::min(swapchain_extent.y, draw_image_extent.y) * render_scale,
+		std::min(swapchain_extent.x, draw_image_extent.x),
+		std::min(swapchain_extent.y, draw_image_extent.y),
 	};
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;

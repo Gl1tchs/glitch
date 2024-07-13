@@ -7,6 +7,7 @@ and simulations.
 
 In order to build the engine you need to have the dependencies installed on your
 system:
+- [Python](https://www.python.org/): build system automation.
 - [Ninja](https://ninja-build.org/): cmake build target.
 - [Clang](https://clang.llvm.org/): C/C++ compiler.
 - [GLSLC](https://github.com/google/shaderc): shader compiler.
@@ -16,9 +17,9 @@ system:
 ```
 git clone https://github.com/Gl1tchs/glitch.git \
 cd glitch \
-make
+python build.py build
 ```
 **And to run it:**
 ```
-bin/glitch-testbed
+python build.py testbed
 ```

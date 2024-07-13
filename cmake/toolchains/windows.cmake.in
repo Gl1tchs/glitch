@@ -1,0 +1,10 @@
+set(CMAKE_SYSTEM_NAME Windows)
+
+# Specify the cross compiler
+if (WIN32)
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_CXX_COMPILER clang++)
+else()
+    set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
+    set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
+endif()
