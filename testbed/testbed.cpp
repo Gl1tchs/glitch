@@ -8,6 +8,7 @@
 #include <scene/view.h>
 
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 TestBedApplication::TestBedApplication(const ApplicationCreateInfo& p_info) :
 		Application(p_info) {}
@@ -200,8 +201,11 @@ void TestBedApplication::_draw_inspector() {
 	}
 
 	if (scene.has<TagComponent>(selected_entity)) {
-		ImGui::TextUnformatted(
-				scene.get<TagComponent>(selected_entity)->name.c_str());
+		TagComponent* tag = scene.get<TagComponent>(selected_entity);
+
+		ImGui::SeparatorText("Tag");
+
+		ImGui::InputText("Name", &tag->name);
 	} else {
 		ImGui::Text("%s", std::to_string(selected_entity).c_str());
 	}
@@ -216,26 +220,38 @@ void TestBedApplication::_draw_inspector() {
 		ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
 	}
 
-	if (scene.has<MeshRendererComponent>(selected_entity)) {
-		const MeshRendererComponent& mesh_renderer =
-				*scene.get<MeshRendererComponent>(selected_entity);
+	if (scene.has<CameraComponent>(selected_entity)) {
+		CameraComponent* cc = scene.get<CameraComponent>(selected_entity);
 
-		if (mesh_renderer.model) {
+		ImGui::SeparatorText("Camera");
+
+		ImGui::DragFloat("FOV", &cc->camera.fov, 0.1f);
+		ImGui::DragFloat("Near Clip", &cc->camera.near_clip, 0.1f);
+		ImGui::DragFloat("Far Clip", &cc->camera.far_clip, 0.1f);
+
+		ImGui::Checkbox("Primary", &cc->is_primary);
+	}
+
+	if (scene.has<MeshRendererComponent>(selected_entity)) {
+		MeshRendererComponent* mesh_renderer =
+				scene.get<MeshRendererComponent>(selected_entity);
+
+		if (mesh_renderer->model) {
 			ImGui::SeparatorText("Mesh Renderer");
 
-			ImGui::TextUnformatted(mesh_renderer.model->name.c_str());
+			ImGui::TextUnformatted(mesh_renderer->model->name.c_str());
 		}
 	}
 
 	ImGui::End();
 }
 
-void TestBedApplication::_draw_stats(float dt) {
+void TestBedApplication::_draw_stats(float p_dt) {
 	const RenderStats& stats = get_renderer()->get_stats();
 
 	ImGui::Begin("Stats", nullptr, IMGUI_WINDOW_FLAGS);
 
-	ImGui::Text("Delta Time: %.4f", dt);
+	ImGui::Text("Delta Time: %.4f", p_dt);
 
 	ImGui::Text("Draw Calls: %d", stats.draw_calls);
 	ImGui::Text("Triangle Count: %d", stats.triangle_count);
