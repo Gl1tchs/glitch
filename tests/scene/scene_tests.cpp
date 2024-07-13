@@ -95,18 +95,20 @@ TEST_CASE("Components") {
 		Entity e2 = scene.create();
 
 		{
-			TestComponent1* t1 = scene.assign<TestComponent1>(e1);
-			t1->a = 6;
-			t1->b = 3;
-			t1->c = 9;
+			TestComponent1* t1 =
+					scene.assign<TestComponent1>(e1, 6.0f, 3.0f, 9.0f);
 
 			CHECK(t1 == scene.get<TestComponent1>(e1));
+
+			CHECK(t1->a == 6.0f);
+			CHECK(t1->b == 3.0f);
+			CHECK(t1->c == 9.0f);
 		}
 		{
-			TestComponent2* t1 = scene.assign<TestComponent2>(e2);
-			t1->x = 9.0f;
+			TestComponent2* t1 = scene.assign<TestComponent2>(e2, 9.0f);
 
 			CHECK(t1 == scene.get<TestComponent2>(e2));
+			CHECK(t1->x == 9.0f);
 
 			scene.remove<TestComponent2>(e2);
 

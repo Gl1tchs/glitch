@@ -25,7 +25,8 @@ public:
 	/**
 	 * @brief assigns specified component to the entity
 	 */
-	template <typename T> T* assign(Entity p_entity) {
+	template <typename T, typename... TArgs>
+	T* assign(Entity p_entity, TArgs&&... args) {
 		if (!is_valid(p_entity)) {
 			return nullptr;
 		}
@@ -40,7 +41,7 @@ public:
 		}
 
 		T* component = new (component_pools[component_id]->get(
-				get_entity_index(p_entity))) T();
+				get_entity_index(p_entity))) T(std::forward<TArgs>(args)...);
 
 		entities[get_entity_index(p_entity)].mask.set(component_id);
 

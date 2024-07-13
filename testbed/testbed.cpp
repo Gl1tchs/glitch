@@ -20,11 +20,10 @@ void TestBedApplication::_on_start() {
 
 	camera_entity = scene.create();
 	{
-		auto [tag, cc, transform] =
-				scene.assign<TagComponent, CameraComponent, Transform>(
-						camera_entity);
+		auto [cc, transform] =
+				scene.assign<CameraComponent, Transform>(camera_entity);
 
-		tag->name = "Camera";
+		scene.assign<TagComponent>(camera_entity, "Camera");
 
 		cc->is_primary = true;
 
