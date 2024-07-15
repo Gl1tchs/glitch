@@ -19,7 +19,7 @@ def configure_cmake(build_type: str, target_platform: str) -> None:
             target_platform.lower()}.cmake.in"
     ]
 
-    print("Configuring cmake...", cmake_flags)
+    print("Configuring cmake...")
     subprocess.run(cmake_flags, check=True)
 
 

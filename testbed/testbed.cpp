@@ -156,6 +156,7 @@ void TestBedApplication::_imgui_render(float p_dt) {
 	_draw_settings();
 	_draw_stats(p_dt);
 
+#if 0
 	ImGui::SetNextWindowPos(ImVec2(500, 30), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiCond_Once);
 	ImGui::Begin("Image Example", nullptr,
@@ -185,6 +186,7 @@ void TestBedApplication::_imgui_render(float p_dt) {
 		}
 	}
 	ImGui::End();
+#endif
 }
 
 constexpr int IMGUI_WINDOW_FLAGS = ImGuiWindowFlags_NoMove |

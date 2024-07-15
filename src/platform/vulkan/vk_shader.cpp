@@ -34,7 +34,8 @@ static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 }
 
 static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
-		uint32_t p_binding, VkDescriptorType p_type, ShaderStage p_stage,
+		uint32_t p_binding, VkDescriptorType p_type,
+		uint32_t p_descriptor_count, ShaderStage p_stage,
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>&
 				p_bindings) {
 	const auto it = p_bindings.find(p_set);
@@ -60,7 +61,7 @@ static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 	VkDescriptorSetLayoutBinding layout_binding = {};
 	layout_binding.binding = p_binding;
 	layout_binding.descriptorType = p_type;
-	layout_binding.descriptorCount = 1;
+	layout_binding.descriptorCount = p_descriptor_count;
 	layout_binding.stageFlags = p_stage;
 	layout_binding.pImmutableSamplers = nullptr;
 
@@ -132,7 +133,7 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 						descriptor_set->set, binding->binding,
 						_spv_reflect_descriptor_type_to_vk(
 								binding->descriptor_type),
-						shader.stage, set_bindings);
+						binding->count, shader.stage, set_bindings);
 			}
 		}
 

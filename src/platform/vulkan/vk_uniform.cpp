@@ -7,8 +7,9 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 
 	std::vector<VkWriteDescriptorSet> vk_writes;
 
-	std::unordered_map<size_t, VkDescriptorImageInfo> vk_image_infos;
-	std::unordered_map<size_t, VkDescriptorBufferInfo> vk_buffer_infos;
+	std::map<size_t, std::vector<VkDescriptorImageInfo>>
+			vk_image_infos;
+	std::map<size_t, VkDescriptorBufferInfo> vk_buffer_infos;
 
 	for (uint32_t i = 0; i < p_uniforms.size(); i++) {
 		const ShaderUniform& uniform = p_uniforms[i];
@@ -26,12 +27,14 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 
 				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 
-				VkDescriptorImageInfo vk_img_info = {};
-				vk_img_info.sampler = (VkSampler)uniform.data[0];
-				vk_img_info.imageView = VK_NULL_HANDLE;
-				vk_img_info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					VkDescriptorImageInfo vk_img_info = {};
+					vk_img_info.sampler = (VkSampler)uniform.data[j];
+					vk_img_info.imageView = VK_NULL_HANDLE;
+					vk_img_info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-				vk_image_infos[i] = std::move(vk_img_info);
+					vk_image_infos[i].push_back(std::move(vk_img_info));
+				}
 			} break;
 			case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: {
 				num_descriptors = uniform.data.size() / 2;
@@ -39,39 +42,47 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 				vk_write.descriptorType =
 						VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-				VkDescriptorImageInfo vk_img_info = {};
-				vk_img_info.sampler = (VkSampler)uniform.data[0];
-				vk_img_info.imageView =
-						((const VulkanImage*)uniform.data[1])->vk_image_view;
-				vk_img_info.imageLayout =
-						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					VkDescriptorImageInfo vk_img_info = {};
+					vk_img_info.sampler = (VkSampler)uniform.data[j * 2 + 0];
+					vk_img_info.imageView =
+							((const VulkanImage*)uniform.data[j * 2 + 1])
+									->vk_image_view;
+					vk_img_info.imageLayout =
+							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-				vk_image_infos[i] = std::move(vk_img_info);
+					vk_image_infos[i].push_back(std::move(vk_img_info));
+				}
 			} break;
 			case UNIFORM_TYPE_TEXTURE: {
 				num_descriptors = uniform.data.size();
 
 				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-				VkDescriptorImageInfo vk_img_info = {};
-				vk_img_info.imageView =
-						((const VulkanImage*)uniform.data[0])->vk_image_view;
-				vk_img_info.imageLayout =
-						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					VkDescriptorImageInfo vk_img_info = {};
+					vk_img_info.imageView =
+							((const VulkanImage*)uniform.data[j])
+									->vk_image_view;
+					vk_img_info.imageLayout =
+							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-				vk_image_infos[i] = std::move(vk_img_info);
+					vk_image_infos[i].push_back(std::move(vk_img_info));
+				}
 			} break;
 			case UNIFORM_TYPE_IMAGE: {
 				num_descriptors = uniform.data.size();
 
 				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
-				VkDescriptorImageInfo vk_img_info = {};
-				vk_img_info.imageView =
-						((VulkanImage*)uniform.data[0])->vk_image_view;
-				vk_img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+				for (uint32_t j = 0; j < num_descriptors; j++) {
+					VkDescriptorImageInfo vk_img_info = {};
+					vk_img_info.imageView =
+							((VulkanImage*)uniform.data[j])->vk_image_view;
+					vk_img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-				vk_image_infos[i] = std::move(vk_img_info);
+					vk_image_infos[i].push_back(std::move(vk_img_info));
+				}
 			} break;
 			case UNIFORM_TYPE_UNIFORM_BUFFER: {
 				const VulkanBuffer* buf_info =
@@ -146,7 +157,7 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 	}
 
 	for (const auto& img_info : vk_image_infos) {
-		vk_writes[img_info.first].pImageInfo = &img_info.second;
+		vk_writes[img_info.first].pImageInfo = img_info.second.data();
 	}
 
 	for (const auto& buf_info : vk_buffer_infos) {

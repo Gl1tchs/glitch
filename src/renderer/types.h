@@ -473,3 +473,18 @@ struct SpirvData {
 };
 
 typedef uint64_t BufferDeviceAddress;
+
+struct DrawIndirectData {
+	uint32_t vertex_count;
+	uint32_t instance_count = 1;
+	uint32_t first_vertex = 0;
+	uint32_t first_instance = 1;
+};
+
+struct DrawIndirectIndexedData {
+	uint32_t index_count;
+	uint32_t instance_count = 1;
+	uint32_t first_index = 0;
+	int32_t vertex_offset = 0;
+	uint32_t first_instance = 0;
+};
