@@ -35,8 +35,7 @@ struct FrameData {
 	DeletionQueue deletion_queue;
 };
 
-typedef std::function<void(Ref<RenderBackend> p_backend, CommandBuffer p_cmd,
-		Image p_draw_image, DeletionQueue& frame_deletion)>
+typedef std::function<void(CommandBuffer p_cmd, DeletionQueue& frame_deletion)>
 		RenderFunc;
 
 class Renderer {

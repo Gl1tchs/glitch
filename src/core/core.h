@@ -19,7 +19,7 @@
 
 template <typename T> using Optional = std::optional<T>;
 
-#define BIND_FUNC(fn)                                                          \
+#define GL_BIND_FUNC(fn)                                                       \
 	[this](auto&&... args) -> decltype(auto) {                                 \
 		return this->fn(std::forward<decltype(args)>(args)...);                \
 	}

@@ -124,8 +124,8 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, Vec2u p_size,
 		Image new_image =
 				_image_create(vk_format, vk_size, image_usage, p_mipmapped);
 
-		command_immediate_submit([&](CommandBuffer cmd) {
-			command_transition_image(cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
+		command_immediate_submit([&](CommandBuffer p_cmd) {
+			command_transition_image(p_cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
 					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 			BufferImageCopyRegion copy_region = {};
@@ -144,9 +144,9 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, Vec2u p_size,
 
 			// copy the buffer into the image
 			command_copy_buffer_to_image(
-					cmd, staging_buffer, new_image, copy_view);
+					p_cmd, staging_buffer, new_image, copy_view);
 
-			command_transition_image(cmd, new_image,
+			command_transition_image(p_cmd, new_image,
 					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		});

@@ -71,20 +71,20 @@ Grid::~Grid() {
 }
 
 void Grid::render(Ref<Renderer> p_renderer, Scene* p_scene) {
-	p_renderer->submit([this, p_scene](Ref<RenderBackend> p_backend,
-							   CommandBuffer p_cmd, Image p_draw_image,
+	p_renderer->submit([&](CommandBuffer p_cmd,
 							   DeletionQueue& p_frame_deletion) {
-		Buffer camera_uniform_buffer = p_backend->buffer_create(
+		Ref<RenderBackend> backend = p_renderer->get_backend();
+
+		Buffer camera_uniform_buffer = backend->buffer_create(
 				sizeof(GridCameraUniform),
 				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
 				MEMORY_ALLOCATION_TYPE_CPU);
 
 		p_frame_deletion.push_function(
-				[=]() { p_backend->buffer_free(camera_uniform_buffer); });
+				[=]() { backend->buffer_free(camera_uniform_buffer); });
 
 		GridCameraUniform* camera_uniform_data =
-				(GridCameraUniform*)p_backend->buffer_map(
-						camera_uniform_buffer);
+				(GridCameraUniform*)backend->buffer_map(camera_uniform_buffer);
 		for (const Entity entity :
 				p_scene->view<CameraComponent, Transform>()) {
 			auto [cc, transform] =
@@ -100,7 +100,7 @@ void Grid::render(Ref<Renderer> p_renderer, Scene* p_scene) {
 				break;
 			}
 		}
-		p_backend->buffer_unmap(camera_uniform_buffer);
+		backend->buffer_unmap(camera_uniform_buffer);
 
 		ShaderUniform uniform;
 		uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
@@ -108,15 +108,15 @@ void Grid::render(Ref<Renderer> p_renderer, Scene* p_scene) {
 		uniform.data.push_back(camera_uniform_buffer);
 
 		UniformSet camera_uniform =
-				p_backend->uniform_set_create(uniform, grid_shader, 0);
+				backend->uniform_set_create(uniform, grid_shader, 0);
 		p_frame_deletion.push_function(
-				[=]() { p_backend->uniform_set_free(camera_uniform); });
+				[=]() { backend->uniform_set_free(camera_uniform); });
 
-		p_backend->command_bind_graphics_pipeline(p_cmd, grid_pipeline);
+		backend->command_bind_graphics_pipeline(p_cmd, grid_pipeline);
 
-		p_backend->command_bind_uniform_sets(
+		backend->command_bind_uniform_sets(
 				p_cmd, grid_shader, 0, camera_uniform);
 
-		p_backend->command_draw(p_cmd, 6);
+		backend->command_draw(p_cmd, 6);
 	});
 }

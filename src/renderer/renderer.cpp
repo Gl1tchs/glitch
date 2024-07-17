@@ -78,7 +78,9 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 
 	default_image = backend->image_create(
 			DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &white_color);
-	default_sampler = backend->sampler_create();
+	default_sampler = backend->sampler_create(IMAGE_FILTERING_LINEAR,
+			IMAGE_FILTERING_LINEAR, IMAGE_WRAPPING_MODE_REPEAT,
+			IMAGE_WRAPPING_MODE_REPEAT, IMAGE_WRAPPING_MODE_REPEAT);
 
 	MaterialResources resources = {};
 	resources.diffuse_image = default_image;
@@ -259,12 +261,8 @@ static bool _is_mesh_visible(const Transform& transform, const Ref<Mesh> mesh,
 	}
 
 	// check the clip space box is within the view
-	if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
-			min.y > 1.f || max.y < -1.f) {
-		return false;
-	} else {
-		return true;
-	}
+	return !(min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
+			min.y > 1.f || max.y < -1.f);
 }
 
 void Renderer::_geometry_pass(CommandBuffer p_cmd) {
@@ -383,7 +381,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd) {
 	}
 
 	for (const auto& submit : submit_funcs) {
-		submit(backend, p_cmd, draw_image, _get_current_frame().deletion_queue);
+		submit(p_cmd, _get_current_frame().deletion_queue);
 	}
 	submit_funcs.clear();
 
