@@ -13,6 +13,12 @@ file(GLOB_RECURSE VS_FILES ${SRC_DIR}/*.vert)
 file(GLOB_RECURSE FS_FILES ${SRC_DIR}/*.frag)
 file(GLOB_RECURSE COMP_FILES ${SRC_DIR}/*.comp)
 
+add_custom_target(gl-shaders ALL)
+
+add_custom_command(TARGET gl-shaders
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_DIR}
+)
+
 foreach(VS_FILE ${VS_FILES})
     get_filename_component(VS_FILE_NAME ${VS_FILE} NAME)
     set(SPV_VS ${BUILD_DIR}/${VS_FILE_NAME}.spv)
@@ -46,7 +52,7 @@ foreach(COMP_FILE ${COMP_FILES})
     list(APPEND SPV_COMP_LIST ${SPV_COMP})
 endforeach()
 
-add_custom_target(gl-shaders ALL
+add_custom_target(gl-shader-bundle ALL
     DEPENDS ${SPV_VS_LIST} ${SPV_FS_LIST} ${SPV_COMP_LIST}
 )
 
@@ -56,7 +62,7 @@ if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
 
     set(BUNDLE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/include")
 
-    add_custom_command(TARGET gl-shaders PRE_BUILD
+    add_custom_command(TARGET gl-shader-bundle PRE_BUILD
         DEPENDS gl-bundler
         COMMAND ${CMAKE_COMMAND} -E make_directory ${BUNDLE_OUTPUT_DIR}
         COMMAND ${BUNDLER_EXE}
@@ -67,4 +73,4 @@ if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
     )
 endif()
 
-add_dependencies(gl-shaders gl-bundler)
+add_dependencies(gl-shader-bundle gl-bundler)

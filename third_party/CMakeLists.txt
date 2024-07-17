@@ -1,5 +1,5 @@
 # define include dirs and library targets
-set(VENDOR_DIR ${CMAKE_SOURCE_DIR}/third_party)
+set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # doctest
 set(DOCTEST_INCLUDES ${VENDOR_DIR}/doctest/doctest PARENT_SCOPE)
@@ -53,12 +53,12 @@ add_subdirectory(tinygltf)
 set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
 set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap PARENT_SCOPE)
 
-set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "Test Vk-Bootstrap using Catch2 as well as build examples" FORCE)
+set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
 add_subdirectory(vk-bootstrap)
 
 # VulkanMemoryAllocator
 set(VMA_INCLUDES ${VENDOR_DIR}/vulkan-memory-allocator/include PARENT_SCOPE)
 set(VMA_LIBS GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
 
-set(VMA_BUILD_SAMPLES OFF CACHE BOOL "Build samples" FORCE)
+set(VMA_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(vulkan-memory-allocator)

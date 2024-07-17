@@ -1,4 +1,4 @@
-set(ENGINE_DIR ${CMAKE_SOURCE_DIR}/src)
+set(ENGINE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(programs)
 add_subdirectory(shaders)
