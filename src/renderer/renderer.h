@@ -14,7 +14,7 @@ enum GraphicsAPI {
 	GRAPHICS_API_VULKAN,
 };
 
-[[nodiscard]] GraphicsAPI find_proper_api() noexcept;
+[[nodiscard]] GL_API GraphicsAPI find_proper_api() noexcept;
 
 struct RendererSettings {
 	// bool msaa;
@@ -38,7 +38,7 @@ struct FrameData {
 typedef std::function<void(CommandBuffer p_cmd, DeletionQueue& frame_deletion)>
 		RenderFunc;
 
-class Renderer {
+class GL_API Renderer {
 public:
 	Renderer(Ref<Window> p_window);
 	~Renderer();

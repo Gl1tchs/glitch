@@ -12,9 +12,7 @@ target_include_directories(glitch-tests
 
 target_link_libraries(glitch-tests
     PRIVATE
-    gl::core
-    gl::renderer
-    gl::scene
+    glitch
     PRIVATE
     ${DOCTEST_LIBS}
 )

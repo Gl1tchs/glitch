@@ -4,7 +4,7 @@
 #include "scene/entity.h"
 #include "scene/view.h"
 
-class Scene {
+class GL_API Scene {
 public:
 	/**
 	 * @brief create new entity instance on the scene

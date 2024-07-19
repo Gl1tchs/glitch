@@ -16,7 +16,7 @@ struct Bounds {
 	glm::vec3 extents;
 };
 
-struct Mesh {
+struct GL_API Mesh {
 	std::string name = "";
 
 	Bounds bounds;

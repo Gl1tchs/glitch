@@ -30,7 +30,7 @@ struct MaterialResources {
 	Sampler sampler = GL_NULL_HANDLE;
 };
 
-struct Material {
+struct GL_API Material {
 	Pipeline pipeline;
 	Shader shader;
 

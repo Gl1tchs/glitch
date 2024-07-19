@@ -2,7 +2,7 @@
 
 #include "renderer/mesh.h"
 
-struct Model {
+struct GL_API Model {
 	std::string name = "";
 	std::vector<Ref<Mesh>> meshes;
 

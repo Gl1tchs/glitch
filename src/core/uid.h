@@ -1,6 +1,6 @@
 #pragma once
 
-struct UID {
+struct GL_API UID {
 	uint64_t value;
 
 	UID();

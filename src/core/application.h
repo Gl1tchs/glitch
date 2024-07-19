@@ -11,7 +11,7 @@ struct ApplicationCreateInfo {
 
 typedef std::function<void(void)> MainThreadFunc;
 
-class Application {
+class GL_API Application {
 public:
 	Application(const ApplicationCreateInfo& p_info);
 	virtual ~Application() = default;

@@ -14,9 +14,7 @@ target_include_directories(glitch-testbed
 
 target_link_libraries(glitch-testbed
     PRIVATE
-    gl::core
-    gl::renderer
-    gl::scene
+    glitch
     PRIVATE
     ${IMGUI_LIBS}
 )

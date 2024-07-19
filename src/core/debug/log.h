@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/defines.h"
+
 enum LogLevel {
 	LOG_LEVEL_TRACE = 0,
 	LOG_LEVEL_INFO,
@@ -10,7 +12,7 @@ enum LogLevel {
 
 std::string deserialize_log_level(LogLevel p_level);
 
-class Logger {
+class GL_API Logger {
 public:
 	static void log(LogLevel p_level, const std::string& p_fmt);
 

@@ -9,7 +9,7 @@ inline constexpr glm::vec3 VEC3_ONE(1.0f, 1.0f, 1.0f);
 
 inline constexpr glm::vec3 WORLD_UP = VEC3_UP;
 
-struct Transform final {
+struct GL_API Transform {
 	Transform* parent = nullptr;
 
 	glm::vec3 local_position = VEC3_ZERO;

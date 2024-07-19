@@ -13,7 +13,7 @@
 
 #include <imgui.h>
 
-[[nodiscard]] GraphicsAPI find_proper_api() noexcept {
+[[nodiscard]] GL_API GraphicsAPI find_proper_api() noexcept {
 	return GRAPHICS_API_VULKAN;
 }
 

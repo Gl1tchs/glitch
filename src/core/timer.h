@@ -1,6 +1,6 @@
 #pragma once
 
-class Timer final {
+class GL_API Timer {
 public:
 	using Clock = std::chrono::high_resolution_clock;
 

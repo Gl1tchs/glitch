@@ -3,7 +3,8 @@
 #include "core/event/key_code.h"
 #include "core/event/mouse_button.h"
 
-struct Input {
+class GL_API Input {
+public:
 	static void init();
 
 	static bool is_key_pressed_once(KeyCode p_key);

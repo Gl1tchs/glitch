@@ -7,7 +7,7 @@
 
 #include "renderer/types.h"
 
-class RenderBackend {
+class GL_API RenderBackend {
 public:
 	virtual ~RenderBackend() = default;
 

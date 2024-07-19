@@ -2,7 +2,7 @@
 
 #include "core/transform.h"
 
-struct Camera {
+struct GL_API Camera {
 	float aspect_ratio = 1.0f;
 	float near_clip = -1.0f;
 	float far_clip = 1.0f;
@@ -11,7 +11,7 @@ struct Camera {
 	virtual glm::mat4 get_projection_matrix() const = 0;
 };
 
-struct OrthographicCamera : Camera {
+struct GL_API OrthographicCamera : Camera {
 	float zoom_level = 1.0f;
 
 	OrthographicCamera();
@@ -21,7 +21,7 @@ struct OrthographicCamera : Camera {
 	glm::mat4 get_projection_matrix() const override;
 };
 
-struct PerspectiveCamera : Camera {
+struct GL_API PerspectiveCamera : Camera {
 	float fov = 45.0f;
 
 	PerspectiveCamera();

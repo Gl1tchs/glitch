@@ -1,6 +1,3 @@
-# define include dirs and library targets
-set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR})
-
 # doctest
 set(DOCTEST_INCLUDES ${VENDOR_DIR}/doctest/doctest PARENT_SCOPE)
 set(DOCTEST_LIBS doctest::doctest PARENT_SCOPE)
@@ -17,13 +14,33 @@ add_subdirectory(glfw)
 
 # glm
 set(GLM_INCLUDES ${VENDOR_DIR}/glm PARENT_SCOPE)
-set(GLM_LIBS glm::glm PARENT_SCOPE)
-
-add_subdirectory(glm)
 
 # ImGui
-set(IMGUI_DIR ${VENDOR_DIR}/imgui PARENT_SCOPE)
-set(IMGUI_LIBS imgui PARENT_SCOPE)
+set(IMGUI_INCLUDES ${VENDOR_DIR}/imgui PARENT_SCOPE)
+set(IMGUI_FILES
+    "${VENDOR_DIR}/imgui/imgui.h"
+    "${VENDOR_DIR}/imgui/imgui_internal.h"
+    "${VENDOR_DIR}/imgui/imgui.cpp"
+    "${VENDOR_DIR}/imgui/imgui_demo.cpp"
+    "${VENDOR_DIR}/imgui/imgui_draw.cpp"
+    "${VENDOR_DIR}/imgui/imgui_widgets.cpp"
+    "${VENDOR_DIR}/imgui/imgui_spectrum.h"
+    "${VENDOR_DIR}/imgui/imgui_spectrum.cpp"
+    "${VENDOR_DIR}/imgui/imgui_tables.cpp"
+    "${VENDOR_DIR}/imgui/backends/imgui_impl_vulkan.h"
+    "${VENDOR_DIR}/imgui/backends/imgui_impl_vulkan.cpp"
+    "${VENDOR_DIR}/imgui/backends/imgui_impl_glfw.h"
+    "${VENDOR_DIR}/imgui/backends/imgui_impl_glfw.cpp"
+    "${VENDOR_DIR}/imgui/misc/cpp/imgui_stdlib.h"
+    "${VENDOR_DIR}/imgui/misc/cpp/imgui_stdlib.cpp"
+    PARENT_SCOPE
+)
+set(IMGUI_DEFINITIONS
+    IMGUI_SPECTRUM_USE_DARK_THEME
+    IMGUI_SPECTRUM_DEFINE_MATH_OPERATORS
+    PARENT_SCOPE
+)
+
 
 set(IMGUI_USE_DARK_THEME ON CACHE BOOL "" FORCE)
 set(IMGUI_DEFINE_MATH_OPERATORS ON CACHE BOOL "" FORCE)
@@ -54,6 +71,7 @@ set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
 set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap PARENT_SCOPE)
 
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
+set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ${GL_BUILD_DYNAMIC_LIBS} CACHE BOOL "" FORCE)
 add_subdirectory(vk-bootstrap)
 
 # VulkanMemoryAllocator

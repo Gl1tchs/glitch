@@ -6,6 +6,8 @@ import platform
 import shutil
 import os
 
+from pathlib import Path
+
 
 def configure_cmake(build_type: str, target_platform: str) -> None:
     cmake_flags = [
@@ -23,11 +25,78 @@ def configure_cmake(build_type: str, target_platform: str) -> None:
     subprocess.run(cmake_flags, check=True)
 
 
+def export_headers() -> None:
+    exclude_directories = [
+        "platform",
+        "programs",
+        "shaders"
+    ]
+
+    src_dir = Path("./src")
+    dest_dir = Path("./bin/include")
+
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    else:
+        os.makedirs(dest_dir)
+
+    for path in src_dir.rglob("*.h"):
+        if any(exclude in path.parts for exclude in exclude_directories):
+            continue
+
+        # Create corresponding directory structure in bin/include
+        relative_path = path.relative_to(src_dir)
+        dest_path = dest_dir / relative_path
+
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Copy the header file to the destination
+        shutil.copy2(path, dest_path)
+
+    # Copy GLM as well
+    glm_dest = dest_dir / "glm"
+    if glm_dest.exists():
+        shutil.rmtree(glm_dest)
+
+    shutil.copytree("./third_party/glm/include/glm", glm_dest)
+
+
+def export_libs() -> None:
+    exclude_libs = [
+        "gl-vulkan-backend"
+    ]
+
+    src_dir = Path("./build/lib")
+    dest_dir = Path("./bin/lib")
+
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    else:
+        os.makedirs(dest_dir)
+
+    for path in src_dir.rglob("*gl-*.*"):
+        if any(exclude in part for exclude in exclude_libs
+               for part in path.parts):
+            continue
+
+        # Create corresponding directory structure in bin/lib
+        relative_path = path.relative_to(src_dir)
+        dest_path = dest_dir / relative_path
+
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        shutil.copy2(path, dest_path)
+
+
 def build_engine() -> None:
     build_path = "build/"
 
     print("Building engine...")
-    subprocess.run(["cmake", "--build", build_path], check=True)
+    result = subprocess.run(["cmake", "--build", build_path], check=True)
+
+    if result.returncode == 0:
+        export_headers()
+        export_libs()
 
 
 def run_tests() -> None:

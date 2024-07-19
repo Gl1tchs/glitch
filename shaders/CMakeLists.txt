@@ -6,7 +6,7 @@ endif()
 
 set(GLSL_FLAGS -I. --target-env=vulkan1.3 -std=450 -O -fpreserve-bindings)
 
-set(SRC_DIR ${ENGINE_DIR}/shaders)
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/shaders)
 set(BUILD_DIR ${CMAKE_BINARY_DIR}/shaders)
 
 file(GLOB_RECURSE VS_FILES ${SRC_DIR}/*.vert)

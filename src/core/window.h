@@ -15,7 +15,7 @@ struct WindowCreateInfo {
 	uint32_t h = 768;
 };
 
-class Window {
+class GL_API Window {
 public:
 	Window(WindowCreateInfo p_info);
 	~Window();
