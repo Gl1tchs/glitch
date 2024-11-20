@@ -1,9 +1,10 @@
-#include "core/window.h"
+#include "glitch/core/window.h"
+
+#include "glitch/core/event/input.h"
+#include "glitch/core/event/key_code.h"
+#include "glitch/core/event/mouse_button.h"
 
 #include "core/event/event_system.h"
-#include "core/event/input.h"
-#include "core/event/key_code.h"
-#include "core/event/mouse_button.h"
 
 #include <GLFW/glfw3.h>
 

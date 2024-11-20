@@ -1,4 +1,4 @@
-#include "core/debug/log.h"
+#include "glitch/core/debug/log.h"
 
 std::string deserialize_log_level(LogLevel p_level) {
 	switch (p_level) {

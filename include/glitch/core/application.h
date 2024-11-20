@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "core/window.h"
-#include "renderer/renderer.h"
+#include "glitch/core/window.h"
+#include "glitch/renderer/renderer.h"
 
 struct ApplicationCreateInfo {
 	const char* name;

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "core/application.h"
+#include "glitch/core/application.h"
 
 extern Application* create_application(int p_argc, const char** p_argv);
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/event/key_code.h"
-#include "core/event/mouse_button.h"
+#include "glitch/core/event/key_code.h"
+#include "glitch/core/event/mouse_button.h"
 
 struct KeyPressEvent {
 	KeyCode key_code;

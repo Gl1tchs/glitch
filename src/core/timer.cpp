@@ -1,4 +1,4 @@
-#include "core/timer.h"
+#include "glitch/core/timer.h"
 
 Timer::Timer() : last_frame_time(Clock::now()) {}
 

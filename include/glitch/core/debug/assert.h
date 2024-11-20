@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "core/debug/log.h"
+#include "glitch/core/debug/log.h"
 
 #if _WIN32
 #define DEBUGBREAK() __debugbreak()

@@ -1,7 +1,8 @@
-#include "core/application.h"
+#include "glitch/core/application.h"
+
+#include "glitch/core/timer.h"
 
 #include "core/event/event_system.h"
-#include "core/timer.h"
 
 Application* Application::s_instance = nullptr;
 

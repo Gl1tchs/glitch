@@ -35,8 +35,6 @@ struct GL_API Transform {
 	glm::vec3 get_up() const;
 
 	glm::mat4 get_transform_matrix() const;
-
-	glm::vec3 get_direction() const;
 };
 
 inline constexpr Transform DEFAULT_TRANSFORM{};

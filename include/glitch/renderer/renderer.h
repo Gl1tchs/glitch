@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "core/window.h"
+#include "glitch/core/window.h"
 
-#include "renderer/types.h"
+#include "glitch/renderer/types.h"
 
 class RenderBackend;
 

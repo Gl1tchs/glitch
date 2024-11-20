@@ -3,6 +3,7 @@ set(DOCTEST_INCLUDES ${VENDOR_DIR}/doctest/doctest PARENT_SCOPE)
 set(DOCTEST_LIBS doctest::doctest PARENT_SCOPE)
 
 if (GL_BUILD_TESTS)
+    set(DOCTEST_NO_INSTALL ON CACHE BOOL "" FORCE)
     add_subdirectory(doctest)
 endif()
 
@@ -10,6 +11,7 @@ endif()
 set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
 set(GLFW_LIBS glfw PARENT_SCOPE)
 
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw)
 
 # glm
@@ -36,11 +38,11 @@ set(IMGUI_FILES
 
 # SPIRV-Reflect
 set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/spirv-reflect PARENT_SCOPE)
-set(SPIRV_REFLECT_LIBS spirv-reflect-static PARENT_SCOPE)
-
-set(SPIRV_REFLECT_EXECUTABLE OFF CACHE INTERNAL "" FORCE)
-set(SPIRV_REFLECT_STATIC_LIB ON CACHE INTERNAL "" FORCE)
-add_subdirectory(spirv-reflect)
+set(SPIRV_REFLECT_FILES
+    "${VENDOR_DIR}/spirv-reflect/spirv_reflect.h"
+    "${VENDOR_DIR}/spirv-reflect/spirv_reflect.cpp"
+    PARENT_SCOPE
+)
 
 # STB
 set(STB_INCLUDES ${VENDOR_DIR}/stb PARENT_SCOPE)
@@ -50,6 +52,7 @@ set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
 set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap PARENT_SCOPE)
 
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
+set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ${GL_BUILD_DYNAMIC_LIBS} CACHE BOOL "" FORCE)
 add_subdirectory(vk-bootstrap)
 

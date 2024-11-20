@@ -1,4 +1,4 @@
-#include "scene/scene.h"
+#include "glitch/scene/scene.h"
 
 Entity Scene::create() {
 	if (!free_indices.empty()) {

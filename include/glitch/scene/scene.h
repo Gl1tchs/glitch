@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "scene/component_lookup.h"
-#include "scene/entity.h"
-#include "scene/view.h"
+#include "glitch/scene/component_lookup.h"
+#include "glitch/scene/entity.h"
+#include "glitch/scene/view.h"
 
 /**
  * Container of entities and components assigned to them.

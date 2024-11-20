@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "core/color.h"
-#include "core/templates/bit_field.h"
-#include "core/templates/vector_view.h"
-#include "core/window.h"
+#include "glitch/core/color.h"
+#include "glitch/core/templates/bit_field.h"
+#include "glitch/core/templates/vector_view.h"
+#include "glitch/core/window.h"
 
-#include "renderer/types.h"
+#include "glitch/renderer/types.h"
 
 /**
  * Abstract class who is responsible of communicating with GPU

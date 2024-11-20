@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "core/defines.h"
+#include "glitch/core/defines.h"
 
 enum LogLevel {
 	LOG_LEVEL_TRACE = 0,

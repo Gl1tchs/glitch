@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "scene/component_lookup.h"
-#include "scene/entity.h"
+#include "glitch/scene/component_lookup.h"
+#include "glitch/scene/entity.h"
 
 /**
  * Class who queries entities within the `Scene` that is also iterable

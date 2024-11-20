@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
 
-#include "core/templates/vector.h"
+#include "glitch/core/templates/vector.h"
 
 TEST_CASE("Vec2 Dot Product") {
 	Vec2f v1(9.0f, 5.0f);

@@ -1,4 +1,4 @@
-#include "core/transform.h"
+#include "glitch/core/transform.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -66,12 +66,4 @@ glm::mat4 Transform::get_transform_matrix() const {
 	}
 
 	return transform;
-}
-
-glm::vec3 Transform::get_direction() const {
-	glm::vec3 direction(cos(local_rotation.x) * cos(local_rotation.y),
-			sin(local_rotation.x),
-			cos(local_rotation.x) * sin(local_rotation.y));
-	direction = glm::normalize(direction);
-	return direction;
 }

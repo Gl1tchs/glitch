@@ -1,4 +1,4 @@
-#include "core/color.h"
+#include "glitch/core/color.h"
 
 #include <doctest.h>
 

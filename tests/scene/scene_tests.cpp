@@ -1,7 +1,7 @@
 #include <doctest.h>
 
-#include "core/transform.h"
-#include "scene/scene.h"
+#include "glitch/core/transform.h"
+#include "glitch/scene/scene.h"
 
 TEST_CASE("Scene entity creation and destruction") {
 	Scene scene;

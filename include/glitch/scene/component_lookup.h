@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene/entity.h"
+#include "glitch/scene/entity.h"
 
 inline uint32_t s_component_counter = 0;
 

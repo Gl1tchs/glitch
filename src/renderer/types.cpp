@@ -1,4 +1,4 @@
-#include "renderer/types.h"
+#include "glitch/renderer/types.h"
 
 size_t get_data_format_size(DataFormat p_format) {
 	switch (p_format) {

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "core/deletion_queue.h"
-#include "core/templates/versatile_resource.h"
+#include "glitch/core/deletion_queue.h"
+#include "glitch/core/templates/versatile_resource.h"
 
-#include "renderer/render_backend.h"
+#include "glitch/renderer/render_backend.h"
 
 #include "platform/vulkan/vk_common.h"
-#include "renderer/types.h"
+#include "glitch/renderer/types.h"
 
 class VulkanRenderBackend : public RenderBackend {
 public:

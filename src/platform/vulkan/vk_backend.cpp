@@ -1,6 +1,6 @@
 #include "platform/vulkan/vk_backend.h"
 
-#include "renderer/types.h"
+#include "glitch/renderer/types.h"
 
 #include "platform/vulkan/vk_common.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/memory/paged_allocator.h"
+#include "glitch/core/memory/paged_allocator.h"
 
 template <typename... RESOURCE_TYPES> struct VersatileResourceTemplate {
 	static constexpr size_t RESOURCE_SIZES[] = { sizeof(RESOURCE_TYPES)... };

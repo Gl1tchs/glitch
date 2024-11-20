@@ -1,7 +1,7 @@
-#include "renderer/renderer.h"
+#include "glitch/renderer/renderer.h"
 
-#include "core/application.h"
-#include "renderer/types.h"
+#include "glitch/core/application.h"
+#include "glitch/renderer/types.h"
 
 #include "platform/vulkan/vk_backend.h"
 
