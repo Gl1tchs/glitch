@@ -1,6 +1,7 @@
 #include "platform/vulkan/vk_backend.h"
 #include "renderer/types.h"
 #include <vulkan/vulkan_core.h>
+#include <algorithm>
 
 static const VkPrimitiveTopology GL_TO_VK_PRIMITIVE[RENDER_PRIMITIVE_MAX] = {
 	VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
@@ -383,19 +384,29 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 	vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	std::vector<VkVertexInputAttributeDescription> vertex_attributes;
-	uint32_t offset = 0;
 	for (const auto& input : shader_get_vertex_inputs(p_shader)) {
 		VkVertexInputAttributeDescription attribute = {};
 		attribute.binding = 0;
 		attribute.format = static_cast<VkFormat>(input.format);
 		attribute.location = input.location;
-		attribute.offset = offset;
+		attribute.offset = 0;
 
 		vertex_attributes.push_back(attribute);
+	}
 
-		size_t data_size = get_data_format_size(input.format);
+	// attributes should be sorted by location then assign the offsets
+	std::sort(vertex_attributes.begin(), vertex_attributes.end(),
+			[](const auto& lhs, const auto& rhs) {
+				return lhs.location < rhs.location;
+			});
+
+	uint32_t offset = 0;
+	for (auto& attr : vertex_attributes) {
+		size_t data_size =
+				get_data_format_size(static_cast<DataFormat>(attr.format));
 		GL_ASSERT(data_size != 0, "Unsupported data type to calculate size.");
 
+		attr.offset = offset;
 		offset += data_size;
 	}
 

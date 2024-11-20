@@ -16,7 +16,6 @@ def configure_cmake(build_type: str, target_platform: str) -> None:
         ".",
         "-B",
         "build/",
-        "-GNinja",
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
         f"-DCMAKE_BUILD_TYPE={build_type}",
         f"-DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/{
@@ -59,6 +58,13 @@ def export_headers() -> None:
         shutil.rmtree(glm_dest)
 
     shutil.copytree("./third_party/glm/glm", glm_dest)
+
+    # Copy stb headers
+    stb_dest = dest_dir / "stb"
+    if stb_dest.exists():
+        shutil.rmtree(stb_dest)
+
+    shutil.copytree("./third_party/stb", stb_dest)
 
     # Copy ImGui headers
     imgui_dest = dest_dir / "imgui"
@@ -180,7 +186,7 @@ def main() -> None:
             run_tests()
         elif args.action == "clean":
             clean()
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Application exited with code: {e.returncode}.")
         exit(e.returncode)
 

@@ -43,7 +43,7 @@ set(SPIRV_REFLECT_STATIC_LIB ON CACHE INTERNAL "" FORCE)
 add_subdirectory(spirv-reflect)
 
 # STB
-set(STB_INCLUDES ${VENDOR_DIR}/stb/include PARENT_SCOPE)
+set(STB_INCLUDES ${VENDOR_DIR}/stb PARENT_SCOPE)
 
 # VkBootstrap
 set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
