@@ -61,6 +61,9 @@ public:
 
 	virtual void shader_free(Shader p_shader) = 0;
 
+	virtual std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(
+			Shader p_shader) = 0;
+
 	// Swapchain
 
 	// not valid until resized
@@ -106,6 +109,7 @@ public:
 
 	virtual Pipeline render_pipeline_create(Shader p_shader,
 			RenderPrimitive p_render_primitive,
+			PipelineVertexInputState p_input_state,
 			PipelineRasterizationState p_rasterization_state,
 			PipelineMultisampleState p_multisample_state,
 			PipelineDepthStencilState p_depth_stencil_state,
@@ -120,12 +124,13 @@ public:
 	// Command Queue
 
 	virtual void queue_submit(CommandQueue p_queue, CommandBuffer p_cmd,
-			Fence p_fence = nullptr, Semaphore p_wait_semaphore = nullptr,
-			Semaphore p_signal_semaphore = nullptr) = 0;
+			Fence p_fence = GL_NULL_HANDLE,
+			Semaphore p_wait_semaphore = GL_NULL_HANDLE,
+			Semaphore p_signal_semaphore = GL_NULL_HANDLE) = 0;
 
 	// returns `true` if succeed `false` if resize needed
 	virtual bool queue_present(CommandQueue p_queue, Swapchain p_swapchain,
-			Semaphore p_wait_semaphore = nullptr) = 0;
+			Semaphore p_wait_semaphore = GL_NULL_HANDLE) = 0;
 
 	// Commands
 
@@ -151,7 +156,7 @@ public:
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
 			const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
-			Image p_depth_attachment = nullptr) = 0;
+			Image p_depth_attachment = GL_NULL_HANDLE) = 0;
 
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
 
@@ -165,6 +170,10 @@ public:
 
 	virtual void command_bind_compute_pipeline(
 			CommandBuffer p_cmd, Pipeline p_pipeline) = 0;
+
+	virtual void command_bind_vertex_buffers(CommandBuffer p_cmd,
+			uint32_t p_first_binding, std::vector<Buffer> p_vertex_buffers,
+			std::vector<uint64_t> p_offsets) = 0;
 
 	virtual void command_bind_index_buffer(CommandBuffer p_cmd,
 			Buffer p_index_buffer, uint64_t p_offset,

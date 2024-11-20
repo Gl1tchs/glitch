@@ -1,4 +1,6 @@
 #include "platform/vulkan/vk_backend.h"
+#include "renderer/types.h"
+#include <vulkan/vulkan_core.h>
 
 static const VkPrimitiveTopology GL_TO_VK_PRIMITIVE[RENDER_PRIMITIVE_MAX] = {
 	VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
@@ -184,6 +186,7 @@ static VkPipelineCache _load_pipeline_cache(VkDevice p_device,
 
 Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 		RenderPrimitive p_render_primitive,
+		PipelineVertexInputState p_vertex_input_state,
 		PipelineRasterizationState p_rasterization_state,
 		PipelineMultisampleState p_multisample_state,
 		PipelineDepthStencilState p_depth_stencil_state,
@@ -374,9 +377,35 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 	rendering_info.depthAttachmentFormat =
 			static_cast<VkFormat>(p_rendering_state.depth_attachment);
 
+	VkVertexInputBindingDescription vertex_binding = {};
+	vertex_binding.binding = 0;
+	vertex_binding.stride = p_vertex_input_state.stride;
+	vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	std::vector<VkVertexInputAttributeDescription> vertex_attributes;
+	uint32_t offset = 0;
+	for (const auto& input : shader_get_vertex_inputs(p_shader)) {
+		VkVertexInputAttributeDescription attribute = {};
+		attribute.binding = 0;
+		attribute.format = static_cast<VkFormat>(input.format);
+		attribute.location = input.location;
+		attribute.offset = offset;
+
+		vertex_attributes.push_back(attribute);
+
+		size_t data_size = get_data_format_size(input.format);
+		GL_ASSERT(data_size != 0, "Unsupported data type to calculate size.");
+
+		offset += data_size;
+	}
+
 	VkPipelineVertexInputStateCreateInfo vertex_info = {};
 	vertex_info.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertex_info.vertexBindingDescriptionCount = 1;
+	vertex_info.pVertexBindingDescriptions = &vertex_binding;
+	vertex_info.vertexAttributeDescriptionCount = vertex_attributes.size();
+	vertex_info.pVertexAttributeDescriptions = vertex_attributes.data();
 
 	VkPipelineViewportStateCreateInfo viewport_state = {};
 	viewport_state.sType =

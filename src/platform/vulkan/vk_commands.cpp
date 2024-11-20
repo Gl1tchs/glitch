@@ -1,4 +1,5 @@
 #include "platform/vulkan/vk_backend.h"
+#include <vulkan/vulkan_core.h>
 
 void VulkanRenderBackend::command_immediate_submit(
 		std::function<void(CommandBuffer p_cmd)>&& p_function) {
@@ -199,6 +200,23 @@ void VulkanRenderBackend::command_bind_compute_pipeline(
 
 	vkCmdBindPipeline((VkCommandBuffer)p_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
 			pipeline->vk_pipeline);
+}
+
+void VulkanRenderBackend::command_bind_vertex_buffers(CommandBuffer p_cmd,
+		uint32_t p_first_binding, std::vector<Buffer> p_vertex_buffers,
+		std::vector<uint64_t> p_offsets) {
+	GL_ASSERT(p_vertex_buffers.size() == p_offsets.size(),
+			"Buffer array size and offset array size does not match");
+
+	std::vector<VkBuffer> vk_buffers(p_vertex_buffers.size());
+	for (size_t i = 0; i < p_vertex_buffers.size(); ++i) {
+		VulkanBuffer* vk_buffer = (VulkanBuffer*)p_vertex_buffers[i];
+		vk_buffers[i] = vk_buffer->vk_buffer;
+	}
+
+	vkCmdBindVertexBuffers((VkCommandBuffer)p_cmd, p_first_binding,
+			static_cast<uint32_t>(vk_buffers.size()), vk_buffers.data(),
+			p_offsets.data());
 }
 
 void VulkanRenderBackend::command_bind_index_buffer(CommandBuffer p_cmd,

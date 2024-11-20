@@ -1,6 +1,8 @@
 #include "platform/vulkan/vk_backend.h"
+#include "renderer/types.h"
 
 #include <spirv_reflect.h>
+#include <vulkan/vulkan_core.h>
 
 static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 		SpvReflectDescriptorType p_type) {
@@ -103,6 +105,7 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 
 	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> set_bindings;
 	std::vector<VkPushConstantRange> push_constant_ranges;
+	std::vector<ShaderInterfaceVariable> vertex_input_variables;
 
 	for (const auto& shader : p_shaders) {
 		SpvReflectShaderModule module = {};
@@ -111,47 +114,74 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 				shader.byte_code.size(), shader.byte_code.data(), &module);
 		GL_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
-		uint32_t spv_descriptor_set_count = 0;
-		GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,
-						  &spv_descriptor_set_count,
-						  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
+		// vertex input variables
+		if (shader.stage & SHADER_STAGE_VERTEX_BIT) {
+			uint32_t input_count = 0;
+			GL_ASSERT(spvReflectEnumerateInputVariables(&module, &input_count,
+							  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
+			std::vector<SpvReflectInterfaceVariable*> inputs(input_count);
+			GL_ASSERT(spvReflectEnumerateInputVariables(&module, &input_count,
+							  inputs.data()) == SPV_REFLECT_RESULT_SUCCESS);
 
-		std::vector<SpvReflectDescriptorSet*> spv_descriptor_sets(
-				spv_descriptor_set_count);
-		GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,
-						  &spv_descriptor_set_count,
-						  spv_descriptor_sets.data()) ==
-				SPV_REFLECT_RESULT_SUCCESS);
+			// add input variables
+			for (const auto* input : inputs) {
+				ShaderInterfaceVariable variable;
+				variable.name = input->name;
+				variable.location = input->location;
+				variable.format = static_cast<DataFormat>(input->format);
 
-		// add bindings
-		for (const auto* descriptor_set : spv_descriptor_sets) {
-			for (uint32_t i = 0; i < descriptor_set->binding_count; i++) {
-				const SpvReflectDescriptorBinding* binding =
-						descriptor_set->bindings[i];
-
-				_add_descriptor_set_layout_binding_if_not_exists(
-						descriptor_set->set, binding->binding,
-						_spv_reflect_descriptor_type_to_vk(
-								binding->descriptor_type),
-						binding->count, shader.stage, set_bindings);
+				vertex_input_variables.push_back(variable);
 			}
 		}
 
-		uint32_t spv_push_constant_count = 0;
-		GL_ASSERT(spvReflectEnumeratePushConstantBlocks(&module,
-						  &spv_push_constant_count,
-						  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
+		// descriptor sets
+		{
+			uint32_t spv_descriptor_set_count = 0;
+			GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,
+							  &spv_descriptor_set_count,
+							  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
 
-		std::vector<SpvReflectBlockVariable*> spv_push_constants(
-				spv_push_constant_count);
-		GL_ASSERT(
-				spvReflectEnumeratePushConstantBlocks(&module,
-						&spv_push_constant_count, spv_push_constants.data()) ==
-				SPV_REFLECT_RESULT_SUCCESS);
+			std::vector<SpvReflectDescriptorSet*> spv_descriptor_sets(
+					spv_descriptor_set_count);
+			GL_ASSERT(spvReflectEnumerateDescriptorSets(&module,
+							  &spv_descriptor_set_count,
+							  spv_descriptor_sets.data()) ==
+					SPV_REFLECT_RESULT_SUCCESS);
 
-		for (const auto* push_constant : spv_push_constants) {
-			_add_push_constant_range_if_not_exists(push_constant->size,
-					push_constant->offset, shader.stage, push_constant_ranges);
+			// add bindings
+			for (const auto* descriptor_set : spv_descriptor_sets) {
+				for (uint32_t i = 0; i < descriptor_set->binding_count; i++) {
+					const SpvReflectDescriptorBinding* binding =
+							descriptor_set->bindings[i];
+
+					_add_descriptor_set_layout_binding_if_not_exists(
+							descriptor_set->set, binding->binding,
+							_spv_reflect_descriptor_type_to_vk(
+									binding->descriptor_type),
+							binding->count, shader.stage, set_bindings);
+				}
+			}
+		}
+
+		// push constants
+		{
+			uint32_t spv_push_constant_count = 0;
+			GL_ASSERT(spvReflectEnumeratePushConstantBlocks(&module,
+							  &spv_push_constant_count,
+							  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
+
+			std::vector<SpvReflectBlockVariable*> spv_push_constants(
+					spv_push_constant_count);
+			GL_ASSERT(spvReflectEnumeratePushConstantBlocks(&module,
+							  &spv_push_constant_count,
+							  spv_push_constants.data()) ==
+					SPV_REFLECT_RESULT_SUCCESS);
+
+			for (const auto* push_constant : spv_push_constants) {
+				_add_push_constant_range_if_not_exists(push_constant->size,
+						push_constant->offset, shader.stage,
+						push_constant_ranges);
+			}
 		}
 
 		// create a new shader module, using the buffer we loaded
@@ -249,6 +279,7 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 	shader_info->push_constant_stages = push_constant_stages;
 	shader_info->descriptor_set_layouts = descriptor_set_layouts;
 	shader_info->pipeline_layout = vk_pipeline_layout;
+	shader_info->vertex_input_variables = vertex_input_variables;
 	shader_info->shader_hash = shader_hash;
 
 	return Shader(shader_info);
@@ -270,4 +301,10 @@ void VulkanRenderBackend::shader_free(Shader p_shader) {
 	}
 
 	VersatileResource::free(resources_allocator, shader_info);
+}
+
+std::vector<ShaderInterfaceVariable>
+VulkanRenderBackend::shader_get_vertex_inputs(Shader p_shader) {
+	VulkanShader* shader_info = (VulkanShader*)p_shader;
+	return shader_info->vertex_input_variables;
 }

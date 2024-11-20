@@ -49,8 +49,6 @@ void Application::_event_loop(float p_dt) {
 	_process_main_thread_queue();
 
 	_on_update(p_dt);
-
-	renderer->wait_and_render();
 }
 
 void Application::_process_main_thread_queue() {

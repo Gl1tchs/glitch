@@ -41,7 +41,7 @@ void VulkanRenderBackend::swapchain_resize(
 							.colorSpace = swapchain->color_space,
 					})
 					// TODO add setting
-					.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)
+					.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
 					.set_desired_min_image_count(
 							vkb::SwapchainBuilder::DOUBLE_BUFFERING)
 					.set_desired_extent(size.x, size.y)

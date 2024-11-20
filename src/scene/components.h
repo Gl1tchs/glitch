@@ -1,7 +1,6 @@
 #pragma once
 
 #include "renderer/camera.h"
-#include "renderer/model.h"
 
 struct TagComponent {
 	std::string name;
@@ -9,9 +8,5 @@ struct TagComponent {
 
 struct CameraComponent {
 	PerspectiveCamera camera;
-	bool is_primary = true;
-};
-
-struct MeshRendererComponent {
-	Ref<Model> model;
+	bool is_active = true;
 };

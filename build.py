@@ -58,7 +58,7 @@ def export_headers() -> None:
     if glm_dest.exists():
         shutil.rmtree(glm_dest)
 
-    shutil.copytree("./third_party/glm/include/glm", glm_dest)
+    shutil.copytree("./third_party/glm/glm", glm_dest)
 
 
 def export_libs() -> None:
@@ -109,18 +109,6 @@ def run_tests() -> None:
     else:
         print("Test application could not be found.")
 
-
-def run_testbed() -> None:
-    testbed_path = "bin/glitch-testbed"
-
-    if os.path.exists(testbed_path):
-        print("Running testbed executable...")
-
-        subprocess.run([testbed_path], check=True)
-    else:
-        print("Testbed application could not be found.")
-
-
 def clean() -> None:
     build_path = "build/"
     bin_path = "bin/"
@@ -155,7 +143,7 @@ def main() -> None:
     )
 
     parser.add_argument("action",
-                        choices=["build", "clean", "test", "testbed"],
+                        choices=["build", "clean", "test"],
                         help="Action to perform"
                         )
 
@@ -186,8 +174,6 @@ def main() -> None:
             build_engine()
         elif args.action == "test":
             run_tests()
-        elif args.action == "testbed":
-            run_testbed()
         elif args.action == "clean":
             clean()
     except subprocess.CalledProcessError as e:

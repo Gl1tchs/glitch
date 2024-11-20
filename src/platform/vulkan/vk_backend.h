@@ -6,6 +6,7 @@
 #include "renderer/render_backend.h"
 
 #include "platform/vulkan/vk_common.h"
+#include "renderer/types.h"
 
 class VulkanRenderBackend : public RenderBackend {
 public:
@@ -79,6 +80,8 @@ public:
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
+		std::vector<ShaderInterfaceVariable> vertex_input_variables;
+
 		// hash of the vulkan shader object defined as the
 		// combination of the names of the shaders with
 		// the pipeline layout
@@ -89,6 +92,9 @@ public:
 			const std::vector<SpirvData>& p_shaders) override;
 
 	void shader_free(Shader p_shader) override;
+
+	std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(
+			Shader p_shader) override;
 
 	// Swapchain
 
@@ -166,6 +172,7 @@ public:
 
 	Pipeline render_pipeline_create(Shader p_shader,
 			RenderPrimitive p_render_primitive,
+			PipelineVertexInputState p_vertex_input_state,
 			PipelineRasterizationState p_rasterization_state,
 			PipelineMultisampleState p_multisample_state,
 			PipelineDepthStencilState p_depth_stencil_state,
@@ -187,11 +194,12 @@ public:
 	CommandQueue queue_get(QueueType p_type) override;
 
 	void queue_submit(CommandQueue p_queue, CommandBuffer p_cmd,
-			Fence p_fence = nullptr, Semaphore p_wait_semaphore = nullptr,
-			Semaphore p_signal_semaphore = nullptr) override;
+			Fence p_fence = GL_NULL_HANDLE,
+			Semaphore p_wait_semaphore = GL_NULL_HANDLE,
+			Semaphore p_signal_semaphore = GL_NULL_HANDLE) override;
 
 	bool queue_present(CommandQueue p_queue, Swapchain p_swapchain,
-			Semaphore p_wait_semaphore = nullptr) override;
+			Semaphore p_wait_semaphore = GL_NULL_HANDLE) override;
 
 	// Commands
 
@@ -217,7 +225,7 @@ public:
 
 	void command_begin_rendering(CommandBuffer p_cmd,
 			const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
-			Image p_depth_attachment = nullptr) override;
+			Image p_depth_attachment = GL_NULL_HANDLE) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
 
@@ -231,6 +239,10 @@ public:
 
 	void command_bind_compute_pipeline(
 			CommandBuffer p_cmd, Pipeline p_pipeline) override;
+
+	void command_bind_vertex_buffers(CommandBuffer p_cmd,
+			uint32_t p_first_binding, std::vector<Buffer> p_vertex_buffers,
+			std::vector<uint64_t> p_offsets) override;
 
 	void command_bind_index_buffer(CommandBuffer p_cmd, Buffer p_index_buffer,
 			uint64_t p_offset, IndexType p_index_type) override;
