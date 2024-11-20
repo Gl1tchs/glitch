@@ -24,8 +24,6 @@ set(IMGUI_FILES
     "${VENDOR_DIR}/imgui/imgui_demo.cpp"
     "${VENDOR_DIR}/imgui/imgui_draw.cpp"
     "${VENDOR_DIR}/imgui/imgui_widgets.cpp"
-    "${VENDOR_DIR}/imgui/imgui_spectrum.h"
-    "${VENDOR_DIR}/imgui/imgui_spectrum.cpp"
     "${VENDOR_DIR}/imgui/imgui_tables.cpp"
     "${VENDOR_DIR}/imgui/backends/imgui_impl_vulkan.h"
     "${VENDOR_DIR}/imgui/backends/imgui_impl_vulkan.cpp"
@@ -35,16 +33,6 @@ set(IMGUI_FILES
     "${VENDOR_DIR}/imgui/misc/cpp/imgui_stdlib.cpp"
     PARENT_SCOPE
 )
-set(IMGUI_DEFINITIONS
-    IMGUI_SPECTRUM_USE_DARK_THEME
-    IMGUI_SPECTRUM_DEFINE_MATH_OPERATORS
-    PARENT_SCOPE
-)
-
-
-set(IMGUI_USE_DARK_THEME ON CACHE BOOL "" FORCE)
-set(IMGUI_DEFINE_MATH_OPERATORS ON CACHE BOOL "" FORCE)
-add_subdirectory(imgui)
 
 # SPIRV-Reflect
 set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/spirv-reflect PARENT_SCOPE)

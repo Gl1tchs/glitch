@@ -12,13 +12,15 @@ from pathlib import Path
 def configure_cmake(build_type: str, target_platform: str) -> None:
     cmake_flags = [
         "cmake",
-        "-S", ".",
-        "-B", "build/",
+        "-S",
+        ".",
+        "-B",
+        "build/",
         "-GNinja",
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
         f"-DCMAKE_BUILD_TYPE={build_type}",
         f"-DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/{
-            target_platform.lower()}.cmake.in"
+            target_platform.lower()}.cmake.in",
     ]
 
     print("Configuring cmake...")
@@ -28,8 +30,6 @@ def configure_cmake(build_type: str, target_platform: str) -> None:
 def export_headers() -> None:
     exclude_directories = [
         "platform",
-        "programs",
-        "shaders"
     ]
 
     src_dir = Path("./src")
@@ -53,18 +53,33 @@ def export_headers() -> None:
         # Copy the header file to the destination
         shutil.copy2(path, dest_path)
 
-    # Copy GLM as well
+    # Copy GLM headers
     glm_dest = dest_dir / "glm"
     if glm_dest.exists():
         shutil.rmtree(glm_dest)
 
     shutil.copytree("./third_party/glm/glm", glm_dest)
 
+    # Copy ImGui headers
+    imgui_dest = dest_dir / "imgui"
+    if imgui_dest.exists():
+        shutil.rmtree(imgui_dest)
+
+    imgui_dest.mkdir(parents=True, exist_ok=True)
+
+    # Copy individual header files from the source directories
+    source_files = [
+        "./third_party/imgui/*.h",
+        "./third_party/imgui/misc/cpp/*.h",
+    ]
+
+    for pattern in source_files:
+        for file in Path().glob(pattern):
+            shutil.copy(file, imgui_dest)
+
 
 def export_libs() -> None:
-    exclude_libs = [
-        "gl-vulkan-backend"
-    ]
+    exclude_libs = ["gl-vulkan-backend"]
 
     src_dir = Path("./build/lib")
     dest_dir = Path("./bin/lib")
@@ -75,8 +90,7 @@ def export_libs() -> None:
         os.makedirs(dest_dir)
 
     for path in src_dir.rglob("*gl-*.*"):
-        if any(exclude in part for exclude in exclude_libs
-               for part in path.parts):
+        if any(exclude in part for exclude in exclude_libs for part in path.parts):
             continue
 
         # Create corresponding directory structure in bin/lib
@@ -109,6 +123,7 @@ def run_tests() -> None:
     else:
         print("Test application could not be found.")
 
+
 def clean() -> None:
     build_path = "build/"
     bin_path = "bin/"
@@ -127,10 +142,7 @@ def clean() -> None:
 
 
 def main() -> None:
-    supported_systems = [
-        "Linux",
-        "Windows"
-    ]
+    supported_systems = ["Linux", "Windows"]
 
     system = platform.system()
     if system not in supported_systems:
@@ -138,33 +150,25 @@ def main() -> None:
         return
 
     parser = argparse.ArgumentParser(
-        prog="Glitch Builder",
-        description="Build script for glitch engine."
+        prog="Glitch Builder", description="Build script for glitch engine."
     )
 
-    parser.add_argument("action",
-                        choices=["build", "clean", "test"],
-                        help="Action to perform"
-                        )
+    parser.add_argument(
+        "action", choices=["build", "clean", "test"], help="Action to perform"
+    )
 
-    parser.add_argument("--config",
-                        choices=[
-                            "Debug",
-                            "Release",
-                            "RelWithDebInfo",
-                            "MinSizeRel"
-                        ],
-                        default="Debug",
-                        help="Build type"
-                        )
-    parser.add_argument("--platform",
-                        choices=[
-                            "Windows",
-                            "Linux"
-                        ],
-                        default=system,
-                        help="Target platform to build"
-                        )
+    parser.add_argument(
+        "--config",
+        choices=["Debug", "Release", "RelWithDebInfo", "MinSizeRel"],
+        default="Debug",
+        help="Build type",
+    )
+    parser.add_argument(
+        "--platform",
+        choices=["Windows", "Linux"],
+        default=system,
+        help="Target platform to build",
+    )
 
     args = parser.parse_args()
 

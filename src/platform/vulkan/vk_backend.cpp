@@ -83,6 +83,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 			vkb_device_selector.set_minimum_version(1, 3)
 					.set_required_features_13(features13)
 					.set_required_features_12(features12)
+					.add_required_extension("VK_KHR_dynamic_rendering")
 					.set_surface(surface)
 					.select()
 					.value();
@@ -206,32 +207,27 @@ void VulkanRenderBackend::imgui_init_for_platform(GLFWwindow* p_glfw_window) {
 	init_info.DescriptorPool = imgui_pool;
 	init_info.MinImageCount = 3;
 	init_info.ImageCount = 3;
-	init_info.UseDynamicRendering = true;
-
+	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	// dynamic rendering parameters for imgui to use
+	init_info.UseDynamicRendering = true;
 	init_info.PipelineRenderingCreateInfo = {};
 	init_info.PipelineRenderingCreateInfo.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 	init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-
-	VkFormat color_attachment = VK_FORMAT_B8G8R8A8_UNORM;
+	static VkFormat color_attachment = VK_FORMAT_B8G8R8A8_UNORM;
 	init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats =
 			&color_attachment;
 
-	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-
+	ImGui_ImplGlfw_InitForVulkan(p_glfw_window, true);
 	ImGui_ImplVulkan_Init(&init_info);
 
 	// add the destroy the imgui created structures
 	deletion_queue.push_function([this, imgui_pool]() {
-		ImGui_ImplGlfw_Shutdown();
 		ImGui_ImplVulkan_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
 
 		vkDestroyDescriptorPool(device, imgui_pool, nullptr);
 	});
-
-	// init for glfw as well
-	ImGui_ImplGlfw_InitForVulkan(p_glfw_window, true);
 }
 
 void VulkanRenderBackend::imgui_render_for_platform(CommandBuffer p_cmd) {
@@ -240,8 +236,8 @@ void VulkanRenderBackend::imgui_render_for_platform(CommandBuffer p_cmd) {
 }
 
 void VulkanRenderBackend::imgui_new_frame_for_platform() {
-	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
+	ImGui_ImplVulkan_NewFrame();
 }
 
 void* VulkanRenderBackend::imgui_image_upload(

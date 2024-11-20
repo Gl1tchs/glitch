@@ -203,7 +203,13 @@ void Renderer::imgui_begin() {
 	ImGui::NewFrame();
 }
 
-void Renderer::imgui_end() { ImGui::Render(); }
+void Renderer::imgui_end() {
+	ImGui::Render();
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
+}
 
 void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 	backend->command_begin_rendering(
@@ -217,18 +223,14 @@ void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 void Renderer::_imgui_init() {
 	ImGui::CreateContext();
 
-	ImGui::StyleColorsDark();
-	ImGui::Spectrum::StyleColorsSpectrum();
-
 	ImGuiIO& io = ImGui::GetIO();
 	(void)io;
 
-	io.IniFilename = nullptr;
-	ImGui::LoadIniSettingsFromDisk("config/ui.ini");
+	io.ConfigFlags |=
+			ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+	io.IniFilename = ".glitch/imgui.ini";
 
 	io.Fonts->Clear();
-
-	ImGui::Spectrum::LoadFont();
 
 	backend->imgui_init_for_platform(window->get_native_window());
 }
