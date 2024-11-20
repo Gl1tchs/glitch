@@ -1,3 +1,7 @@
+/**
+ * @file transform.h
+ */
+
 #pragma once
 
 inline constexpr glm::vec3 VEC3_UP(0.0f, 1.0f, 0.0f);

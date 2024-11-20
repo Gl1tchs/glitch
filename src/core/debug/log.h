@@ -1,3 +1,7 @@
+/**
+ * @file log.h
+ */
+
 #pragma once
 
 #include "core/defines.h"

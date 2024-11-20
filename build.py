@@ -18,8 +18,6 @@ def configure_cmake(build_type: str, target_platform: str) -> None:
         "build/",
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
         f"-DCMAKE_BUILD_TYPE={build_type}",
-        f"-DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/{
-            target_platform.lower()}.cmake.in",
     ]
 
     print("Configuring cmake...")

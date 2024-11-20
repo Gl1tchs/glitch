@@ -1,3 +1,8 @@
+
+/**
+ * @file entrypoint.h
+ */
+
 #pragma once
 
 #include "core/application.h"

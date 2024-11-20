@@ -1,7 +1,6 @@
 #include "renderer/renderer.h"
 
 #include "core/application.h"
-
 #include "renderer/types.h"
 
 #include "platform/vulkan/vk_backend.h"
@@ -78,8 +77,6 @@ Renderer::~Renderer() {
 	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
-		frame_data.deletion_queue.flush();
-
 		backend->command_pool_free(frame_data.command_pool);
 
 		backend->semaphore_free(frame_data.image_available_semaphore);
@@ -98,8 +95,6 @@ CommandBuffer Renderer::begin_render() {
 	_reset_stats();
 
 	backend->fence_wait(_get_current_frame().render_fence);
-
-	_get_current_frame().deletion_queue.flush();
 
 	Optional<Image> swapchain_image = backend->swapchain_acquire_image(
 			swapchain, _get_current_frame().image_available_semaphore);
@@ -129,9 +124,6 @@ CommandBuffer Renderer::begin_render() {
 
 	backend->command_transition_image(
 			cmd, draw_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
-
-	// TODO: compute calls should be handled here or somewhere else using
-	// general layout.
 
 	backend->command_clear_color(cmd, draw_image, { 0.1f, 0.1f, 0.1f, 1.0f });
 

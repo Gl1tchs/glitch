@@ -1,29 +1,36 @@
+/**
+ * @file scene.h
+ */
+
 #pragma once
 
 #include "scene/component_lookup.h"
 #include "scene/entity.h"
 #include "scene/view.h"
 
+/**
+ * Container of entities and components assigned to them.
+ */
 class GL_API Scene {
 public:
 	/**
-	 * @brief create new entity instance on the scene
+	 * Create new entity instance on the scene
 	 */
 	Entity create();
 
 	/**
-	 * @brief find out wether the entity is valid or not
+	 * Find out wether the entity is valid or not
 	 */
 	bool is_valid(Entity p_entity);
 
 	/**
-	 * @brief removes entity from the scene and increments
+	 * Removes entity from the scene and increments
 	 * version
 	 */
 	void destroy(Entity p_entity);
 
 	/**
-	 * @brief assigns specified component to the entity
+	 * Assigns specified component to the entity
 	 */
 	template <typename T, typename... TArgs>
 	T* assign(Entity p_entity, TArgs&&... args) {
@@ -49,7 +56,7 @@ public:
 	}
 
 	/**
-	 * @brief assigns specified components to the entity
+	 * Assigns specified components to the entity
 	 */
 	template <typename... TComponents>
 		requires MultiParameter<TComponents...>
@@ -62,7 +69,7 @@ public:
 	}
 
 	/**
-	 * @brief remove specified component from the entity
+	 * Remove specified component from the entity
 	 */
 	template <typename T> void remove(Entity p_entity) {
 		if (!is_valid(p_entity)) {
@@ -74,7 +81,7 @@ public:
 	}
 
 	/**
-	 * @brief remove specified components from the entity
+	 * Remove specified components from the entity
 	 */
 	template <typename... TComponents>
 		requires MultiParameter<TComponents...>
@@ -87,7 +94,7 @@ public:
 	}
 
 	/**
-	 * @brief get specified component from the entity
+	 * Get specified component from the entity
 	 */
 	template <typename T> T* get(Entity p_entity) {
 		if (!is_valid(p_entity)) {
@@ -106,7 +113,7 @@ public:
 	}
 
 	/**
-	 * @brief get specified components from the entity
+	 * Get specified components from the entity
 	 */
 	template <typename... TComponents>
 		requires MultiParameter<TComponents...>
@@ -119,7 +126,7 @@ public:
 	}
 
 	/**
-	 * @brief find out wether an entity has the specified components
+	 * Find out wether an entity has the specified components
 	 */
 	template <typename... TComponents> bool has(Entity p_entity) {
 		if (!is_valid(p_entity)) {
@@ -138,7 +145,7 @@ public:
 	}
 
 	/**
-	 * @brief get entities with specified components,
+	 * Get entities with specified components,
 	 * if any component not provided it will return all
 	 * of the entities
 	 */

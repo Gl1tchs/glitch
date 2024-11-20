@@ -1,3 +1,7 @@
+/**
+ * @file window.h
+ */
+
 #pragma once
 
 struct GLFWwindow;

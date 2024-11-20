@@ -1,3 +1,7 @@
+/**
+ * @file assert.h
+ */
+
 #pragma once
 
 #include "core/debug/log.h"

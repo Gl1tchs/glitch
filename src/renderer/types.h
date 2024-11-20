@@ -1,3 +1,7 @@
+/**
+ * @file types.h
+ */
+
 #pragma once
 
 // defines handles that are not needed to be freed by user
@@ -22,6 +26,9 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore)
 
 #define GL_NULL_HANDLE nullptr
 
+/**
+ * Enum representing data formats in GPU
+ */
 enum DataFormat {
 	DATA_FORMAT_UNDEFINED = 0,
 	DATA_FORMAT_R8_UNORM = 9,
@@ -268,6 +275,10 @@ enum ShaderUniformType {
 	UNIFORM_TYPE_MAX
 };
 
+/**
+ * Struct representing a single shader uniform that can be a type of
+ * `ShaderUniformType` in specified `binding`
+ */
 struct ShaderUniform {
 	ShaderUniformType type = UNIFORM_TYPE_MAX;
 	uint32_t binding = 0xffffffff; // Binding index as specified in shader.

@@ -1,3 +1,7 @@
+/**
+ * @file render_backend.h
+ */
+
 #pragma once
 
 #include "core/color.h"
@@ -7,6 +11,9 @@
 
 #include "renderer/types.h"
 
+/**
+ * Abstract class who is responsible of communicating with GPU
+ */
 class GL_API RenderBackend {
 public:
 	virtual ~RenderBackend() = default;
@@ -73,7 +80,7 @@ public:
 			CommandQueue p_cmd_queue, Swapchain p_swapchain, Vec2u size) = 0;
 
 	/**
-	 * @returns `Image` if succeed `{}` if resize needed
+	 * @returns `Image` if succeed `nullopt` if resize needed
 	 */
 	virtual Optional<Image> swapchain_acquire_image(
 			Swapchain p_swapchain, Semaphore p_semaphore) = 0;
@@ -217,7 +224,7 @@ public:
 	virtual void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
 			Buffer p_dst_buffer, VectorView<BufferCopyRegion> p_regions) = 0;
 
-	// image layout must be VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+	// image layout must be IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 	virtual void command_copy_buffer_to_image(CommandBuffer p_cmd,
 			Buffer p_src_buffer, Image p_dst_image,
 			VectorView<BufferImageCopyRegion> p_regions) = 0;

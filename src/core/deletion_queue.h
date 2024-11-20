@@ -1,5 +1,13 @@
+/**
+ * @file deletion_queue.h
+ */
+
 #pragma once
 
+/**
+ * Struct representing a queue which deletor functions can be assigned into and
+ * later they will be deleted in the reverse order you have pushed.
+ */
 struct DeletionQueue {
 	std::deque<std::function<void()>> deletors;
 

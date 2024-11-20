@@ -1,6 +1,9 @@
+/**
+ * @file renderer.h
+ */
+
 #pragma once
 
-#include "core/deletion_queue.h"
 #include "core/window.h"
 
 #include "renderer/types.h"
@@ -24,36 +27,49 @@ struct FrameData {
 
 	Semaphore image_available_semaphore, render_finished_semaphore;
 	Fence render_fence;
-
-	DeletionQueue deletion_queue;
 };
 
-typedef std::function<void(CommandBuffer p_cmd, DeletionQueue& frame_deletion)>
-		RenderFunc;
-
+/**
+ * Class representing the main renderer that is responsible of keeping
+ * cpu/gpu communication stable and making sure our drawing commands
+ * are being submitted and presented.
+ */
 class GL_API Renderer {
 public:
 	Renderer(Ref<Window> p_window);
 	~Renderer();
 
+	/**
+	 * Begin rendering context, reset state, do necessary image
+	 * transactions.
+	 * @note If you want to draw directly to `draw_image` using compute shaders
+	 * you must transition the image layout from
+	 * IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to IMAGE_LAYOUT_GENERAL and after
+	 * when you are done with it, you must retransition the layout into
+	 * IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL.
+	 */
 	CommandBuffer begin_render();
 
+	/**
+	 * End rendering context, submit command buffer and present onto
+	 * surface.
+	 */
 	void end_render();
 
 	/**
-	 * @brief wait for rendering device operations to finish
+	 * Wait for rendering device operations to finish
 	 */
 	void wait_for_device();
 
 	/**
-	 * @brief begin imgui rendering context, all imgui functions
+	 * Begin ImGui rendering context, all imgui functions
 	 * must be runned inside of this scope and this operation is
 	 * defined as 1 imgui frame.
 	 */
 	void imgui_begin();
 
 	/**
-	 * @brief ends imgui rendering context
+	 * Ends imgui rendering context
 	 */
 	void imgui_end();
 

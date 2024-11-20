@@ -1,5 +1,12 @@
+/**
+ * @file bit_field.h
+ */
+
 #pragma once
 
+/**
+ * Class that makes flag functionality a little bit simpler.
+ */
 template <typename T> class BitField {
 	int64_t value = 0;
 

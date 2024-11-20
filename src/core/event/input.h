@@ -1,3 +1,7 @@
+/**
+ * @file input.h
+ */
+
 #pragma once
 
 #include "core/event/key_code.h"

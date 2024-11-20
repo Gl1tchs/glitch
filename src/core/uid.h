@@ -1,5 +1,8 @@
 #pragma once
 
+/**
+ * 64-bit randomized unique identifier.
+ */
 struct GL_API UID {
 	uint64_t value;
 

@@ -1,8 +1,15 @@
+/**
+ * @file scene_view.h
+ */
+
 #pragma once
 
 #include "scene/component_lookup.h"
 #include "scene/entity.h"
 
+/**
+ * Class who queries entities within the `Scene` that is also iterable
+ */
 template <typename... TComponents> class SceneView {
 public:
 	SceneView(EntityContainer* p_entities) : entities(p_entities) {

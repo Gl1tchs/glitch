@@ -1,5 +1,13 @@
+/**
+ * @file vector_view.h
+ */
+
 #pragma once
 
+/**
+ * A very light weight span-like vector abstraction with only a pointer
+ * and size, that can be indexed and compared.
+ */
 template <typename T> class VectorView {
 public:
 	VectorView() = default;

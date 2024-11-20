@@ -1,3 +1,7 @@
+/**
+ * @file key_code.h
+ */
+
 #pragma once
 
 enum KeyCode {

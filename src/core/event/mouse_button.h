@@ -1,3 +1,7 @@
+/**
+ * @file mouse_button.h
+ */
+
 #pragma once
 
 enum MouseButton {

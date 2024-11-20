@@ -1,3 +1,7 @@
+/**
+ * @file camera.h
+ */
+
 #pragma once
 
 #include "core/transform.h"

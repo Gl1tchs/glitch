@@ -1,5 +1,13 @@
+/**
+ * @file paged_allocator.h
+ */
+
 #pragma once
 
+/**
+ * Class representing a dynamic allocator that will grow when
+ * the underlying data exceeds `page_size`
+ */
 template <typename T> class PagedAllocator {
 public:
 	PagedAllocator(size_t p_page_size = 4096) : page_size(p_page_size) {

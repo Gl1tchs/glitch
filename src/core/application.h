@@ -1,3 +1,7 @@
+/**
+ * @file application.h
+ */
+
 #pragma once
 
 #include "core/window.h"
@@ -21,7 +25,7 @@ public:
 	void quit();
 
 	/**
-	 * @brief enqueue a function to be runned for the
+	 * Enqueue a function to be runned for the
 	 * next frame.
 	 */
 	static void enqueue_main_thread(MainThreadFunc p_function);

@@ -1,3 +1,7 @@
+/**
+ * @file timer.h
+ */
+
 #pragma once
 
 class GL_API Timer {
