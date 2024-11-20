@@ -24,7 +24,7 @@ a sandbox project of mine which i use to learn graphics programming.
 
 ## Installation
 
-After building the project in release mode you can just run `sudo ./build.py install`
+After building the project in release mode you can just run `sudo make install`
 to install the project to your system. And then using `FindGlitch.cmake` file under
 cmake/ directory you can use the library from you CMake project by doing so:
 
