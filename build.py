@@ -70,7 +70,7 @@ def export_headers() -> None:
     # Copy individual header files from the source directories
     source_files = [
         "./third_party/imgui/*.h",
-        "./third_party/imgui/misc/cpp/*.h",
+        "./third_party/imgui/misc/cpp/imgui_stdlib.h",
     ]
 
     for pattern in source_files:
