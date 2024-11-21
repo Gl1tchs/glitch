@@ -1,5 +1,5 @@
 # Define the target platform and build type
-BUILD_TYPE ?= Release
+BUILD_TYPE ?= Debug
 PLATFORM ?= $(shell uname -s)
 
 # Set the build and cache directories
@@ -9,6 +9,8 @@ TEST_EXEC = $(BUILD_DIR)/tests/glitch-tests
 
 # Available actions
 .PHONY: build clean install test
+
+all: build
 
 # Configure CMake
 configure_cmake:

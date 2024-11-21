@@ -125,6 +125,10 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 
 			// add input variables
 			for (const auto* input : inputs) {
+				if (input->name == nullptr || input->location == UINT32_MAX) {
+					continue;
+				}
+				
 				ShaderInterfaceVariable variable;
 				variable.name = input->name;
 				variable.location = input->location;

@@ -383,7 +383,7 @@ struct ShaderInterfaceVariable {
 };
 
 struct PipelineVertexInputState {
-	uint32_t stride;
+	uint32_t stride = 0;
 };
 
 struct PipelineRasterizationState {

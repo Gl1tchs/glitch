@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "glitch/core/color.h"
 #include "glitch/core/window.h"
 
 #include "glitch/renderer/types.h"

@@ -29,6 +29,8 @@ set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR}/third_party)
 
 find_package(Vulkan REQUIRED)
 
+add_subdirectory(programs)
+add_subdirectory(shaders)
 add_subdirectory(third_party)
 
 file(GLOB_RECURSE SOURCES

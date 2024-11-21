@@ -1,5 +1,5 @@
-#include "platform/vulkan/vk_backend.h"
 #include "glitch/renderer/types.h"
+#include "platform/vulkan/vk_backend.h"
 #include <vulkan/vulkan_core.h>
 #include <algorithm>
 
@@ -379,41 +379,47 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 			static_cast<VkFormat>(p_rendering_state.depth_attachment);
 
 	VkVertexInputBindingDescription vertex_binding = {};
-	vertex_binding.binding = 0;
-	vertex_binding.stride = p_vertex_input_state.stride;
-	vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
 	std::vector<VkVertexInputAttributeDescription> vertex_attributes;
-	for (const auto& input : shader_get_vertex_inputs(p_shader)) {
-		VkVertexInputAttributeDescription attribute = {};
-		attribute.binding = 0;
-		attribute.format = static_cast<VkFormat>(input.format);
-		attribute.location = input.location;
-		attribute.offset = 0;
 
-		vertex_attributes.push_back(attribute);
-	}
+	// only populate if there is any vertex input configured
+	if (p_vertex_input_state.stride != 0) {
+		vertex_binding.binding = 0;
+		vertex_binding.stride = p_vertex_input_state.stride;
+		vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	// attributes should be sorted by location then assign the offsets
-	std::sort(vertex_attributes.begin(), vertex_attributes.end(),
-			[](const auto& lhs, const auto& rhs) {
-				return lhs.location < rhs.location;
-			});
+		for (const auto& input : shader_get_vertex_inputs(p_shader)) {
+			VkVertexInputAttributeDescription attribute = {};
+			attribute.binding = 0;
+			attribute.format = static_cast<VkFormat>(input.format);
+			attribute.location = input.location;
+			attribute.offset = 0;
 
-	uint32_t offset = 0;
-	for (auto& attr : vertex_attributes) {
-		size_t data_size =
-				get_data_format_size(static_cast<DataFormat>(attr.format));
-		GL_ASSERT(data_size != 0, "Unsupported data type to calculate size.");
+			vertex_attributes.push_back(attribute);
+		}
 
-		attr.offset = offset;
-		offset += data_size;
+		// attributes should be sorted by location then assign the offsets
+		std::sort(vertex_attributes.begin(), vertex_attributes.end(),
+				[](const auto& lhs, const auto& rhs) {
+					return lhs.location < rhs.location;
+				});
+
+		uint32_t offset = 0;
+		for (auto& attr : vertex_attributes) {
+			size_t data_size =
+					get_data_format_size(static_cast<DataFormat>(attr.format));
+			GL_ASSERT(
+					data_size != 0, "Unsupported data type to calculate size.");
+
+			attr.offset = offset;
+			offset += data_size;
+		}
 	}
 
 	VkPipelineVertexInputStateCreateInfo vertex_info = {};
 	vertex_info.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertex_info.vertexBindingDescriptionCount = 1;
+	vertex_info.vertexBindingDescriptionCount =
+			p_vertex_input_state.stride != 0 ? 1 : 0;
 	vertex_info.pVertexBindingDescriptions = &vertex_binding;
 	vertex_info.vertexAttributeDescriptionCount = vertex_attributes.size();
 	vertex_info.pVertexAttributeDescriptions = vertex_attributes.data();
