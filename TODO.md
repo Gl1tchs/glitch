@@ -6,6 +6,7 @@
 ## Renderer
 - [ ] Scene graph.
     - [ ] FBX models.
+    - [ ] Scene data and camera.
     - [ ] MeshRenderComponent, MaterialComponent 
     - [ ] Culling with BoundingBoxComponent
     - [ ] Instanced rendering.

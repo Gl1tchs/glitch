@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "glitch/renderer/material.h"
 #include "glitch/renderer/materials/material_unlit.h"
 #include "glitch/renderer/renderer.h"
 #include "glitch/scene/scene.h"
@@ -22,6 +21,10 @@ public:
 	void render_scene(Scene* p_scene);
 
 private:
+	void _prepare_scene();
+
+	void _cleanup_scene_resources();
+
 	// void _render_mesh(const Ref<Mesh> p_mesh, const Ref<Material>
 	// p_material);
 	// void _render_text(const std::string& p_text, const Ref<Font>
@@ -29,9 +32,11 @@ private:
 
 private:
 	Ref<Renderer> renderer;
+	Ref<RenderBackend> backend;
 
 	Scene* scene;
 
 	Ref<MaterialUnlit> unlit_material;
-	Ref<MaterialInstance> unlit_material_instance;
+
+	Ref<Texture> default_texture;
 };

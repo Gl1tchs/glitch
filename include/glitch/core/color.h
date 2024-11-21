@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "glitch/core/hash.h"
+
 /**
  * Color representing Red,Green,Blue,Alpha values in 32-bit floats.
  */
@@ -32,8 +34,6 @@ struct Color {
 			g(((p_value >> 16) & 0xFF) / 255.0f),
 			b(((p_value >> 8) & 0xFF) / 255.0f),
 			a((p_value & 0xFF) / 255.0f) {}
-
-	const float* get_ptr() const { return &r; }
 
 	/**
 	 * Get RRGGBBAA packed uint32_t representation of the `Color` object.
@@ -69,3 +69,9 @@ constexpr Color COLOR_MAGENTA(1.0f, 0.0f, 1.0f, 1.0f);
 constexpr Color COLOR_GRAY(0.5f, 0.5f, 0.5f, 1.0f);
 constexpr Color COLOR_ORANGE(1.0f, 0.5f, 0.0f, 1.0f);
 constexpr Color COLOR_TRANSPARENT(0.0f, 0.0f, 0.0f, 0.0f);
+
+template <> inline size_t hash64(const Color& p_color) {
+	size_t seed = 0;
+	hash_combine(seed, p_color.as_uint());
+	return seed;
+}

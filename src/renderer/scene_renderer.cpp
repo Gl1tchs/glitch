@@ -3,10 +3,11 @@
 #include "glitch/core/application.h"
 #include "glitch/core/color.h"
 #include "glitch/core/transform.h"
+#include "glitch/renderer/camera.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
-#include <glitch/renderer/camera.h>
+#include "glitch/scene/components.h"
 
 struct MeshVertex {
 	glm::vec3 position;
@@ -25,15 +26,13 @@ Buffer index_buffer = GL_NULL_HANDLE;
 Buffer scene_data_buffer = GL_NULL_HANDLE;
 UniformSet scene_data = GL_NULL_HANDLE;
 
-Buffer material_data_buffer = GL_NULL_HANDLE;
-Image default_image = GL_NULL_HANDLE;
-Sampler default_sampler = GL_NULL_HANDLE;
-
 PushConstants push_constants = {};
 
 SceneRenderer::SceneRenderer() :
-		renderer(Application::get_instance()->get_renderer()) {
-	Ref<RenderBackend> backend = renderer->get_backend();
+		renderer(Application::get_instance()->get_renderer()),
+		backend(renderer->get_backend()) {
+	// create the default 1x1 white texture.
+	default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
 
 	const std::vector<MeshVertex> vertices = {
 		{ { -1.0f, -1.0f, 1.0f } }, //0
@@ -105,31 +104,6 @@ SceneRenderer::SceneRenderer() :
 	scene_data = backend->uniform_set_create(
 			scene_data_uniform, unlit_material->shader, 0);
 
-	// material instance
-	material_data_buffer = backend->buffer_create(sizeof(MaterialParameters),
-			BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
-			MEMORY_ALLOCATION_TYPE_CPU);
-	MaterialParameters* material_data_ptr =
-			(MaterialParameters*)backend->buffer_map(material_data_buffer);
-	material_data_ptr->base_color = COLOR_GREEN;
-	material_data_ptr->metallic = 0.0f;
-	material_data_ptr->roughness = 0.0f;
-	backend->buffer_unmap(material_data_buffer);
-
-	uint32_t white = COLOR_WHITE.as_uint();
-	default_image =
-			backend->image_create(DATA_FORMAT_R8G8B8A8_UNORM, { 1, 1 }, &white);
-	default_sampler = backend->sampler_create();
-
-	MaterialResources resources = {
-		.material_data = material_data_buffer,
-		.albedo_image = default_image,
-		.albedo_sampler = default_sampler,
-		.normal_image = default_image,
-		.normal_sampler = default_sampler,
-	};
-	unlit_material_instance = unlit_material->create_instance(resources);
-
 	push_constants.vertex_buffer =
 			backend->buffer_get_device_address(vertex_buffer);
 }
@@ -137,48 +111,120 @@ SceneRenderer::SceneRenderer() :
 SceneRenderer::~SceneRenderer() {
 	renderer->wait_for_device();
 
-	Ref<RenderBackend> backend = renderer->get_backend();
-
 	backend->buffer_free(vertex_buffer);
 	backend->buffer_free(index_buffer);
 	backend->uniform_set_free(scene_data);
 	backend->buffer_free(scene_data_buffer);
-	backend->buffer_free(material_data_buffer);
-	backend->image_free(default_image);
-	backend->sampler_free(default_sampler);
+
+	_cleanup_scene_resources();
 }
 
 void SceneRenderer::render_scene(Scene* p_scene) {
 	scene = p_scene;
 
-	CommandBuffer cmd = renderer->begin_render();
+	// prepare entities and components to draw
+	_prepare_scene();
 
-	Ref<RenderBackend> backend = renderer->get_backend();
+	CommandBuffer cmd = renderer->begin_render();
 
 	backend->command_begin_rendering(cmd, renderer->get_draw_extent(),
 			renderer->get_draw_image(), renderer->get_depth_image());
 
-	backend->command_bind_graphics_pipeline(
-			cmd, unlit_material_instance->pipeline);
+	for (auto entity : scene->view<MaterialComponent>()) {
+		const MaterialComponent* material_comp =
+				scene->get<MaterialComponent>(entity);
 
-	// Descriptors
-	std::vector<UniformSet> uniform_sets = { scene_data,
-		unlit_material_instance->uniform_set };
+		const Ref<MaterialInstance> material = material_comp->instance;
 
-	// set = 0 scene data
-	// set = 1 material data
-	backend->command_bind_uniform_sets(
-			cmd, unlit_material_instance->shader, 0, uniform_sets);
+		// Of course we need to bind the pipeline if it is really necessary
+		// but currently we don't have a mesh system. This same principle can
+		// also be told for drawing cubes only so i will just mark it as
+		// TODO:
 
-	// Push constants
-	backend->command_push_constants(cmd, unlit_material_instance->shader, 0,
-			sizeof(PushConstants), &push_constants);
+		backend->command_bind_graphics_pipeline(cmd, material->pipeline);
 
-	backend->command_bind_index_buffer(cmd, index_buffer, 0, INDEX_TYPE_UINT32);
+		// Descriptors
+		std::vector<UniformSet> uniform_sets = {
+			scene_data,
+			material->uniform_set,
+		};
 
-	backend->command_draw_indexed(cmd, 36);
+		// set = 0 scene data
+		// set = 1 material data
+		backend->command_bind_uniform_sets(
+				cmd, material->shader, 0, uniform_sets);
+
+		// Push constants
+		backend->command_push_constants(cmd, material->shader, 0,
+				sizeof(PushConstants), &push_constants);
+
+		backend->command_bind_index_buffer(
+				cmd, index_buffer, 0, INDEX_TYPE_UINT32);
+
+		backend->command_draw_indexed(cmd, 36);
+	}
 
 	backend->command_end_rendering(cmd);
 
 	renderer->end_render();
+}
+
+void SceneRenderer::_prepare_scene() {
+	for (auto entity : scene->view<MaterialComponent>()) {
+		MaterialComponent* material_comp =
+				scene->get<MaterialComponent>(entity);
+
+		const size_t hash = hash64(*material_comp);
+
+		// update the instance if it doesn't exist or updated
+		if (material_comp->instance != nullptr && hash == material_comp->hash) {
+			continue;
+		}
+
+		// TODO: buffer creation should be cached
+		Buffer material_data = backend->buffer_create(
+				sizeof(MaterialParameters),
+				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+				MEMORY_ALLOCATION_TYPE_CPU);
+
+		// TODO: for a per-frame buffer it is not essential to do this.
+		MaterialParameters* material_data_ptr =
+				(MaterialParameters*)backend->buffer_map(material_data);
+		{
+			material_data_ptr->base_color = material_comp->base_color;
+			material_data_ptr->metallic = material_comp->metallic;
+			material_data_ptr->roughness = material_comp->roughness;
+		}
+		backend->buffer_unmap(material_data);
+
+		MaterialResources resources;
+		resources.material_data = material_data;
+		resources.albedo_texture = material_comp->albedo_texture
+				? material_comp->albedo_texture
+				: default_texture;
+		resources.normal_texture = material_comp->normal_texture
+				? material_comp->normal_texture
+				: default_texture;
+
+		switch (material_comp->type) {
+			case MATERIAL_TYPE_UNLIT: {
+				// call the destructor to free resources
+				material_comp->instance =
+						unlit_material->create_instance(resources);
+				break;
+			}
+		}
+
+		material_comp->hash = hash;
+	}
+}
+
+void SceneRenderer::_cleanup_scene_resources() {
+	for (auto entity : scene->view<MaterialComponent>()) {
+		MaterialComponent* material_comp =
+				scene->get<MaterialComponent>(entity);
+		if (material_comp->instance) {
+			material_comp->instance.reset();
+		}
+	}
 }

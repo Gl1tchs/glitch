@@ -9,6 +9,7 @@
 MaterialInstance::~MaterialInstance() {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 	backend->uniform_set_free(uniform_set);
+	backend->buffer_free(resources.material_data);
 }
 
 Material::~Material() {
@@ -29,22 +30,16 @@ Ref<MaterialInstance> Material::create_instance(
 			create_ref<MaterialInstance>(MaterialInstance{});
 	instance->pipeline = pipeline;
 	instance->shader = shader;
+	instance->resources = p_resources;
 
 	std::vector<ShaderUniform> uniforms(3);
 
 	uniforms[0].type = UNIFORM_TYPE_UNIFORM_BUFFER;
 	uniforms[0].binding = 0;
-	uniforms[0].data.push_back(p_resources.material_data);
+	uniforms[0].data.push_back(instance->resources.material_data);
 
-	uniforms[1].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
-	uniforms[1].binding = 1;
-	uniforms[1].data.push_back(p_resources.albedo_sampler);
-	uniforms[1].data.push_back(p_resources.albedo_image);
-
-	uniforms[2].type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
-	uniforms[2].binding = 2;
-	uniforms[2].data.push_back(p_resources.normal_sampler);
-	uniforms[2].data.push_back(p_resources.normal_image);
+	uniforms[1] = instance->resources.albedo_texture->get_uniform(1);
+	uniforms[2] = instance->resources.normal_texture->get_uniform(2);
 
 	instance->uniform_set = backend->uniform_set_create(uniforms, shader, 1);
 

@@ -5,6 +5,8 @@
 #pragma once
 
 #include "glitch/core/color.h"
+#include "glitch/core/uid.h"
+#include "glitch/renderer/texture.h"
 #include "glitch/renderer/types.h"
 
 struct MaterialParameters {
@@ -15,11 +17,11 @@ struct MaterialParameters {
 
 struct MaterialResources {
 	Buffer material_data;
-	Image albedo_image;
-	Sampler albedo_sampler;
-	Image normal_image;
-	Sampler normal_sampler;
+	Ref<Texture> albedo_texture;
+	Ref<Texture> normal_texture;
 };
+
+typedef UID MaterialID;
 
 struct Material;
 
@@ -28,11 +30,13 @@ struct Material;
  * Material::create_instance
  */
 struct GL_API MaterialInstance {
+	MaterialID id;
 	Pipeline pipeline;
 	Shader shader;
 
 	// uniform set corresponding to set = 1 in shader.
 	UniformSet uniform_set;
+	MaterialResources resources;
 
 	~MaterialInstance();
 
@@ -52,7 +56,7 @@ struct GL_API Material {
 	Pipeline pipeline;
 	Shader shader;
 
-	virtual ~Material();
+	virtual ~Material() = 0;
 
 	/**
 	 * Create an instance of this material with specified parameters
