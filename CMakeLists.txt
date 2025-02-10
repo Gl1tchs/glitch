@@ -23,11 +23,17 @@ endif()
 # append into module path for our own configurations
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include($ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 include(CMakeOptions)
 
 set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR}/third_party)
 
 find_package(Vulkan REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+find_package(vk-bootstrap CONFIG REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 add_subdirectory(programs)
 add_subdirectory(shaders)
@@ -55,18 +61,19 @@ target_include_directories(glitch
     PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_BINARY_DIR}/include
-    ${GLFW_INCLUDES}
-    ${SPIRV_REFLECT_INCLUDES}
-    ${VMA_INCLUDES}
     ${IMGUI_INCLUDES}
+    ${STB_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
 )
 
 target_link_libraries(glitch
+    PUBLIC
+    glm::glm-header-only
     PRIVATE
-    ${GLFW_LIBS}
-    ${VMA_LIBS}
-    ${VK_BOOTSTRAP_LIBS}
+    glfw
+    unofficial::spirv-reflect
+    vk-bootstrap::vk-bootstrap
+    GPUOpen::VulkanMemoryAllocator
     ${IMGUI_LIBS}
     ${Vulkan_LIBRARIES}
 )

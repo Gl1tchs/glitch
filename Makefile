@@ -1,5 +1,5 @@
 # Define the target platform and build type
-BUILD_TYPE ?= Debug
+BUILD_TYPE ?= Release
 PLATFORM ?= $(shell uname -s)
 
 # Set the build and cache directories
@@ -15,7 +15,7 @@ all: build
 # Configure CMake
 configure_cmake:
 	@echo "Configuring cmake..."
-	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
+	cmake -S . -B $(BUILD_DIR) -G Ninja -D GL_BUILD_DYNAMIC_LIBS=1 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
 # Build the engine
 build: configure_cmake

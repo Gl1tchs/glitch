@@ -177,6 +177,8 @@ void VulkanRenderBackend::command_clear_color(CommandBuffer p_cmd,
 				return VK_IMAGE_ASPECT_DEPTH_BIT;
 			case IMAGE_ASPECT_STENCIL_BIT:
 				return VK_IMAGE_ASPECT_STENCIL_BIT;
+			default:
+				return VK_IMAGE_ASPECT_NONE;
 		}
 	}();
 	image_range.levelCount = 1;

@@ -3,6 +3,8 @@
 .cache/
 .idea/
 
+vcpkg_installed/
+
 # Compiled Object files
 *.slo
 *.lo

@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "doctest",
+    "glfw3",
+    "glm",
+    "spirv-reflect",
+    "vk-bootstrap",
+    "vulkan-memory-allocator"
+  ]
+}
