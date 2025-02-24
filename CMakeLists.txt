@@ -13,7 +13,7 @@ set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
 option(GL_BUILD_DOCS "Build doxygen documentation" ON)
 set(GL_BUILD_DOCS ${GL_BUILD_DOCS})
 
-option(GL_BUILD_DYNAMIC_LIBS "Build dynamic libraries" ON)
+option(GL_BUILD_DYNAMIC_LIBS "Build dynamic libraries" OFF)
 set(GL_BUILD_DYNAMIC_LIBS ${GL_BUILD_DYNAMIC_LIBS})
 
 if (GL_BUILD_DYNAMIC_LIBS)
@@ -101,17 +101,6 @@ if (GL_INSTALL)
         DESTINATION include
     )
 
-    # install glm
-    install(
-        DIRECTORY ${VENDOR_DIR}/glm/glm/
-        DESTINATION include/glm
-        FILES_MATCHING
-        PATTERN "*.h"
-        PATTERN "*.hpp"
-        PATTERN "*.inl"
-        PATTERN "CMakeLists.txt" EXCLUDE
-    )
-
     # install imgui
     file(GLOB IMGUI_HEADERS "${VENDOR_DIR}/imgui/*.h")
     install(
@@ -121,14 +110,14 @@ if (GL_INSTALL)
 
     # install stb
     install(
-        DIRECTORY ${VENDOR_DIR}/stb/
-        DESTINATION include/stb
+        DIRECTORY ${VENDOR_DIR}/stb/stb
+        DESTINATION include
     )  
 endif()
 
-if (GL_BUILD_DOCS)
-    find_package(Doxygen REQUIRED)
+find_package(Doxygen REQUIRED)
 
+if (GL_BUILD_DOCS AND DOXYGEN_FOUND)
     # Configure Doxygen
     set(DOXYGEN_GENERATE_HTML YES)
     set(DOXYGEN_MARKDOWN_SUPPORT YES)

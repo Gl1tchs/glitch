@@ -1,6 +1,7 @@
 #include "platform/vulkan/vk_backend.h"
 
 #include <VkBootstrap.h>
+#include <vulkan/vulkan_core.h>
 
 void VulkanRenderBackend::_swapchain_release(VulkanSwapchain* p_swapchain) {
 	// destroy swapchain resources

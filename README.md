@@ -8,9 +8,11 @@ be integrated by deriving RenderBackend class.
 
 In order to build the engine you need to have the dependencies installed on your
 system:
+
 - [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/): vulkan backend.
 
-**Clonning and building:**
+### Clonning and building:
+
 ```
 git clone --recursive https://github.com/Gl1tchs/glitch.git \
     cd glitch \
