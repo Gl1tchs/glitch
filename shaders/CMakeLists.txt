@@ -60,7 +60,7 @@ add_custom_target(gl-shaders ALL
 if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
     set(BUNDLER_EXE $<TARGET_FILE:gl-bundler>)
 
-    set(BUNDLE_OUTPUT_DIR "${CMAKE_BINARY_DIR}/include")
+    set(BUNDLE_OUTPUT_DIR "${GL_OUTPUT_DIR}/include")
 
     add_custom_command(TARGET gl-shaders PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${BUNDLE_OUTPUT_DIR}

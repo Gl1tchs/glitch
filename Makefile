@@ -1,11 +1,12 @@
 # Define the target platform and build type
-BUILD_TYPE ?= Release
+BUILD_TYPE ?= Debug
 PLATFORM ?= $(shell uname -s)
 
 # Set the build and cache directories
 BUILD_DIR = build
+OUT_DIR = build
 CACHE_DIR = .glitch
-TEST_EXEC = $(BUILD_DIR)/tests/glitch-tests
+TEST_EXEC = $(OUT_DIR)/tests/glitch-tests
 
 # Available actions
 .PHONY: build clean install test

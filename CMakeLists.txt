@@ -10,7 +10,7 @@ set(GL_INSTALL ${GL_INSTALL})
 option(GL_BUILD_TESTS "Build tests!" ON)
 set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
 
-option(GL_BUILD_DOCS "Build doxygen documentation" ON)
+option(GL_BUILD_DOCS "Build doxygen documentation" OFF)
 set(GL_BUILD_DOCS ${GL_BUILD_DOCS})
 
 option(GL_BUILD_DYNAMIC_LIBS "Build dynamic libraries" OFF)
@@ -50,30 +50,29 @@ endif()
 
 target_include_directories(glitch
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/src
     ${GLM_INCLUDES}
     PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src
-    ${CMAKE_BINARY_DIR}/include
-    ${IMGUI_INCLUDES}
+    ${GL_OUTPUT_DIR}/include
+    ${GLFW_INCLUDES}
+    ${SPIRV_REFLECT_INCLUDES}
     ${STB_INCLUDES}
+    ${VMA_INCLUDES}
+    ${IMGUI_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
 )
 
 target_link_libraries(glitch
     PUBLIC
-    glm::glm-header-only
-    PRIVATE
-    glfw
-    unofficial::spirv-reflect
-    vk-bootstrap::vk-bootstrap
-    GPUOpen::VulkanMemoryAllocator
+    ${GLFW_LIBS}
+    ${VMA_LIBS}
+    ${VK_BOOTSTRAP_LIBS}
     ${IMGUI_LIBS}
     ${Vulkan_LIBRARIES}
 )
 
 target_precompile_headers(glitch PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include/glitch/pch.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/glitch/pch.h
 )
 
 target_compile_definitions(glitch PRIVATE
@@ -109,9 +108,9 @@ if (GL_INSTALL)
     )  
 endif()
 
-find_package(Doxygen REQUIRED)
-
 if (GL_BUILD_DOCS AND DOXYGEN_FOUND)
+    find_package(Doxygen REQUIRED)
+
     # Configure Doxygen
     set(DOXYGEN_GENERATE_HTML YES)
     set(DOXYGEN_MARKDOWN_SUPPORT YES)

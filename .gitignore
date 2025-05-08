@@ -49,6 +49,7 @@ vcpkg_installed/
 
 [Bb]uild/
 [Bb]in/
+[Oo]ut/
 Testing/
 
 .glitch/
