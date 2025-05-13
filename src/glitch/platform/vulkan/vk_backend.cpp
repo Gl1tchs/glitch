@@ -214,7 +214,7 @@ void VulkanRenderBackend::imgui_init_for_platform(GLFWwindow* p_glfw_window) {
 	init_info.PipelineRenderingCreateInfo.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 	init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-	static VkFormat color_attachment = VK_FORMAT_B8G8R8A8_UNORM;
+	static VkFormat color_attachment = VK_FORMAT_R8G8B8A8_UNORM;
 	init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats =
 			&color_attachment;
 

@@ -16,11 +16,11 @@ struct KeyTypeEvent {
 };
 
 struct MouseMoveEvent {
-	Vec2f position;
+	glm::vec2 position;
 };
 
 struct MouseScrollEvent {
-	Vec2f offset;
+	glm::vec2 offset;
 };
 
 struct MousePressEvent {
@@ -32,7 +32,7 @@ struct MouseReleaseEvent {
 };
 
 struct WindowResizeEvent {
-	Vec2i size;
+	glm::ivec2 size;
 };
 
 struct WindowCloseEvent {};

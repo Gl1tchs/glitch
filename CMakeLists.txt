@@ -7,8 +7,14 @@ set(PROJECT_VERSION "0.1.0")
 option(GL_INSTALL "Should target be installed" ON)
 set(GL_INSTALL ${GL_INSTALL})
 
+option(GL_BUILD_TESTBED "Build Testbed application" ON)
+set(GL_BUILD_TESTBED ${GL_BUILD_TESTBED})
+
 option(GL_BUILD_TESTS "Build tests!" ON)
 set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
+
+option(GL_ENABLE_PROFILING "Enable profiling" ON)
+set(GL_ENABLE_PROFILING ${GL_ENABLE_PROFILING})
 
 option(GL_BUILD_DOCS "Build doxygen documentation" OFF)
 set(GL_BUILD_DOCS ${GL_BUILD_DOCS})
@@ -80,6 +86,12 @@ target_compile_definitions(glitch PRIVATE
     ${IMGUI_DEFINITIONS}
 )
 
+if (GL_ENABLE_PROFILING)
+    target_include_directories(glitch PRIVATE ${TRACY_INCLUDES})
+    target_link_libraries(glitch PRIVATE ${TRACY_LIBS})
+    target_compile_definitions(glitch PRIVATE GL_ENABLE_PROFILING)
+endif()
+
 # Install target
 if (GL_INSTALL)
     include(GNUInstallDirs)
@@ -127,6 +139,10 @@ if (GL_BUILD_DOCS AND DOXYGEN_FOUND)
         ${CMAKE_CURRENT_LIST_DIR}/include
         ${CMAKE_CURRENT_LIST_DIR}/README.md
     )
+endif()
+
+if (GL_BUILD_TESTBED)
+    add_subdirectory(testbed)
 endif()
 
 if (GL_BUILD_TESTS)

@@ -254,8 +254,8 @@ struct BufferImageCopyRegion {
 	uint32_t buffer_row_length;
 	uint32_t buffer_image_height;
 	ImageSubresourceLayers image_subresource;
-	Vec3u image_offset;
-	Vec3u image_extent;
+	glm::uvec3 image_offset;
+	glm::uvec3 image_extent;
 };
 
 inline const uint32_t MAX_UNIFORM_SETS = 16;
@@ -473,7 +473,7 @@ struct PipelineColorBlendState {
 	}
 
 	std::vector<Attachment> attachments; // One per render target texture.
-	Vec4f blend_constant;
+	glm::vec4 blend_constant;
 };
 
 struct RenderingState {

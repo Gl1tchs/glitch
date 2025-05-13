@@ -120,6 +120,8 @@ SceneRenderer::~SceneRenderer() {
 }
 
 void SceneRenderer::render_scene(Scene* p_scene) {
+	GL_PROFILE_SCOPE;
+
 	scene = p_scene;
 
 	// prepare entities and components to draw
@@ -170,6 +172,8 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 }
 
 void SceneRenderer::_prepare_scene() {
+	GL_PROFILE_SCOPE;
+
 	for (auto entity : scene->view<MaterialComponent>()) {
 		MaterialComponent* material_comp =
 				scene->get<MaterialComponent>(entity);

@@ -1,7 +1,20 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "glitch/core/templates/vector.h"
+#include "glitch/core/math/vector.h"
+
+TEST_CASE("Vec2 Magnitude") {
+	Vec2f v(3.0f, 4.0f);
+	float mag = v.magnitude();
+	CHECK(doctest::Approx(mag).epsilon(0.001f) == 5.0f); // 3-4-5 triangle FTW
+}
+
+TEST_CASE("Vec2 Normalize") {
+	Vec2f v(3.0f, 4.0f);
+	Vec2f n = v.normalize();
+	CHECK(doctest::Approx(n.x).epsilon(0.001f) == 0.6f);
+	CHECK(doctest::Approx(n.y).epsilon(0.001f) == 0.8f);
+	CHECK(doctest::Approx(n.magnitude()).epsilon(0.001f) == 1.0f);
+}
 
 TEST_CASE("Vec2 Dot Product") {
 	Vec2f v1(9.0f, 5.0f);
@@ -82,6 +95,22 @@ TEST_CASE("Vec2 Comparison Operators") {
 		CHECK(v1 == v2);
 		CHECK(!(v1 == v3));
 	}
+}
+
+TEST_CASE("Vec3 Magnitude") {
+	Vec3f v(1.0f, 2.0f, 2.0f);
+	float mag = v.magnitude();
+	CHECK(doctest::Approx(mag).epsilon(0.001f) ==
+			3.0f); // √(1² + 2² + 2²) = √9 = 3
+}
+
+TEST_CASE("Vec3 Normalize") {
+	Vec3f v(1.0f, 2.0f, 2.0f);
+	Vec3f n = v.normalize();
+	CHECK(doctest::Approx(n.x).epsilon(0.001f) == 1.0f / 3.0f);
+	CHECK(doctest::Approx(n.y).epsilon(0.001f) == 2.0f / 3.0f);
+	CHECK(doctest::Approx(n.z).epsilon(0.001f) == 2.0f / 3.0f);
+	CHECK(doctest::Approx(n.magnitude()).epsilon(0.001f) == 1.0f);
 }
 
 TEST_CASE("Vec3 Dot Product") {

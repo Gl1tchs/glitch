@@ -6,11 +6,6 @@ find_path(GLITCH_INCLUDE_DIR glitch/pch.h
     PATH_SUFFIXES glitch
 )
 
-find_path(GLM_INCLUDE_DIR glm/glm.hpp
-    PATHS ${CMAKE_INSTALL_PREFIX}/include
-    PATH_SUFFIXES glm
-)
-
 find_path(STB_INCLUDE_DIR stb/stb_image.h
     PATHS ${CMAKE_INSTALL_PREFIX}/include
     PATH_SUFFIXES stb
@@ -28,7 +23,6 @@ find_library(GLITCH_LIBRARY
 
 # Provide information about the found package
 if(GLITCH_INCLUDE_DIR
-    AND GLM_INCLUDE_DIR
     AND STB_INCLUDE_DIR
     AND IMGUI_INCLUDE_DIR
     AND GLITCH_LIBRARY)
@@ -41,7 +35,6 @@ endif()
 if(GLITCH_FOUND)
     set(GLITCH_INCLUDE_DIRS
         ${GLITCH_INCLUDE_DIR}
-        ${GLM_INCLUDE_DIR}
         ${IMGUI_INCLUDE_DIR}
     )
     set(GLITCH_LIBRARIES ${GLITCH_LIBRARY})

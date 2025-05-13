@@ -21,7 +21,7 @@ public:
 
 	static bool is_mouse_released(MouseButton p_button);
 
-	static Vec2f get_mouse_position();
+	static glm::vec2 get_mouse_position();
 
-	static Vec2f get_scroll_offset();
+	static glm::vec2 get_scroll_offset();
 };

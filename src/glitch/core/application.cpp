@@ -44,14 +44,22 @@ void Application::enqueue_main_thread(MainThreadFunc p_function) {
 }
 
 void Application::_event_loop(float p_dt) {
+	GL_PROFILE_SCOPE;
+
 	window->poll_events();
 
 	_process_main_thread_queue();
 
-	_on_update(p_dt);
+	{
+		GL_PROFILE_SCOPE_N("Application::_on_update");
+
+		_on_update(p_dt);
+	}
 }
 
 void Application::_process_main_thread_queue() {
+	GL_PROFILE_SCOPE;
+
 	std::scoped_lock<std::mutex> lock(main_thread_queue_mutex);
 	for (auto& func : main_thread_queue) {
 		func();

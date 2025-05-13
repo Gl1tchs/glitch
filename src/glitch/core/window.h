@@ -28,7 +28,7 @@ public:
 
 	bool is_open() const;
 
-	Vec2u get_size() const;
+	glm::uvec2 get_size() const;
 
 	float get_aspect_ratio() const;
 

@@ -1,7 +1,11 @@
 # TODO
 
 - [ ] Make get_bundled_spirv_data into a ShaderLibrary class
-- [ ] Own math classes for linalg
+- [x] Own math classes for linalg
+    - [ ] Mat3 class
+    - [ ] SIMD Matrix multiplication
+    - [ ] Mat4 inverse
+    - [ ] SPIRV Dot product
 
 - [ ] Physics integration to ECS.
 - [ ] Plugin system and runtime plugin loading via shared libraries.

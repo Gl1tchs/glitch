@@ -96,7 +96,7 @@ Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
 	return Image(image);
 }
 
-Image VulkanRenderBackend::image_create(DataFormat p_format, Vec2u p_size,
+Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 		const void* p_data, BitField<ImageUsageBits> p_usage,
 		bool p_mipmapped) {
 	VkExtent3D vk_size = { p_size.x, p_size.y, 1 };
@@ -138,7 +138,7 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, Vec2u p_size,
 			copy_region.image_subresource.base_array_layer = 0;
 			copy_region.image_subresource.layer_count = 1;
 			copy_region.image_extent = { p_size.x, p_size.y, 1 };
-			copy_region.image_offset = 0;
+			copy_region.image_offset = { 0, 0, 0 };
 
 			VectorView<BufferImageCopyRegion> copy_view(copy_region);
 
@@ -164,12 +164,12 @@ void VulkanRenderBackend::image_free(Image p_image) {
 	vmaDestroyImage(allocator, image->vk_image, image->allocation);
 }
 
-Vec3u VulkanRenderBackend::image_get_size(Image p_image) {
+glm::uvec3 VulkanRenderBackend::image_get_size(Image p_image) {
 	VulkanImage* image = (VulkanImage*)p_image;
 
-	Vec3u size;
-	static_assert(sizeof(Vec3u) == sizeof(VkExtent3D));
-	memcpy(&size, &image->image_extent, sizeof(Vec3u));
+	glm::uvec3 size;
+	static_assert(sizeof(glm::uvec3) == sizeof(VkExtent3D));
+	memcpy(&size, &image->image_extent, sizeof(glm::uvec3));
 
 	return size;
 }

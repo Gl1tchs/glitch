@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "glitch/core/color.h"
 #include "glitch/core/window.h"
 
 #include "glitch/renderer/types.h"
@@ -74,7 +73,7 @@ public:
 	 */
 	void imgui_end();
 
-	Vec2u get_draw_extent() { return draw_extent; }
+	glm::uvec2 get_draw_extent() { return draw_extent; }
 
 	Image get_draw_image() { return draw_image; }
 
@@ -121,7 +120,7 @@ private:
 
 	Swapchain swapchain;
 
-	Vec2u draw_extent;
+	glm::uvec2 draw_extent;
 
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];

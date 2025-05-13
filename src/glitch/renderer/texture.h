@@ -16,11 +16,11 @@ public:
 	~Texture();
 
 	static Ref<Texture> create(const Color& p_color,
-			const Vec2u& p_size = { 1, 1 },
+			const glm::uvec2& p_size = { 1, 1 },
 			ImageFiltering p_filtering = IMAGE_FILTERING_LINEAR,
 			ImageWrappingMode p_wrapping = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE);
 
-	static Ref<Texture> create(DataFormat p_format, const Vec2u& p_size,
+	static Ref<Texture> create(DataFormat p_format, const glm::uvec2& p_size,
 			const void* p_data = nullptr,
 			ImageFiltering p_filtering = IMAGE_FILTERING_LINEAR,
 			ImageWrappingMode p_wrapping = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE);

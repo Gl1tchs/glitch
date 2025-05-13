@@ -25,7 +25,7 @@ Swapchain VulkanRenderBackend::swapchain_create() {
 }
 
 void VulkanRenderBackend::swapchain_resize(
-		CommandQueue p_cmd_queue, Swapchain p_swapchain, Vec2u size) {
+		CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 size) {
 	VulkanQueue* queue = (VulkanQueue*)p_cmd_queue;
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
@@ -89,13 +89,13 @@ Optional<Image> VulkanRenderBackend::swapchain_acquire_image(
 	return Image(&swapchain->images[swapchain->image_index]);
 }
 
-Vec2u VulkanRenderBackend::swapchain_get_extent(Swapchain p_swapchain) {
+glm::uvec2 VulkanRenderBackend::swapchain_get_extent(Swapchain p_swapchain) {
 	GL_ASSERT(p_swapchain != nullptr);
 
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
-	Vec2u extent;
-	static_assert(sizeof(Vec2u) == sizeof(VkExtent2D));
+	glm::uvec2 extent;
+	static_assert(sizeof(glm::uvec2) == sizeof(VkExtent2D));
 	memcpy(&extent, &swapchain->extent, sizeof(VkExtent2D));
 
 	return extent;

@@ -15,7 +15,7 @@ Texture::~Texture() {
 	backend->sampler_free(sampler);
 }
 
-Ref<Texture> Texture::create(const Color& p_color, const Vec2u& p_size,
+Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 		ImageFiltering p_filtering, ImageWrappingMode p_wrapping) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
@@ -30,7 +30,7 @@ Ref<Texture> Texture::create(const Color& p_color, const Vec2u& p_size,
 	return tx;
 }
 
-Ref<Texture> Texture::create(DataFormat p_format, const Vec2u& p_size,
+Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
 		const void* p_data, ImageFiltering p_filtering,
 		ImageWrappingMode p_wrapping) {
 	Ref<RenderBackend> backend = Renderer::get_backend();

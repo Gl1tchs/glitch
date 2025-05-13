@@ -2,6 +2,7 @@
 
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
+#include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/types.h"
 
 MaterialUnlit::MaterialUnlit() {
@@ -9,11 +10,12 @@ MaterialUnlit::MaterialUnlit() {
 
 	SpirvData vertex_data = {};
 	vertex_data.stage = SHADER_STAGE_VERTEX_BIT;
-	vertex_data.byte_code = get_bundled_spirv_data("mesh.vert.spv");
+	vertex_data.byte_code = ShaderLibrary::get_bundled_spirv("mesh.vert.spv");
 
 	SpirvData fragment_data = {};
 	fragment_data.stage = SHADER_STAGE_FRAGMENT_BIT;
-	fragment_data.byte_code = get_bundled_spirv_data("unlit.frag.spv");
+	fragment_data.byte_code =
+			ShaderLibrary::get_bundled_spirv("unlit.frag.spv");
 
 	std::vector<SpirvData> shader_stages = {
 		vertex_data,

@@ -92,6 +92,8 @@ Renderer::~Renderer() {
 }
 
 CommandBuffer Renderer::begin_render() {
+	GL_PROFILE_SCOPE;
+
 	_reset_stats();
 
 	backend->fence_wait(_get_current_frame().render_fence);
@@ -107,8 +109,9 @@ CommandBuffer Renderer::begin_render() {
 
 	backend->fence_reset(_get_current_frame().render_fence);
 
-	const Vec2u swapchain_extent = backend->swapchain_get_extent(swapchain);
-	const Vec3u draw_image_extent = backend->image_get_size(draw_image);
+	const glm::uvec2 swapchain_extent =
+			backend->swapchain_get_extent(swapchain);
+	const glm::uvec3 draw_image_extent = backend->image_get_size(draw_image);
 
 	// set render scale
 	draw_extent = {
@@ -140,6 +143,8 @@ CommandBuffer Renderer::begin_render() {
 }
 
 void Renderer::end_render() {
+	GL_PROFILE_SCOPE;
+
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
 	backend->command_transition_image(cmd, draw_image,
@@ -188,6 +193,8 @@ void Renderer::end_render() {
 void Renderer::wait_for_device() { backend->device_wait(); }
 
 void Renderer::imgui_begin() {
+	GL_PROFILE_SCOPE;
+
 	imgui_being_used = true;
 
 	backend->imgui_new_frame_for_platform();
@@ -196,6 +203,8 @@ void Renderer::imgui_begin() {
 }
 
 void Renderer::imgui_end() {
+	GL_PROFILE_SCOPE;
+
 	ImGui::Render();
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
 		ImGui::UpdatePlatformWindows();
@@ -204,6 +213,8 @@ void Renderer::imgui_end() {
 }
 
 void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
+	GL_PROFILE_SCOPE;
+
 	backend->command_begin_rendering(
 			p_cmd, backend->swapchain_get_extent(swapchain), p_target_image);
 	{ backend->imgui_render_for_platform(p_cmd); }
@@ -227,6 +238,8 @@ void Renderer::_imgui_init() {
 
 void Renderer::_request_resize() {
 	Application::get_instance()->enqueue_main_thread([&]() {
+		GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
+
 		backend->swapchain_resize(present_queue, swapchain, window->get_size());
 	});
 }

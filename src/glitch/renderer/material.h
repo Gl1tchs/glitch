@@ -63,8 +63,3 @@ struct GL_API Material {
 	 */
 	Ref<MaterialInstance> create_instance(const MaterialResources& p_resources);
 };
-
-/**
- * Retrieve shader from bundled shader library by its' path
- */
-std::vector<uint32_t> get_bundled_spirv_data(const char* p_path);

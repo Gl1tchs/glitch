@@ -64,6 +64,5 @@ bool VulkanRenderBackend::queue_present(CommandQueue p_queue,
 	present_info.pImageIndices = &swapchain->image_index;
 
 	const VkResult res = vkQueuePresentKHR(queue->queue, &present_info);
-
-	return res != VK_SUCCESS;
+	return res == VK_SUCCESS;
 }

@@ -43,14 +43,14 @@ public:
 
 	// Image
 
-	virtual Image image_create(DataFormat p_format, Vec2u p_size,
+	virtual Image image_create(DataFormat p_format, glm::uvec2 p_size,
 			const void* p_data = nullptr,
 			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT,
 			bool p_mipmapped = false) = 0;
 
 	virtual void image_free(Image p_image) = 0;
 
-	virtual Vec3u image_get_size(Image p_image) = 0;
+	virtual glm::uvec3 image_get_size(Image p_image) = 0;
 
 	virtual Sampler sampler_create(
 			ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
@@ -77,7 +77,7 @@ public:
 	virtual Swapchain swapchain_create() = 0;
 
 	virtual void swapchain_resize(
-			CommandQueue p_cmd_queue, Swapchain p_swapchain, Vec2u size) = 0;
+			CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 size) = 0;
 
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed
@@ -85,7 +85,7 @@ public:
 	virtual Optional<Image> swapchain_acquire_image(
 			Swapchain p_swapchain, Semaphore p_semaphore) = 0;
 
-	virtual Vec2u swapchain_get_extent(Swapchain p_swapchain) = 0;
+	virtual glm::uvec2 swapchain_get_extent(Swapchain p_swapchain) = 0;
 
 	virtual DataFormat swapchain_get_format(Swapchain p_swapchain) = 0;
 
@@ -162,7 +162,7 @@ public:
 	virtual void command_reset(CommandBuffer p_cmd) = 0;
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
-			const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
+			const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) = 0;
 
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
@@ -211,10 +211,10 @@ public:
 			const void* p_push_constants) = 0;
 
 	virtual void command_set_viewport(
-			CommandBuffer p_cmd, const Vec2u& size) = 0;
+			CommandBuffer p_cmd, const glm::uvec2& size) = 0;
 
-	virtual void command_set_scissor(CommandBuffer p_cmd, const Vec2u& p_size,
-			const Vec2u& p_offset = { 0, 0 }) = 0;
+	virtual void command_set_scissor(CommandBuffer p_cmd, const glm::uvec2& p_size,
+			const glm::uvec2& p_offset = { 0, 0 }) = 0;
 
 	// NOTE: dynamic state must be enabled for this
 	virtual void command_set_depth_bias(CommandBuffer p_cmd,
@@ -230,8 +230,8 @@ public:
 			VectorView<BufferImageCopyRegion> p_regions) = 0;
 
 	virtual void command_copy_image_to_image(CommandBuffer p_cmd,
-			Image p_src_image, Image p_dst_image, const Vec2u& p_src_extent,
-			const Vec2u& p_dst_extent) = 0;
+			Image p_src_image, Image p_dst_image, const glm::uvec2& p_src_extent,
+			const glm::uvec2& p_dst_extent) = 0;
 
 	virtual void command_transition_image(CommandBuffer p_cmd, Image p_image,
 			ImageLayout p_current_layout, ImageLayout p_new_layout) = 0;

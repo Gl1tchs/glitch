@@ -7,6 +7,14 @@ if (GL_BUILD_TESTS)
     add_subdirectory(doctest)
 endif()
 
+# Tracy profiler
+set(TRACY_INCLUDES ${VENDOR_DIR}/tracy/public PARENT_SCOPE)
+set(TRACY_LIBS TracyClient PARENT_SCOPE)
+
+if (GL_ENABLE_PROFILING)
+    add_subdirectory(tracy)
+endif()
+
 # GLFW
 set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
 set(GLFW_LIBS glfw PARENT_SCOPE)

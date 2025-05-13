@@ -8,8 +8,8 @@ inline static std::unordered_map<KeyCode, bool> keys_held_states = {};
 
 inline static std::unordered_map<MouseButton, bool> mouse_press_states = {};
 inline static std::unordered_map<MouseButton, bool> mouse_release_states = {};
-inline static Vec2f mouse_position = Vec2f(0.0f);
-inline static Vec2f scroll_offset = Vec2f(0.0f);
+inline static glm::vec2 mouse_position = glm::vec2(0.0f);
+inline static glm::vec2 scroll_offset = glm::vec2(0.0f);
 
 void Input::init() {
 	event::subscribe<KeyPressEvent>([&](const KeyPressEvent& event) {
@@ -105,10 +105,10 @@ bool Input::is_mouse_released(MouseButton p_button) {
 	return false;
 }
 
-Vec2f Input::get_mouse_position() { return mouse_position; }
+glm::vec2 Input::get_mouse_position() { return mouse_position; }
 
-Vec2f Input::get_scroll_offset() {
-	const Vec2f old_scroll_offset = scroll_offset;
+glm::vec2 Input::get_scroll_offset() {
+	const glm::vec2 old_scroll_offset = scroll_offset;
 	scroll_offset = { 0, 0 };
 	return old_scroll_offset;
 }

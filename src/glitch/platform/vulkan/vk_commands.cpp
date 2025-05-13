@@ -105,7 +105,7 @@ void VulkanRenderBackend::command_reset(CommandBuffer p_cmd) {
 }
 
 void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
-		const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
+		const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
 		Image p_depth_attachment) {
 	uint32_t attachments_size = p_color_attachments.data() == nullptr
 			? 0
@@ -292,7 +292,7 @@ void VulkanRenderBackend::command_push_constants(CommandBuffer p_cmd,
 }
 
 void VulkanRenderBackend::command_set_viewport(
-		CommandBuffer p_cmd, const Vec2u& size) {
+		CommandBuffer p_cmd, const glm::uvec2& size) {
 	VkViewport viewport = {
 		.x = 0,
 		.y = 0,
@@ -305,8 +305,8 @@ void VulkanRenderBackend::command_set_viewport(
 	vkCmdSetViewport((VkCommandBuffer)p_cmd, 0, 1, &viewport);
 }
 
-void VulkanRenderBackend::command_set_scissor(
-		CommandBuffer p_cmd, const Vec2u& p_size, const Vec2u& p_offset) {
+void VulkanRenderBackend::command_set_scissor(CommandBuffer p_cmd,
+		const glm::uvec2& p_size, const glm::uvec2& p_offset) {
 	VkRect2D scissor = {};
 	memcpy(&scissor.extent, &p_size, sizeof(VkExtent2D));
 	memcpy(&scissor.offset, &p_offset, sizeof(VkExtent2D));
@@ -359,8 +359,8 @@ void VulkanRenderBackend::command_copy_buffer_to_image(CommandBuffer p_cmd,
 }
 
 void VulkanRenderBackend::command_copy_image_to_image(CommandBuffer p_cmd,
-		Image p_src_image, Image p_dst_image, const Vec2u& p_src_extent,
-		const Vec2u& p_dst_extent) {
+		Image p_src_image, Image p_dst_image, const glm::uvec2& p_src_extent,
+		const glm::uvec2& p_dst_extent) {
 	VkImageBlit2 blit_region = {};
 	blit_region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
 

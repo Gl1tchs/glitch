@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <numbers>
 #include <numeric>
 #include <optional>
 #include <queue>
@@ -40,5 +41,6 @@
 #include <glm/glm.hpp>
 
 #include "glitch/core/core.h"
+#include "glitch/core/debug/profiling.h"
 
 namespace fs = std::filesystem;

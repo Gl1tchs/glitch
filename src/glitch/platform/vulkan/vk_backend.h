@@ -54,14 +54,14 @@ public:
 		VkFormat image_format;
 	};
 
-	Image image_create(DataFormat p_format, Vec2u p_size,
+	Image image_create(DataFormat p_format, glm::uvec2 p_size,
 			const void* p_data = nullptr,
 			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT,
 			bool p_mipmapped = false) override;
 
 	void image_free(Image p_image) override;
 
-	Vec3u image_get_size(Image p_image) override;
+	glm::uvec3 image_get_size(Image p_image) override;
 
 	Sampler sampler_create(ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
@@ -110,12 +110,12 @@ public:
 	Swapchain swapchain_create() override;
 
 	void swapchain_resize(CommandQueue p_cmd_queue, Swapchain p_swapchain,
-			Vec2u size) override;
+			glm::uvec2 size) override;
 
 	Optional<Image> swapchain_acquire_image(
 			Swapchain p_swapchain, Semaphore p_semaphore) override;
 
-	Vec2u swapchain_get_extent(Swapchain p_swapchain) override;
+	glm::uvec2 swapchain_get_extent(Swapchain p_swapchain) override;
 
 	DataFormat swapchain_get_format(Swapchain p_swapchain) override;
 
@@ -224,7 +224,7 @@ public:
 	void command_reset(CommandBuffer p_cmd) override;
 
 	void command_begin_rendering(CommandBuffer p_cmd,
-			const Vec2u& p_draw_extent, VectorView<Image> p_color_attachments,
+			const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
@@ -271,10 +271,10 @@ public:
 			uint64_t p_offset, uint32_t p_size,
 			const void* p_push_constants) override;
 
-	void command_set_viewport(CommandBuffer p_cmd, const Vec2u& size) override;
+	void command_set_viewport(CommandBuffer p_cmd, const glm::uvec2& size) override;
 
-	void command_set_scissor(CommandBuffer p_cmd, const Vec2u& p_size,
-			const Vec2u& p_offset = { 0, 0 }) override;
+	void command_set_scissor(CommandBuffer p_cmd, const glm::uvec2& p_size,
+			const glm::uvec2& p_offset = { 0, 0 }) override;
 
 	void command_set_depth_bias(CommandBuffer p_cmd,
 			float p_depth_bias_constant_factor, float p_depth_bias_clamp,
@@ -289,8 +289,8 @@ public:
 			VectorView<BufferImageCopyRegion> p_regions) override;
 
 	void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
-			Image p_dst_image, const Vec2u& p_src_extent,
-			const Vec2u& p_dst_extent) override;
+			Image p_dst_image, const glm::uvec2& p_src_extent,
+			const glm::uvec2& p_dst_extent) override;
 
 	void command_transition_image(CommandBuffer p_cmd, Image p_image,
 			ImageLayout p_current_layout, ImageLayout p_new_layout) override;
