@@ -113,11 +113,12 @@ if (GL_INSTALL)
         DESTINATION include/imgui
     )
 
-    # install stb
+    # install glm
+    file(GLOB GLM_HEADERS "${VENDOR_DIR}/glm/*.h")
     install(
-        DIRECTORY ${VENDOR_DIR}/stb/stb
-        DESTINATION include
-    )  
+        FILES ${GLM_HEADERS}
+        DESTINATION include/glm
+    )
 endif()
 
 if (GL_BUILD_DOCS AND DOXYGEN_FOUND)

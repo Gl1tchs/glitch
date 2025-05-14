@@ -17,5 +17,3 @@ target_include_directories(glitch-testbed
 )
 
 target_link_libraries(glitch-testbed PUBLIC glitch)
-
-target_precompile_headers(glitch-testbed PUBLIC src/pch.h)

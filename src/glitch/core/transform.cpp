@@ -27,7 +27,7 @@ glm::vec3 Transform::get_scale() const {
 	}
 }
 
-void Transform::translate(glm::vec3 p_translation) {
+void Transform::translate(const glm::vec3& p_translation) {
 	local_position += p_translation;
 }
 

@@ -24,7 +24,7 @@ struct GL_API Transform {
 	glm::vec3 get_rotation() const;
 	glm::vec3 get_scale() const;
 
-	void translate(glm::vec3 p_translation);
+	void translate(const glm::vec3& p_translation);
 
 	void rotate(float p_angle, glm::vec3 p_axis);
 

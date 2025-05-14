@@ -24,9 +24,7 @@ void CameraController::update(float p_dt) {
 		return;
 	}
 
-	glm::vec2 mouse_delta = glm::vec2(Input::get_mouse_position().x,
-									Input::get_mouse_position().y) -
-			last_mouse_pos;
+	glm::vec2 mouse_delta = Input::get_mouse_position() - last_mouse_pos;
 
 	glm::vec3 new_rotation = transform->local_rotation +
 			glm::vec3(-mouse_delta.y, -mouse_delta.x, 0.0f) * sensitivity;
@@ -37,8 +35,7 @@ void CameraController::update(float p_dt) {
 	transform->local_rotation = new_rotation;
 
 	// store last mouse pos to prevent instant rotations
-	last_mouse_pos = glm::vec2(
-			Input::get_mouse_position().x, Input::get_mouse_position().y);
+	last_mouse_pos = Input::get_mouse_position();
 
 	if (Input::is_key_pressed(KEY_CODE_LEFT_SHIFT)) {
 		speed = SPEED_TURBO;

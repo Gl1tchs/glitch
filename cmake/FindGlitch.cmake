@@ -6,11 +6,6 @@ find_path(GLITCH_INCLUDE_DIR glitch/pch.h
     PATH_SUFFIXES glitch
 )
 
-find_path(STB_INCLUDE_DIR stb/stb_image.h
-    PATHS ${CMAKE_INSTALL_PREFIX}/include
-    PATH_SUFFIXES stb
-)
-
 find_path(IMGUI_INCLUDE_DIR imgui/imgui.h
     PATHS ${CMAKE_INSTALL_PREFIX}/include
     PATH_SUFFIXES imgui

@@ -5,7 +5,6 @@
 #include <glitch/renderer/types.h>
 #include <imgui/imgui.h>
 
-
 #include "shader_utils.h"
 
 struct Vertex {
