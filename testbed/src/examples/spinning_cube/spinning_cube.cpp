@@ -97,7 +97,7 @@ void ExampleSpinningCube::on_init() {
 }
 
 void ExampleSpinningCube::on_render(
-		CommandBuffer p_cmd, const SceneData& p_scene_data) {
+		CommandBuffer p_cmd, const ExampleSceneData& p_scene_data) {
 	GL_PROFILE_SCOPE;
 
 	// rotate the cube on y axis

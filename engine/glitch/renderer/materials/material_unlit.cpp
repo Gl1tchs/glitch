@@ -5,7 +5,7 @@
 #include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/types.h"
 
-MaterialUnlit::MaterialUnlit() {
+MaterialDefinition get_mat_unlit_definition() {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	SpirvData vertex_data = {};
@@ -22,7 +22,7 @@ MaterialUnlit::MaterialUnlit() {
 		fragment_data,
 	};
 
-	shader = backend->shader_create_from_bytecode(shader_stages);
+	Shader shader = backend->shader_create_from_bytecode(shader_stages);
 
 	PipelineVertexInputState vertex_input = {};
 	PipelineRasterizationState rasterization = {};
@@ -42,8 +42,21 @@ MaterialUnlit::MaterialUnlit() {
 			Renderer::get_draw_image_format());
 	rendering_state.depth_attachment = Renderer::get_depth_image_format();
 
-	pipeline =
+	Pipeline pipeline =
 			backend->render_pipeline_create(shader, RENDER_PRIMITIVE_TRIANGLES,
 					vertex_input, rasterization, multisample,
 					depth_stencil_state, color_blend_state, 0, rendering_state);
+
+	MaterialDefinition definition;
+	definition.shader = shader;
+	definition.pipeline = pipeline;
+	definition.uniforms = {
+		{ "base_color", 0, ShaderUniformVariableType::VEC4 },
+		{ "metallic", 0, ShaderUniformVariableType::FLOAT },
+		{ "roughness", 0, ShaderUniformVariableType::FLOAT },
+		{ "u_albedo_texture", 1, ShaderUniformVariableType::TEXTURE },
+		{ "u_normal_texture", 2, ShaderUniformVariableType::TEXTURE },
+	};
+
+	return definition;
 }

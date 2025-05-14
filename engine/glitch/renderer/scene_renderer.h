@@ -4,9 +4,13 @@
 
 #pragma once
 
-#include "glitch/renderer/materials/material_unlit.h"
+#include "glitch/renderer/material.h"
 #include "glitch/renderer/renderer.h"
 #include "glitch/scene/scene.h"
+
+#ifdef GL_DEBUG_BUILD
+#include "glitch/debug/debug_panel.h"
+#endif
 
 struct SceneData {
 	glm::mat4 view_projection;
@@ -23,8 +27,6 @@ public:
 private:
 	void _prepare_scene();
 
-	void _cleanup_scene_resources();
-
 	// void _render_mesh(const Ref<Mesh> p_mesh, const Ref<Material>
 	// p_material);
 	// void _render_text(const std::string& p_text, const Ref<Font>
@@ -36,7 +38,12 @@ private:
 
 	Scene* scene;
 
-	Ref<MaterialUnlit> unlit_material;
+	Ref<MaterialSystem> material_system;
 
+	std::unordered_map<Entity, Ref<MaterialInstance>> materials;
 	Ref<Texture> default_texture;
+
+#ifdef GL_DEBUG_BUILD
+	DebugPanel debug_panel;
+#endif
 };

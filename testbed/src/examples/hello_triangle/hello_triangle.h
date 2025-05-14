@@ -9,7 +9,7 @@ public:
 	IMPL_EXAMPLE("Hello Triangle")
 
 	void on_init() override;
-	void on_render(CommandBuffer p_cmd, const SceneData& p_scene_data) override;
+	void on_render(CommandBuffer p_cmd, const ExampleSceneData& p_scene_data) override;
 	void on_destroy() override;
 
 private:

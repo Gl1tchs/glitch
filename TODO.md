@@ -1,12 +1,22 @@
 # TODO
 
+- [ ] Shader reflection on material creation
+- [ ] ImGui viewports causing errors
+
 - [ ] Meshes
-- [ ] Rewrite a more compact and extendable materials system
+- [x] Rewrite a more compact and extendable materials system
 - [ ] Physics integration to ECS.
 - [ ] Plugin system and runtime plugin loading via shared libraries.
 - [ ] Ditch CMake install
 
 ## Renderer
+
+- [ ] Blender as Editor driven developement
+  - [ ] Export blender model as gltf and import scene information from custom format that
+  would also been exported by a custom blender plugin.
+  - [ ] Use hot-reloadable meshes and references
+  - [ ] Edit scene information via debug panel
+
 
 - [ ] Scene graph.
   - [ ] FBX models.

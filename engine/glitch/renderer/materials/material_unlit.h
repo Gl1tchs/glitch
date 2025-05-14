@@ -6,7 +6,4 @@
 
 #include "glitch/renderer/material.h"
 
-class MaterialUnlit : public Material {
-public:
-	MaterialUnlit();
-};
+MaterialDefinition get_mat_unlit_definition();

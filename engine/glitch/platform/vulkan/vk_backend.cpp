@@ -243,7 +243,7 @@ void VulkanRenderBackend::imgui_new_frame_for_platform() {
 void* VulkanRenderBackend::imgui_image_upload(
 		Image p_image, Sampler p_sampler) {
 	VulkanImage* image = (VulkanImage*)p_image;
-	return ImGui_ImplVulkan_AddTexture((VkSampler)p_sampler,
+	return (void*)ImGui_ImplVulkan_AddTexture((VkSampler)p_sampler,
 			image->vk_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 

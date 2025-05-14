@@ -240,6 +240,7 @@ void Renderer::_request_resize() {
 	Application::get_instance()->enqueue_main_thread([&]() {
 		GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
 
+		backend->device_wait();
 		backend->swapchain_resize(present_queue, swapchain, window->get_size());
 	});
 }

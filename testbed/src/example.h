@@ -13,7 +13,7 @@ public:
 
 	virtual void on_init() = 0;
 	virtual void on_render(
-			CommandBuffer p_cmd, const SceneData& p_scene_data) = 0;
+			CommandBuffer p_cmd, const ExampleSceneData& p_scene_data) = 0;
 	virtual void on_destroy() = 0;
 
 	virtual void on_imgui() {};

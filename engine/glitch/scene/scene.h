@@ -146,7 +146,7 @@ public:
 
 	/**
 	 * Get entities with specified components,
-	 * if any component not provided it will return all
+	 * if no component provided it will return all
 	 * of the entities
 	 */
 	template <typename... TComponents> SceneView<TComponents...> view() {

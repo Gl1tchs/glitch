@@ -78,7 +78,7 @@ void ExampleHelloTriangle::on_init() {
 };
 
 void ExampleHelloTriangle::on_render(
-		CommandBuffer p_cmd, const SceneData& p_scene_data) {
+		CommandBuffer p_cmd, const ExampleSceneData& p_scene_data) {
 	GL_PROFILE_SCOPE;
 
 	backend->command_bind_graphics_pipeline(p_cmd, pipeline);

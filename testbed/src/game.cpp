@@ -4,17 +4,26 @@
 #include <glitch/renderer/renderer.h>
 #include <imgui/imgui.h>
 
-
-#include "scene_data.h"
-
 #include "examples/hello_triangle/hello_triangle.h"
 #include "examples/spinning_cube/spinning_cube.h"
 #include "examples/textures/textures.h"
+#include "glitch/scene/components.h"
 
 Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {}
 
 void Game::_on_start() {
 	backend = Renderer::get_backend();
+
+	scene_renderer = create_ref<SceneRenderer>();
+
+	auto e = scene.create();
+
+	scene.assign<Transform>(e);
+
+	MaterialComponent* mat = scene.assign<MaterialComponent>(e);
+	mat->base_color = COLOR_RED;
+	mat->metallic = 0.5f;
+	mat->roughness = 0.5f;
 
 	camera_controller.set_camera(&camera, &camera_transform);
 
@@ -32,29 +41,35 @@ void Game::_on_start() {
 void Game::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
-	camera.aspect_ratio = get_window()->get_aspect_ratio();
+	if (draw_examples) {
+		camera.aspect_ratio = get_window()->get_aspect_ratio();
 
-	static bool mouse_disabled = false;
-	if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
-		if (!mouse_disabled) {
-			get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_DISABLED);
-			mouse_disabled = true;
+		static bool mouse_disabled = false;
+		if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
+			if (!mouse_disabled) {
+				get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_DISABLED);
+				mouse_disabled = true;
+			}
+
+			camera_controller.update(p_dt);
+		} else {
+			camera_controller.last_mouse_pos.x = Input::get_mouse_position().x;
+			camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
 		}
 
-		camera_controller.update(p_dt);
+		if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
+			if (mouse_disabled) {
+				get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
+				mouse_disabled = false;
+			}
+		}
+	}
+
+	if (!draw_examples || !active_example) {
+		scene_renderer->render_scene(&scene);
 	} else {
-		camera_controller.last_mouse_pos.x = Input::get_mouse_position().x;
-		camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
+		_render_examples(p_dt);
 	}
-
-	if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
-		if (mouse_disabled) {
-			get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
-			mouse_disabled = false;
-		}
-	}
-
-	_on_render(p_dt);
 }
 
 void Game::_on_destroy() {
@@ -62,11 +77,7 @@ void Game::_on_destroy() {
 	active_example->on_destroy();
 }
 
-void Game::_on_render(float p_dt) {
-	if (!active_example) {
-		return;
-	}
-
+void Game::_render_examples(float p_dt) {
 	Ref<Renderer> renderer = get_renderer();
 
 	renderer->imgui_begin();
@@ -105,7 +116,7 @@ void Game::_on_render(float p_dt) {
 		backend->command_begin_rendering(
 				cmd, renderer->get_draw_extent(), renderer->get_draw_image());
 
-		SceneData scene_data = {
+		ExampleSceneData scene_data = {
 			.view = camera.get_view_matrix(camera_transform),
 			.projection = camera.get_projection_matrix(),
 			.camera_position = camera_transform.get_position(),

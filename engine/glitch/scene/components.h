@@ -5,7 +5,6 @@
 #pragma once
 
 #include "glitch/core/hash.h"
-#include "glitch/renderer/material.h"
 #include "glitch/renderer/texture.h"
 
 enum MaterialType {
@@ -20,9 +19,6 @@ struct MaterialComponent {
 	Ref<Texture> normal_texture;
 
 	MaterialType type = MATERIAL_TYPE_UNLIT;
-
-	// use should provide if `type` == `MATERIAL_TYPE_CUSTOM`
-	Ref<MaterialInstance> instance = nullptr;
 
 	size_t hash = 0;
 };

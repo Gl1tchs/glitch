@@ -1,65 +1,69 @@
 /**
  * @file material.h
+ *
  */
 
 #pragma once
 
-#include "glitch/core/color.h"
-#include "glitch/core/uid.h"
 #include "glitch/renderer/texture.h"
 #include "glitch/renderer/types.h"
 
-struct MaterialParameters {
-	Color base_color;
-	float metallic;
-	float roughness;
+using ShaderUniformVariable =
+		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color>;
+
+enum class ShaderUniformVariableType {
+	INT,
+	FLOAT,
+	VEC2,
+	VEC3,
+	VEC4,
+	TEXTURE,
 };
 
-struct MaterialResources {
-	Buffer material_data;
-	Ref<Texture> albedo_texture;
-	Ref<Texture> normal_texture;
+GL_API size_t get_shader_uniform_variable_size(
+		ShaderUniformVariableType p_type);
+
+struct ShaderUniformMetadata {
+	std::string name;
+	uint32_t binding;
+	ShaderUniformVariableType type;
 };
 
-typedef UID MaterialID;
+struct MaterialDefinition {
+	std::string name;
 
-struct Material;
-
-/**
- * Instance of a material that can only be generate through
- * Material::create_instance
- */
-struct GL_API MaterialInstance {
-	MaterialID id;
-	Pipeline pipeline;
 	Shader shader;
+	Pipeline pipeline;
 
-	// uniform set corresponding to set = 1 in shader.
+	std::vector<ShaderUniformMetadata> uniforms;
+};
+
+struct GL_API MaterialInstance {
+	Ref<MaterialDefinition> definition;
+
+	std::map<std::string, ShaderUniformVariable> params;
+	std::unordered_map<std::string, Ref<Texture>> textures;
+
+	Buffer material_data_buffer;
 	UniformSet uniform_set;
-	MaterialResources resources;
 
 	~MaterialInstance();
 
-private:
-	MaterialInstance() = default;
+	void set_param(const std::string& p_name, ShaderUniformVariable p_value);
+	void set_param(const std::string& p_name, Ref<Texture> p_texture);
 
-	friend struct Material;
+	void upload(); // upload to GPU buffer, descriptor sets, etc.
 };
 
-/**
- * Struct representing a draw data over pipeline and shader.
- * @note Pipeline and shader assumed to be owned by the material
- * whenever the material goes out of scope `pipeline` and `shader`
- * members will be freed.
- */
-struct GL_API Material {
-	Pipeline pipeline;
-	Shader shader;
+class MaterialSystem {
+public:
+	~MaterialSystem();
 
-	virtual ~Material() = 0;
+	void register_definition(
+			const std::string& p_name, MaterialDefinition p_def);
 
-	/**
-	 * Create an instance of this material with specified parameters
-	 */
-	Ref<MaterialInstance> create_instance(const MaterialResources& p_resources);
+	Ref<MaterialInstance> create_instance(const std::string& p_def_name);
+
+private:
+	std::unordered_map<std::string, Ref<MaterialDefinition>> definitions;
 };

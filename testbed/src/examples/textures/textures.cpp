@@ -4,9 +4,6 @@
 #include <glitch/renderer/renderer.h>
 #include <glitch/renderer/types.h>
 #include <imgui/imgui.h>
-
-
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
 #include "shader_utils.h"
@@ -100,7 +97,7 @@ void ExampleTextures::on_init() {
 }
 
 void ExampleTextures::on_render(
-		CommandBuffer p_cmd, const SceneData& p_scene_data) {
+		CommandBuffer p_cmd, const ExampleSceneData& p_scene_data) {
 	GL_PROFILE_SCOPE;
 
 	backend->command_bind_graphics_pipeline(p_cmd, pipeline);
