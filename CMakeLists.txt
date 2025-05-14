@@ -4,9 +4,6 @@ project(glitch)
 
 set(PROJECT_VERSION "0.1.0")
 
-option(GL_INSTALL "Should target be installed" ON)
-set(GL_INSTALL ${GL_INSTALL})
-
 option(GL_BUILD_TESTBED "Build Testbed application" ON)
 set(GL_BUILD_TESTBED ${GL_BUILD_TESTBED})
 
@@ -41,8 +38,8 @@ add_subdirectory(third_party)
 
 file(GLOB_RECURSE SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/include/*.h"
-    "${CMAKE_CURRENT_LIST_DIR}/src/*.h"
-    "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/engine/*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/engine/*.cpp"
 )
 
 list(APPEND SOURCES ${IMGUI_FILES})
@@ -56,7 +53,7 @@ endif()
 
 target_include_directories(glitch
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/engine
     ${GLM_INCLUDES}
     PRIVATE
     ${GL_OUTPUT_DIR}/include
@@ -78,7 +75,7 @@ target_link_libraries(glitch
 )
 
 target_precompile_headers(glitch PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/src/glitch/pch.h
+    ${CMAKE_CURRENT_LIST_DIR}/engine/glitch/pch.h
 )
 
 target_compile_definitions(glitch PRIVATE
@@ -90,35 +87,6 @@ if (GL_ENABLE_PROFILING)
     target_include_directories(glitch PRIVATE ${TRACY_INCLUDES})
     target_link_libraries(glitch PRIVATE ${TRACY_LIBS})
     target_compile_definitions(glitch PRIVATE GL_ENABLE_PROFILING)
-endif()
-
-# Install target
-if (GL_INSTALL)
-    include(GNUInstallDirs)
-    install(TARGETS glitch
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-    install(TARGETS glitch DESTINATION lib)
-
-    install(
-        DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/
-        DESTINATION include
-    )
-
-    # install imgui
-    file(GLOB IMGUI_HEADERS "${VENDOR_DIR}/imgui/*.h")
-    install(
-        FILES ${IMGUI_HEADERS}
-        DESTINATION include/imgui
-    )
-
-    # install glm
-    file(GLOB GLM_HEADERS "${VENDOR_DIR}/glm/*.h")
-    install(
-        FILES ${GLM_HEADERS}
-        DESTINATION include/glm
-    )
 endif()
 
 if (GL_BUILD_DOCS AND DOXYGEN_FOUND)

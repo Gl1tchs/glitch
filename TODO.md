@@ -1,20 +1,21 @@
 # TODO
 
-- [ ] Make get_bundled_spirv_data into a ShaderLibrary class
-
+- [ ] Meshes
+- [ ] Rewrite a more compact and extendable materials system
 - [ ] Physics integration to ECS.
 - [ ] Plugin system and runtime plugin loading via shared libraries.
 - [ ] Ditch CMake install
 
 ## Renderer
+
 - [ ] Scene graph.
-    - [ ] FBX models.
-    - [ ] Scene data and camera.
-    - [ ] MeshRenderComponent, MaterialComponent 
-    - [ ] Culling with BoundingBoxComponent
-    - [ ] Instanced rendering.
-    - [ ] Text rendering.
-    - [ ] Deferred rendering.
+  - [ ] FBX models.
+  - [ ] Scene data and camera.
+  - [ ] MeshRenderComponent, MaterialComponent
+  - [ ] Culling with BoundingBoxComponent
+  - [ ] Instanced rendering.
+  - [ ] Text rendering.
+  - [ ] Deferred rendering.
 - [ ] Custom render passes.
 - [ ] Shader library.
 - [ ] Render scale wont make program faster.
@@ -25,4 +26,4 @@
 ## Graphics Programming
 
 - [ ] Learn how to structure meshes correctly in vulkan environment such as how
-and when to create buffers and how to handle relations.
+      and when to create buffers and how to handle relations.

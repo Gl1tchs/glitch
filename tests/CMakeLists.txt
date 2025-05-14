@@ -4,7 +4,7 @@ add_executable(glitch-tests ${TEST_SOURCES})
 
 target_include_directories(glitch-tests
     PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/engine
     ${DOCTEST_INCLUDES}
 )
 

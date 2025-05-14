@@ -8,7 +8,6 @@
 #include "glitch/core/templates/bit_field.h"
 #include "glitch/core/templates/vector_view.h"
 #include "glitch/core/window.h"
-
 #include "glitch/renderer/types.h"
 
 /**
@@ -76,8 +75,8 @@ public:
 	// not valid until resized
 	virtual Swapchain swapchain_create() = 0;
 
-	virtual void swapchain_resize(
-			CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 size) = 0;
+	virtual void swapchain_resize(CommandQueue p_cmd_queue,
+			Swapchain p_swapchain, glm::uvec2 size) = 0;
 
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed
@@ -162,7 +161,8 @@ public:
 	virtual void command_reset(CommandBuffer p_cmd) = 0;
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
-			const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
+			const glm::uvec2& p_draw_extent,
+			VectorView<Image> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) = 0;
 
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
@@ -213,7 +213,8 @@ public:
 	virtual void command_set_viewport(
 			CommandBuffer p_cmd, const glm::uvec2& size) = 0;
 
-	virtual void command_set_scissor(CommandBuffer p_cmd, const glm::uvec2& p_size,
+	virtual void command_set_scissor(CommandBuffer p_cmd,
+			const glm::uvec2& p_size,
 			const glm::uvec2& p_offset = { 0, 0 }) = 0;
 
 	// NOTE: dynamic state must be enabled for this
@@ -230,8 +231,8 @@ public:
 			VectorView<BufferImageCopyRegion> p_regions) = 0;
 
 	virtual void command_copy_image_to_image(CommandBuffer p_cmd,
-			Image p_src_image, Image p_dst_image, const glm::uvec2& p_src_extent,
-			const glm::uvec2& p_dst_extent) = 0;
+			Image p_src_image, Image p_dst_image,
+			const glm::uvec2& p_src_extent, const glm::uvec2& p_dst_extent) = 0;
 
 	virtual void command_transition_image(CommandBuffer p_cmd, Image p_image,
 			ImageLayout p_current_layout, ImageLayout p_new_layout) = 0;
