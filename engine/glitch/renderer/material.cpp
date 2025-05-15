@@ -3,22 +3,6 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
-GL_API size_t get_shader_uniform_alignment(ShaderUniformVariableType p_type) {
-	switch (p_type) {
-		case ShaderUniformVariableType::INT:
-		case ShaderUniformVariableType::FLOAT:
-			return 4;
-		case ShaderUniformVariableType::VEC2:
-			return 8;
-		case ShaderUniformVariableType::VEC3:
-			return 12;
-		case ShaderUniformVariableType::VEC4:
-			return 16;
-		default:
-			return 4;
-	}
-}
-
 MaterialInstance::~MaterialInstance() {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 

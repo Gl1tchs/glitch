@@ -35,7 +35,7 @@ SceneRenderer::SceneRenderer() :
 
 	material_system = create_ref<MaterialSystem>();
 	material_system->register_definition(
-			"mat_unlit", get_mat_unlit_definition());
+			"mat_unlit", get_unlit_material_definition());
 
 	// Initialize temporary drawing resources
 

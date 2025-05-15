@@ -224,7 +224,8 @@ public:
 	void command_reset(CommandBuffer p_cmd) override;
 
 	void command_begin_rendering(CommandBuffer p_cmd,
-			const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
+			const glm::uvec2& p_draw_extent,
+			VectorView<Image> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
@@ -271,7 +272,8 @@ public:
 			uint64_t p_offset, uint32_t p_size,
 			const void* p_push_constants) override;
 
-	void command_set_viewport(CommandBuffer p_cmd, const glm::uvec2& size) override;
+	void command_set_viewport(
+			CommandBuffer p_cmd, const glm::uvec2& size) override;
 
 	void command_set_scissor(CommandBuffer p_cmd, const glm::uvec2& p_size,
 			const glm::uvec2& p_offset = { 0, 0 }) override;

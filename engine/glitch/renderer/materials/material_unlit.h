@@ -6,4 +6,4 @@
 
 #include "glitch/renderer/material.h"
 
-MaterialDefinition get_mat_unlit_definition();
+MaterialDefinition get_unlit_material_definition();

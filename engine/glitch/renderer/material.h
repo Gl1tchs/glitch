@@ -20,9 +20,6 @@ enum class ShaderUniformVariableType {
 	TEXTURE,
 };
 
-GL_API size_t get_shader_uniform_variable_size(
-		ShaderUniformVariableType p_type);
-
 struct ShaderUniformMetadata {
 	std::string name;
 	uint32_t binding;
