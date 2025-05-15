@@ -1,6 +1,7 @@
 # TODO
 
 - [ ] ImGui viewports causing errors
+  - [ ] Use a semaphore per swapchain image instead of one for all
 
 - [ ] Scene resource management for destructors
 - [x] Handle cameras using ECS

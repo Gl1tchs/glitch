@@ -112,6 +112,8 @@ public:
 	void swapchain_resize(CommandQueue p_cmd_queue, Swapchain p_swapchain,
 			glm::uvec2 size) override;
 
+	size_t swapchain_get_image_count(Swapchain p_swapchain) override;
+
 	Optional<Image> swapchain_acquire_image(
 			Swapchain p_swapchain, Semaphore p_semaphore) override;
 

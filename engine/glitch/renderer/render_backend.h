@@ -78,6 +78,8 @@ public:
 	virtual void swapchain_resize(CommandQueue p_cmd_queue,
 			Swapchain p_swapchain, glm::uvec2 size) = 0;
 
+	virtual size_t swapchain_get_image_count(Swapchain p_swapchain) = 0;
+
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed
 	 */
