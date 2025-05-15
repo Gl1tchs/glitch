@@ -1,6 +1,7 @@
-#include "glitch/core/color.h"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
 
-#include <doctest.h>
+#include "glitch/core/color.h"
 
 TEST_CASE("Color Default Constructor") {
 	Color color;

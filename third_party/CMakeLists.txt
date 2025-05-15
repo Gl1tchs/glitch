@@ -7,6 +7,14 @@ if (GL_BUILD_TESTS)
     add_subdirectory(doctest)
 endif()
 
+# Tracy profiler
+set(TRACY_INCLUDES ${VENDOR_DIR}/tracy/public PARENT_SCOPE)
+set(TRACY_LIBS TracyClient PARENT_SCOPE)
+
+if (GL_ENABLE_PROFILING)
+    add_subdirectory(tracy)
+endif()
+
 # GLFW
 set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
 set(GLFW_LIBS glfw PARENT_SCOPE)
@@ -47,6 +55,9 @@ set(SPIRV_REFLECT_FILES
 # STB
 set(STB_INCLUDES ${VENDOR_DIR}/stb PARENT_SCOPE)
 
+# TinyGLTF
+set(TINY_GLTF_INCLUDES ${VENDOR_DIR}/tinygltf PARENT_SCOPE)
+
 # VkBootstrap
 set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
 set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap PARENT_SCOPE)
@@ -57,8 +68,8 @@ set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ${GL_BUILD_DYNAMIC_LIBS} CACHE BOOL "
 add_subdirectory(vk-bootstrap)
 
 # VulkanMemoryAllocator
-set(VMA_INCLUDES ${VENDOR_DIR}/vulkan-memory-allocator/include PARENT_SCOPE)
+set(VMA_INCLUDES ${VENDOR_DIR}/VulkanMemoryAllocator/include PARENT_SCOPE)
 set(VMA_LIBS GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
 
 set(VMA_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(vulkan-memory-allocator)
+add_subdirectory(VulkanMemoryAllocator)

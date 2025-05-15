@@ -1,19 +1,22 @@
 # Define the target platform and build type
-BUILD_TYPE ?= Release
+BUILD_TYPE ?= Debug
 PLATFORM ?= $(shell uname -s)
 
 # Set the build and cache directories
 BUILD_DIR = build
+OUT_DIR = build
 CACHE_DIR = .glitch
-TEST_EXEC = $(BUILD_DIR)/tests/glitch-tests
+TEST_EXEC = $(OUT_DIR)/tests/glitch-tests
 
 # Available actions
 .PHONY: build clean install test
 
+all: build
+
 # Configure CMake
 configure_cmake:
 	@echo "Configuring cmake..."
-	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
+	cmake -S . -B $(BUILD_DIR) -G Ninja -D GL_BUILD_DYNAMIC_LIBS=1 -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
 # Build the engine
 build: configure_cmake

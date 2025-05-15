@@ -4,16 +4,19 @@ project(glitch)
 
 set(PROJECT_VERSION "0.1.0")
 
-option(GL_INSTALL "Should target be installed" ON)
-set(GL_INSTALL ${GL_INSTALL})
+option(GL_BUILD_TESTBED "Build Testbed application" ON)
+set(GL_BUILD_TESTBED ${GL_BUILD_TESTBED})
 
 option(GL_BUILD_TESTS "Build tests!" ON)
 set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
 
-option(GL_BUILD_DOCS "Build doxygen documentation" ON)
+option(GL_ENABLE_PROFILING "Enable profiling" ON)
+set(GL_ENABLE_PROFILING ${GL_ENABLE_PROFILING})
+
+option(GL_BUILD_DOCS "Build doxygen documentation" OFF)
 set(GL_BUILD_DOCS ${GL_BUILD_DOCS})
 
-option(GL_BUILD_DYNAMIC_LIBS "Build dynamic libraries" ON)
+option(GL_BUILD_DYNAMIC_LIBS "Build dynamic libraries" OFF)
 set(GL_BUILD_DYNAMIC_LIBS ${GL_BUILD_DYNAMIC_LIBS})
 
 if (GL_BUILD_DYNAMIC_LIBS)
@@ -29,12 +32,14 @@ set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR}/third_party)
 
 find_package(Vulkan REQUIRED)
 
+add_subdirectory(programs)
+add_subdirectory(shaders)
 add_subdirectory(third_party)
 
 file(GLOB_RECURSE SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/include/*.h"
-    "${CMAKE_CURRENT_LIST_DIR}/src/*.h"
-    "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/engine/*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/engine/*.cpp"
 )
 
 list(APPEND SOURCES ${IMGUI_FILES})
@@ -48,20 +53,21 @@ endif()
 
 target_include_directories(glitch
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/engine
     ${GLM_INCLUDES}
     PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src
-    ${CMAKE_BINARY_DIR}/include
+    ${GL_OUTPUT_DIR}/include
     ${GLFW_INCLUDES}
     ${SPIRV_REFLECT_INCLUDES}
+    ${STB_INCLUDES}
+    ${TINY_GLTF_INCLUDES}
     ${VMA_INCLUDES}
     ${IMGUI_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
 )
 
 target_link_libraries(glitch
-    PRIVATE
+    PUBLIC
     ${GLFW_LIBS}
     ${VMA_LIBS}
     ${VK_BOOTSTRAP_LIBS}
@@ -70,7 +76,7 @@ target_link_libraries(glitch
 )
 
 target_precompile_headers(glitch PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include/glitch/pch.h
+    ${CMAKE_CURRENT_LIST_DIR}/engine/glitch/pch.h
 )
 
 target_compile_definitions(glitch PRIVATE
@@ -78,46 +84,13 @@ target_compile_definitions(glitch PRIVATE
     ${IMGUI_DEFINITIONS}
 )
 
-# Install target
-if (GL_INSTALL)
-    include(GNUInstallDirs)
-    install(TARGETS glitch
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-    install(TARGETS glitch DESTINATION lib)
-
-    install(
-        DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/
-        DESTINATION include
-    )
-
-    # install glm
-    install(
-        DIRECTORY ${VENDOR_DIR}/glm/glm/
-        DESTINATION include/glm
-        FILES_MATCHING
-        PATTERN "*.h"
-        PATTERN "*.hpp"
-        PATTERN "*.inl"
-        PATTERN "CMakeLists.txt" EXCLUDE
-    )
-
-    # install imgui
-    file(GLOB IMGUI_HEADERS "${VENDOR_DIR}/imgui/*.h")
-    install(
-        FILES ${IMGUI_HEADERS}
-        DESTINATION include/imgui
-    )
-
-    # install stb
-    install(
-        DIRECTORY ${VENDOR_DIR}/stb/
-        DESTINATION include/stb
-    )  
+if (GL_ENABLE_PROFILING)
+    target_include_directories(glitch PRIVATE ${TRACY_INCLUDES})
+    target_link_libraries(glitch PRIVATE ${TRACY_LIBS})
+    target_compile_definitions(glitch PRIVATE GL_ENABLE_PROFILING)
 endif()
 
-if (GL_BUILD_DOCS)
+if (GL_BUILD_DOCS AND DOXYGEN_FOUND)
     find_package(Doxygen REQUIRED)
 
     # Configure Doxygen
@@ -136,6 +109,10 @@ if (GL_BUILD_DOCS)
         ${CMAKE_CURRENT_LIST_DIR}/include
         ${CMAKE_CURRENT_LIST_DIR}/README.md
     )
+endif()
+
+if (GL_BUILD_TESTBED)
+    add_subdirectory(testbed)
 endif()
 
 if (GL_BUILD_TESTS)
