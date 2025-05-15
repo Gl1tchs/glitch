@@ -1,8 +1,18 @@
 #include "glitch/renderer/mesh_loader.h"
 
+#include "glitch/renderer/render_backend.h"
+#include "glitch/renderer/renderer.h"
+
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
+
+MeshLoader::~MeshLoader() {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	loaded_textures.clear();
+	meshes.clear();
+}
 
 MeshHandle MeshLoader::load_mesh(const std::string& path) {
 	Ref<Mesh> mesh = load_from_gltf(path);
@@ -17,8 +27,9 @@ MeshHandle MeshLoader::load_mesh(const std::string& path) {
 
 Ref<Mesh> MeshLoader::get_mesh(MeshHandle handle) const {
 	auto it = meshes.find(handle);
-	if (it == meshes.end())
+	if (it == meshes.end()) {
 		return nullptr;
+	}
 	return it->second;
 }
 
@@ -68,7 +79,8 @@ Ref<Mesh> MeshLoader::load_from_gltf(const std::string& path) {
 			const auto& uv_buffer = model.buffers[uv_view.buffer];
 			const auto& index_buffer = model.buffers[index_view.buffer];
 
-			size_t vertex_count = pos_accessor.count;
+			// Vertices
+			const size_t vertex_count = pos_accessor.count;
 			prim_vertices.resize(vertex_count);
 
 			for (size_t i = 0; i < vertex_count; ++i) {
@@ -82,35 +94,124 @@ Ref<Mesh> MeshLoader::load_from_gltf(const std::string& path) {
 						&uv_buffer.data[uv_view.byteOffset +
 								uv_accessor.byteOffset + i * 8]);
 
-				prim_vertices[i] = { glm::vec3(pos[0], pos[1], pos[2]), uv[0],
-					glm::vec3(normal[0], normal[1], normal[2]), uv[1] };
+				prim_vertices[i] = {
+					glm::vec3(pos[0], pos[1], pos[2]),
+					uv[0],
+					glm::vec3(normal[0], normal[1], normal[2]),
+					uv[1],
+				};
 			}
 
-			size_t index_count = index_accessor.count;
+			// Indices
+			const size_t index_count = index_accessor.count;
 			prim_indices.resize(index_count);
-			if (index_accessor.componentType ==
-					TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-				const uint16_t* indices = reinterpret_cast<const uint16_t*>(
-						&index_buffer.data[index_view.byteOffset +
-								index_accessor.byteOffset]);
-				for (size_t i = 0; i < index_count; ++i) {
-					prim_indices[i] = static_cast<uint32_t>(indices[i]);
+
+			switch (index_accessor.componentType) {
+				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+					const uint16_t* indices = reinterpret_cast<const uint16_t*>(
+							&index_buffer.data[index_view.byteOffset +
+									index_accessor.byteOffset]);
+					for (size_t i = 0; i < index_count; ++i) {
+						prim_indices[i] = static_cast<uint32_t>(indices[i]);
+					}
+
+					break;
 				}
-			} else if (index_accessor.componentType ==
-					TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-				const uint32_t* indices = reinterpret_cast<const uint32_t*>(
-						&index_buffer.data[index_view.byteOffset +
-								index_accessor.byteOffset]);
-				for (size_t i = 0; i < index_count; ++i) {
-					prim_indices[i] = indices[i];
+				case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+					const uint32_t* indices = reinterpret_cast<const uint32_t*>(
+							&index_buffer.data[index_view.byteOffset +
+									index_accessor.byteOffset]);
+					for (size_t i = 0; i < index_count; ++i) {
+						prim_indices[i] = indices[i];
+					}
+
+					break;
 				}
-			} else {
-				GL_ASSERT(false, "Unsupported index type");
+				default:
+					GL_ASSERT(false, "Unsupported index type");
+			}
+
+			// Material
+			MeshMaterialParameters material_params = {};
+
+			if (primitive.material >= 0 &&
+					primitive.material < model.materials.size()) {
+				const tinygltf::Material& gltf_material =
+						model.materials[primitive.material];
+
+				const auto& base_color =
+						gltf_material.pbrMetallicRoughness.baseColorFactor;
+
+				material_params.base_color = Color(base_color[0], base_color[1],
+						base_color[2], base_color[3]);
+				material_params.metallic =
+						gltf_material.pbrMetallicRoughness.metallicFactor;
+				material_params.roughness =
+						gltf_material.pbrMetallicRoughness.roughnessFactor;
+
+				// Load textures
+				{
+					const int texture_index = gltf_material.pbrMetallicRoughness
+													  .baseColorTexture.index;
+
+					if (loaded_textures.find(texture_index) !=
+							loaded_textures.end()) {
+						// Texture already loaded
+
+						material_params.albedo_texture =
+								loaded_textures.at(texture_index);
+					} else {
+						// Texture not loaded
+
+						const tinygltf::Texture& gltf_texture =
+								model.textures[texture_index];
+						const tinygltf::Image& gltf_image =
+								model.images[gltf_texture.source];
+
+						if (gltf_image.uri.empty()) {
+							// Embedded — create directly from buffer
+
+							DataFormat format;
+							switch (gltf_image.component) {
+								case 1:
+									format = DATA_FORMAT_R8_UNORM;
+									break;
+								case 2:
+									format = DATA_FORMAT_R8G8_UNORM;
+									break;
+								case 3:
+									format = DATA_FORMAT_R8G8B8_UNORM;
+									break;
+								case 4:
+									format = DATA_FORMAT_R8G8B8A8_UNORM;
+									break;
+								default:
+									GL_ASSERT(false,
+											"Unsupported image component "
+											"count");
+							}
+
+							material_params.albedo_texture =
+									Texture::create(format,
+											glm::uvec2(gltf_image.width,
+													gltf_image.height),
+											gltf_image.image.data());
+						} else {
+							// External file — use loader
+							material_params.albedo_texture =
+									Texture::load_from_path(gltf_image.uri);
+						}
+
+						loaded_textures[texture_index] =
+								material_params.albedo_texture;
+					}
+				}
 			}
 
 			Ref<MeshPrimitive> prim =
 					MeshPrimitive::create(prim_vertices, prim_indices);
 			prim->name = gltf_mesh.name;
+			prim->material = material_params;
 
 			mesh->primitives.push_back(prim);
 		}

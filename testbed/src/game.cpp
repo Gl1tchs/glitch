@@ -22,13 +22,8 @@ void Game::_on_start() {
 		scene.assign<Transform>(e);
 
 		MeshComponent* mesh_comp = scene.assign<MeshComponent>(e);
-		mesh_comp->mesh = scene_renderer->get_mesh_loader()->load_mesh(
+		mesh_comp->mesh = scene_renderer->get_mesh_loader().load_mesh(
 				"assets/Avocado.glb");
-
-		MaterialComponent* mat = scene.assign<MaterialComponent>(e);
-		mat->base_color = COLOR_RED;
-		mat->metallic = 0.5f;
-		mat->roughness = 0.5f;
 	}
 
 	auto c = scene.create();

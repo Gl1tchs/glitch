@@ -22,7 +22,6 @@ struct MaterialComponent {
 	float metallic = 0.0f;
 	float roughness = 0.0f;
 	Ref<Texture> albedo_texture;
-	Ref<Texture> normal_texture;
 
 	MaterialType type = MATERIAL_TYPE_UNLIT;
 

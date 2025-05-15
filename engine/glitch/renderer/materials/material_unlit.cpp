@@ -26,7 +26,6 @@ MaterialDefinition get_unlit_material_definition() {
 		{ "metallic", 0, ShaderUniformVariableType::FLOAT },
 		{ "roughness", 0, ShaderUniformVariableType::FLOAT },
 		{ "u_albedo_texture", 1, ShaderUniformVariableType::TEXTURE },
-		{ "u_normal_texture", 2, ShaderUniformVariableType::TEXTURE },
 	};
 
 	return definition;

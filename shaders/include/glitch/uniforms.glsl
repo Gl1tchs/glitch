@@ -22,6 +22,7 @@ layout(buffer_reference, std430) readonly buffer SceneBuffer {
 layout(push_constant, std430) uniform constants {
 	VertexBuffer vertex_buffer;
 	SceneBuffer scene_buffer;
+	mat4 transform;
 }
 u_push_constants;
 
@@ -33,6 +34,5 @@ layout(set = 0, binding = 0) uniform MaterialData {
 u_material_data;
 
 layout(set = 0, binding = 1) uniform sampler2D u_albedo_texture;
-layout(set = 0, binding = 2) uniform sampler2D u_normal_texture;
 
 #endif // UNIFORMS_GLSL

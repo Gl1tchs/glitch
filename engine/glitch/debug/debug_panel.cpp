@@ -38,9 +38,9 @@ void DebugPanel::draw(Scene* p_scene) {
 
 			Transform* transform = p_scene->get<Transform>(selected_entity);
 
-			ImGui::DragFloat3("Position", &transform->local_position.x);
-			ImGui::DragFloat3("Rotation", &transform->local_rotation.x);
-			ImGui::DragFloat3("Scale", &transform->local_scale.x);
+			ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
+			ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
+			ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
 		}
 
 		if (p_scene->has<MaterialComponent>(selected_entity)) {
@@ -61,9 +61,9 @@ void DebugPanel::draw(Scene* p_scene) {
 					p_scene->get<CameraComponent>(selected_entity);
 
 			ImGui::Checkbox("Enabled", &cc->enabled);
-			ImGui::DragFloat("Fov", &cc->camera.fov);
-			ImGui::DragFloat("Near Clip", &cc->camera.near_clip);
-			ImGui::DragFloat("Far Clip", &cc->camera.far_clip);
+			ImGui::DragFloat("Fov", &cc->camera.fov, 0.1f);
+			ImGui::DragFloat("Near Clip", &cc->camera.near_clip, 0.1f);
+			ImGui::DragFloat("Far Clip", &cc->camera.far_clip, 0.1f);
 		}
 	}
 	ImGui::End();

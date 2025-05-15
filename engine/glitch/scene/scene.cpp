@@ -1,5 +1,15 @@
 #include "glitch/scene/scene.h"
 
+#include "glitch/scene/components.h"
+
+Scene::~Scene() {
+	// TODO: maybe dynamic destruction and resouroce management
+	for (auto e : view<MaterialComponent>()) {
+		MaterialComponent* mat = get<MaterialComponent>(e);
+		mat->albedo_texture.reset();
+	}
+}
+
 Entity Scene::create() {
 	if (!free_indices.empty()) {
 		uint32_t new_idx = free_indices.front();

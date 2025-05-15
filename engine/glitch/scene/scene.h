@@ -13,6 +13,8 @@
  */
 class GL_API Scene {
 public:
+	~Scene();
+
 	/**
 	 * Create new entity instance on the scene
 	 */

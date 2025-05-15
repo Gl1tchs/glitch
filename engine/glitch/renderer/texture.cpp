@@ -19,9 +19,10 @@ Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 		ImageFiltering p_filtering, ImageWrappingMode p_wrapping) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
-	Ref<Texture> tx = create_ref<Texture>();
-
 	const uint32_t color_data = p_color.as_uint();
+
+	Ref<Texture> tx = create_ref<Texture>();
+	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
 	tx->image = backend->image_create(
 			DATA_FORMAT_R8G8B8A8_UNORM, p_size, &color_data);
 	tx->sampler = backend->sampler_create(
@@ -36,7 +37,7 @@ Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	Ref<Texture> tx = create_ref<Texture>();
-
+	tx->format = p_format;
 	tx->image = backend->image_create(p_format, p_size, p_data);
 	tx->sampler = backend->sampler_create(
 			p_filtering, p_filtering, p_wrapping, p_wrapping, p_wrapping);
@@ -53,7 +54,7 @@ Ref<Texture> Texture::load_from_path(const fs::path& p_path,
 			stbi_load(p_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
 
 	Ref<Texture> tx = create_ref<Texture>();
-
+	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
 	tx->image = backend->image_create(
 			DATA_FORMAT_R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);
 	tx->sampler = backend->sampler_create(

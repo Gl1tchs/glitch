@@ -19,8 +19,6 @@ SceneRenderer::SceneRenderer() :
 	material_system->register_definition(
 			"mat_unlit", get_unlit_material_definition());
 
-	mesh_loader = create_ref<MeshLoader>();
-
 	// scene buffer
 	scene_data_buffer = backend->buffer_create(sizeof(SceneData),
 			BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -63,7 +61,7 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 				scene->get<MaterialComponent, MeshComponent>(entity);
 
 		const Ref<MaterialInstance>& material = materials.at(entity);
-		const Ref<Mesh>& mesh = mesh_loader->get_mesh(mesh_comp->mesh);
+		const Ref<Mesh>& mesh = mesh_loader.get_mesh(mesh_comp->mesh);
 		if (!material || !mesh) {
 			continue;
 		}
@@ -88,6 +86,14 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 		// Push constants
 		for (const auto& primitive : mesh->primitives) {
 			push_constants.vertex_buffer = primitive->vertex_buffer_address;
+
+			// Object transformation
+			if (scene->has<Transform>(entity)) {
+				push_constants.transform =
+						scene->get<Transform>(entity)->get_transform_matrix();
+			} else {
+				push_constants.transform = glm::mat4(1.0f);
+			}
 
 			backend->command_push_constants(cmd, material->definition->shader,
 					0, sizeof(PushConstants), &push_constants);
@@ -146,6 +152,25 @@ void SceneRenderer::_prepare_scene() {
 		break;
 	}
 
+	// Meshes
+	for (auto entity : scene->view<MeshComponent>()) {
+		const MeshComponent* mesh_comp = scene->get<MeshComponent>(entity);
+		const Ref<Mesh>& mesh = mesh_loader.get_mesh(mesh_comp->mesh);
+
+		// If mesh doesn't have and external material component create and
+		// populate one
+		if (!scene->has<MaterialComponent>(entity)) {
+			const MeshMaterialParameters& mat_params =
+					mesh->primitives.front()->material;
+
+			MaterialComponent* mat = scene->assign<MaterialComponent>(entity);
+			mat->base_color = mat_params.base_color;
+			mat->metallic = mat_params.metallic;
+			mat->roughness = mat_params.roughness;
+			mat->albedo_texture = mat_params.albedo_texture;
+		}
+	}
+
 	// Materials
 	for (auto entity : scene->view<MaterialComponent>()) {
 		MaterialComponent* material_comp =
@@ -169,10 +194,6 @@ void SceneRenderer::_prepare_scene() {
 				instance->set_param("u_albedo_texture",
 						material_comp->albedo_texture
 								? material_comp->albedo_texture
-								: default_texture);
-				instance->set_param("u_normal_texture",
-						material_comp->normal_texture
-								? material_comp->normal_texture
 								: default_texture);
 				instance->upload();
 

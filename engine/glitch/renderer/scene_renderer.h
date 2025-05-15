@@ -21,6 +21,7 @@ struct SceneData {
 struct PushConstants {
 	BufferDeviceAddress vertex_buffer;
 	BufferDeviceAddress scene_buffer;
+	glm::mat4 transform;
 };
 
 class GL_API SceneRenderer {
@@ -31,7 +32,7 @@ public:
 	void render_scene(Scene* p_scene);
 
 	// TODO: temporary
-	Ref<MeshLoader> get_mesh_loader() { return mesh_loader; }
+	MeshLoader& get_mesh_loader() { return mesh_loader; }
 
 private:
 	void _prepare_scene();
@@ -54,7 +55,7 @@ private:
 	Buffer scene_data_buffer;
 
 	Ref<MaterialSystem> material_system;
-	Ref<MeshLoader> mesh_loader;
+	MeshLoader mesh_loader;
 
 	std::unordered_map<Entity, Ref<MaterialInstance>> materials;
 	Ref<Texture> default_texture;
