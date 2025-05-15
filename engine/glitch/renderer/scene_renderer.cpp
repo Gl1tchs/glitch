@@ -4,26 +4,10 @@
 #include "glitch/core/transform.h"
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/materials/material_unlit.h"
+#include "glitch/renderer/mesh_loader.h"
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
 #include "glitch/scene/components.h"
-
-struct MeshVertex {
-	glm::vec3 position;
-	float uv_x;
-	glm::vec3 normal;
-	float uv_y;
-};
-
-struct PushConstants {
-	BufferDeviceAddress vertex_buffer;
-	BufferDeviceAddress scene_buffer;
-};
-
-Buffer vertex_buffer = GL_NULL_HANDLE;
-Buffer index_buffer = GL_NULL_HANDLE;
-
-PushConstants push_constants = {};
 
 SceneRenderer::SceneRenderer() :
 		renderer(Application::get_instance()->get_renderer()),
@@ -35,50 +19,7 @@ SceneRenderer::SceneRenderer() :
 	material_system->register_definition(
 			"mat_unlit", get_unlit_material_definition());
 
-	// Initialize temporary drawing resources
-
-	const std::vector<MeshVertex> vertices = {
-		{ { -1.0f, -1.0f, 1.0f } }, //0
-		{ { 1.0f, -1.0f, 1.0f } }, //1
-		{ { -1.0f, 1.0f, 1.0f } }, //2
-		{ { 1.0f, 1.0f, 1.0f } }, //3
-		{ { -1.0f, -1.0f, -1.0f } }, //4
-		{ { 1.0f, -1.0f, -1.0f } }, //5
-		{ { -1.0f, 1.0f, -1.0f } }, //6
-		{ { 1.0f, 1.0f, -1.0f } }, //7
-	};
-
-	vertex_buffer = backend->buffer_create(vertices.size() * sizeof(MeshVertex),
-			BUFFER_USAGE_STORAGE_BUFFER_BIT |
-					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-					BUFFER_USAGE_TRANSFER_DST_BIT,
-			MEMORY_ALLOCATION_TYPE_CPU);
-
-	void* mapped_data = backend->buffer_map(vertex_buffer);
-	memcpy(mapped_data, vertices.data(), vertices.size() * sizeof(MeshVertex));
-	backend->buffer_unmap(vertex_buffer);
-
-	const std::vector<uint32_t> indices{ //Top
-		2, 6, 7, 2, 3, 7,
-		//Bottom
-		0, 4, 5, 0, 1, 5,
-		//Left
-		0, 2, 6, 0, 4, 6,
-		//Right
-		1, 3, 7, 1, 5, 7,
-		//Front
-		0, 2, 3, 0, 1, 3,
-		//Back
-		4, 6, 7, 4, 5, 7
-	};
-
-	index_buffer = backend->buffer_create(indices.size() * sizeof(uint32_t),
-			BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
-			MEMORY_ALLOCATION_TYPE_CPU);
-
-	mapped_data = backend->buffer_map(index_buffer);
-	memcpy(mapped_data, indices.data(), indices.size() * sizeof(uint32_t));
-	backend->buffer_unmap(index_buffer);
+	mesh_loader = create_ref<MeshLoader>();
 
 	// scene buffer
 	scene_data_buffer = backend->buffer_create(sizeof(SceneData),
@@ -94,8 +35,6 @@ SceneRenderer::SceneRenderer() :
 		backend->buffer_unmap(scene_data_buffer);
 	}
 
-	push_constants.vertex_buffer =
-			backend->buffer_get_device_address(vertex_buffer);
 	push_constants.scene_buffer =
 			backend->buffer_get_device_address(scene_data_buffer);
 }
@@ -103,8 +42,6 @@ SceneRenderer::SceneRenderer() :
 SceneRenderer::~SceneRenderer() {
 	renderer->wait_for_device();
 
-	backend->buffer_free(vertex_buffer);
-	backend->buffer_free(index_buffer);
 	backend->buffer_free(scene_data_buffer);
 }
 
@@ -121,11 +58,15 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 	backend->command_begin_rendering(cmd, renderer->get_draw_extent(),
 			renderer->get_draw_image(), renderer->get_depth_image());
 
-	for (auto entity : scene->view<MaterialComponent>()) {
-		const MaterialComponent* material_comp =
-				scene->get<MaterialComponent>(entity);
+	for (auto entity : scene->view<MeshComponent, MaterialComponent>()) {
+		const auto [material_comp, mesh_comp] =
+				scene->get<MaterialComponent, MeshComponent>(entity);
 
 		const Ref<MaterialInstance>& material = materials.at(entity);
+		const Ref<Mesh>& mesh = mesh_loader->get_mesh(mesh_comp->mesh);
+		if (!material || !mesh) {
+			continue;
+		}
 
 		// Of course we need to bind the pipeline if it is really necessary
 		// but currently we don't have a mesh system. This same principle can
@@ -145,13 +86,17 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 				cmd, material->definition->shader, 0, uniform_sets);
 
 		// Push constants
-		backend->command_push_constants(cmd, material->definition->shader, 0,
-				sizeof(PushConstants), &push_constants);
+		for (const auto& primitive : mesh->primitives) {
+			push_constants.vertex_buffer = primitive->vertex_buffer_address;
 
-		backend->command_bind_index_buffer(
-				cmd, index_buffer, 0, INDEX_TYPE_UINT32);
+			backend->command_push_constants(cmd, material->definition->shader,
+					0, sizeof(PushConstants), &push_constants);
 
-		backend->command_draw_indexed(cmd, 36);
+			backend->command_bind_index_buffer(
+					cmd, primitive->index_buffer, 0, INDEX_TYPE_UINT32);
+
+			backend->command_draw_indexed(cmd, primitive->index_count);
+		}
 	}
 
 	backend->command_end_rendering(cmd);

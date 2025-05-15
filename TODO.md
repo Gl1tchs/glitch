@@ -3,20 +3,23 @@
 - [ ] Shader reflection on material creation
 - [ ] ImGui viewports causing errors
 
+- [ ] Object transforms
 - [x] Handle cameras using ECS
   - [ ] Better way to send data to gpu
-- [ ] Meshes
+- [x] Meshes
+  - [ ] Materials
+  - [ ] Use a buffer to transfer data
 - [ ] Physics integration to ECS.
 - [ ] Plugin system and runtime plugin loading via shared libraries.
 
 ## Renderer
 
 - [ ] Blender as Editor driven developement
+
   - [ ] Export blender model as gltf and import scene information from custom format that
-  would also been exported by a custom blender plugin.
+        would also been exported by a custom blender plugin.
   - [ ] Use hot-reloadable meshes and references
   - [ ] Edit scene information via debug panel
-
 
 - [ ] Scene graph.
   - [ ] FBX models.

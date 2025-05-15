@@ -1,13 +1,14 @@
 #include "game.h"
 
 #include <glitch/core/event/input.h>
+#include <glitch/renderer/mesh_loader.h>
 #include <glitch/renderer/renderer.h>
+#include <glitch/scene/components.h>
 #include <imgui/imgui.h>
 
 #include "examples/hello_triangle/hello_triangle.h"
 #include "examples/spinning_cube/spinning_cube.h"
 #include "examples/textures/textures.h"
-#include "glitch/scene/components.h"
 
 Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {}
 
@@ -20,6 +21,10 @@ void Game::_on_start() {
 	{
 		scene.assign<Transform>(e);
 
+		MeshComponent* mesh_comp = scene.assign<MeshComponent>(e);
+		mesh_comp->mesh = scene_renderer->get_mesh_loader()->load_mesh(
+				"assets/Avocado.glb");
+
 		MaterialComponent* mat = scene.assign<MaterialComponent>(e);
 		mat->base_color = COLOR_RED;
 		mat->metallic = 0.5f;
@@ -29,7 +34,7 @@ void Game::_on_start() {
 	auto c = scene.create();
 	{
 		Transform* t = scene.assign<Transform>(c);
-		t->local_position = { 0, 0, 6 };
+		t->local_position = { 0, 0, 0.5f };
 
 		scene.assign<CameraComponent>(c);
 	}

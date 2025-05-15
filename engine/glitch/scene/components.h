@@ -6,7 +6,12 @@
 
 #include "glitch/core/hash.h"
 #include "glitch/renderer/camera.h"
+#include "glitch/renderer/mesh.h"
 #include "glitch/renderer/texture.h"
+
+struct MeshComponent {
+	MeshHandle mesh;
+};
 
 enum MaterialType {
 	MATERIAL_TYPE_UNLIT,

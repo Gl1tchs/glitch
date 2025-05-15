@@ -52,7 +52,7 @@ struct GL_API MaterialInstance {
 	void upload(); // upload to GPU buffer, descriptor sets, etc.
 };
 
-class MaterialSystem {
+class GL_API MaterialSystem {
 public:
 	~MaterialSystem();
 
