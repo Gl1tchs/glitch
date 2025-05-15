@@ -3,11 +3,11 @@
 - [ ] Shader reflection on material creation
 - [ ] ImGui viewports causing errors
 
+- [x] Handle cameras using ECS
+  - [ ] Better way to send data to gpu
 - [ ] Meshes
-- [x] Rewrite a more compact and extendable materials system
 - [ ] Physics integration to ECS.
 - [ ] Plugin system and runtime plugin loading via shared libraries.
-- [ ] Ditch CMake install
 
 ## Renderer
 

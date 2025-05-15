@@ -17,13 +17,11 @@ struct MeshVertex {
 
 struct PushConstants {
 	BufferDeviceAddress vertex_buffer;
+	BufferDeviceAddress scene_buffer;
 };
 
 Buffer vertex_buffer = GL_NULL_HANDLE;
 Buffer index_buffer = GL_NULL_HANDLE;
-
-Buffer scene_data_buffer = GL_NULL_HANDLE;
-UniformSet scene_data = GL_NULL_HANDLE;
 
 PushConstants push_constants = {};
 
@@ -82,38 +80,24 @@ SceneRenderer::SceneRenderer() :
 	memcpy(mapped_data, indices.data(), indices.size() * sizeof(uint32_t));
 	backend->buffer_unmap(index_buffer);
 
-	// uniform set 0
+	// scene buffer
 	scene_data_buffer = backend->buffer_create(sizeof(SceneData),
-			BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+			BUFFER_USAGE_STORAGE_BUFFER_BIT |
+					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+					BUFFER_USAGE_TRANSFER_SRC_BIT,
 			MEMORY_ALLOCATION_TYPE_CPU);
 
-	SceneData* scene_data_ptr =
-			(SceneData*)backend->buffer_map(scene_data_buffer);
 	{
-		PerspectiveCamera cam;
-		Transform cam_transform = { .local_position = { 0, 0, 4 } };
-
-		scene_data_ptr->camera_position = cam_transform.get_position();
-		cam.aspect_ratio =
-				Application::get_instance()->get_window()->get_aspect_ratio();
-
-		scene_data_ptr->view_projection = cam.get_projection_matrix() *
-				cam.get_view_matrix(cam_transform);
+		SceneData* scene_data_ptr =
+				(SceneData*)backend->buffer_map(scene_data_buffer);
+		memcpy(scene_data_ptr, &scene_data, sizeof(SceneData));
+		backend->buffer_unmap(scene_data_buffer);
 	}
-	backend->buffer_unmap(scene_data_buffer);
-
-	ShaderUniform scene_data_uniform;
-	scene_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
-	scene_data_uniform.binding = 0;
-	scene_data_uniform.data.push_back(scene_data_buffer);
-
-	// TODO: this should be done in material
-	scene_data = backend->uniform_set_create(scene_data_uniform,
-			material_system->create_instance("mat_unlit")->definition->shader,
-			0);
 
 	push_constants.vertex_buffer =
 			backend->buffer_get_device_address(vertex_buffer);
+	push_constants.scene_buffer =
+			backend->buffer_get_device_address(scene_data_buffer);
 }
 
 SceneRenderer::~SceneRenderer() {
@@ -121,7 +105,6 @@ SceneRenderer::~SceneRenderer() {
 
 	backend->buffer_free(vertex_buffer);
 	backend->buffer_free(index_buffer);
-	backend->uniform_set_free(scene_data);
 	backend->buffer_free(scene_data_buffer);
 }
 
@@ -154,12 +137,10 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 
 		// Descriptors
 		std::vector<UniformSet> uniform_sets = {
-			scene_data,
 			material->uniform_set,
 		};
 
-		// set = 0 scene data
-		// set = 1 material data
+		// set = 0 material data
 		backend->command_bind_uniform_sets(
 				cmd, material->definition->shader, 0, uniform_sets);
 
@@ -189,6 +170,38 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 void SceneRenderer::_prepare_scene() {
 	GL_PROFILE_SCOPE;
 
+	// Camera and scene data
+	for (auto entity : scene->view<Transform, CameraComponent>()) {
+		auto [transform, cc] = scene->get<Transform, CameraComponent>(entity);
+		if (!cc->enabled) {
+			continue;
+		}
+
+		cc->camera.aspect_ratio =
+				Application::get_instance()->get_window()->get_aspect_ratio();
+
+		scene_data.view_projection = cc->camera.get_projection_matrix() *
+				cc->camera.get_view_matrix(*transform);
+		scene_data.camera_position = transform->get_position();
+
+		// Update the buffer if changed
+		size_t hash = hash64(scene_data.view_projection);
+		hash_combine(hash, hash64(scene_data.camera_position));
+
+		// TODO: this is very inefficient
+		if (scene_data_hash != hash) {
+			SceneData* scene_data_ptr =
+					(SceneData*)backend->buffer_map(scene_data_buffer);
+			memcpy(scene_data_ptr, &scene_data, sizeof(SceneData));
+			backend->buffer_unmap(scene_data_buffer);
+
+			scene_data_hash = hash;
+		}
+
+		break;
+	}
+
+	// Materials
 	for (auto entity : scene->view<MaterialComponent>()) {
 		MaterialComponent* material_comp =
 				scene->get<MaterialComponent>(entity);

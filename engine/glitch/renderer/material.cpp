@@ -104,7 +104,7 @@ void MaterialInstance::upload() {
 		uniforms.push_back(uniform);
 	}
 
-	uniform_set = backend->uniform_set_create(uniforms, definition->shader, 1);
+	uniform_set = backend->uniform_set_create(uniforms, definition->shader, 0);
 }
 
 MaterialSystem::~MaterialSystem() {

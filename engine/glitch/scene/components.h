@@ -5,6 +5,7 @@
 #pragma once
 
 #include "glitch/core/hash.h"
+#include "glitch/renderer/camera.h"
 #include "glitch/renderer/texture.h"
 
 enum MaterialType {
@@ -24,3 +25,8 @@ struct MaterialComponent {
 };
 
 template <> size_t hash64(const MaterialComponent& p_material);
+
+struct CameraComponent {
+	PerspectiveCamera camera;
+	bool enabled = true;
+};

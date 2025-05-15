@@ -17,13 +17,22 @@ void Game::_on_start() {
 	scene_renderer = create_ref<SceneRenderer>();
 
 	auto e = scene.create();
+	{
+		scene.assign<Transform>(e);
 
-	scene.assign<Transform>(e);
+		MaterialComponent* mat = scene.assign<MaterialComponent>(e);
+		mat->base_color = COLOR_RED;
+		mat->metallic = 0.5f;
+		mat->roughness = 0.5f;
+	}
 
-	MaterialComponent* mat = scene.assign<MaterialComponent>(e);
-	mat->base_color = COLOR_RED;
-	mat->metallic = 0.5f;
-	mat->roughness = 0.5f;
+	auto c = scene.create();
+	{
+		Transform* t = scene.assign<Transform>(c);
+		t->local_position = { 0, 0, 6 };
+
+		scene.assign<CameraComponent>(c);
+	}
 
 	camera_controller.set_camera(&camera, &camera_transform);
 

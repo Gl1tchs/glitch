@@ -44,7 +44,7 @@ void DebugPanel::draw(Scene* p_scene) {
 		}
 
 		if (p_scene->has<MaterialComponent>(selected_entity)) {
-			ImGui::Text("MaterialComponent");
+			ImGui::Text("Material Component");
 
 			MaterialComponent* mat =
 					p_scene->get<MaterialComponent>(selected_entity);
@@ -52,6 +52,18 @@ void DebugPanel::draw(Scene* p_scene) {
 			ImGui::ColorEdit4("Base Color", &mat->base_color.r);
 			ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
 			ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
+		}
+
+		if (p_scene->has<CameraComponent>(selected_entity)) {
+			ImGui::Text("Camera Component");
+
+			CameraComponent* cc =
+					p_scene->get<CameraComponent>(selected_entity);
+
+			ImGui::Checkbox("Enabled", &cc->enabled);
+			ImGui::DragFloat("Fov", &cc->camera.fov);
+			ImGui::DragFloat("Near Clip", &cc->camera.near_clip);
+			ImGui::DragFloat("Far Clip", &cc->camera.far_clip);
 		}
 	}
 	ImGui::End();

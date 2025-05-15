@@ -227,8 +227,7 @@ void Renderer::_imgui_init() {
 	ImGuiIO& io = ImGui::GetIO();
 	(void)io;
 
-	io.ConfigFlags |=
-			ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.IniFilename = ".glitch/imgui.ini";
 
 	io.Fonts->Clear();

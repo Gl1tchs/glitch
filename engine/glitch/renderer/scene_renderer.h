@@ -38,6 +38,10 @@ private:
 
 	Scene* scene;
 
+	SceneData scene_data;
+	size_t scene_data_hash;
+	Buffer scene_data_buffer;
+
 	Ref<MaterialSystem> material_system;
 
 	std::unordered_map<Entity, Ref<MaterialInstance>> materials;
