@@ -19,31 +19,59 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 	Ref<RenderBackend> backend = Renderer::get_backend();
 	Ref<MeshPrimitive> primitive = create_ref<MeshPrimitive>();
 
-	// TODO! use staging buffer
+	const size_t vertex_size = p_vertices.size() * sizeof(MeshVertex);
+	const size_t index_size = p_indices.size() * sizeof(uint32_t);
 
-	// Upload vertex buffer
+	const size_t data_size = vertex_size + index_size;
+
+	Buffer staging_buffer = backend->buffer_create(data_size,
+			BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+
+	uint8_t* mapped_data = backend->buffer_map(staging_buffer);
+	{
+		// Copy vertex data
+		memcpy(mapped_data, p_vertices.data(), vertex_size);
+
+		// Copy index data
+		memcpy(mapped_data + vertex_size, p_indices.data(), index_size);
+	}
+	backend->buffer_unmap(staging_buffer);
+
+	// Create vertex buffer
 	primitive->vertex_buffer =
 			backend->buffer_create(p_vertices.size() * sizeof(MeshVertex),
 					BUFFER_USAGE_STORAGE_BUFFER_BIT |
 							BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 							BUFFER_USAGE_TRANSFER_DST_BIT,
-					MEMORY_ALLOCATION_TYPE_CPU);
+					MEMORY_ALLOCATION_TYPE_GPU);
 
-	void* mapped_vertex_data = backend->buffer_map(primitive->vertex_buffer);
-	std::memcpy(mapped_vertex_data, p_vertices.data(),
-			p_vertices.size() * sizeof(MeshVertex));
-	backend->buffer_unmap(primitive->vertex_buffer);
-
-	// Upload index buffer
+	// Create index buffer
 	primitive->index_buffer = backend->buffer_create(
 			p_indices.size() * sizeof(uint32_t),
 			BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
-			MEMORY_ALLOCATION_TYPE_CPU);
+			MEMORY_ALLOCATION_TYPE_GPU);
 
-	void* mapped_index_data = backend->buffer_map(primitive->index_buffer);
-	std::memcpy(mapped_index_data, p_indices.data(),
-			p_indices.size() * sizeof(uint32_t));
-	backend->buffer_unmap(primitive->index_buffer);
+	backend->command_immediate_submit([&](CommandBuffer p_cmd) {
+		BufferCopyRegion region;
+
+		// Copy vertex buffer
+		region.src_offset = 0;
+		region.size = vertex_size;
+		region.dst_offset = 0;
+
+		backend->command_copy_buffer(
+				p_cmd, staging_buffer, primitive->vertex_buffer, region);
+
+		// Copy index buffer
+		region.src_offset = vertex_size;
+		region.size = index_size;
+		region.dst_offset = 0;
+
+		backend->command_copy_buffer(
+				p_cmd, staging_buffer, primitive->index_buffer, region);
+	});
+
+	backend->buffer_free(staging_buffer);
 
 	primitive->vertex_buffer_address =
 			backend->buffer_get_device_address(primitive->vertex_buffer);

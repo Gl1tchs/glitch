@@ -9,9 +9,6 @@
 - [ ] Scene resource management for destructors
 - [x] Handle cameras using ECS
   - [ ] Better way to send data to gpu
-- [x] Meshes
-  - [x] Materials
-  - [ ] Use a buffer to transfer data
 
 ## Renderer
 
