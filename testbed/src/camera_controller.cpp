@@ -13,10 +13,6 @@ void CameraController::set_camera(Camera* p_camera, Transform* p_transform) {
 
 	camera = p_camera;
 	transform = p_transform;
-
-	p_transform->local_position = { -5, 3, 10 };
-	p_transform->local_rotation = { -15, -30, 0 };
-	p_transform->local_scale = { 1, 1, 1 };
 }
 
 void CameraController::update(float p_dt) {

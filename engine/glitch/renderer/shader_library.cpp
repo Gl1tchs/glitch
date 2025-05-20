@@ -28,3 +28,17 @@ std::vector<uint32_t> ShaderLibrary::get_bundled_spirv(const char* p_path) {
 
 	return std::vector<uint32_t>(bundle_data, bundle_data + shader_data.size);
 }
+
+std::vector<uint32_t> ShaderLibrary::get_spirv_data(
+		const fs::path& p_filepath) {
+	size_t file_size = fs::file_size(p_filepath);
+
+	std::ifstream file(p_filepath, std::ios::in | std::ios::binary);
+	if (!file.is_open()) {
+		return {};
+	}
+
+	std::vector<uint32_t> buffer(file_size);
+	file.read(reinterpret_cast<char*>(buffer.data()), file_size);
+	return buffer;
+}

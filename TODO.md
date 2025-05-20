@@ -1,8 +1,11 @@
 # TODO
 
+- [ ] Serialization
+  - [ ] Entity
+  - [ ] Scene
+  - [ ] Materials
+- [ ] Resizing causes semaphore error
 - [ ] ImGui viewports causing errors
-  - [ ] Use a semaphore per swapchain image instead of one for all
-
 - [ ] Scene resource management for destructors
 - [x] Handle cameras using ECS
   - [ ] Better way to send data to gpu
@@ -13,7 +16,6 @@
 ## Renderer
 
 - [ ] Blender as Editor driven developement
-
   - [ ] Export blender model as gltf and import scene information from custom format that
         would also been exported by a custom blender plugin.
   - [ ] Use hot-reloadable meshes and references

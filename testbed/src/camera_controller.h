@@ -20,8 +20,8 @@ private:
 	Camera* camera;
 	Transform* transform;
 
-	const float SPEED_DEFAULT = 10.0f;
-	const float SPEED_TURBO = 30.0f;
+	const float SPEED_DEFAULT = 1.0f;
+	const float SPEED_TURBO = 3.0f;
 
 	float speed = SPEED_DEFAULT;
 
