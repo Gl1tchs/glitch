@@ -114,8 +114,8 @@ public:
 
 	size_t swapchain_get_image_count(Swapchain p_swapchain) override;
 
-	Optional<Image> swapchain_acquire_image(
-			Swapchain p_swapchain, Semaphore p_semaphore) override;
+	Optional<Image> swapchain_acquire_image(Swapchain p_swapchain,
+			Semaphore p_semaphore, uint32_t* o_image_index) override;
 
 	glm::uvec2 swapchain_get_extent(Swapchain p_swapchain) override;
 
@@ -344,7 +344,7 @@ private:
 
 	VulkanQueue graphics_queue;
 	VulkanQueue present_queue;
-	VulkanQueue command_queue;
+	VulkanQueue transfer_queue;
 
 	static const uint32_t SMALL_ALLOCATION_MAX_SIZE = 4096;
 

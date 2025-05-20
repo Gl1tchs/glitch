@@ -83,7 +83,9 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 			vkb_device_selector.set_minimum_version(1, 3)
 					.set_required_features_13(features13)
 					.set_required_features_12(features12)
-					.add_required_extension("VK_KHR_dynamic_rendering")
+					.add_required_extensions({
+							"VK_KHR_dynamic_rendering",
+					})
 					.set_surface(surface)
 					.select()
 					.value();
@@ -105,17 +107,25 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 				vkb_device.get_queue_index(vkb::QueueType::graphics).value(),
 	};
 
-	present_queue = VulkanQueue{
-		.queue = vkb_device.get_queue(vkb::QueueType::present).value(),
-		.queue_family =
-				vkb_device.get_queue_index(vkb::QueueType::present).value(),
-	};
+	if (auto vkb_queue = vkb_device.get_queue(vkb::QueueType::present)) {
+		present_queue = VulkanQueue{
+			.queue = vkb_queue.value(),
+			.queue_family =
+					vkb_device.get_queue_index(vkb::QueueType::present).value(),
+		};
+	} else {
+		present_queue = graphics_queue;
+	}
 
-	present_queue = VulkanQueue{
-		.queue = vkb_device.get_queue(vkb::QueueType::transfer).value(),
-		.queue_family =
-				vkb_device.get_queue_index(vkb::QueueType::transfer).value(),
-	};
+	if (auto vkb_queue = vkb_device.get_queue(vkb::QueueType::transfer)) {
+		transfer_queue = VulkanQueue{
+			.queue = vkb_queue.value(),
+			.queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer)
+									.value(),
+		};
+	} else {
+		transfer_queue = graphics_queue;
+	}
 
 	deletion_queue.push_function([this]() {
 		vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -154,7 +164,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 #endif
 
 	imm_fence = fence_create();
-	imm_command_pool = command_pool_create((CommandQueue)&command_queue);
+	imm_command_pool = command_pool_create((CommandQueue)&transfer_queue);
 	imm_command_buffer = command_pool_allocate(imm_command_pool);
 
 	deletion_queue.push_function([this]() {

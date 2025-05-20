@@ -83,8 +83,8 @@ public:
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed
 	 */
-	virtual Optional<Image> swapchain_acquire_image(
-			Swapchain p_swapchain, Semaphore p_semaphore) = 0;
+	virtual Optional<Image> swapchain_acquire_image(Swapchain p_swapchain,
+			Semaphore p_semaphore, uint32_t* o_image_index = nullptr) = 0;
 
 	virtual glm::uvec2 swapchain_get_extent(Swapchain p_swapchain) = 0;
 

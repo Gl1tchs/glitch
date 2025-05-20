@@ -33,12 +33,12 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	backend->init(p_window);
 
 	graphics_queue = backend->queue_get(QUEUE_TYPE_GRAPHICS);
-	// TODO: this is not being used right now
 	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
 
 	swapchain = backend->swapchain_create();
+
 	// initialize
-	backend->swapchain_resize(present_queue, swapchain, p_window->get_size());
+	backend->swapchain_resize(graphics_queue, swapchain, p_window->get_size());
 
 	draw_image = backend->image_create(draw_image_format, p_window->get_size(),
 			nullptr,
@@ -49,7 +49,7 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			backend->image_create(depth_image_format, p_window->get_size(),
 					nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
+	for (size_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
 
 		frame_data.command_pool = backend->command_pool_create(graphics_queue);
@@ -74,9 +74,7 @@ Renderer::~Renderer() {
 	backend->image_free(depth_image);
 
 	// destroy per-frame data
-	for (uint8_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
-		FrameData& frame_data = frames[i];
-
+	for (auto& frame_data : frames) {
 		backend->command_pool_free(frame_data.command_pool);
 
 		backend->semaphore_free(frame_data.image_available_semaphore);
@@ -145,6 +143,10 @@ CommandBuffer Renderer::begin_render() {
 void Renderer::end_render() {
 	GL_PROFILE_SCOPE;
 
+	if (!current_swapchain_image) {
+		GL_LOG_FATAL("Renderer::end_render: There is no image to render to!");
+	}
+
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
 	backend->command_transition_image(cmd, draw_image,
@@ -177,7 +179,7 @@ void Renderer::end_render() {
 			_get_current_frame().image_available_semaphore,
 			_get_current_frame().render_finished_semaphore);
 
-	if (!backend->queue_present(graphics_queue, swapchain,
+	if (!backend->queue_present(present_queue, swapchain,
 				_get_current_frame().render_finished_semaphore)) {
 		_request_resize();
 	}
@@ -239,8 +241,8 @@ void Renderer::_request_resize() {
 	Application::get_instance()->enqueue_main_thread([&]() {
 		GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
 
-		backend->device_wait();
-		backend->swapchain_resize(present_queue, swapchain, window->get_size());
+		backend->swapchain_resize(
+				graphics_queue, swapchain, window->get_size());
 	});
 }
 

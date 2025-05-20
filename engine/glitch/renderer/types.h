@@ -230,6 +230,7 @@ enum ImageUsageBits {
 enum QueueType {
 	QUEUE_TYPE_GRAPHICS,
 	QUEUE_TYPE_PRESENT,
+	QUEUE_TYPE_TRANSFER,
 };
 
 enum IndexType {

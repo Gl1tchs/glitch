@@ -18,7 +18,7 @@ void VulkanRenderBackend::command_immediate_submit(
 	// submit command buffer to the queue and execute it.
 	// imm_fence will now block until the graphic commands finish
 	// execution
-	queue_submit((CommandQueue)&graphics_queue, imm_command_buffer, imm_fence);
+	queue_submit(queue_get(QUEUE_TYPE_TRANSFER), imm_command_buffer, imm_fence);
 
 	// wait till the operation finishes
 	VK_CHECK(

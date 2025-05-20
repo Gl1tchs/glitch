@@ -26,10 +26,11 @@ Swapchain VulkanRenderBackend::swapchain_create() {
 
 void VulkanRenderBackend::swapchain_resize(
 		CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 size) {
-	VulkanQueue* queue = (VulkanQueue*)p_cmd_queue;
+	VulkanQueue* vk_queue = (VulkanQueue*)p_cmd_queue;
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
-	vkDeviceWaitIdle(device);
+	// Wait for queue operations to finish
+	vkQueueWaitIdle(vk_queue->queue);
 
 	_swapchain_release(swapchain);
 
@@ -80,7 +81,7 @@ size_t VulkanRenderBackend::swapchain_get_image_count(Swapchain p_swapchain) {
 }
 
 Optional<Image> VulkanRenderBackend::swapchain_acquire_image(
-		Swapchain p_swapchain, Semaphore p_semaphore) {
+		Swapchain p_swapchain, Semaphore p_semaphore, uint32_t* o_image_index) {
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
 	VkResult res = vkAcquireNextImageKHR(device, swapchain->vk_swapchain,
@@ -89,6 +90,10 @@ Optional<Image> VulkanRenderBackend::swapchain_acquire_image(
 
 	if (res != VK_SUCCESS) {
 		return {};
+	}
+
+	if (o_image_index) {
+		*o_image_index = swapchain->image_index;
 	}
 
 	return Image(&swapchain->images[swapchain->image_index]);

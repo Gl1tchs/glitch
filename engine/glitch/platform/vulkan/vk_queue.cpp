@@ -1,8 +1,23 @@
 #include "glitch/platform/vulkan/vk_backend.h"
 
 CommandQueue VulkanRenderBackend::queue_get(QueueType p_type) {
-	return CommandQueue(
-			p_type == QUEUE_TYPE_GRAPHICS ? &graphics_queue : &present_queue);
+	VulkanQueue* queue;
+	switch (p_type) {
+		case QUEUE_TYPE_GRAPHICS:
+			queue = &graphics_queue;
+			break;
+		case QUEUE_TYPE_PRESENT:
+			queue = &present_queue;
+			break;
+		case QUEUE_TYPE_TRANSFER:
+			queue = &transfer_queue;
+			break;
+		default:
+			queue = &graphics_queue;
+			break;
+	}
+
+	return CommandQueue(queue);
 }
 
 void VulkanRenderBackend::queue_submit(CommandQueue p_queue,
