@@ -4,6 +4,7 @@
 #include "glitch/core/event/input.h"
 #include "glitch/core/transform.h"
 #include "glitch/scene/components.h"
+#include "glitch/scene/entity.h"
 
 #include <imgui.h>
 
@@ -40,8 +41,10 @@ void DebugPanel::draw(Scene* p_scene) {
 	static Entity selected_entity = INVALID_ENTITY;
 	ImGui::Begin("Hierarchy");
 	{
-		for (auto entity : p_scene->view()) {
-			if (ImGui::Selectable(std::format("{}", entity).c_str(),
+		for (EntityId entity_id : p_scene->view()) {
+			Entity entity{ entity_id, p_scene };
+
+			if (ImGui::Selectable(std::format("{}", entity.get_name()).c_str(),
 						entity == selected_entity)) {
 				selected_entity = entity;
 			}
@@ -51,32 +54,30 @@ void DebugPanel::draw(Scene* p_scene) {
 
 	ImGui::Begin("Inspector");
 	if (p_scene->is_valid(selected_entity)) {
-		if (p_scene->has<Transform>(selected_entity)) {
-			ImGui::Text("Transform");
+		ImGui::Text("Transform");
 
-			Transform* transform = p_scene->get<Transform>(selected_entity);
+		Transform* transform = selected_entity.get_transform();
 
-			ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
-			ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
-			ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
-		}
+		ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
+		ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
+		ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
 
-		if (p_scene->has<MaterialComponent>(selected_entity)) {
+		if (selected_entity.has_component<MaterialComponent>()) {
 			ImGui::Text("Material Component");
 
 			MaterialComponent* mat =
-					p_scene->get<MaterialComponent>(selected_entity);
+					selected_entity.get_component<MaterialComponent>();
 
 			ImGui::ColorEdit4("Base Color", &mat->base_color.r);
 			ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
 			ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
 		}
 
-		if (p_scene->has<CameraComponent>(selected_entity)) {
+		if (selected_entity.has_component<CameraComponent>()) {
 			ImGui::Text("Camera Component");
 
 			CameraComponent* cc =
-					p_scene->get<CameraComponent>(selected_entity);
+					selected_entity.get_component<CameraComponent>();
 
 			ImGui::Checkbox("Enabled", &cc->enabled);
 			ImGui::DragFloat("Fov", &cc->camera.fov, 0.1f);

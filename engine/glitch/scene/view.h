@@ -5,7 +5,6 @@
 #pragma once
 
 #include "glitch/scene/component_lookup.h"
-#include "glitch/scene/entity.h"
 
 /**
  * Class who queries entities within the `Scene` that is also iterable
@@ -35,7 +34,7 @@ public:
 				mask(p_mask),
 				all(p_all) {}
 
-		Entity operator*() const { return entities->at(index).id; }
+		EntityId operator*() const { return entities->at(index).id; }
 
 		bool operator==(const Iterator& p_other) const {
 			return index == p_other.index || index == entities->size();

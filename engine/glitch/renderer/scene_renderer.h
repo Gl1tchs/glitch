@@ -57,7 +57,7 @@ private:
 	Ref<MaterialSystem> material_system;
 	MeshLoader mesh_loader;
 
-	std::unordered_map<Entity, Ref<MaterialInstance>> materials;
+	std::unordered_map<EntityId, Ref<MaterialInstance>> materials;
 	Ref<Texture> default_texture;
 
 #ifdef GL_DEBUG_BUILD

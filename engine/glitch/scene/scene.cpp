@@ -1,50 +1,72 @@
 #include "glitch/scene/scene.h"
 
-#include "glitch/scene/components.h"
+#include "glitch/scene/entity.h"
 
-Scene::~Scene() {
-	// TODO: maybe dynamic destruction and resouroce management
-	for (auto e : view<MaterialComponent>()) {
-		MaterialComponent* mat = get<MaterialComponent>(e);
-		mat->albedo_texture.reset();
-	}
+Scene::Scene() {}
+
+Entity Scene::create(const std::string& p_name, UID p_parent_id) {
+	return create(UID(), p_name, p_parent_id);
 }
 
-Entity Scene::create() {
-	if (!free_indices.empty()) {
-		uint32_t new_idx = free_indices.front();
-		free_indices.pop();
+Entity Scene::create(UID p_uid, const std::string& p_name, UID p_parent_id) {
+	Entity entity{ spawn(), this };
 
-		Entity new_id = create_entity_id(
-				new_idx, get_entity_version(entities[new_idx].id));
+	entity.add_component<IdComponent>(p_uid, p_name);
+	entity.add_component<Transform>();
+	entity.add_component<RelationComponent>();
 
-		entities[new_idx].id = new_id;
-
-		return new_id;
+	if (p_parent_id) {
+		Entity parent = find_by_id(p_parent_id);
+		if (parent) {
+			entity.set_parent(parent);
+		}
 	}
 
-	entities.push_back(
-			{ create_entity_id(entities.size(), 0), ComponentMask() });
+	entity_map[p_uid] = entity;
 
-	return entities.back().id;
-}
-
-bool Scene::is_valid(Entity p_entity) {
-	if (get_entity_index(p_entity) >= entities.size()) {
-		return false;
-	}
-
-	return entities[get_entity_index(p_entity)].id == p_entity;
+	return entity;
 }
 
 void Scene::destroy(Entity p_entity) {
-	const uint32_t entity_idx = get_entity_index(p_entity);
+	for (auto child : p_entity.get_children()) {
+		destroy(child);
+	}
 
-	Entity new_entity_id =
-			create_entity_id(UINT32_MAX, get_entity_version(p_entity) + 1);
+	entity_map.erase(p_entity.get_uid());
+	
+    despawn(p_entity);
+}
 
-	entities[entity_idx].id = new_entity_id;
-	entities[entity_idx].mask.reset();
+void Scene::destroy(UID p_uid) {
+	Entity entity = find_by_id(p_uid);
+	if (!entity) {
+		return;
+	}
 
-	free_indices.push(entity_idx);
+	despawn(entity);
+}
+
+bool Scene::exists(UID p_uid) const {
+	return entity_map.find(p_uid) != entity_map.end();
+}
+
+Entity Scene::find_by_id(UID p_uid) {
+	if (entity_map.find(p_uid) != entity_map.end()) {
+		return { entity_map.at(p_uid), this };
+	}
+	return {};
+}
+
+Entity Scene::find_by_name(const std::string& p_name) {
+	const auto view = this->view<IdComponent>();
+	const auto entity_it =
+			std::find_if(view.begin(), view.end(), [&](const auto& entity) {
+				return get<IdComponent>(entity)->tag == p_name;
+			});
+
+	if (entity_it != view.end()) {
+		return { *entity_it, this };
+	} else {
+		return {}; // Return an empty entity if not found
+	}
 }

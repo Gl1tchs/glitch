@@ -4,11 +4,11 @@
 #include "glitch/scene/scene.h"
 
 TEST_CASE("Scene entity creation and destruction") {
-	Scene scene;
+	Registry scene;
 
 	SUBCASE("Create new entities") {
-		Entity e1 = scene.create();
-		Entity e2 = scene.create();
+		EntityId e1 = scene.spawn();
+		EntityId e2 = scene.spawn();
 
 		CHECK(e1 != e2); // Each entity should have a unique ID
 		CHECK(scene.is_valid(e1));
@@ -16,28 +16,28 @@ TEST_CASE("Scene entity creation and destruction") {
 	}
 
 	SUBCASE("Destroy entities and reuse IDs") {
-		Entity e1 = scene.create();
-		scene.destroy(e1);
+		EntityId e1 = scene.spawn();
+		scene.despawn(e1);
 
 		CHECK_FALSE(scene.is_valid(e1)); // e1 should no longer be valid
 
-		Entity e2 = scene.create();
+		EntityId e2 = scene.spawn();
 		CHECK(scene.is_valid(e2));
 		CHECK(get_entity_index(e2) ==
 				get_entity_index(e1)); // ID of e1 should be reused
 	}
 
-	SUBCASE("Destroy and create multiple entities") {
-		Entity e1 = scene.create();
-		Entity e2 = scene.create();
-		scene.destroy(e1);
-		scene.destroy(e2);
+	SUBCASE("Destroy and spawn multiple entities") {
+		EntityId e1 = scene.spawn();
+		EntityId e2 = scene.spawn();
+		scene.despawn(e1);
+		scene.despawn(e2);
 
 		CHECK_FALSE(scene.is_valid(e1));
 		CHECK_FALSE(scene.is_valid(e2));
 
-		Entity e3 = scene.create();
-		Entity e4 = scene.create();
+		EntityId e3 = scene.spawn();
+		EntityId e4 = scene.spawn();
 
 		CHECK(scene.is_valid(e3));
 		CHECK(scene.is_valid(e4));
@@ -56,13 +56,13 @@ TEST_CASE("Scene entity creation and destruction") {
 	}
 
 	SUBCASE("Check invalid entities") {
-		Entity e1 = scene.create();
+		EntityId e1 = scene.spawn();
 		CHECK(scene.is_valid(e1));
 
-		Entity invalid_entity = e1 + 1000;
+		EntityId invalid_entity = e1 + 1000;
 		CHECK_FALSE(scene.is_valid(invalid_entity));
 
-		scene.destroy(e1);
+		scene.despawn(e1);
 		CHECK_FALSE(scene.is_valid(e1));
 	}
 }
@@ -89,10 +89,10 @@ TEST_CASE("Components") {
 	}
 
 	SUBCASE("Component assign and remove") {
-		Scene scene;
+		Registry scene;
 
-		Entity e1 = scene.create();
-		Entity e2 = scene.create();
+		EntityId e1 = scene.spawn();
+		EntityId e2 = scene.spawn();
 
 		{
 			TestComponent1* t1 =
@@ -118,11 +118,11 @@ TEST_CASE("Components") {
 }
 
 TEST_CASE("Scene views") {
-	Scene scene;
+	Registry scene;
 
-	Entity e1 = scene.create();
-	Entity e2 = scene.create();
-	Entity e3 = scene.create();
+	EntityId e1 = scene.spawn();
+	EntityId e2 = scene.spawn();
+	EntityId e3 = scene.spawn();
 
 	scene.assign<TestComponent1, TestComponent2>(e1);
 	scene.assign<TestComponent1, TestComponent2>(e2);

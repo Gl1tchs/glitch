@@ -8,6 +8,7 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
 #include "glitch/scene/components.h"
+#include "glitch/scene/entity.h"
 
 SceneRenderer::SceneRenderer() :
 		renderer(Application::get_instance()->get_renderer()),
@@ -88,12 +89,8 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 			push_constants.vertex_buffer = primitive->vertex_buffer_address;
 
 			// Object transformation
-			if (scene->has<Transform>(entity)) {
-				push_constants.transform =
-						scene->get<Transform>(entity)->get_transform_matrix();
-			} else {
-				push_constants.transform = glm::mat4(1.0f);
-			}
+			push_constants.transform =
+					scene->get<Transform>(entity)->get_transform_matrix();
 
 			backend->command_push_constants(cmd, material->definition->shader,
 					0, sizeof(PushConstants), &push_constants);

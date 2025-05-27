@@ -1,34 +1,90 @@
+/**
+ * @file entity.h
+ *
+ */
+
 #pragma once
 
-inline constexpr uint32_t MAX_ENTITIES = 1000; // TODO: dynamically allocate
-inline constexpr uint32_t MAX_COMPONENTS = 32;
+#include "glitch/core/transform.h"
+#include "glitch/core/uid.h"
+#include "glitch/scene/scene.h"
 
-// first 32 bits is index and last 32 bits are version
-typedef uint64_t Entity;
-
-typedef std::bitset<MAX_COMPONENTS> ComponentMask;
-
-struct EntityDescriptor {
-	Entity id;
-	ComponentMask mask;
+struct IdComponent {
+	UID id;
+	std::string tag;
 };
-typedef std::vector<EntityDescriptor> EntityContainer;
 
-constexpr inline Entity create_entity_id(uint32_t p_index, uint32_t p_version) {
-	return ((Entity)p_index << 32) | p_version;
-}
+struct RelationComponent {
+	UID parent_id = 0;
+	std::vector<UID> children_ids = {};
+};
 
-constexpr inline uint32_t get_entity_index(Entity p_entity) {
-	return p_entity >> 32;
-}
+/**
+ * EntityId + Scene wrapper
+ */
+class GL_API Entity {
+public:
+	constexpr Entity() : handle(INVALID_ENTITY_ID) {}
 
-constexpr inline uint32_t get_entity_version(Entity p_entity) {
-	// this conversation will loose the top 32 bits
-	return (uint32_t)p_entity;
-}
+	Entity(EntityId p_handle, Scene* p_scene) :
+			handle(p_handle), scene(p_scene) {}
 
-constexpr inline bool is_entity_valid(Entity p_entity) {
-	return (p_entity >> 32) != -1;
-}
+	Entity(const Entity& p_other) = default;
 
-inline constexpr Entity INVALID_ENTITY = create_entity_id(UINT32_MAX, 0);
+	template <typename T, typename... Args>
+	auto* add_component(Args&&... p_args) {
+		return scene->assign<T>(handle, std::forward<Args>(p_args)...);
+	}
+
+	template <typename T> T* get_component() { return scene->get<T>(handle); }
+
+	template <typename T> const T* get_component() const {
+		return scene->get<T>(handle);
+	}
+
+	template <typename... Components> bool has_component() const {
+		return scene->has<Components...>(handle);
+	}
+
+	template <typename T> void remove_component() { scene->remove<T>(handle); }
+
+	RelationComponent* get_relation();
+	const RelationComponent* get_relation() const;
+
+	Entity get_parent() const;
+	void set_parent(Entity p_parent);
+
+	bool is_parent() const;
+
+	bool is_child() const;
+
+	std::vector<Entity> get_children() const;
+
+	bool remove_child(Entity p_child);
+
+	static bool is_parent_of(Entity p_parent, Entity p_child);
+
+	const UID& get_uid() const;
+
+	const std::string& get_name();
+
+	Transform* get_transform();
+
+	operator bool() const;
+
+	operator EntityId() const;
+
+	operator uint32_t() const;
+
+	bool operator==(const Entity& p_other) const;
+
+	bool operator!=(const Entity& p_other) const;
+
+private:
+	EntityId handle;
+	Scene* scene = nullptr;
+
+	friend class HierarchyPanel;
+};
+
+constexpr Entity INVALID_ENTITY = {};

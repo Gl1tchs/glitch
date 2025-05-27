@@ -11,8 +11,8 @@ class MeshLoader {
 public:
 	~MeshLoader();
 
-	MeshHandle load_mesh(const std::string& path);
-	Ref<Mesh> get_mesh(MeshHandle handle) const;
+	MeshHandle load_mesh(const fs::path& p_path);
+	Ref<Mesh> get_mesh(MeshHandle p_handle) const;
 
 private:
 	std::unordered_map<MeshHandle, Ref<Mesh>> meshes;
@@ -20,5 +20,5 @@ private:
 
 	MeshHandle next_handle = 1;
 
-	Ref<Mesh> load_from_gltf(const std::string& path);
+	Ref<Mesh> load_from_gltf(const fs::path& p_path);
 };

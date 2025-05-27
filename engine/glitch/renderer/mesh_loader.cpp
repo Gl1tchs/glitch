@@ -14,8 +14,8 @@ MeshLoader::~MeshLoader() {
 	meshes.clear();
 }
 
-MeshHandle MeshLoader::load_mesh(const std::string& path) {
-	Ref<Mesh> mesh = load_from_gltf(path);
+MeshHandle MeshLoader::load_mesh(const fs::path& p_path) {
+	Ref<Mesh> mesh = load_from_gltf(p_path);
 	if (!mesh) {
 		return MeshHandle();
 	}
@@ -25,20 +25,30 @@ MeshHandle MeshLoader::load_mesh(const std::string& path) {
 	return handle;
 }
 
-Ref<Mesh> MeshLoader::get_mesh(MeshHandle handle) const {
-	auto it = meshes.find(handle);
+Ref<Mesh> MeshLoader::get_mesh(MeshHandle p_handle) const {
+	auto it = meshes.find(p_handle);
 	if (it == meshes.end()) {
 		return nullptr;
 	}
 	return it->second;
 }
 
-Ref<Mesh> MeshLoader::load_from_gltf(const std::string& path) {
+Ref<Mesh> MeshLoader::load_from_gltf(const fs::path& p_path) {
+	// TODO: better validation
+	GL_ASSERT(p_path.has_extension() && p_path.extension() == ".glb" ||
+			p_path.extension() == ".gltf")
+
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
 	std::string err, warn;
 
-	bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, path);
+	bool ret;
+	if (p_path.extension() == ".glb") {
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
+	} else {
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
+	}
+
 	GL_ASSERT(ret, err.c_str());
 
 	Ref<Mesh> mesh = create_ref<Mesh>();
@@ -150,10 +160,9 @@ Ref<Mesh> MeshLoader::load_from_gltf(const std::string& path) {
 						gltf_material.pbrMetallicRoughness.roughnessFactor;
 
 				// Load textures
-				{
-					const int texture_index = gltf_material.pbrMetallicRoughness
-													  .baseColorTexture.index;
-
+				const int texture_index = gltf_material.pbrMetallicRoughness
+												  .baseColorTexture.index;
+				if (texture_index > 0) {
 					if (loaded_textures.find(texture_index) !=
 							loaded_textures.end()) {
 						// Texture already loaded
@@ -197,9 +206,12 @@ Ref<Mesh> MeshLoader::load_from_gltf(const std::string& path) {
 													gltf_image.height),
 											gltf_image.image.data());
 						} else {
+							const fs::path gltf_dir = p_path.parent_path();
+
 							// External file — use loader
 							material_params.albedo_texture =
-									Texture::load_from_path(gltf_image.uri);
+									Texture::load_from_path(
+											gltf_dir / gltf_image.uri);
 						}
 
 						loaded_textures[texture_index] =

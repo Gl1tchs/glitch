@@ -22,6 +22,8 @@ struct GL_API UID {
 	operator uint64_t() const { return value; }
 };
 
+inline const UID INVALID_UID = 0;
+
 namespace std {
 template <typename T> struct hash;
 

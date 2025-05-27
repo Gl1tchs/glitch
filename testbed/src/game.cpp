@@ -4,6 +4,7 @@
 #include <glitch/renderer/mesh_loader.h>
 #include <glitch/renderer/renderer.h>
 #include <glitch/scene/components.h>
+#include <glitch/scene/entity.h>
 #include <imgui/imgui.h>
 
 Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {}
@@ -13,21 +14,23 @@ void Game::_on_start() {
 
 	scene_renderer = create_ref<SceneRenderer>();
 
-	Entity avocado = scene.create();
+	Entity sponza = scene.create("Sponza");
 	{
-		scene.assign<Transform>(avocado);
+		sponza.get_transform()->local_scale *= 0.01f;
 
-		MeshComponent* mesh_comp = scene.assign<MeshComponent>(avocado);
+		MeshComponent* mesh_comp = sponza.add_component<MeshComponent>();
 		mesh_comp->mesh = scene_renderer->get_mesh_loader().load_mesh(
-				"assets/Avocado.glb");
+				"assets/sponza-gltf-pbr/sponza.glb");
+
+		// Load mesh should give an entity tree
 	}
 
-	Entity camera = scene.create();
+	Entity camera = scene.create("Camera");
 	{
-		camera_transform = scene.assign<Transform>(camera);
+		camera_transform = camera.get_transform();
 		camera_transform->local_position = { 0, 0, 0.5f };
 
-		cc = scene.assign<CameraComponent>(camera);
+		cc = camera.add_component<CameraComponent>();
 	}
 
 	camera_controller.set_camera(&cc->camera, camera_transform);
