@@ -18,14 +18,22 @@ void DebugPanel::draw(Scene* p_scene) {
 		return;
 	}
 
-	ImGui::Begin("Debug Panel");
-
 	ImGui::Begin("Stats");
 	{
 		const ApplicationPerfStats& stats =
 				Application::get_instance()->get_perf_stats();
 
-		ImGui::Text("Event Loop: %.3f", stats.delta_time);
+		ImGui::SeparatorText("Application");
+		{
+			ImGui::Text("Event Loop: %.3f (FPS: %.2f)", stats.delta_time,
+					1.0f / std::max(stats.delta_time, 1e-6f));
+		}
+
+		ImGui::SeparatorText("Renderer");
+		{
+			ImGui::Text("Draw Calls: %d", stats.renderer_stats.draw_calls);
+			ImGui::Text("Index Count: %d", stats.renderer_stats.index_count);
+		}
 	}
 	ImGui::End();
 
@@ -76,7 +84,5 @@ void DebugPanel::draw(Scene* p_scene) {
 			ImGui::DragFloat("Far Clip", &cc->camera.far_clip, 0.1f);
 		}
 	}
-	ImGui::End();
-
 	ImGui::End();
 }

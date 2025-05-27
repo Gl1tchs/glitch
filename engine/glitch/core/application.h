@@ -8,7 +8,12 @@
 #include "glitch/renderer/renderer.h"
 
 struct ApplicationPerfStats {
-	float delta_time = 0.0f;
+	float delta_time;
+
+	struct {
+		uint32_t draw_calls;
+		uint32_t index_count;
+	} renderer_stats;
 };
 
 struct ApplicationCreateInfo {

@@ -102,6 +102,14 @@ void SceneRenderer::render_scene(Scene* p_scene) {
 					cmd, primitive->index_buffer, 0, INDEX_TYPE_UINT32);
 
 			backend->command_draw_indexed(cmd, primitive->index_count);
+
+			{
+				ApplicationPerfStats& stats =
+						Application::get_instance()->get_perf_stats();
+
+				stats.renderer_stats.draw_calls++;
+				stats.renderer_stats.index_count += primitive->index_count;
+			}
 		}
 	}
 
