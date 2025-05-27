@@ -45,10 +45,10 @@ set(IMGUI_FILES
 )
 
 # SPIRV-Reflect
-set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/spirv-reflect PARENT_SCOPE)
+set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/SPIRV-Reflect PARENT_SCOPE)
 set(SPIRV_REFLECT_FILES
-    "${VENDOR_DIR}/spirv-reflect/spirv_reflect.h"
-    "${VENDOR_DIR}/spirv-reflect/spirv_reflect.cpp"
+    "${VENDOR_DIR}/SPIRV-Reflect/spirv_reflect.h"
+    "${VENDOR_DIR}/SPIRV-Reflect/spirv_reflect.cpp"
     PARENT_SCOPE
 )
 

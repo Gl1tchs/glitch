@@ -19,6 +19,11 @@ void DebugPanel::draw(Scene* p_scene) {
 
 	ImGui::Begin("Debug Panel");
 
+	ImGui::Begin("Stats");
+	{
+	}
+	ImGui::End();
+
 	static Entity selected_entity = INVALID_ENTITY;
 	ImGui::Begin("Hierarchy");
 	{
