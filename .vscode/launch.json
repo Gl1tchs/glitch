@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "lldb",
+            "request": "launch",
+            "name": "(LLDB) Launch Testbed",
+            "program": "${workspaceFolder}/out/glitch-testbed",
+            "args": [],
+            "cwd": "${workspaceFolder}/testbed"
+        },
+        {
             "name": "(Windows) Launch Testbed",
             "type": "cppvsdbg",
             "request": "launch",

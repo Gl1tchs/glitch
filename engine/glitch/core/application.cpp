@@ -25,7 +25,12 @@ void Application::run() {
 
 	Timer timer;
 	while (running) {
-		_event_loop(timer.get_delta_time());
+		const float dt = timer.get_delta_time();
+
+		_event_loop(dt);
+
+		// Update stats
+		perf_stats.delta_time = dt;
 	}
 
 	_on_destroy();

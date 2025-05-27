@@ -7,6 +7,10 @@
 #include "glitch/core/window.h"
 #include "glitch/renderer/renderer.h"
 
+struct ApplicationPerfStats {
+	float delta_time = 0.0f;
+};
+
 struct ApplicationCreateInfo {
 	const char* name;
 	int argc;
@@ -34,6 +38,9 @@ public:
 
 	Ref<Renderer> get_renderer() { return renderer; }
 
+	// TODO: maybe this shouldn't be mutable
+	ApplicationPerfStats& get_perf_stats() { return perf_stats; }
+
 	static Application* get_instance();
 
 private:
@@ -58,4 +65,6 @@ private:
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;
+
+	ApplicationPerfStats perf_stats = {};
 };

@@ -1,5 +1,6 @@
 #include "glitch/debug/debug_panel.h"
 
+#include "glitch/core/application.h"
 #include "glitch/core/event/input.h"
 #include "glitch/core/transform.h"
 #include "glitch/scene/components.h"
@@ -21,6 +22,10 @@ void DebugPanel::draw(Scene* p_scene) {
 
 	ImGui::Begin("Stats");
 	{
+		const ApplicationPerfStats& stats =
+				Application::get_instance()->get_perf_stats();
+
+		ImGui::Text("Event Loop: %.3f", stats.delta_time);
 	}
 	ImGui::End();
 
