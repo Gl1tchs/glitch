@@ -3,14 +3,12 @@
 #include "glitch/core/application.h"
 #include "glitch/core/event/input.h"
 #include "glitch/core/transform.h"
-#include "glitch/scene/components.h"
-#include "glitch/scene/entity.h"
 
 #include <imgui.h>
 
 DebugPanel::DebugPanel() {}
 
-void DebugPanel::draw(Scene* p_scene) {
+void DebugPanel::draw() {
 	if (Input::is_key_pressed_once(KEY_CODE_F3)) {
 		show_panel = !show_panel;
 	}
@@ -30,7 +28,7 @@ void DebugPanel::draw(Scene* p_scene) {
 					1.0f / std::max(stats.delta_time, 1e-6f));
 		}
 
-		ImGui::SeparatorText("Renderer");
+		ImGui::SeparatorText("RenderDevice");
 		{
 			ImGui::Text("Draw Calls: %d", stats.renderer_stats.draw_calls);
 			ImGui::Text("Index Count: %d", stats.renderer_stats.index_count);
@@ -38,52 +36,41 @@ void DebugPanel::draw(Scene* p_scene) {
 	}
 	ImGui::End();
 
-	static Entity selected_entity = INVALID_ENTITY;
-	ImGui::Begin("Hierarchy");
-	{
-		for (EntityId entity_id : p_scene->view()) {
-			Entity entity{ entity_id, p_scene };
+	// static Entity selected_entity = INVALID_ENTITY;
+	// ImGui::Begin("Hierarchy");
+	// {
+	// 	for (EntityId entity_id : p_scene->view()) {
+	// 		Entity entity{ entity_id, p_scene };
 
-			if (ImGui::Selectable(std::format("{}", entity.get_name()).c_str(),
-						entity == selected_entity)) {
-				selected_entity = entity;
-			}
-		}
-	}
-	ImGui::End();
+	// 		if (ImGui::Selectable(std::format("{}", entity.get_name()).c_str(),
+	// 					entity == selected_entity)) {
+	// 			selected_entity = entity;
+	// 		}
+	// 	}
+	// }
+	// ImGui::End();
 
-	ImGui::Begin("Inspector");
-	if (p_scene->is_valid(selected_entity)) {
-		ImGui::Text("Transform");
+	// ImGui::Begin("Inspector");
+	// if (p_scene->is_valid(selected_entity)) {
+	// 	ImGui::Text("Transform");
 
-		Transform* transform = selected_entity.get_transform();
+	// 	Transform* transform = selected_entity.get_transform();
 
-		ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
-		ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
-		ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
+	// 	ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
+	// 	ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
+	// 	ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
 
-		if (selected_entity.has_component<MaterialComponent>()) {
-			ImGui::Text("Material Component");
+	// 	if (selected_entity.has_component<CameraComponent>()) {
+	// 		ImGui::Text("Camera Component");
 
-			MaterialComponent* mat =
-					selected_entity.get_component<MaterialComponent>();
+	// 		CameraComponent* cc =
+	// 				selected_entity.get_component<CameraComponent>();
 
-			ImGui::ColorEdit4("Base Color", &mat->base_color.r);
-			ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
-			ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
-		}
-
-		if (selected_entity.has_component<CameraComponent>()) {
-			ImGui::Text("Camera Component");
-
-			CameraComponent* cc =
-					selected_entity.get_component<CameraComponent>();
-
-			ImGui::Checkbox("Enabled", &cc->enabled);
-			ImGui::DragFloat("Fov", &cc->camera.fov, 0.1f);
-			ImGui::DragFloat("Near Clip", &cc->camera.near_clip, 0.1f);
-			ImGui::DragFloat("Far Clip", &cc->camera.far_clip, 0.1f);
-		}
-	}
-	ImGui::End();
+	// 		ImGui::Checkbox("Enabled", &cc->enabled);
+	// 		ImGui::DragFloat("Fov", &cc->camera.fov, 0.1f);
+	// 		ImGui::DragFloat("Near Clip", &cc->camera.near_clip, 0.1f);
+	// 		ImGui::DragFloat("Far Clip", &cc->camera.far_clip, 0.1f);
+	// 	}
+	// }
+	// ImGui::End();
 }

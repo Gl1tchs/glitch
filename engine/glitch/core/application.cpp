@@ -17,7 +17,7 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	renderer = create_ref<Renderer>(window);
+	renderer = create_ref<RenderDevice>(window);
 }
 
 void Application::run() {

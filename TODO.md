@@ -6,20 +6,20 @@
   - [ ] Materials
 - [ ] Resizing causes semaphore error
 - [ ] ImGui viewports causing errors
-- [ ] Scene resource management for destructors
-- [x] Handle cameras using ECS
-  - [ ] Better way to send data to gpu
 
 ## Renderer
 
 - [ ] Blender as Editor driven developement
+
   - [ ] Export blender model as gltf and import scene information from custom format that
         would also been exported by a custom blender plugin.
   - [ ] Use hot-reloadable meshes and references
   - [ ] Edit scene information via debug panel
 
 - [ ] Scene graph.
-  - [ ] Culling with BoundingBoxComponent
+  - [ ] Phong lighting model
+  - [ ] Material batching and sorting
+  - [ ] Frustum culling
   - [ ] Instanced rendering.
   - [ ] Text rendering.
   - [ ] Deferred rendering.

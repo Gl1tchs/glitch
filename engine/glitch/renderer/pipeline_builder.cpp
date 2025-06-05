@@ -1,7 +1,7 @@
 #include "glitch/renderer/pipeline_builder.h"
 
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/renderer.h"
+#include "glitch/renderer/render_device.h"
 
 PipelineBuilder::PipelineBuilder() {
 	vertex_input = {};
@@ -11,8 +11,8 @@ PipelineBuilder::PipelineBuilder() {
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			Renderer::get_draw_image_format());
-	rendering_state.depth_attachment = Renderer::get_depth_image_format();
+			RenderDevice::get_draw_image_format());
+	rendering_state.depth_attachment = RenderDevice::get_depth_image_format();
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
@@ -42,7 +42,7 @@ PipelineBuilder& PipelineBuilder::with_blend() {
 }
 
 std::pair<Shader, Pipeline> PipelineBuilder::build() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	Shader shader = backend->shader_create_from_bytecode(shader_stages);
 

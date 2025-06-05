@@ -1,10 +1,10 @@
 #include "glitch/renderer/mesh.h"
 
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/renderer.h"
+#include "glitch/renderer/render_device.h"
 
 MeshPrimitive::~MeshPrimitive() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	backend->buffer_free(vertex_buffer);
 	backend->buffer_free(index_buffer);
@@ -16,7 +16,7 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 		return nullptr;
 	}
 
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 	Ref<MeshPrimitive> primitive = create_ref<MeshPrimitive>();
 
 	const size_t vertex_size = p_vertices.size() * sizeof(MeshVertex);

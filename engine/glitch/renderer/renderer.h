@@ -1,143 +1,63 @@
 /**
- * @file renderer.h
+ * @file scene_renderer.h
  */
 
 #pragma once
 
-#include "glitch/core/window.h"
+#include "glitch/renderer/camera.h"
+#include "glitch/renderer/drawing_context.h"
+#include "glitch/renderer/gltf_loader.h"
+#include "glitch/renderer/material.h"
+#include "glitch/renderer/render_device.h"
 
-#include "glitch/renderer/types.h"
+#ifdef GL_DEBUG_BUILD
+#include "glitch/debug/debug_panel.h"
+#endif
 
-class RenderBackend;
-
-enum GraphicsAPI {
-	GRAPHICS_API_VULKAN,
+struct SceneData {
+	glm::mat4 view_projection;
+	glm::vec3 camera_position;
 };
 
-[[nodiscard]] GL_API GraphicsAPI find_proper_api() noexcept;
-
-struct RenderStats {
-	uint32_t draw_calls;
-	uint32_t triangle_count;
-};
-
-struct FrameData {
-	CommandPool command_pool;
-	CommandBuffer command_buffer;
-
-	Semaphore image_available_semaphore, render_finished_semaphore;
-	Fence render_fence;
+struct PushConstants {
+	BufferDeviceAddress vertex_buffer;
+	BufferDeviceAddress scene_buffer;
+	glm::mat4 transform;
 };
 
 /**
- * Class representing the main renderer that is responsible of keeping
- * cpu/gpu communication stable and making sure our drawing commands
- * are being submitted and presented.
+ * High level rendering interface
  */
 class GL_API Renderer {
 public:
-	Renderer(Ref<Window> p_window);
+	Renderer();
 	~Renderer();
 
-	/**
-	 * Begin rendering context, reset state, do necessary image
-	 * transactions.
-	 * @note If you want to draw directly to `draw_image` using compute shaders
-	 * you must transition the image layout from
-	 * IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to IMAGE_LAYOUT_GENERAL and after
-	 * when you are done with it, you must retransition the layout into
-	 * IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL.
-	 */
-	CommandBuffer begin_render();
-
-	/**
-	 * End rendering context, submit command buffer and present onto
-	 * surface.
-	 */
-	void end_render();
-
-	/**
-	 * Wait for rendering device operations to finish
-	 */
-	void wait_for_device();
-
-	/**
-	 * Begin ImGui rendering context, all imgui functions
-	 * must be runned inside of this scope and this operation is
-	 * defined as 1 imgui frame.
-	 */
-	void imgui_begin();
-
-	/**
-	 * Ends imgui rendering context
-	 */
-	void imgui_end();
-
-	glm::uvec2 get_draw_extent() { return draw_extent; }
-
-	Image get_draw_image() { return draw_image; }
-
-	Image get_depth_image() { return depth_image; }
-
-	RenderStats& get_stats() { return stats; }
-
-	static DataFormat get_draw_image_format() {
-		return s_instance->draw_image_format;
-	}
-
-	static DataFormat get_depth_image_format() {
-		return s_instance->depth_image_format;
-	}
-
-	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
+	void submit(const DrawingContext& p_ctx);
 
 private:
-	void _geometry_pass(CommandBuffer p_cmd);
+	void _preprocess_render(const DrawingContext& p_ctx);
 
-	void _imgui_pass(CommandBuffer p_cmd, Image p_target_image);
+	void _traverse_node_render(
+			CommandBuffer p_cmd, const Ref<SceneNode>& p_node);
 
-private:
-	void _imgui_init();
-
-	void _request_resize();
-
-	void _reset_stats();
-
-	inline FrameData& _get_current_frame() {
-		return frames[frame_number % SWAPCHAIN_BUFFER_SIZE];
-	};
+	void _render_mesh(CommandBuffer p_cmd, const Transform& p_transform,
+			const Ref<Mesh>& p_mesh);
 
 private:
-	static Renderer* s_instance;
-
-	Ref<Window> window;
-
-	// drawing data
+	Ref<RenderDevice> device;
 	Ref<RenderBackend> backend;
 
-	CommandQueue graphics_queue;
-	CommandQueue present_queue;
+	PushConstants push_constants = {};
 
-	Swapchain swapchain;
+	PerspectiveCamera camera;
+	Transform camera_transform;
 
-	glm::uvec2 draw_extent;
+	SceneData scene_data;
+	size_t scene_data_hash;
+	Buffer scene_data_buffer;
 
-	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
-	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
-
-	uint32_t frame_number = 0;
-
-	Image current_swapchain_image;
-
-	Image draw_image;
-	const DataFormat draw_image_format = DATA_FORMAT_R16G16B16A16_SFLOAT;
-
-	Image depth_image;
-	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;
-
-	// imgui data
-	bool imgui_being_used = false;
-
-	// misc
-	RenderStats stats = {};
+#ifdef GL_DEBUG_BUILD
+	DebugPanel debug_panel;
+#endif
 };

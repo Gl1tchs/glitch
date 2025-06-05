@@ -2,12 +2,12 @@
 
 #include "glitch/renderer/pipeline_builder.h"
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/renderer.h"
+#include "glitch/renderer/render_device.h"
 #include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/types.h"
 
 MaterialDefinition get_unlit_material_definition() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	auto [shader, pipeline] =
 			PipelineBuilder()

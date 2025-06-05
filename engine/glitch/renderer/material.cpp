@@ -1,10 +1,10 @@
 #include "glitch/renderer/material.h"
 
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/renderer.h"
+#include "glitch/renderer/render_device.h"
 
 MaterialInstance::~MaterialInstance() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	backend->device_wait();
 
@@ -23,7 +23,7 @@ void MaterialInstance::set_param(
 }
 
 void MaterialInstance::upload() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	backend->device_wait();
 
@@ -108,7 +108,7 @@ void MaterialInstance::upload() {
 }
 
 MaterialSystem::~MaterialSystem() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 	for (auto& [name, definition] : definitions) {
 		backend->pipeline_free(definition->pipeline);
 		backend->shader_free(definition->shader);

@@ -2,14 +2,14 @@
 
 #include "glitch/core/hash.h"
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/renderer.h"
+#include "glitch/renderer/render_device.h"
 #include "glitch/renderer/types.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
 Texture::~Texture() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	backend->image_free(image);
 	backend->sampler_free(sampler);
@@ -17,7 +17,7 @@ Texture::~Texture() {
 
 Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 		ImageFiltering p_filtering, ImageWrappingMode p_wrapping) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	const uint32_t color_data = p_color.as_uint();
 
@@ -34,7 +34,7 @@ Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
 		const void* p_data, ImageFiltering p_filtering,
 		ImageWrappingMode p_wrapping) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	Ref<Texture> tx = create_ref<Texture>();
 	tx->format = p_format;
@@ -47,7 +47,7 @@ Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
 
 Ref<Texture> Texture::load_from_path(const fs::path& p_path,
 		ImageFiltering p_filtering, ImageWrappingMode p_wrapping) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	int w, h;
 	stbi_uc* data =

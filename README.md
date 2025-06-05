@@ -1,40 +1,75 @@
-# Glitch | A rendering engine and application framework
+# 🚀 Glitch — Rendering Engine & Application Framework
 
-Glitch is an experimental rendering engine with a goal to be used for games
-and simulations. It currently only supports Vulkan backend but others can
-be integrated by deriving RenderBackend class.
+Glitch is a modular, modern C++ rendering engine built primarily around Vulkan. It's designed for **real-time graphics**, **game development**, and **interactive simulations**.
 
-## Building
+---
 
-In order to build the engine you need to have the dependencies installed on your
-system:
+## 🧠 Features (WIP)
 
-- [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/): vulkan backend.
+- 🖼️ Vulkan-based renderer with modern GPU pipeline
+- 🧱 Scene graph system for spatial hierarchy
+- 📦 Mesh, material, and texture abstraction
+- 🧠 GLTF 2.0 model loading (via `tinygltf`)
+- 🔧 Modular rendering backend system
 
-### Clonning and building:
+---
 
+## ⚙️ Building
+
+### 🔗 Dependencies
+
+You’ll need the following:
+
+- [Vulkan SDK](https://www.lunarg.com/vulkan-sdk)
+- C++20 compiler
+- `cmake` ≥ 3.20
+- `make` or `ninja`
+
+### 🧬 Cloning and Building
+
+```bash
+git clone --recursive https://github.com/Gl1tchs/glitch.git
+cd glitch
+make
 ```
-git clone --recursive https://github.com/Gl1tchs/glitch.git \
-    cd glitch \
-    make 
+
+Or with CMake directly:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-## Examples
+---
 
-Example of usage can be found [here](https://github.com/Gl1tchs/glitch-sandbox),
-a sandbox project of mine which i use to learn graphics programming.
+## 🛠️ Usage & Sandbox
 
-## Installation
+Looking for examples? Check out the [testbed](testbed/), where Glitch is tested and extended with real-time experiments.
 
-After building the project in release mode you can just run `sudo make install`
-to install the project to your system. And then using `FindGlitch.cmake` file under
-cmake/ directory you can use the library from you CMake project by doing so:
+---
 
-```cmake
-list(APPEND CMAKE_MODULE_PATH "/path/to/FindGlitch.cmake")
+## 🛣️ Roadmap / What's Next?
 
-find_package(Glitch REQUIRED)
+Here’s the current plan for Glitch, split by priority:
 
-target_include_directories(your_target PUBLIC ${GLITCH_INCLUDE_DIRS})
-target_link_libraries(your_target PRIVATE ${GLITCH_LIBRARIES})
-```
+### 🔜 Short Term
+
+- [x] Scene graph traversal with transform propagation
+- [x] Basic mesh/material rendering
+- [x] Camera + transform control
+- [x] GLTF loader
+- [ ] Bounding volume hierarchy for frustum culling
+- [ ] Material sorting and draw call batching
+- [ ] Directional lighting with shadows (PCF)
+- [ ] Instanced rendering
+- [ ] IBL support (diffuse/specular probes)
+- [ ] Forward+ lighting with clustered culling
+- [ ] Particle system (GPU-based)
+
+### 🧠 Long Term
+
+- [ ] Decals (deferred or forward projection)
+- [ ] Post-processing framework (FXAA, bloom, SSAO)
+- [ ] GPU profiling / debug UI
+- [ ] Hot-reloadable shaders
+- [ ] Multi-threaded render graph

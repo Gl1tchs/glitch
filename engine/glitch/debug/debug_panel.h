@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include "glitch/scene/scene.h"
-
 /**
  * An ImGui window responsible for scene manipulation
  */
@@ -14,7 +12,7 @@ class DebugPanel {
 public:
 	DebugPanel();
 
-	void draw(Scene* p_scene);
+	void draw();
 
 private:
 	bool show_panel = false;
