@@ -12,10 +12,28 @@ SceneGraph::SceneGraph() {
 
 Ref<SceneNode> SceneGraph::get_root() const { return root; }
 
-Ref<SceneNode> SceneGraph::create_node(const std::string& name) {
-	auto node = create_ref<SceneNode>();
-	node->debug_name = name;
-	return node;
+Ref<SceneNode> SceneGraph::find_by_id(const UID& p_uid) {
+	Ref<SceneNode> result = nullptr;
+
+	std::function<void(Ref<SceneNode>)> traverse;
+	traverse = [&](Ref<SceneNode> p_node) {
+		if (result != nullptr) {
+			return;
+		}
+
+		if (p_node->debug_id == p_uid) {
+			result = p_node;
+			return;
+		}
+
+		for (const auto& child : p_node->children) {
+			traverse(child);
+		}
+	};
+
+	traverse(root);
+
+	return result;
 }
 
 void SceneGraph::update_transforms() { _update_node_transform(root, nullptr); }

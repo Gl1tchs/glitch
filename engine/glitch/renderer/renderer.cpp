@@ -52,7 +52,7 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 #ifdef GL_DEBUG_BUILD
 	device->imgui_begin();
-	debug_panel.draw();
+	debug_panel.draw(p_ctx.root);
 	device->imgui_end();
 #endif
 }

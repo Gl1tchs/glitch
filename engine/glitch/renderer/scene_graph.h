@@ -6,6 +6,7 @@
 #pragma once
 
 #include "glitch/core/transform.h"
+#include "glitch/core/uid.h"
 #include "glitch/renderer/mesh.h"
 
 struct SceneNode {
@@ -14,6 +15,7 @@ struct SceneNode {
 
 	Ref<Mesh> mesh = nullptr;
 
+	UID debug_id;
 	std::string debug_name = "";
 
 	void add_child(Ref<SceneNode> p_node);
@@ -25,7 +27,7 @@ public:
 
 	Ref<SceneNode> get_root() const;
 
-	Ref<SceneNode> create_node(const std::string& name = "");
+	Ref<SceneNode> find_by_id(const UID& p_uid);
 
 	void update_transforms(); // optional: global transform propagation
 

@@ -1,5 +1,7 @@
 # TODO
 
+- [ ] Integration and experimentation of USD format for scene description
+
 - [ ] Serialization
   - [ ] Entity
   - [ ] Scene
@@ -27,8 +29,3 @@
 - [ ] Render scale wont make program faster.
 - [ ] Mipmaps
 - [ ] Infinite far plane
-
-## Graphics Programming
-
-- [ ] Learn how to structure meshes correctly in vulkan environment such as how
-      and when to create buffers and how to handle relations.

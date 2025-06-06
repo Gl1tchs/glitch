@@ -5,15 +5,12 @@
 
 #pragma once
 
+#include "glitch/renderer/scene_graph.h"
+
 /**
  * An ImGui window responsible for scene manipulation
  */
 class DebugPanel {
 public:
-	DebugPanel();
-
-	void draw();
-
-private:
-	bool show_panel = false;
+	static void draw(const Ref<SceneNode>& p_graph_root);
 };

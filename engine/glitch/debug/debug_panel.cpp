@@ -6,14 +6,51 @@
 
 #include <imgui.h>
 
-DebugPanel::DebugPanel() {}
+static bool s_show_panel = false;
+static SceneNode* s_selected_node = nullptr;
 
-void DebugPanel::draw() {
-	if (Input::is_key_pressed_once(KEY_CODE_F3)) {
-		show_panel = !show_panel;
+static void _traverse_render_node_hierarchy(const Ref<SceneNode>& p_node) {
+	ImGui::PushID(p_node->debug_id);
+
+	const std::string label = p_node->debug_name.empty()
+			? std::format("{}", p_node->debug_id.value)
+			: p_node->debug_name;
+
+	if (ImGui::Selectable(std::format("{}", label.c_str()).c_str(),
+				s_selected_node &&
+						p_node->debug_id == s_selected_node->debug_id)) {
+		s_selected_node = p_node.get();
+	}
+	ImGui::PopID();
+
+	if (!p_node->children.empty()) {
+		ImGui::Indent(4.0f);
 	}
 
-	if (!show_panel) {
+	for (const auto& child : p_node->children) {
+		_traverse_render_node_hierarchy(child);
+	}
+}
+
+static void _render_node_properties(SceneNode* p_node) {
+	ImGui::Text("ID: %s",
+			std::format("{}", s_selected_node->debug_id.value).c_str());
+
+	ImGui::SeparatorText("Transform");
+
+	ImGui::DragFloat3(
+			"Position", &s_selected_node->transform.local_position.x, 0.1f);
+	ImGui::DragFloat3(
+			"Rotation", &s_selected_node->transform.local_rotation.x, 0.1f);
+	ImGui::DragFloat3("Scale", &s_selected_node->transform.local_scale.x, 0.1f);
+}
+
+void DebugPanel::draw(const Ref<SceneNode>& p_graph_root) {
+	if (Input::is_key_pressed_once(KEY_CODE_F3)) {
+		s_show_panel = !s_show_panel;
+	}
+
+	if (!s_show_panel) {
 		return;
 	}
 
@@ -36,41 +73,15 @@ void DebugPanel::draw() {
 	}
 	ImGui::End();
 
-	// static Entity selected_entity = INVALID_ENTITY;
-	// ImGui::Begin("Hierarchy");
-	// {
-	// 	for (EntityId entity_id : p_scene->view()) {
-	// 		Entity entity{ entity_id, p_scene };
+	ImGui::Begin("Hierarchy");
+	{
+		_traverse_render_node_hierarchy(p_graph_root);
+	}
+	ImGui::End();
 
-	// 		if (ImGui::Selectable(std::format("{}", entity.get_name()).c_str(),
-	// 					entity == selected_entity)) {
-	// 			selected_entity = entity;
-	// 		}
-	// 	}
-	// }
-	// ImGui::End();
-
-	// ImGui::Begin("Inspector");
-	// if (p_scene->is_valid(selected_entity)) {
-	// 	ImGui::Text("Transform");
-
-	// 	Transform* transform = selected_entity.get_transform();
-
-	// 	ImGui::DragFloat3("Position", &transform->local_position.x, 0.1f);
-	// 	ImGui::DragFloat3("Rotation", &transform->local_rotation.x, 0.1f);
-	// 	ImGui::DragFloat3("Scale", &transform->local_scale.x, 0.1f);
-
-	// 	if (selected_entity.has_component<CameraComponent>()) {
-	// 		ImGui::Text("Camera Component");
-
-	// 		CameraComponent* cc =
-	// 				selected_entity.get_component<CameraComponent>();
-
-	// 		ImGui::Checkbox("Enabled", &cc->enabled);
-	// 		ImGui::DragFloat("Fov", &cc->camera.fov, 0.1f);
-	// 		ImGui::DragFloat("Near Clip", &cc->camera.near_clip, 0.1f);
-	// 		ImGui::DragFloat("Far Clip", &cc->camera.far_clip, 0.1f);
-	// 	}
-	// }
-	// ImGui::End();
+	ImGui::Begin("Inspector");
+	if (s_selected_node) {
+		_render_node_properties(s_selected_node);
+	}
+	ImGui::End();
 }
