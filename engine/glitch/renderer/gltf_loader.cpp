@@ -41,7 +41,7 @@ Ref<SceneNode> GLTFLoader::load_gltf(const fs::path& p_path) {
 	if (p_path.extension() == ".glb") {
 		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
 	} else {
-		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
+		ret = loader.LoadASCIIFromFile(&model, &err, &warn, p_path.string());
 	}
 
 	GL_ASSERT(ret, err.c_str());
