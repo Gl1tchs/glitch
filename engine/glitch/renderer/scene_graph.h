@@ -11,12 +11,15 @@
 
 struct SceneNode {
 	Transform transform;
-	std::vector<Ref<SceneNode>> children;
+	glm::mat4 world_transform;
 
-	Ref<Mesh> mesh = nullptr;
+	std::vector<Ref<SceneNode>> children;
 
 	UID debug_id;
 	std::string debug_name = "";
+
+	// Components
+	Ref<Mesh> mesh = nullptr;
 
 	void add_child(Ref<SceneNode> p_node);
 };
@@ -33,7 +36,7 @@ public:
 
 private:
 	void _update_node_transform(
-			const Ref<SceneNode>& node, const Transform* parent);
+			const Ref<SceneNode>& p_node, const glm::mat4& p_parent_transform);
 
 private:
 	Ref<SceneNode> root;

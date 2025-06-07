@@ -9,7 +9,7 @@ OrthographicCamera::OrthographicCamera() : Camera() {
 }
 
 glm::mat4 OrthographicCamera::get_view_matrix(Transform& p_transform) const {
-	return glm::inverse(p_transform.get_transform_matrix());
+	return glm::inverse(p_transform.to_mat4());
 }
 
 glm::mat4 OrthographicCamera::get_projection_matrix() const {
@@ -23,8 +23,8 @@ PerspectiveCamera::PerspectiveCamera() : Camera() {
 }
 
 glm::mat4 PerspectiveCamera::get_view_matrix(Transform& p_transform) const {
-	return glm::lookAt(p_transform.get_position(),
-			p_transform.get_position() + p_transform.get_forward(),
+	return glm::lookAt(p_transform.position,
+			p_transform.position + p_transform.get_forward(),
 			p_transform.get_up());
 }
 

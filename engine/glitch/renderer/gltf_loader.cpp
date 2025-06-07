@@ -2,6 +2,9 @@
 
 #include "glitch/renderer/materials/material_unlit.h"
 
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
@@ -16,9 +19,9 @@ GLTFLoader::GLTFLoader() {
 
 	material_system = create_ref<MaterialSystem>();
 	material_system->register_definition(
-			"mat_unlit", get_unlit_material_definition());
+			"unlit", get_unlit_material_definition());
 
-	default_material = material_system->create_instance("mat_unlit");
+	default_material = material_system->create_instance("unlit");
 	default_material->set_param("base_color", COLOR_WHITE);
 	default_material->set_param("metallic", 0.5f);
 	default_material->set_param("roughness", 0.5f);
@@ -68,6 +71,38 @@ void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
 	const tinygltf::Node& gltf_node = p_model->nodes[p_node_idx];
 	if (gltf_node.mesh >= 0) {
 		node->mesh = _load_mesh(&gltf_node, p_model, p_base_path);
+	}
+
+	// Parse translation
+	if (gltf_node.matrix.size() == 16) {
+		// Use matrix
+		glm::mat4 mat = glm::make_mat4(gltf_node.matrix.data());
+
+		glm::vec3 skew;
+		glm::vec4 perspective;
+
+		glm::decompose(mat, node->transform.scale, node->transform.rotation,
+				node->transform.position, skew, perspective);
+	} else {
+		// Use TRS
+
+		if (gltf_node.translation.size() == 3) {
+			node->transform.position = glm::vec3(gltf_node.translation[0],
+					gltf_node.translation[1], gltf_node.translation[2]);
+		}
+
+		if (gltf_node.rotation.size() == 4) {
+			node->transform.rotation = glm::fquat(gltf_node.rotation[3], // w
+					gltf_node.rotation[0], // x
+					gltf_node.rotation[1], // y
+					gltf_node.rotation[2] // z
+			);
+		}
+
+		if (gltf_node.scale.size() == 3) {
+			node->transform.scale = glm::vec3(
+					gltf_node.scale[0], gltf_node.scale[1], gltf_node.scale[2]);
+		}
 	}
 
 	for (int child_node_idx : gltf_node.children) {
@@ -209,7 +244,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 		const auto& base_color =
 				gltf_material.pbrMetallicRoughness.baseColorFactor;
 
-		material = material_system->create_instance("mat_unlit");
+		material = material_system->create_instance("unlit");
 		material->set_param("base_color",
 				Color(base_color[0], base_color[1], base_color[2],
 						base_color[3]));

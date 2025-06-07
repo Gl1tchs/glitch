@@ -41,7 +41,7 @@ private:
 	void _traverse_node_render(
 			CommandBuffer p_cmd, const Ref<SceneNode>& p_node);
 
-	void _render_mesh(CommandBuffer p_cmd, const Transform& p_transform,
+	void _render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
 			const Ref<Mesh>& p_mesh);
 
 private:

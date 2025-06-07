@@ -16,20 +16,36 @@ static void _traverse_render_node_hierarchy(const Ref<SceneNode>& p_node) {
 			? std::format("{}", p_node->debug_id.value)
 			: p_node->debug_name;
 
-	if (ImGui::Selectable(std::format("{}", label.c_str()).c_str(),
-				s_selected_node &&
-						p_node->debug_id == s_selected_node->debug_id)) {
-		s_selected_node = p_node.get();
+	const bool is_selected =
+			s_selected_node && p_node->debug_id == s_selected_node->debug_id;
+
+	if (p_node->children.empty()) {
+		if (ImGui::Selectable(label.c_str(), is_selected)) {
+			s_selected_node = p_node.get();
+		}
+	} else {
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
+				ImGuiTreeNodeFlags_OpenOnDoubleClick;
+
+		if (is_selected) {
+			flags |= ImGuiTreeNodeFlags_Selected;
+		}
+
+		bool node_open = ImGui::TreeNodeEx(label.c_str(), flags);
+
+		if (ImGui::IsItemClicked()) {
+			s_selected_node = p_node.get();
+		}
+
+		if (node_open) {
+			for (const auto& child : p_node->children) {
+				_traverse_render_node_hierarchy(child);
+			}
+			ImGui::TreePop();
+		}
 	}
+
 	ImGui::PopID();
-
-	if (!p_node->children.empty()) {
-		ImGui::Indent(4.0f);
-	}
-
-	for (const auto& child : p_node->children) {
-		_traverse_render_node_hierarchy(child);
-	}
 }
 
 static void _render_node_properties(SceneNode* p_node) {
@@ -38,11 +54,9 @@ static void _render_node_properties(SceneNode* p_node) {
 
 	ImGui::SeparatorText("Transform");
 
-	ImGui::DragFloat3(
-			"Position", &s_selected_node->transform.local_position.x, 0.1f);
-	ImGui::DragFloat3(
-			"Rotation", &s_selected_node->transform.local_rotation.x, 0.1f);
-	ImGui::DragFloat3("Scale", &s_selected_node->transform.local_scale.x, 0.1f);
+	ImGui::DragFloat3("Position", &s_selected_node->transform.position.x, 0.1f);
+	ImGui::DragFloat3("Rotation", &s_selected_node->transform.rotation.x, 0.1f);
+	ImGui::DragFloat3("Scale", &s_selected_node->transform.scale.x, 0.1f);
 }
 
 void DebugPanel::draw(const Ref<SceneNode>& p_graph_root) {

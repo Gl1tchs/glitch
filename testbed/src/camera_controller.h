@@ -25,7 +25,9 @@ private:
 
 	float speed = SPEED_DEFAULT;
 
-	float sensitivity = 0.05f;
+	float sensitivity = 0.005f;
+	float pitch = 0.0f;
+	float yaw = 0.0f;
 
 	glm::vec2 last_mouse_pos;
 

@@ -10,9 +10,8 @@ Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {}
 void Game::_on_start() {
 	renderer = create_ref<Renderer>();
 
-	Ref<SceneNode> scene =
-			gltf_loader.load_gltf("assets/sponza-gltf-pbr/sponza.glb");
-	scene->transform.local_scale *= 0.01f;
+	Ref<SceneNode> scene = gltf_loader.load_gltf(YOUR_GLTF_SCENE);
+	scene->transform.scale *= 0.01f;
 
 	scene_graph.get_root()->add_child(scene);
 
@@ -43,9 +42,9 @@ void Game::_on_update(float p_dt) {
 	}
 
 	DrawingContext ctx;
+	ctx.scene_graph = &scene_graph;
 	ctx.camera = camera;
 	ctx.camera_transform = camera_transform;
-	ctx.assign_scene_graph(scene_graph);
 
 	renderer->submit(ctx);
 }

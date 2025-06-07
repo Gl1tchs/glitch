@@ -1,9 +1,6 @@
 #include "glitch/renderer/scene_graph.h"
 
-void SceneNode::add_child(Ref<SceneNode> p_node) {
-	p_node->transform.parent = &transform;
-	children.push_back(p_node);
-}
+void SceneNode::add_child(Ref<SceneNode> p_node) { children.push_back(p_node); }
 
 SceneGraph::SceneGraph() {
 	root = create_ref<SceneNode>();
@@ -36,15 +33,20 @@ Ref<SceneNode> SceneGraph::find_by_id(const UID& p_uid) {
 	return result;
 }
 
-void SceneGraph::update_transforms() { _update_node_transform(root, nullptr); }
+void SceneGraph::update_transforms() {
+	_update_node_transform(root, glm::mat4(1.0f));
+}
 
 void SceneGraph::_update_node_transform(
-		const Ref<SceneNode>& node, const Transform* parent) {
-	if (parent) {
-		node->transform.parent = parent;
+		const Ref<SceneNode>& p_node, const glm::mat4& p_parent_transform) {
+	if (!p_node) {
+		return;
 	}
 
-	for (auto& child : node->children) {
-		_update_node_transform(child, &node->transform);
+	p_node->world_transform = p_parent_transform * p_node->transform.to_mat4();
+
+	// Recurse to children
+	for (auto& child : p_node->children) {
+		_update_node_transform(child, p_node->world_transform);
 	}
 }

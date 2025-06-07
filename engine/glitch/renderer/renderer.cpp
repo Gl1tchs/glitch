@@ -36,6 +36,11 @@ Renderer::~Renderer() {
 void Renderer::submit(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
 
+	if (!p_ctx.scene_graph) {
+		GL_LOG_WARNING("No SceneGraph assigned to render!");
+		return;
+	}
+
 	_preprocess_render(p_ctx);
 
 	CommandBuffer cmd = device->begin_render();
@@ -44,7 +49,7 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 				device->get_draw_image(), device->get_depth_image());
 		// Render nodes individually
 		// TODO: preprocess and do an instanced rendering and ibl
-		_traverse_node_render(cmd, p_ctx.root);
+		_traverse_node_render(cmd, p_ctx.scene_graph->get_root());
 
 		backend->command_end_rendering(cmd);
 	}
@@ -52,13 +57,17 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 #ifdef GL_DEBUG_BUILD
 	device->imgui_begin();
-	debug_panel.draw(p_ctx.root);
+	debug_panel.draw(p_ctx.scene_graph->get_root());
 	device->imgui_end();
 #endif
 }
 
 void Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
+
+	// Update scene transforms
+	// TODO: dirty flags to cache
+	p_ctx.scene_graph->update_transforms();
 
 	// TODO:
 	// 1. Frustum culling (SceneNode → visible_nodes)
@@ -76,7 +85,7 @@ void Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 
 	scene_data.view_projection = camera.get_projection_matrix() *
 			camera.get_view_matrix(camera_transform);
-	scene_data.camera_position = camera_transform.get_position();
+	scene_data.camera_position = camera_transform.position;
 
 	// Reupload the scene buffer if it's updated
 	size_t hash = hash64(scene_data.view_projection);
@@ -98,7 +107,7 @@ void Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 void Renderer::_traverse_node_render(
 		CommandBuffer p_cmd, const Ref<SceneNode>& p_node) {
 	if (p_node->mesh) {
-		_render_mesh(p_cmd, p_node->transform, p_node->mesh);
+		_render_mesh(p_cmd, p_node->world_transform, p_node->mesh);
 	}
 
 	// Render child nodes as well
@@ -107,7 +116,7 @@ void Renderer::_traverse_node_render(
 	}
 }
 
-void Renderer::_render_mesh(CommandBuffer p_cmd, const Transform& p_transform,
+void Renderer::_render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
 		const Ref<Mesh>& p_mesh) {
 	for (const auto& primitive : p_mesh->primitives) {
 		// Of course we need to bind the pipeline if it is really necessary
@@ -128,7 +137,7 @@ void Renderer::_render_mesh(CommandBuffer p_cmd, const Transform& p_transform,
 			push_constants.vertex_buffer = primitive->vertex_buffer_address;
 
 			// Object transformation
-			push_constants.transform = p_transform.get_transform_matrix();
+			push_constants.transform = p_transform;
 
 			backend->command_push_constants(p_cmd,
 					primitive->material->definition->shader, 0,

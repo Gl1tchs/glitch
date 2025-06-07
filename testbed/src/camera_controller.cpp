@@ -22,13 +22,18 @@ void CameraController::update(float p_dt) {
 
 	glm::vec2 mouse_delta = Input::get_mouse_position() - last_mouse_pos;
 
-	glm::vec3 new_rotation = transform->local_rotation +
-			glm::vec3(-mouse_delta.y, -mouse_delta.x, 0.0f) * sensitivity;
+	yaw += -mouse_delta.x * sensitivity;
+	pitch += -mouse_delta.y * sensitivity;
 
-	// clamp between (-90,90) to make it realistic :)
-	new_rotation.x = glm::clamp(new_rotation.x, -89.0f, 89.0f);
+	// Clamp pitch to avoid flipping
+	pitch = glm::clamp(pitch, glm::radians(-89.0f), glm::radians(89.0f));
 
-	transform->local_rotation = new_rotation;
+	// Rebuild rotation quaternion:
+	glm::fquat qPitch = glm::angleAxis(pitch, VEC3_RIGHT);
+	glm::fquat qYaw = glm::angleAxis(yaw, VEC3_UP);
+
+	// Final rotation: yaw first, then pitch
+	transform->rotation = qYaw * qPitch;
 
 	// store last mouse pos to prevent instant rotations
 	last_mouse_pos = Input::get_mouse_position();
@@ -41,26 +46,26 @@ void CameraController::update(float p_dt) {
 
 	// forward / backward controls
 	if (Input::is_key_pressed(KEY_CODE_W)) {
-		transform->local_position += transform->get_forward() * speed * p_dt;
+		transform->position += transform->get_forward() * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_S)) {
-		transform->local_position -= transform->get_forward() * speed * p_dt;
+		transform->position -= transform->get_forward() * speed * p_dt;
 	}
 
 	// right / left controls
 	if (Input::is_key_pressed(KEY_CODE_D)) {
-		transform->local_position += transform->get_right() * speed * p_dt;
+		transform->position += transform->get_right() * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_A)) {
-		transform->local_position -= transform->get_right() * speed * p_dt;
+		transform->position -= transform->get_right() * speed * p_dt;
 	}
 
 	// up / down controls
 	if (Input::is_key_pressed(KEY_CODE_E)) {
-		transform->local_position += WORLD_UP * speed * p_dt;
+		transform->position += WORLD_UP * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_Q)) {
-		transform->local_position -= WORLD_UP * speed * p_dt;
+		transform->position -= WORLD_UP * speed * p_dt;
 	}
 }
 
