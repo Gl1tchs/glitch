@@ -54,13 +54,17 @@ struct GL_API MaterialInstance {
 
 class GL_API MaterialSystem {
 public:
-	~MaterialSystem();
+	MaterialSystem() = delete;
 
-	void register_definition(
+	static void init();
+	static void destroy();
+
+	static void register_definition(
 			const std::string& p_name, MaterialDefinition p_def);
 
-	Ref<MaterialInstance> create_instance(const std::string& p_def_name);
+	static Ref<MaterialInstance> create_instance(const std::string& p_def_name);
 
 private:
-	std::unordered_map<std::string, Ref<MaterialDefinition>> definitions;
+	static std::unordered_map<std::string, Ref<MaterialDefinition>>
+			s_definitions;
 };

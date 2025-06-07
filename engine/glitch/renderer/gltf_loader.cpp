@@ -1,7 +1,5 @@
 #include "glitch/renderer/gltf_loader.h"
 
-#include "glitch/renderer/materials/material_unlit.h"
-
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -17,15 +15,12 @@ enum GLTFParsingFlags : uint16_t {
 GLTFLoader::GLTFLoader() {
 	default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
 
-	material_system = create_ref<MaterialSystem>();
-	material_system->register_definition(
-			"unlit", get_unlit_material_definition());
-
-	default_material = material_system->create_instance("unlit");
+	default_material = MaterialSystem::create_instance("lit");
 	default_material->set_param("base_color", COLOR_WHITE);
 	default_material->set_param("metallic", 0.5f);
 	default_material->set_param("roughness", 0.5f);
 	default_material->set_param("u_albedo_texture", default_texture);
+	default_material->set_param("u_normal_texture", default_texture);
 	default_material->upload();
 }
 
@@ -272,7 +267,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 		const auto& base_color =
 				gltf_material.pbrMetallicRoughness.baseColorFactor;
 
-		material = material_system->create_instance("unlit");
+		material = MaterialSystem::create_instance("lit");
+
 		material->set_param("base_color",
 				Color(base_color[0], base_color[1], base_color[2],
 						base_color[3]));
@@ -283,80 +279,80 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 				static_cast<float>(
 						gltf_material.pbrMetallicRoughness.roughnessFactor));
 
-		// Load textures
-		Ref<Texture> texture = default_texture;
+		// Check for pbr specular glossines extention first and use that if
+		// exists
+		if (const auto it = gltf_material.extensions.find(
+					"KHR_materials_pbrSpecularGlossiness");
+				it != gltf_material.extensions.end()) {
+			const tinygltf::Value& specGloss = it->second;
 
-		const int texture_index =
-				gltf_material.pbrMetallicRoughness.baseColorTexture.index;
-		if (texture_index > 0) {
-			if (loaded_textures.find(texture_index) != loaded_textures.end()) {
-				// Texture already loaded
+			// DiffuseFactor
+			const auto& diffuse_factor = specGloss.Has("diffuseFactor")
+					? specGloss.Get("diffuseFactor")
+							  .Get<tinygltf::Value::Array>()
+					: tinygltf::Value::Array{ tinygltf::Value(1.0),
+						  tinygltf::Value(1.0), tinygltf::Value(1.0),
+						  tinygltf::Value(1.0) };
 
-				texture = loaded_textures.at(texture_index);
-			} else {
-				// Texture not loaded
+			material->set_param("base_color",
+					Color(float(diffuse_factor[0].GetNumberAsDouble()),
+							float(diffuse_factor[1].GetNumberAsDouble()),
+							float(diffuse_factor[2].GetNumberAsDouble()),
+							float(diffuse_factor[3].GetNumberAsDouble())));
 
-				const tinygltf::Texture& gltf_texture =
-						p_model->textures[texture_index];
-				const tinygltf::Image& gltf_image =
-						p_model->images[gltf_texture.source];
-
-				// Parse sampler
-				TextureSamplerOptions sampler_options = {};
-				if (gltf_texture.sampler >= 0) {
-					const tinygltf::Sampler& sampler =
-							p_model->samplers[gltf_texture.sampler];
-
-					// Texture filtering
-					sampler_options.mag_filter =
-							_gltf_to_image_filtering(sampler.magFilter);
-					sampler_options.min_filter =
-							_gltf_to_image_filtering(sampler.minFilter);
-
-					// Texture wrapping
-					sampler_options.wrap_u =
-							_gltf_to_image_wrapping(sampler.wrapS);
-					sampler_options.wrap_v =
-							_gltf_to_image_wrapping(sampler.wrapT);
-				}
-
-				if (gltf_image.uri.empty()) {
-					// Embedded — create directly from buffer
-
-					DataFormat format;
-					switch (gltf_image.component) {
-						case 1:
-							format = DATA_FORMAT_R8_UNORM;
-							break;
-						case 2:
-							format = DATA_FORMAT_R8G8_UNORM;
-							break;
-						case 3:
-							format = DATA_FORMAT_R8G8B8_UNORM;
-							break;
-						case 4:
-							format = DATA_FORMAT_R8G8B8A8_UNORM;
-							break;
-						default:
-							GL_ASSERT(false,
-									"Unsupported image component "
-									"count");
+			// Load diffuseTexture as base_color texture
+			Ref<Texture> albedo_texture = default_texture;
+			if (specGloss.Has("diffuseTexture")) {
+				const auto& diffuse_texture = specGloss.Get("diffuseTexture");
+				if (diffuse_texture.IsObject() &&
+						diffuse_texture.Has("index")) {
+					int texture_index = diffuse_texture.Get("index").Get<int>();
+					if (texture_index >= 0) {
+						albedo_texture = _load_texture(
+								texture_index, p_model, p_base_path);
 					}
-
-					texture = Texture::create(format,
-							glm::uvec2(gltf_image.width, gltf_image.height),
-							gltf_image.image.data(), sampler_options);
-				} else {
-					// External file — use loader
-					texture = Texture::load_from_path(
-							p_base_path / gltf_image.uri, sampler_options);
 				}
-
-				loaded_textures[texture_index] = texture;
 			}
+			material->set_param("u_albedo_texture", albedo_texture);
+
+			// Metallic / Roughness are not used in SpecGloss — can set default
+			material->set_param("metallic", 0.0f);
+			material->set_param("roughness", 1.0f);
+		} else {
+			// Standard PBR flow
+			const auto& base_color =
+					gltf_material.pbrMetallicRoughness.baseColorFactor;
+
+			material->set_param("base_color",
+					Color(base_color[0], base_color[1], base_color[2],
+							base_color[3]));
+
+			material->set_param("metallic",
+					static_cast<float>(
+							gltf_material.pbrMetallicRoughness.metallicFactor));
+
+			material->set_param("roughness",
+					static_cast<float>(gltf_material.pbrMetallicRoughness
+									.roughnessFactor));
+
+			const int albedo_texture_index =
+					gltf_material.pbrMetallicRoughness.baseColorTexture.index;
+
+			Ref<Texture> albedo_texture = (albedo_texture_index >= 0)
+					? _load_texture(albedo_texture_index, p_model, p_base_path)
+					: default_texture;
+
+			material->set_param("u_albedo_texture", albedo_texture);
 		}
 
-		material->set_param("u_albedo_texture", texture);
+		{
+			const int normal_texture_index = gltf_material.normalTexture.index;
+			Ref<Texture> normal_texture = (normal_texture_index > 0)
+					? _load_texture(normal_texture_index, p_model, p_base_path)
+					: default_texture;
+			material->set_param("u_normal_texture", normal_texture);
+		}
+
 		material->upload();
 	}
 
@@ -365,4 +361,70 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 	prim->material = material;
 
 	return prim;
+}
+
+Ref<Texture> GLTFLoader::_load_texture(int texture_index,
+		const tinygltf::Model* p_model, const fs::path& p_base_path) {
+	if (loaded_textures.find(texture_index) != loaded_textures.end()) {
+		// Texture already loaded
+		return loaded_textures.at(texture_index);
+	}
+
+	// Texture not loaded
+	const tinygltf::Texture& gltf_texture = p_model->textures[texture_index];
+	const tinygltf::Image& gltf_image = p_model->images[gltf_texture.source];
+
+	// Parse sampler
+	TextureSamplerOptions sampler_options = {};
+	if (gltf_texture.sampler >= 0) {
+		const tinygltf::Sampler& sampler =
+				p_model->samplers[gltf_texture.sampler];
+
+		// Texture filtering
+		sampler_options.mag_filter =
+				_gltf_to_image_filtering(sampler.magFilter);
+		sampler_options.min_filter =
+				_gltf_to_image_filtering(sampler.minFilter);
+
+		// Texture wrapping
+		sampler_options.wrap_u = _gltf_to_image_wrapping(sampler.wrapS);
+		sampler_options.wrap_v = _gltf_to_image_wrapping(sampler.wrapT);
+	}
+
+	Ref<Texture> texture;
+	if (gltf_image.uri.empty()) {
+		// Embedded — create directly from buffer
+
+		DataFormat format;
+		switch (gltf_image.component) {
+			case 1:
+				format = DATA_FORMAT_R8_UNORM;
+				break;
+			case 2:
+				format = DATA_FORMAT_R8G8_UNORM;
+				break;
+			case 3:
+				format = DATA_FORMAT_R8G8B8_UNORM;
+				break;
+			case 4:
+				format = DATA_FORMAT_R8G8B8A8_UNORM;
+				break;
+			default:
+				GL_ASSERT(false,
+						"Unsupported image component "
+						"count");
+		}
+
+		texture = Texture::create(format,
+				glm::uvec2(gltf_image.width, gltf_image.height),
+				gltf_image.image.data(), sampler_options);
+	} else {
+		// External file — use loader
+		texture = Texture::load_from_path(
+				p_base_path / gltf_image.uri, sampler_options);
+	}
+
+	loaded_textures[texture_index] = texture;
+
+	return texture;
 }

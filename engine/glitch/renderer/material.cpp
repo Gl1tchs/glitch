@@ -3,6 +3,9 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/render_device.h"
 
+std::unordered_map<std::string, Ref<MaterialDefinition>>
+		MaterialSystem::s_definitions = {};
+
 MaterialInstance::~MaterialInstance() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
@@ -107,9 +110,11 @@ void MaterialInstance::upload() {
 	uniform_set = backend->uniform_set_create(uniforms, definition->shader, 0);
 }
 
-MaterialSystem::~MaterialSystem() {
+void MaterialSystem::init() { s_definitions.clear(); }
+
+void MaterialSystem::destroy() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
-	for (auto& [name, definition] : definitions) {
+	for (auto& [name, definition] : s_definitions) {
 		backend->pipeline_free(definition->pipeline);
 		backend->shader_free(definition->shader);
 	}
@@ -117,17 +122,17 @@ MaterialSystem::~MaterialSystem() {
 
 void MaterialSystem::register_definition(
 		const std::string& p_name, MaterialDefinition p_def) {
-	GL_ASSERT(definitions.find(p_name) == definitions.end(),
+	GL_ASSERT(s_definitions.find(p_name) == s_definitions.end(),
 			"Definition already registered!");
 
 	p_def.name = p_name;
-	definitions[p_name] = create_ref<MaterialDefinition>(p_def);
+	s_definitions[p_name] = create_ref<MaterialDefinition>(p_def);
 }
 
 Ref<MaterialInstance> MaterialSystem::create_instance(
 		const std::string& p_def_name) {
-	const auto it = definitions.find(p_def_name);
-	if (it == definitions.end()) {
+	const auto it = s_definitions.find(p_def_name);
+	if (it == s_definitions.end()) {
 		return nullptr;
 	}
 

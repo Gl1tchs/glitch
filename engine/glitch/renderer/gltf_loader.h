@@ -14,7 +14,7 @@ class Model;
 class Mesh;
 } //namespace tinygltf
 
-class GLTFLoader {
+class GL_API GLTFLoader {
 public:
 	GLTFLoader();
 	~GLTFLoader();
@@ -23,7 +23,8 @@ public:
 
 private:
 	void _parse_node(int p_node_idx, const tinygltf::Model* p_model,
-			const fs::path& p_base_path, Ref<SceneNode> p_parent_node = nullptr);
+			const fs::path& p_base_path,
+			Ref<SceneNode> p_parent_node = nullptr);
 
 	Ref<Mesh> _load_mesh(const tinygltf::Node* p_gltf_node,
 			const tinygltf::Model* p_model, const fs::path& p_base_path);
@@ -32,9 +33,10 @@ private:
 			const tinygltf::Model* p_model, const tinygltf::Mesh* p_mesh,
 			const fs::path& p_base_path);
 
-private:
-	Ref<MaterialSystem> material_system;
+	Ref<Texture> _load_texture(int texture_index,
+			const tinygltf::Model* p_model, const fs::path& p_base_path);
 
+private:
 	Ref<Texture> default_texture;
 	Ref<MaterialInstance> default_material;
 

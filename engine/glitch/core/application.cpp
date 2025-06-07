@@ -2,6 +2,8 @@
 
 #include "glitch/core/event/event_system.h"
 #include "glitch/core/timer.h"
+#include "glitch/renderer/material.h"
+#include "glitch/renderer/material_definitions.h"
 
 Application* Application::s_instance = nullptr;
 
@@ -18,7 +20,16 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 
 	// initialize render backend
 	renderer = create_ref<RenderDevice>(window);
+
+	MaterialSystem::init();
+
+	// Register material definitions
+	MaterialSystem::register_definition(
+			"unlit", get_unlit_material_definition());
+	MaterialSystem::register_definition("lit", get_unlit_material_definition());
 }
+
+Application::~Application() { MaterialSystem::destroy(); }
 
 void Application::run() {
 	_on_start();

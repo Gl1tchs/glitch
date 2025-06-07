@@ -27,7 +27,7 @@ typedef std::function<void(void)> MainThreadFunc;
 class GL_API Application {
 public:
 	Application(const ApplicationCreateInfo& p_info);
-	virtual ~Application() = default;
+	virtual ~Application();
 
 	void run();
 

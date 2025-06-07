@@ -1,6 +1,6 @@
 #version 450
 
-#include "glitch/uniforms.glsl"
+#include "glitch/mesh_definition.glsl"
 
 layout(location = 0) out vec3 v_position;
 layout(location = 1) out vec3 v_normal;
