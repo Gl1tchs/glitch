@@ -16,7 +16,7 @@ Texture::~Texture() {
 }
 
 Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
-		ImageFiltering p_filtering, ImageWrappingMode p_wrapping) {
+		TextureSamplerOptions p_sampler) {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	const uint32_t color_data = p_color.as_uint();
@@ -25,28 +25,29 @@ Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
 	tx->image = backend->image_create(
 			DATA_FORMAT_R8G8B8A8_UNORM, p_size, &color_data);
-	tx->sampler = backend->sampler_create(
-			p_filtering, p_filtering, p_wrapping, p_wrapping, p_wrapping);
+	tx->sampler =
+			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
+					p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
 
 	return tx;
 }
 
 Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
-		const void* p_data, ImageFiltering p_filtering,
-		ImageWrappingMode p_wrapping) {
+		const void* p_data, TextureSamplerOptions p_sampler) {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	Ref<Texture> tx = create_ref<Texture>();
 	tx->format = p_format;
 	tx->image = backend->image_create(p_format, p_size, p_data);
-	tx->sampler = backend->sampler_create(
-			p_filtering, p_filtering, p_wrapping, p_wrapping, p_wrapping);
+	tx->sampler =
+			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
+					p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
 
 	return tx;
 }
 
-Ref<Texture> Texture::load_from_path(const fs::path& p_path,
-		ImageFiltering p_filtering, ImageWrappingMode p_wrapping) {
+Ref<Texture> Texture::load_from_path(
+		const fs::path& p_path, TextureSamplerOptions p_sampler) {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
 	int w, h;
@@ -57,8 +58,9 @@ Ref<Texture> Texture::load_from_path(const fs::path& p_path,
 	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
 	tx->image = backend->image_create(
 			DATA_FORMAT_R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);
-	tx->sampler = backend->sampler_create(
-			p_filtering, p_filtering, p_wrapping, p_wrapping, p_wrapping);
+	tx->sampler =
+			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
+					p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
 
 	stbi_image_free(data);
 

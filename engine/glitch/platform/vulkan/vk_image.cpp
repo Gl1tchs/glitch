@@ -114,7 +114,9 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 				BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
 
 		uint8_t* mapped_data = buffer_map(staging_buffer);
-		{ memcpy(mapped_data, p_data, data_size); }
+		{
+			memcpy(mapped_data, p_data, data_size);
+		}
 		buffer_unmap(staging_buffer);
 
 		VkImageUsageFlags image_usage = vk_usage;

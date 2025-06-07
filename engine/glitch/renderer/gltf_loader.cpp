@@ -123,6 +123,34 @@ Ref<Mesh> GLTFLoader::_load_mesh(const tinygltf::Node* p_gltf_node,
 	return mesh;
 }
 
+static ImageFiltering _gltf_to_image_filtering(int p_gltf_filter) {
+	switch (p_gltf_filter) {
+		case TINYGLTF_TEXTURE_FILTER_NEAREST:
+		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
+		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
+			return IMAGE_FILTERING_NEAREST;
+		case TINYGLTF_TEXTURE_FILTER_LINEAR:
+		case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
+		case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
+			return IMAGE_FILTERING_LINEAR;
+		default:
+			return IMAGE_FILTERING_LINEAR;
+	}
+}
+
+static ImageWrappingMode _gltf_to_image_wrapping(int p_gltf_wrap) {
+	switch (p_gltf_wrap) {
+		case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
+			return IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
+		case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
+			return IMAGE_WRAPPING_MODE_MIRRORED_REPEAT;
+		case TINYGLTF_TEXTURE_WRAP_REPEAT:
+			return IMAGE_WRAPPING_MODE_REPEAT;
+		default:
+			return IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
+	}
+}
+
 Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 		const tinygltf::Primitive* p_primitive, const tinygltf::Model* p_model,
 		const tinygltf::Mesh* p_mesh, const fs::path& p_base_path) {
@@ -273,6 +301,25 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 				const tinygltf::Image& gltf_image =
 						p_model->images[gltf_texture.source];
 
+				// Parse sampler
+				TextureSamplerOptions sampler_options = {};
+				if (gltf_texture.sampler >= 0) {
+					const tinygltf::Sampler& sampler =
+							p_model->samplers[gltf_texture.sampler];
+
+					// Texture filtering
+					sampler_options.mag_filter =
+							_gltf_to_image_filtering(sampler.magFilter);
+					sampler_options.min_filter =
+							_gltf_to_image_filtering(sampler.minFilter);
+
+					// Texture wrapping
+					sampler_options.wrap_u =
+							_gltf_to_image_wrapping(sampler.wrapS);
+					sampler_options.wrap_v =
+							_gltf_to_image_wrapping(sampler.wrapT);
+				}
+
 				if (gltf_image.uri.empty()) {
 					// Embedded — create directly from buffer
 
@@ -298,11 +345,11 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 
 					texture = Texture::create(format,
 							glm::uvec2(gltf_image.width, gltf_image.height),
-							gltf_image.image.data());
+							gltf_image.image.data(), sampler_options);
 				} else {
 					// External file — use loader
 					texture = Texture::load_from_path(
-							p_base_path / gltf_image.uri);
+							p_base_path / gltf_image.uri, sampler_options);
 				}
 
 				loaded_textures[texture_index] = texture;
