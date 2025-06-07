@@ -25,7 +25,7 @@ Swapchain VulkanRenderBackend::swapchain_create() {
 }
 
 void VulkanRenderBackend::swapchain_resize(
-		CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 size) {
+		CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 p_size) {
 	VulkanQueue* vk_queue = (VulkanQueue*)p_cmd_queue;
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
@@ -46,7 +46,7 @@ void VulkanRenderBackend::swapchain_resize(
 					.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
 					.set_desired_min_image_count(
 							vkb::SwapchainBuilder::DOUBLE_BUFFERING)
-					.set_desired_extent(size.x, size.y)
+					.set_desired_extent(p_size.x, p_size.y)
 					.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 					.build()
 					.value();

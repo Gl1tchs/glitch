@@ -1,11 +1,6 @@
 # TODO
 
-- [ ] Integration and experimentation of USD format for scene description
-
-- [ ] Serialization
-  - [ ] Entity
-  - [ ] Scene
-  - [ ] Materials
+- [ ] Fix rotation in debug panel to use quaternion instead of old euler angles
 - [ ] Resizing causes semaphore error
 - [ ] ImGui viewports causing errors
 
@@ -26,6 +21,7 @@
   - [ ] Text rendering.
   - [ ] Deferred rendering.
 - [ ] Custom render passes.
-- [ ] Render scale wont make program faster.
 - [ ] Mipmaps
+- [ ] LODs
 - [ ] Infinite far plane
+- [ ] Resolution setting

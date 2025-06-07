@@ -144,7 +144,8 @@ void RenderDevice::end_render() {
 	GL_PROFILE_SCOPE;
 
 	if (!current_swapchain_image) {
-		GL_LOG_FATAL("RenderDevice::end_render: There is no image to render to!");
+		GL_LOG_FATAL(
+				"RenderDevice::end_render: There is no image to render to!");
 	}
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
@@ -219,7 +220,9 @@ void RenderDevice::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 
 	backend->command_begin_rendering(
 			p_cmd, backend->swapchain_get_extent(swapchain), p_target_image);
-	{ backend->imgui_render_for_platform(p_cmd); }
+	{
+		backend->imgui_render_for_platform(p_cmd);
+	}
 	backend->command_end_rendering(p_cmd);
 }
 
@@ -235,6 +238,16 @@ void RenderDevice::_imgui_init() {
 	io.Fonts->Clear();
 
 	backend->imgui_init_for_platform(window->get_native_window());
+
+	// ImGui style changes
+	ImGuiStyle& style = ImGui::GetStyle();
+	ImVec4* colors = style.Colors;
+
+	// Make window backgrounds semi-transparent
+	const ImVec4 bg_color = ImVec4(0.1, 0.1, 0.1, 0.5);
+	colors[ImGuiCol_WindowBg] = bg_color;
+	colors[ImGuiCol_ChildBg] = bg_color;
+	colors[ImGuiCol_TitleBg] = bg_color;
 }
 
 void RenderDevice::_request_resize() {
