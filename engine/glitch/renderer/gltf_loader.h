@@ -19,28 +19,33 @@ public:
 	GLTFLoader();
 	~GLTFLoader();
 
-	Ref<SceneNode> load_gltf(const fs::path& p_path);
+	Ref<SceneNode> load_gltf(const fs::path& p_path,
+			Ref<MaterialInstance> p_overload_material = nullptr);
 
 private:
 	void _parse_node(int p_node_idx, const tinygltf::Model* p_model,
-			const fs::path& p_base_path,
+			const size_t p_model_hash, const fs::path& p_base_path,
+			Ref<MaterialInstance> p_overload_material,
 			Ref<SceneNode> p_parent_node = nullptr);
 
 	Ref<Mesh> _load_mesh(const tinygltf::Node* p_gltf_node,
-			const tinygltf::Model* p_model, const fs::path& p_base_path);
+			const tinygltf::Model* p_model, const size_t p_model_hash,
+			const fs::path& p_base_path,
+			Ref<MaterialInstance> p_overload_material);
 
 	Ref<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_primitive,
-			const tinygltf::Model* p_model, const tinygltf::Mesh* p_mesh,
-			const fs::path& p_base_path);
+			const tinygltf::Model* p_model, const size_t p_model_hash,
+			const tinygltf::Mesh* p_mesh, const fs::path& p_base_path,
+			Ref<MaterialInstance> p_overload_material);
 
 	Ref<Texture> _load_texture(int texture_index,
-			const tinygltf::Model* p_model, const fs::path& p_base_path);
+			const tinygltf::Model* p_model, const size_t p_model_hash,
+			const fs::path& p_base_path);
 
 private:
 	Ref<Texture> default_texture;
 	Ref<MaterialInstance> default_material;
 
-	std::unordered_map<int, Ref<Texture>> loaded_textures;
-
-	MeshHandle next_handle = 1;
+	// model + texture_index hash = texture
+	std::unordered_map<size_t, Ref<Texture>> loaded_textures;
 };

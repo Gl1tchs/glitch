@@ -16,7 +16,18 @@ template <typename T> inline size_t hash64(const T& p_value) {
 	return seed;
 }
 
-template <> inline size_t hash64(const std::vector<int>& p_value) {
+inline size_t hash64(const void* data, size_t size) {
+	const uint8_t* bytes = static_cast<const uint8_t*>(data);
+	size_t seed = 0;
+
+	for (size_t i = 0; i < size; ++i) {
+		hash_combine(seed, bytes[i]);
+	}
+
+	return seed;
+}
+
+template <typename T> inline size_t hash64(const std::vector<T>& p_value) {
 	size_t seed = 0;
 	for (size_t i = 0; i < p_value.size(); i++) {
 		hash_combine(seed, p_value[i]);

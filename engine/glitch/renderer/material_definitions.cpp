@@ -21,8 +21,6 @@ MaterialDefinition get_unlit_material_definition() {
 	definition.pipeline = pipeline;
 	definition.uniforms = {
 		{ "base_color", 0, ShaderUniformVariableType::VEC4 },
-		{ "metallic", 0, ShaderUniformVariableType::FLOAT },
-		{ "roughness", 0, ShaderUniformVariableType::FLOAT },
 		{ "u_diffuse_texture", 1, ShaderUniformVariableType::TEXTURE },
 	};
 

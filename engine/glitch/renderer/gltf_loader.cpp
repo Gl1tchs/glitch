@@ -18,12 +18,15 @@ enum GLTFParsingFlags : uint16_t {
 GLTFLoader::GLTFLoader() {
 	default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
 
-	default_material = MaterialSystem::create_instance("urp");
+	default_material = MaterialSystem::create_instance("urp_standart");
 	default_material->set_param("base_color", COLOR_WHITE);
 	default_material->set_param("metallic", 0.5f);
 	default_material->set_param("roughness", 0.5f);
-	default_material->set_param("u_albedo_texture", default_texture);
+	default_material->set_param("u_diffuse_texture", default_texture);
 	default_material->set_param("u_normal_texture", default_texture);
+	default_material->set_param(
+			"u_metallic_roughness_texture", default_texture);
+	default_material->set_param("u_ambient_occlusion_texture", default_texture);
 	default_material->upload();
 }
 
@@ -34,7 +37,48 @@ GLTFLoader::~GLTFLoader() {
 	loaded_textures.clear();
 }
 
-Ref<SceneNode> GLTFLoader::load_gltf(const fs::path& p_path) {
+static size_t _hash_gltf_model(const tinygltf::Model& p_model) {
+	size_t seed = 0;
+
+	for (const auto& buffer : p_model.buffers) {
+		if (!buffer.data.empty()) {
+			hash_combine(seed,
+					hash64(buffer.data.data(),
+							std::min<size_t>(buffer.data.size(), 1024)));
+		}
+	}
+
+	for (const auto& mesh : p_model.meshes) {
+		for (const auto& primitive : mesh.primitives) {
+			// Hash the attribute keys and indices count
+			for (const auto& attr : primitive.attributes) {
+				hash_combine(seed, hash64(attr.first));
+				hash_combine(seed, hash64(attr.second));
+			}
+			hash_combine(seed, hash64(primitive.indices));
+		}
+	}
+
+	for (const auto& material : p_model.materials) {
+		hash_combine(seed, hash64(material.name));
+		hash_combine(
+				seed, hash64(material.pbrMetallicRoughness.baseColorFactor));
+		hash_combine(
+				seed, hash64(material.pbrMetallicRoughness.metallicFactor));
+		hash_combine(
+				seed, hash64(material.pbrMetallicRoughness.roughnessFactor));
+	}
+
+	for (const auto& image : p_model.images) {
+		hash_combine(seed, hash64(image.name));
+		hash_combine(seed, hash64(image.image.size()));
+	}
+
+	return seed;
+}
+
+Ref<SceneNode> GLTFLoader::load_gltf(
+		const fs::path& p_path, Ref<MaterialInstance> p_overload_material) {
 	// TODO: better validation
 	GL_ASSERT(p_path.has_extension() && p_path.extension() == ".glb" ||
 			p_path.extension() == ".gltf")
@@ -53,18 +97,23 @@ Ref<SceneNode> GLTFLoader::load_gltf(const fs::path& p_path) {
 	GL_ASSERT(ret, err.c_str());
 
 	Ref<SceneNode> base_node = create_ref<SceneNode>();
-	const auto base_path = p_path.parent_path();
+
+	const size_t model_hash = _hash_gltf_model(model);
+	const fs::path base_path = p_path.parent_path();
 
 	const tinygltf::Scene& scene = model.scenes[model.defaultScene];
 	for (int node_index : scene.nodes) {
-		_parse_node(node_index, &model, base_path, base_node);
+		_parse_node(node_index, &model, model_hash, base_path,
+				p_overload_material, base_node);
 	}
 
 	return base_node;
 }
 
 void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
-		const fs::path& p_base_path, Ref<SceneNode> p_parent_node) {
+		const size_t p_model_hash, const fs::path& p_base_path,
+		Ref<MaterialInstance> p_overload_material,
+		Ref<SceneNode> p_parent_node) {
 	Ref<SceneNode> node = create_ref<SceneNode>();
 	if (p_parent_node) {
 		p_parent_node->add_child(node);
@@ -73,7 +122,8 @@ void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
 	// Create and load mesh primitive if exists
 	const tinygltf::Node& gltf_node = p_model->nodes[p_node_idx];
 	if (gltf_node.mesh >= 0) {
-		node->mesh = _load_mesh(&gltf_node, p_model, p_base_path);
+		node->mesh = _load_mesh(&gltf_node, p_model, p_model_hash, p_base_path,
+				p_overload_material);
 	}
 
 	// Parse translation
@@ -109,18 +159,21 @@ void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
 	}
 
 	for (int child_node_idx : gltf_node.children) {
-		_parse_node(child_node_idx, p_model, p_base_path, node);
+		_parse_node(child_node_idx, p_model, -p_model_hash, p_base_path,
+				p_overload_material, node);
 	}
 }
 
 Ref<Mesh> GLTFLoader::_load_mesh(const tinygltf::Node* p_gltf_node,
-		const tinygltf::Model* p_model, const fs::path& p_base_path) {
+		const tinygltf::Model* p_model, const size_t p_model_hash,
+		const fs::path& p_base_path,
+		Ref<MaterialInstance> p_overload_material) {
 	Ref<Mesh> mesh = create_ref<Mesh>();
 
 	const tinygltf::Mesh& gltf_mesh = p_model->meshes[p_gltf_node->mesh];
 	for (const auto& primitive : gltf_mesh.primitives) {
-		mesh->primitives.push_back(
-				_load_primitive(&primitive, p_model, &gltf_mesh, p_base_path));
+		mesh->primitives.push_back(_load_primitive(&primitive, p_model,
+				p_model_hash, &gltf_mesh, p_base_path, p_overload_material));
 	}
 
 	return mesh;
@@ -170,7 +223,9 @@ static int _get_extension_texture_index(
 
 Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 		const tinygltf::Primitive* p_primitive, const tinygltf::Model* p_model,
-		const tinygltf::Mesh* p_mesh, const fs::path& p_base_path) {
+		const size_t p_model_hash, const tinygltf::Mesh* p_mesh,
+		const fs::path& p_base_path,
+		Ref<MaterialInstance> p_overload_material) {
 	uint16_t parsing_flags = 0;
 
 	const auto& pos_accessor =
@@ -281,15 +336,15 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 	// Material
 	Ref<MaterialInstance> material = default_material;
 
-	// Create material instance
-	if (p_primitive->material >= 0 &&
+	// Create material instance if no material for overload provided
+	if (!p_overload_material && p_primitive->material >= 0 &&
 			p_primitive->material < p_model->materials.size()) {
 		const tinygltf::Material& gltf_material =
 				p_model->materials[p_primitive->material];
 		const auto& base_color =
 				gltf_material.pbrMetallicRoughness.baseColorFactor;
 
-		material = MaterialSystem::create_instance("urp");
+		material = MaterialSystem::create_instance("urp_standart");
 
 		material->set_param("base_color",
 				Color(base_color[0], base_color[1], base_color[2],
@@ -326,7 +381,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 			int diffuse_texture_index =
 					_get_extension_texture_index(specGloss, "diffuseTexture");
 			Ref<Texture> diffuse_texture = (diffuse_texture_index >= 0)
-					? _load_texture(diffuse_texture_index, p_model, p_base_path)
+					? _load_texture(diffuse_texture_index, p_model,
+							  p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param("u_diffuse_texture", diffuse_texture);
 
@@ -334,8 +390,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 			int specular_texture_index = _get_extension_texture_index(
 					specGloss, "specularGlossinessTexture");
 			Ref<Texture> specular_texture = (specular_texture_index >= 0)
-					? _load_texture(
-							  specular_texture_index, p_model, p_base_path)
+					? _load_texture(specular_texture_index, p_model,
+							  p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param(
 					"u_metallic_roughness_texture", specular_texture);
@@ -362,7 +418,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 			int albedo_texture_index =
 					gltf_material.pbrMetallicRoughness.baseColorTexture.index;
 			Ref<Texture> albedo_texture = (albedo_texture_index >= 0)
-					? _load_texture(albedo_texture_index, p_model, p_base_path)
+					? _load_texture(albedo_texture_index, p_model, p_model_hash,
+							  p_base_path)
 					: default_texture;
 			material->set_param("u_diffuse_texture", albedo_texture);
 
@@ -373,7 +430,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 			Ref<Texture> metallic_roughness_texture =
 					(metallic_roughness_texture_index >= 0)
 					? _load_texture(metallic_roughness_texture_index, p_model,
-							  p_base_path)
+							  p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param(
 					"u_metallic_roughness_texture", metallic_roughness_texture);
@@ -382,7 +439,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 		{
 			const int normal_texture_index = gltf_material.normalTexture.index;
 			Ref<Texture> normal_texture = (normal_texture_index > 0)
-					? _load_texture(normal_texture_index, p_model, p_base_path)
+					? _load_texture(normal_texture_index, p_model, p_model_hash,
+							  p_base_path)
 					: default_texture;
 			material->set_param("u_normal_texture", normal_texture);
 		}
@@ -391,8 +449,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 			const int occlusion_texture_index =
 					gltf_material.occlusionTexture.index;
 			Ref<Texture> occlusion_texture = (occlusion_texture_index > 0)
-					? _load_texture(
-							  occlusion_texture_index, p_model, p_base_path)
+					? _load_texture(occlusion_texture_index, p_model,
+							  p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param(
 					"u_ambient_occlusion_texture", occlusion_texture);
@@ -403,16 +461,21 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 
 	Ref<MeshPrimitive> prim =
 			MeshPrimitive::create(prim_vertices, prim_indices);
-	prim->material = material;
+	prim->material = !p_overload_material ? material : p_overload_material;
 
 	return prim;
 }
 
 Ref<Texture> GLTFLoader::_load_texture(int texture_index,
-		const tinygltf::Model* p_model, const fs::path& p_base_path) {
-	if (loaded_textures.find(texture_index) != loaded_textures.end()) {
+		const tinygltf::Model* p_model, const size_t p_model_hash,
+		const fs::path& p_base_path) {
+	size_t hash = 0;
+	hash_combine(hash, texture_index);
+	hash_combine(hash, p_model_hash);
+
+	if (loaded_textures.find(hash) != loaded_textures.end()) {
 		// Texture already loaded
-		return loaded_textures.at(texture_index);
+		return loaded_textures.at(hash);
 	}
 
 	// Texture not loaded
@@ -469,7 +532,7 @@ Ref<Texture> GLTFLoader::_load_texture(int texture_index,
 				p_base_path / gltf_image.uri, sampler_options);
 	}
 
-	loaded_textures[texture_index] = texture;
+	loaded_textures[hash] = texture;
 
 	return texture;
 }

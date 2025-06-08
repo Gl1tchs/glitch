@@ -25,6 +25,7 @@ private:
 	SceneGraph scene_graph;
 
 	GLTFLoader gltf_loader;
+	std::string model_path = "";
 
 	CameraController camera_controller;
 	PerspectiveCamera camera;

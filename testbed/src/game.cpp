@@ -5,15 +5,31 @@
 #include <glitch/renderer/renderer.h>
 #include <imgui/imgui.h>
 
-Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {}
+Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
+	GL_ASSERT(p_info.argc == 2, "A GLTF Model path must be provided.");
+
+	model_path = p_info.argv[1];
+}
 
 void Game::_on_start() {
 	renderer = create_ref<Renderer>();
 
-	Ref<SceneNode> scene = gltf_loader.load_gltf(YOUR_GLTF_SCENE);
-	scene->transform.scale *= 0.01f;
+	Ref<SceneNode> scene = gltf_loader.load_gltf(model_path);
+	scene->transform.scale *= 0.5f;
 
 	scene_graph.get_root()->add_child(scene);
+
+	// Ref<Texture> tex = Texture::create(COLOR_WHITE);
+	// Ref<MaterialInstance> material =
+	// 		MaterialSystem::create_instance("unlit_standart");
+	// material->set_param("base_color", COLOR_RED);
+	// material->set_param("u_diffuse_texture", tex);
+	// material->upload();
+
+	// Ref<SceneNode> boombox = gltf_loader.load_gltf(
+	// 		"C:/Users/gl1tch/Documents/GLTF/BoomBox.glb", material);
+	// boombox->transform.scale *= 10.0f;
+	// scene_graph.get_root()->add_child(boombox);
 
 	camera_controller.set_camera(&camera, &camera_transform);
 }

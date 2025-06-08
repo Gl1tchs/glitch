@@ -25,8 +25,9 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 
 	// Register material definitions
 	MaterialSystem::register_definition(
-			"unlit", get_unlit_material_definition());
-	MaterialSystem::register_definition("urp", get_urp_material_definition());
+			"unlit_standart", get_unlit_material_definition());
+	MaterialSystem::register_definition(
+			"urp_standart", get_urp_material_definition());
 }
 
 Application::~Application() {
