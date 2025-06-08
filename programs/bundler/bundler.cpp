@@ -14,7 +14,8 @@ struct BundleFileData {
 };
 
 static void _bundle(const std::string& p_file_path,
-		const std::vector<std::string>& p_input_files) {
+		const std::vector<std::string>& p_input_files,
+		const std::string& p_base_dir) {
 	const std::string file_name =
 			p_file_path.substr(0, p_file_path.find_last_of('.'));
 
@@ -39,14 +40,22 @@ static void _bundle(const std::string& p_file_path,
 		 << ";\n";
 	file << "inline BundleFileData BUNDLE_FILES[] = {\n";
 
+	const std::filesystem::path build_root =
+			std::filesystem::canonical(p_base_dir);
+
 	size_t total_size = 0;
 	for (size_t idx = 0; idx < p_input_files.size(); ++idx) {
 		size_t size = std::filesystem::file_size(p_input_files[idx]);
 
 		assert(size % 4 == 0);
 
-		file << "\t{ " << std::filesystem::path(p_input_files[idx]).filename()
-			 << ", " << total_size << ", " << size << " }, \n";
+		const std::filesystem::path full_path =
+				std::filesystem::canonical(p_input_files[idx]);
+		const std::filesystem::path rel_path =
+				std::filesystem::relative(full_path, build_root);
+
+		file << "\t{ \"" << rel_path.generic_string() << "\", " << total_size
+			 << ", " << size << " }, \n";
 		total_size += size;
 	}
 	file << "};\n\n";
@@ -82,15 +91,17 @@ static void _bundle(const std::string& p_file_path,
 }
 
 int main(int argc, char* argv[]) {
-	if (argc < 3) {
+	if (argc < 4) {
 		std::cerr << "Usage: " << argv[0]
-				  << " <output_file> <input_file1> [<input_file2> ...]\n";
+				  << " <output_file> <base_dir> <input_file1> [<input_file2> "
+					 "...]\n";
 		return 1;
 	}
 
-	std::string output_file = argv[1];
+	const std::string output_file = argv[1];
+	const std::string base_dir = argv[2];
 	std::vector<std::string> input_files;
-	for (int i = 2; i < argc; ++i) {
+	for (int i = 3; i < argc; ++i) {
 		input_files.push_back(argv[i]);
 	}
 
@@ -101,5 +112,5 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	_bundle(output_file, input_files);
+	_bundle(output_file, input_files, base_dir);
 }

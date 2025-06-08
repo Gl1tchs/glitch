@@ -8,9 +8,11 @@ MaterialDefinition get_unlit_material_definition() {
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
-							ShaderLibrary::get_bundled_spirv("mesh.vert.spv"))
+							ShaderLibrary::get_bundled_spirv(
+									"pipelines/unlit/mesh.vert.spv"))
 					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
-							ShaderLibrary::get_bundled_spirv("unlit.frag.spv"))
+							ShaderLibrary::get_bundled_spirv(
+									"pipelines/unlit/mesh.frag.spv"))
 					.with_depth_test(COMPARE_OP_LESS)
 					.build();
 
@@ -31,9 +33,11 @@ MaterialDefinition get_lit_material_definition() {
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
-							ShaderLibrary::get_bundled_spirv("mesh.vert.spv"))
+							ShaderLibrary::get_bundled_spirv(
+									"pipelines/urp/mesh.vert.spv"))
 					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
-							ShaderLibrary::get_bundled_spirv("lit.frag.spv"))
+							ShaderLibrary::get_bundled_spirv(
+									"pipelines/urp/mesh.vert.spv"))
 					.with_depth_test(COMPARE_OP_LESS)
 					.build();
 

@@ -13,6 +13,19 @@
             "cwd": "${workspaceFolder}/testbed"
         },
         {
+            "type": "lldb",
+            "request": "launch",
+            "name": "(LLDB) Launch Bundler",
+            "program": "${workspaceFolder}/out/gl-bundler",
+            "args": [
+                "out/include/shader_bundle.gen.h",
+                "build/shaders",
+                "build/shaders/pipelines/unlit/mesh.frag.spv",
+                "build/shaders/pipelines/urp/mesh.frag.spv"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "(Windows) Launch Testbed",
             "type": "cppvsdbg",
             "request": "launch",

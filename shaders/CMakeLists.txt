@@ -1,56 +1,18 @@
-find_program(GLSLC glslc)
-if(NOT GLSLC)
-    message(FATAL_ERROR "glslc not found!\n"
-            "Please make sure it is installed and available in your PATH.")
-endif()
+include(ShaderUtils)
 
-set(GLSL_FLAGS
-    -I ${CMAKE_CURRENT_LIST_DIR}/include
-    --target-env=vulkan1.3
-    -std=450
-    -O
-    -fpreserve-bindings
-)
-
-set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(PIPELINES_DIR ${CMAKE_CURRENT_LIST_DIR}/pipelines)
+set(COMP_DIR ${CMAKE_CURRENT_LIST_DIR}/comp)
 set(BUILD_DIR ${CMAKE_BINARY_DIR}/shaders)
 
-file(GLOB_RECURSE VS_FILES ${SRC_DIR}/*.vert)
-file(GLOB_RECURSE FS_FILES ${SRC_DIR}/*.frag)
-file(GLOB_RECURSE COMP_FILES ${SRC_DIR}/*.comp)
+file(GLOB_RECURSE VS_FILES ${PIPELINES_DIR}/*.vert)
+file(GLOB_RECURSE FS_FILES ${PIPELINES_DIR}/*.frag)
+file(GLOB_RECURSE COMP_FILES ${COMP_DIR}/*.comp)
 
-foreach(VS_FILE ${VS_FILES})
-    get_filename_component(VS_FILE_NAME ${VS_FILE} NAME)
-    set(SPV_VS ${BUILD_DIR}/${VS_FILE_NAME}.spv)
-    add_custom_command(
-        OUTPUT ${SPV_VS}
-        COMMAND ${GLSLC} ${GLSL_FLAGS} -o ${SPV_VS} ${VS_FILE}
-        DEPENDS ${VS_FILE}
-    )
-    list(APPEND SPV_VS_LIST ${SPV_VS})
-endforeach()
+set(SHADER_ROOT "${CMAKE_SOURCE_DIR}/shaders")
 
-foreach(FS_FILE ${FS_FILES})
-    get_filename_component(FS_FILE_NAME ${FS_FILE} NAME)
-    set(SPV_FS ${BUILD_DIR}/${FS_FILE_NAME}.spv)
-    add_custom_command(
-        OUTPUT ${SPV_FS}
-        COMMAND ${GLSLC} ${GLSL_FLAGS} -o ${SPV_FS} ${FS_FILE}
-        DEPENDS ${FS_FILE}
-    )
-    list(APPEND SPV_FS_LIST ${SPV_FS})
-endforeach()
-
-foreach(COMP_FILE ${COMP_FILES})
-    get_filename_component(COMP_FILE_NAME ${COMP_FILE} NAME)
-    set(SPV_COMP ${BUILD_DIR}/${COMP_FILE_NAME}.spv)
-    add_custom_command(
-        OUTPUT ${SPV_COMP}
-        COMMAND ${GLSLC} ${GLSL_FLAGS} -o ${SPV_COMP} ${COMP_FILE}
-        DEPENDS ${COMP_FILE}
-    )
-    list(APPEND SPV_COMP_LIST ${SPV_COMP})
-endforeach()
+compile_shader_group(SPV_VS_LIST ${SHADER_ROOT} "${VS_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
+compile_shader_group(SPV_FS_LIST ${SHADER_ROOT} "${FS_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
+compile_shader_group(SPV_COMP_LIST ${SHADER_ROOT} "${COMP_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
 
 add_custom_target(gl-shaders ALL
     DEPENDS ${SPV_VS_LIST} ${SPV_FS_LIST} ${SPV_COMP_LIST}
@@ -66,6 +28,7 @@ if (SPV_VS_LIST OR SPV_FS_LIST OR SPV_COMP_LIST)
         COMMAND ${CMAKE_COMMAND} -E make_directory ${BUNDLE_OUTPUT_DIR}
         COMMAND ${BUNDLER_EXE}
             ${BUNDLE_OUTPUT_DIR}/shader_bundle.gen.h
+            ${BUILD_DIR}
             ${SPV_VS_LIST}
             ${SPV_FS_LIST}
             ${SPV_COMP_LIST}

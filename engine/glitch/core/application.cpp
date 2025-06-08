@@ -26,7 +26,7 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 	// Register material definitions
 	MaterialSystem::register_definition(
 			"unlit", get_unlit_material_definition());
-	MaterialSystem::register_definition("lit", get_unlit_material_definition());
+	MaterialSystem::register_definition("urp", get_unlit_material_definition());
 }
 
 Application::~Application() { MaterialSystem::destroy(); }
