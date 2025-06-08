@@ -41,7 +41,7 @@ public:
 
 	Ref<Window> get_window() { return window; }
 
-	Ref<RenderDevice> get_rendering_device() { return renderer; }
+	Ref<RenderDevice> get_rendering_device() { return render_device; }
 
 	// TODO: maybe this shouldn't be mutable
 	ApplicationPerfStats& get_perf_stats() { return perf_stats; }
@@ -66,7 +66,7 @@ private:
 	bool running = true;
 
 	Ref<Window> window;
-	Ref<RenderDevice> renderer;
+	Ref<RenderDevice> render_device;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

@@ -19,17 +19,20 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	renderer = create_ref<RenderDevice>(window);
+	render_device = create_ref<RenderDevice>(window);
 
 	MaterialSystem::init();
 
 	// Register material definitions
 	MaterialSystem::register_definition(
 			"unlit", get_unlit_material_definition());
-	MaterialSystem::register_definition("urp", get_unlit_material_definition());
+	MaterialSystem::register_definition("urp", get_urp_material_definition());
 }
 
-Application::~Application() { MaterialSystem::destroy(); }
+Application::~Application() {
+	// Destroy material system
+	MaterialSystem::destroy();
+}
 
 void Application::run() {
 	_on_start();

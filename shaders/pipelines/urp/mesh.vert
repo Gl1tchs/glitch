@@ -15,6 +15,7 @@ void main() {
 	gl_Position = scene_data.view_projection * frag_pos;
 
 	v_position = frag_pos.xyz;
-	v_normal = v.normal;
+	v_normal = mat3(transpose(inverse(u_push_constants.transform))) * v.normal;
 	v_uv = vec2(v.uv_x, v.uv_y);
 }
+	

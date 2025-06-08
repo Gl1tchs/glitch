@@ -1,5 +1,8 @@
 #include "glitch/renderer/gltf_loader.h"
 
+#include "glitch/core/application.h"
+#include "glitch/renderer/render_device.h"
+
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -24,7 +27,12 @@ GLTFLoader::GLTFLoader() {
 	default_material->upload();
 }
 
-GLTFLoader::~GLTFLoader() { loaded_textures.clear(); }
+GLTFLoader::~GLTFLoader() {
+	// Wait for device to finish operations before destructing materials
+	Application::get_instance()->get_rendering_device()->wait_for_device();
+
+	loaded_textures.clear();
+}
 
 Ref<SceneNode> GLTFLoader::load_gltf(const fs::path& p_path) {
 	// TODO: better validation
@@ -144,6 +152,20 @@ static ImageWrappingMode _gltf_to_image_wrapping(int p_gltf_wrap) {
 		default:
 			return IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
 	}
+}
+
+static int _get_extension_texture_index(
+		const tinygltf::Value& p_extension, const std::string& p_field_name) {
+	if (p_extension.Has(p_field_name)) {
+		const auto& texture_value = p_extension.Get(p_field_name);
+		if (texture_value.IsObject() && texture_value.Has("index")) {
+			int texture_index = texture_value.Get("index").Get<int>();
+			if (texture_index >= 0) {
+				return texture_index;
+			}
+		}
+	}
+	return -1;
 }
 
 Ref<MeshPrimitive> GLTFLoader::_load_primitive(
@@ -300,29 +322,31 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 							float(diffuse_factor[2].GetNumberAsDouble()),
 							float(diffuse_factor[3].GetNumberAsDouble())));
 
-			// Load diffuseTexture as base_color texture
-			Ref<Texture> albedo_texture = default_texture;
-			if (specGloss.Has("diffuseTexture")) {
-				const auto& diffuse_texture = specGloss.Get("diffuseTexture");
-				if (diffuse_texture.IsObject() &&
-						diffuse_texture.Has("index")) {
-					int texture_index = diffuse_texture.Get("index").Get<int>();
-					if (texture_index >= 0) {
-						albedo_texture = _load_texture(
-								texture_index, p_model, p_base_path);
-					}
-				}
-			}
-			material->set_param("u_albedo_texture", albedo_texture);
+			// Load diffuseTexture → u_diffuse_texture
+			int diffuse_texture_index =
+					_get_extension_texture_index(specGloss, "diffuseTexture");
+			Ref<Texture> diffuse_texture = (diffuse_texture_index >= 0)
+					? _load_texture(diffuse_texture_index, p_model, p_base_path)
+					: default_texture;
+			material->set_param("u_diffuse_texture", diffuse_texture);
 
-			// Metallic / Roughness are not used in SpecGloss — can set default
+			// Load specularGlossinessTexture → u_specular_texture
+			int specular_texture_index = _get_extension_texture_index(
+					specGloss, "specularGlossinessTexture");
+			Ref<Texture> specular_texture = (specular_texture_index >= 0)
+					? _load_texture(
+							  specular_texture_index, p_model, p_base_path)
+					: default_texture;
+			material->set_param(
+					"u_metallic_roughness_texture", specular_texture);
+
+			// Metallic / Roughness are not used in SpecGloss → set defaults
 			material->set_param("metallic", 0.0f);
 			material->set_param("roughness", 1.0f);
 		} else {
 			// Standard PBR flow
 			const auto& base_color =
 					gltf_material.pbrMetallicRoughness.baseColorFactor;
-
 			material->set_param("base_color",
 					Color(base_color[0], base_color[1], base_color[2],
 							base_color[3]));
@@ -330,19 +354,29 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 			material->set_param("metallic",
 					static_cast<float>(
 							gltf_material.pbrMetallicRoughness.metallicFactor));
-
 			material->set_param("roughness",
 					static_cast<float>(gltf_material.pbrMetallicRoughness
 									.roughnessFactor));
 
-			const int albedo_texture_index =
+			// Load baseColorTexture → u_diffuse_texture
+			int albedo_texture_index =
 					gltf_material.pbrMetallicRoughness.baseColorTexture.index;
-
 			Ref<Texture> albedo_texture = (albedo_texture_index >= 0)
 					? _load_texture(albedo_texture_index, p_model, p_base_path)
 					: default_texture;
+			material->set_param("u_diffuse_texture", albedo_texture);
 
-			material->set_param("u_albedo_texture", albedo_texture);
+			// Load metallic-roughness texture
+			int metallic_roughness_texture_index =
+					gltf_material.pbrMetallicRoughness.metallicRoughnessTexture
+							.index;
+			Ref<Texture> metallic_roughness_texture =
+					(metallic_roughness_texture_index >= 0)
+					? _load_texture(metallic_roughness_texture_index, p_model,
+							  p_base_path)
+					: default_texture;
+			material->set_param(
+					"u_metallic_roughness_texture", metallic_roughness_texture);
 		}
 
 		{
@@ -351,6 +385,17 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 					? _load_texture(normal_texture_index, p_model, p_base_path)
 					: default_texture;
 			material->set_param("u_normal_texture", normal_texture);
+		}
+
+		{
+			const int occlusion_texture_index =
+					gltf_material.occlusionTexture.index;
+			Ref<Texture> occlusion_texture = (occlusion_texture_index > 0)
+					? _load_texture(
+							  occlusion_texture_index, p_model, p_base_path)
+					: default_texture;
+			material->set_param(
+					"u_ambient_occlusion_texture", occlusion_texture);
 		}
 
 		material->upload();

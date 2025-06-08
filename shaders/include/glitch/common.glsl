@@ -33,7 +33,9 @@ layout(set = 0, binding = 0) uniform MaterialData {
 }
 u_material_data;
 
-layout(set = 0, binding = 1) uniform sampler2D u_albedo_texture;
+layout(set = 0, binding = 1) uniform sampler2D u_diffuse_texture;
 layout(set = 0, binding = 2) uniform sampler2D u_normal_texture;
+layout(set = 0, binding = 3) uniform sampler2D u_metallic_roughness_texture;
+layout(set = 0, binding = 4) uniform sampler2D u_ambient_occlusion_texture;
 
 #endif // COMMON_GLSL
