@@ -1,9 +1,7 @@
 #include "glitch/renderer/render_device.h"
 
-#include "glitch/core/application.h"
-#include "glitch/renderer/types.h"
-
 #include "glitch/platform/vulkan/vk_backend.h"
+#include "glitch/renderer/types.h"
 
 #include <imgui.h>
 
@@ -251,12 +249,8 @@ void RenderDevice::_imgui_init() {
 }
 
 void RenderDevice::_request_resize() {
-	Application::get_instance()->enqueue_main_thread([&]() {
-		GL_PROFILE_SCOPE_N("RenderDevice::Swapchain Resize");
-
-		backend->swapchain_resize(
-				graphics_queue, swapchain, window->get_size());
-	});
+	GL_PROFILE_SCOPE_N("RenderDevice::Swapchain Resize");
+	backend->swapchain_resize(graphics_queue, swapchain, window->get_size());
 }
 
 void RenderDevice::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }

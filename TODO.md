@@ -1,5 +1,6 @@
 # TODO
 
+- [ ] Texture mipmaps
 - [ ] Fix rotation in debug panel to use quaternion instead of old euler angles
 - [ ] Resizing causes semaphore error
 - [ ] ImGui viewports causing errors

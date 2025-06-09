@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "glitch/core/future/future.h"
 #include "glitch/renderer/scene_graph.h"
 
 namespace tinygltf {
@@ -20,6 +21,9 @@ public:
 	~GLTFLoader();
 
 	Ref<SceneNode> load_gltf(const fs::path& p_path,
+			Ref<MaterialInstance> p_overload_material = nullptr);
+
+	Future<Ref<SceneNode>> load_gltf_async(const fs::path& p_path,
 			Ref<MaterialInstance> p_overload_material = nullptr);
 
 private:

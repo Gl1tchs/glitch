@@ -101,30 +101,27 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 
 	device = vkb_device.device;
 
-	graphics_queue = VulkanQueue{
-		.queue = vkb_device.get_queue(vkb::QueueType::graphics).value(),
-		.queue_family =
-				vkb_device.get_queue_index(vkb::QueueType::graphics).value(),
-	};
+	graphics_queue.queue =
+			vkb_device.get_queue(vkb::QueueType::graphics).value();
+	graphics_queue.queue_family =
+			vkb_device.get_queue_index(vkb::QueueType::graphics).value();
 
 	if (auto vkb_queue = vkb_device.get_queue(vkb::QueueType::present)) {
-		present_queue = VulkanQueue{
-			.queue = vkb_queue.value(),
-			.queue_family =
-					vkb_device.get_queue_index(vkb::QueueType::present).value(),
-		};
+		present_queue.queue = vkb_queue.value();
+		present_queue.queue_family =
+				vkb_device.get_queue_index(vkb::QueueType::present).value();
 	} else {
-		present_queue = graphics_queue;
+		present_queue.queue = graphics_queue.queue;
+		present_queue.queue_family = graphics_queue.queue_family;
 	}
 
 	if (auto vkb_queue = vkb_device.get_queue(vkb::QueueType::transfer)) {
-		transfer_queue = VulkanQueue{
-			.queue = vkb_queue.value(),
-			.queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer)
-									.value(),
-		};
+		transfer_queue.queue = vkb_queue.value();
+		transfer_queue.queue_family =
+				vkb_device.get_queue_index(vkb::QueueType::transfer).value();
 	} else {
-		transfer_queue = graphics_queue;
+		transfer_queue.queue = graphics_queue.queue;
+		transfer_queue.queue_family = graphics_queue.queue_family;
 	}
 
 	deletion_queue.push_function([this]() {

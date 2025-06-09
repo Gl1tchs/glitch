@@ -14,22 +14,7 @@ Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
 void Game::_on_start() {
 	renderer = create_ref<Renderer>();
 
-	Ref<SceneNode> scene = gltf_loader.load_gltf(model_path);
-	scene->transform.scale *= 0.5f;
-
-	scene_graph.get_root()->add_child(scene);
-
-	// Ref<Texture> tex = Texture::create(COLOR_WHITE);
-	// Ref<MaterialInstance> material =
-	// 		MaterialSystem::create_instance("unlit_standart");
-	// material->set_param("base_color", COLOR_RED);
-	// material->set_param("u_diffuse_texture", tex);
-	// material->upload();
-
-	// Ref<SceneNode> boombox = gltf_loader.load_gltf(
-	// 		"C:/Users/gl1tch/Documents/GLTF/BoomBox.glb", material);
-	// boombox->transform.scale *= 10.0f;
-	// scene_graph.get_root()->add_child(boombox);
+	scene_fut = gltf_loader.load_gltf_async(model_path);
 
 	camera_controller.set_camera(&camera, &camera_transform);
 }
@@ -55,6 +40,13 @@ void Game::_on_update(float p_dt) {
 			get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
 			mouse_disabled = false;
 		}
+	}
+
+	if (is_future_ready(scene_fut)) {
+		Ref<SceneNode> scene = scene_fut.get();
+		scene->transform.scale *= 0.5f;
+
+		scene_graph.get_root()->add_child(scene);
 	}
 
 	DrawingContext ctx;

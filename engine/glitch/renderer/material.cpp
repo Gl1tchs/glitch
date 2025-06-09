@@ -28,8 +28,6 @@ void MaterialInstance::set_param(
 void MaterialInstance::upload() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
-	backend->device_wait();
-
 	// free the resources if they already exists
 	if (material_data_buffer) {
 		backend->buffer_free(material_data_buffer);

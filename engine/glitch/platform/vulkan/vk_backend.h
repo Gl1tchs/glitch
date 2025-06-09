@@ -191,6 +191,7 @@ public:
 	struct VulkanQueue {
 		VkQueue queue;
 		uint32_t queue_family;
+		std::mutex mutex;
 	};
 
 	CommandQueue queue_get(QueueType p_type) override;

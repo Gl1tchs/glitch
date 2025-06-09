@@ -62,6 +62,9 @@ void VulkanRenderBackend::queue_submit(CommandQueue p_queue,
 
 	VulkanQueue* queue = (VulkanQueue*)p_queue;
 
+	// Lock queue for thread safe access
+	std::lock_guard<std::mutex> lock(queue->mutex);
+
 	VK_CHECK(vkQueueSubmit2(queue->queue, 1, &submit_info, (VkFence)p_fence));
 }
 
@@ -77,6 +80,9 @@ bool VulkanRenderBackend::queue_present(CommandQueue p_queue,
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = &swapchain->vk_swapchain;
 	present_info.pImageIndices = &swapchain->image_index;
+
+	// Lock queue for thread safe access
+	std::lock_guard<std::mutex> lock(queue->mutex);
 
 	const VkResult res = vkQueuePresentKHR(queue->queue, &present_info);
 	return res == VK_SUCCESS;

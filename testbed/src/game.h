@@ -24,6 +24,8 @@ private:
 
 	SceneGraph scene_graph;
 
+	Future<Ref<SceneNode>> scene_fut;
+
 	GLTFLoader gltf_loader;
 	std::string model_path = "";
 
