@@ -28,14 +28,6 @@ void MaterialInstance::set_param(
 void MaterialInstance::upload() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
-	// free the resources if they already exists
-	if (material_data_buffer) {
-		backend->buffer_free(material_data_buffer);
-	}
-	if (uniform_set) {
-		backend->uniform_set_free(uniform_set);
-	}
-
 	// Calculate required buffer size
 	size_t buffer_size = 0;
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
@@ -73,10 +65,12 @@ void MaterialInstance::upload() {
 				it->second);
 	}
 
-	// Create GPU buffer
-	material_data_buffer = backend->buffer_create(buffer_size,
-			BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
-			MEMORY_ALLOCATION_TYPE_CPU);
+	// Create GPU buffer if doesn't exists
+	if (!material_data_buffer) {
+		material_data_buffer = backend->buffer_create(buffer_size,
+				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+				MEMORY_ALLOCATION_TYPE_CPU);
+	}
 
 	void* gpu_ptr = backend->buffer_map(material_data_buffer);
 	std::memcpy(gpu_ptr, cpu_buffer.data(), buffer_size);
@@ -103,6 +97,11 @@ void MaterialInstance::upload() {
 
 		ShaderUniform uniform = texture->get_uniform(meta->binding);
 		uniforms.push_back(uniform);
+	}
+
+	// free the previous uniform set if already exists
+	if (uniform_set) {
+		backend->uniform_set_free(uniform_set);
 	}
 
 	uniform_set = backend->uniform_set_create(uniforms, definition->shader, 0);
