@@ -42,7 +42,7 @@ void Game::_on_update(float p_dt) {
 		}
 	}
 
-	if (is_future_ready(scene_fut)) {
+	if (scene_fut.is_ready()) {
 		Ref<SceneNode> scene = scene_fut.get();
 		scene->transform.scale *= 0.5f;
 

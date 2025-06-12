@@ -112,10 +112,9 @@ Ref<SceneNode> GLTFLoader::load_gltf(
 
 Future<Ref<SceneNode>> GLTFLoader::load_gltf_async(
 		const fs::path& p_path, Ref<MaterialInstance> p_overload_material) {
-	return std::async(
-			std::launch::async, [this, p_path, p_overload_material]() {
-				return load_gltf(p_path, p_overload_material);
-			});
+	return Future<Ref<SceneNode>>::async([this, p_path, p_overload_material]() {
+		return load_gltf(p_path, p_overload_material);
+	});
 }
 
 void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
