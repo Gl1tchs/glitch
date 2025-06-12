@@ -1,7 +1,7 @@
 #include "game.h"
 
 #include <glitch/core/event/input.h>
-#include <glitch/renderer/gltf_loader.h>
+#include <glitch/scene_graph/gltf_loader.h>
 #include <glitch/renderer/renderer.h>
 #include <imgui/imgui.h>
 

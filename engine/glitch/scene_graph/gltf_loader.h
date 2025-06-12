@@ -6,7 +6,7 @@
 #pragma once
 
 #include "glitch/core/future/future.h"
-#include "glitch/renderer/scene_graph.h"
+#include "glitch/scene_graph/scene_graph.h"
 
 namespace tinygltf {
 class Node;

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "glitch/renderer/scene_graph.h"
+#include "glitch/scene_graph/scene_graph.h"
 
 /**
  * An ImGui window responsible for scene manipulation

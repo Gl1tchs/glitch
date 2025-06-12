@@ -6,7 +6,7 @@
 
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/drawing_context.h"
-#include "glitch/renderer/gltf_loader.h"
+#include "glitch/scene_graph/gltf_loader.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/render_device.h"
 

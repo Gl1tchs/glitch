@@ -6,7 +6,7 @@
 #pragma once
 
 #include "glitch/renderer/camera.h"
-#include "glitch/renderer/scene_graph.h"
+#include "glitch/scene_graph/scene_graph.h"
 
 struct DrawingContext {
 	SceneGraph* scene_graph;

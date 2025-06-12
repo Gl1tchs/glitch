@@ -1,4 +1,4 @@
-#include "glitch/renderer/scene_graph.h"
+#include "glitch/scene_graph/scene_graph.h"
 
 void SceneNode::add_child(Ref<SceneNode> p_node) { children.push_back(p_node); }
 

@@ -1,4 +1,4 @@
-#include "glitch/renderer/gltf_loader.h"
+#include "glitch/scene_graph/gltf_loader.h"
 
 #include "glitch/core/application.h"
 #include "glitch/renderer/render_device.h"
