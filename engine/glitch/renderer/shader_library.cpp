@@ -35,6 +35,8 @@ std::vector<uint32_t> ShaderLibrary::get_spirv_data(
 
 	std::ifstream file(p_filepath, std::ios::in | std::ios::binary);
 	if (!file.is_open()) {
+		GL_LOG_ERROR(
+				"Unable to open SPIRV file on path: {}.", p_filepath.string());
 		return {};
 	}
 

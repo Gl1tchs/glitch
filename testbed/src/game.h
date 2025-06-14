@@ -7,6 +7,12 @@
 
 #include "camera_controller.h"
 
+struct GridPushConstants {
+	glm::mat4 view_proj;
+	glm::vec3 camera_pos;
+	float grid_size;
+};
+
 class Game : public Application {
 public:
 	Game(const ApplicationCreateInfo& info);
@@ -32,4 +38,7 @@ private:
 	CameraController camera_controller;
 	PerspectiveCamera camera;
 	Transform camera_transform;
+
+	Shader grid_shader;
+	Pipeline grid_pipeline;
 };

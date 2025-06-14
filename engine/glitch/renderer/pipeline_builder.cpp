@@ -26,10 +26,11 @@ PipelineBuilder& PipelineBuilder::add_shader_stage(
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::with_depth_test(CompareOperator p_op) {
+PipelineBuilder& PipelineBuilder::with_depth_test(
+		CompareOperator p_op, bool p_depth_write) {
 	depth_stencil_state.depth_compare_operator = COMPARE_OP_LESS;
 	depth_stencil_state.enable_depth_test = true;
-	depth_stencil_state.enable_depth_write = true;
+	depth_stencil_state.enable_depth_write = p_depth_write;
 	depth_stencil_state.enable_depth_range = true;
 
 	return *this;

@@ -6,13 +6,9 @@
 
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/drawing_context.h"
-#include "glitch/scene_graph/gltf_loader.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/render_device.h"
-
-#ifdef GL_DEBUG_BUILD
-#include "glitch/debug/debug_panel.h"
-#endif
+#include "glitch/scene_graph/gltf_loader.h"
 
 struct SceneData {
 	glm::mat4 view_projection;
@@ -30,10 +26,14 @@ struct PushConstants {
  */
 class GL_API Renderer {
 public:
+	using RenderFunc = std::function<void(CommandBuffer)>;
+
 	Renderer();
 	~Renderer();
 
 	void submit(const DrawingContext& p_ctx);
+
+	void add_custom_pass(RenderFunc&& p_func);
 
 private:
 	void _preprocess_render(const DrawingContext& p_ctx);
@@ -57,7 +57,5 @@ private:
 	size_t scene_data_hash;
 	Buffer scene_data_buffer;
 
-#ifdef GL_DEBUG_BUILD
-	DebugPanel debug_panel;
-#endif
+	std::vector<RenderFunc> render_funcs;
 };
