@@ -96,6 +96,27 @@ public:
 	std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(
 			Shader p_shader) override;
 
+	// Render pass
+
+	struct VulkanRenderPass {
+		VkRenderPass vk_render_pass;
+		std::vector<VkClearValue> clear_values;
+	};
+
+	RenderPass render_pass_create(
+			VectorView<RenderPassAttachment> p_attachments,
+			VectorView<SubpassInfo> p_subpasses) override;
+
+	void render_pass_destroy(RenderPass p_render_pass) override;
+
+	// Frame Buffer
+
+	FrameBuffer frame_buffer_create(RenderPass p_render_pass,
+			VectorView<Image> p_attachments,
+			const glm::uvec2& p_extent) override;
+
+	void frame_buffer_destroy(FrameBuffer p_frame_buffer) override;
+
 	// Swapchain
 
 	struct VulkanSwapchain {
@@ -232,6 +253,12 @@ public:
 			Image p_depth_attachment = GL_NULL_HANDLE) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
+
+	void command_begin_render_pass(CommandBuffer p_cmd,
+			RenderPass p_render_pass, FrameBuffer framebuffer,
+			const glm::uvec2& p_draw_extent) override;
+
+	void command_end_render_pass(CommandBuffer p_cmd) override;
 
 	// image layout must be IMAGE_LAYOUT_GENERAL
 	void command_clear_color(CommandBuffer p_cmd, Image p_image,

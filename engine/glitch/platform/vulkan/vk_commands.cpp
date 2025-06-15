@@ -160,6 +160,26 @@ void VulkanRenderBackend::command_end_rendering(CommandBuffer p_cmd) {
 	vkCmdEndRendering((VkCommandBuffer)p_cmd);
 }
 
+void VulkanRenderBackend::command_begin_render_pass(CommandBuffer p_cmd,
+		RenderPass p_render_pass, FrameBuffer framebuffer,
+		const glm::uvec2& p_draw_extent) {
+	VulkanRenderPass* render_pass_info = (VulkanRenderPass*)p_render_pass;
+
+	VkRenderPassBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	begin_info.renderPass = render_pass_info->vk_render_pass;
+	begin_info.framebuffer = VkFramebuffer(framebuffer);
+	begin_info.renderArea.offset = { 0, 0 };
+	begin_info.renderArea.extent = { p_draw_extent.x, p_draw_extent.y };
+	begin_info.clearValueCount = render_pass_info->clear_values.size();
+	begin_info.pClearValues = render_pass_info->clear_values.data();
+
+	vkCmdBeginRenderPass(
+			(VkCommandBuffer)p_cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void VulkanRenderBackend::command_end_render_pass(CommandBuffer p_cmd) {}
+
 void VulkanRenderBackend::command_clear_color(CommandBuffer p_cmd,
 		Image p_image, const Color& p_clear_color,
 		ImageAspectFlags p_image_aspect) {

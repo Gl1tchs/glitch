@@ -70,6 +70,21 @@ public:
 	virtual std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(
 			Shader p_shader) = 0;
 
+	// Render pass
+
+	virtual RenderPass render_pass_create(
+			VectorView<RenderPassAttachment> p_attachments,
+			VectorView<SubpassInfo> p_subpasses) = 0;
+
+	virtual void render_pass_destroy(RenderPass p_render_pass) = 0;
+
+	// Frame Buffer
+
+	virtual FrameBuffer frame_buffer_create(RenderPass p_render_pass,
+			VectorView<Image> p_attachments, const glm::uvec2& p_extent) = 0;
+
+	virtual void frame_buffer_destroy(FrameBuffer p_frame_buffer) = 0;
+
 	// Swapchain
 
 	// not valid until resized
@@ -161,6 +176,12 @@ public:
 	virtual void command_end(CommandBuffer p_cmd) = 0;
 
 	virtual void command_reset(CommandBuffer p_cmd) = 0;
+
+	virtual void command_begin_render_pass(CommandBuffer p_cmd,
+			RenderPass p_render_pass, FrameBuffer framebuffer,
+			const glm::uvec2& p_draw_extent) = 0;
+
+	virtual void command_end_render_pass(CommandBuffer p_cmd) = 0;
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
 			const glm::uvec2& p_draw_extent,
