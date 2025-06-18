@@ -6,9 +6,7 @@
 
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/drawing_context.h"
-#include "glitch/renderer/material.h"
 #include "glitch/renderer/render_device.h"
-#include "glitch/scene_graph/gltf_loader.h"
 
 struct SceneData {
 	glm::mat4 view_projection;
@@ -33,6 +31,9 @@ public:
 
 	void submit(const DrawingContext& p_ctx);
 
+	/**
+	 * Push a rendering function into stack using a render pass
+	 */
 	void add_custom_pass(RenderFunc&& p_func);
 
 private:

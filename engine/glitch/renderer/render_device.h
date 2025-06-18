@@ -73,7 +73,7 @@ public:
 	 */
 	void imgui_end();
 
-	glm::uvec2 get_draw_extent() { return draw_extent; }
+	glm::uvec2 get_draw_extent();
 
 	Image get_draw_image() { return draw_image; }
 
@@ -119,8 +119,6 @@ private:
 	CommandQueue present_queue;
 
 	Swapchain swapchain;
-
-	glm::uvec2 draw_extent;
 
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];

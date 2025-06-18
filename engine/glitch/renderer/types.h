@@ -304,7 +304,6 @@ enum SubpassAttachmentType {
 struct SubpassAttachment {
 	uint32_t attachment_index;
 	SubpassAttachmentType type;
-	ImageLayout layout;
 };
 
 struct SubpassInfo {

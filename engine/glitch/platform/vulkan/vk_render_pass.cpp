@@ -35,16 +35,19 @@ RenderPass VulkanRenderBackend::render_pass_create(
 		for (const auto& attachment : subpass.attachments) {
 			VkAttachmentReference ref = {};
 			ref.attachment = attachment.attachment_index;
-			ref.layout = static_cast<VkImageLayout>(attachment.layout);
 
 			switch (attachment.type) {
 				case SUBPASS_ATTACHMENT_COLOR:
+					ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 					color_refs.push_back(ref);
 					break;
 				case SUBPASS_ATTACHMENT_INPUT:
+					ref.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					input_refs.push_back(ref);
 					break;
 				case SUBPASS_ATTACHMENT_DEPTH_STENCIL:
+					ref.layout =
+							VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 					depth_ref = ref;
 					break;
 			}
@@ -117,7 +120,7 @@ RenderPass VulkanRenderBackend::render_pass_create(
 		}
 	}
 
-	return RenderPass(vk_render_pass);
+	return RenderPass(render_pass_info);
 }
 
 void VulkanRenderBackend::render_pass_destroy(RenderPass p_render_pass) {
@@ -138,7 +141,7 @@ FrameBuffer VulkanRenderBackend::frame_buffer_create(RenderPass p_render_pass,
 		vk_attachments.push_back(vk_image->vk_image_view);
 	}
 
-	VkFramebufferCreateInfo frame_buffer_info{};
+	VkFramebufferCreateInfo frame_buffer_info = {};
 	frame_buffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	frame_buffer_info.renderPass = render_pass_info->vk_render_pass;
 	frame_buffer_info.attachmentCount = vk_attachments.size();

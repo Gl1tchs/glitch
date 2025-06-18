@@ -105,15 +105,7 @@ CommandBuffer RenderDevice::begin_render() {
 
 	backend->fence_reset(_get_current_frame().render_fence);
 
-	const glm::uvec2 swapchain_extent =
-			backend->swapchain_get_extent(swapchain);
-	const glm::uvec3 draw_image_extent = backend->image_get_size(draw_image);
-
-	// set render scale
-	draw_extent = {
-		std::min(swapchain_extent.x, draw_image_extent.x),
-		std::min(swapchain_extent.y, draw_image_extent.y),
-	};
+	glm::uvec2 draw_extent = get_draw_extent();
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
@@ -155,7 +147,7 @@ void RenderDevice::end_render() {
 			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	backend->command_copy_image_to_image(cmd, draw_image,
-			current_swapchain_image, draw_extent,
+			current_swapchain_image, get_draw_extent(),
 			backend->swapchain_get_extent(swapchain));
 
 	if (imgui_being_used) {
@@ -211,6 +203,17 @@ void RenderDevice::imgui_end() {
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
 	}
+}
+
+glm::uvec2 RenderDevice::get_draw_extent() {
+	const glm::uvec2 swapchain_extent =
+			backend->swapchain_get_extent(swapchain);
+	const glm::uvec3 draw_image_extent = backend->image_get_size(draw_image);
+
+	return {
+		std::min(swapchain_extent.x, draw_image_extent.x),
+		std::min(swapchain_extent.y, draw_image_extent.y),
+	};
 }
 
 void RenderDevice::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {

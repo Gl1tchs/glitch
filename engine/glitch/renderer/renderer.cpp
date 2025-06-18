@@ -49,15 +49,15 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 	CommandBuffer cmd = device->begin_render();
 	{
-		backend->command_begin_rendering(cmd, device->get_draw_extent(),
-				device->get_draw_image(), device->get_depth_image());
-
 		// TODO: this should probably has their own render pass and a priority
 		// parameter should be given
 		for (auto& render_func : render_funcs) {
 			render_func(cmd);
 		}
 		render_funcs.clear();
+
+		backend->command_begin_rendering(cmd, device->get_draw_extent(),
+				device->get_draw_image(), device->get_depth_image());
 
 		// Render nodes individually
 		// TODO: preprocess and do an instanced rendering and ibl

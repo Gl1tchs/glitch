@@ -19,7 +19,11 @@ public:
 
 	PipelineBuilder& with_blend();
 
-	std::pair<Shader, Pipeline> build();
+	/**
+	 * @param p_render_pass Optional render pass to build pipeline with. Default
+	 * will assume dynamic rendering.
+	 */
+	std::pair<Shader, Pipeline> build(RenderPass p_render_pass = nullptr);
 
 private:
 	std::vector<SpirvData> shader_stages;

@@ -21,6 +21,37 @@ void Game::_on_start() {
 
 	camera_controller.set_camera(&camera, &camera_transform);
 
+	auto device = get_rendering_device();
+	auto backend = device->get_backend();
+
+	std::vector<RenderPassAttachment> attachments = {
+		{
+				.format = device->get_draw_image_format(),
+		},
+		{
+				.format = device->get_depth_image_format(),
+				.is_depth_attachment = true,
+		},
+	};
+
+	std::vector<SubpassInfo> subpasses = {
+		{
+				{
+						{ 0, SUBPASS_ATTACHMENT_COLOR },
+						{ 1, SUBPASS_ATTACHMENT_DEPTH_STENCIL },
+				},
+		},
+	};
+
+	grid_pass = backend->render_pass_create(attachments, subpasses);
+
+	std::vector<Image> fb_attachments = {
+		device->get_draw_image(),
+		device->get_depth_image(),
+	};
+	grid_fb = backend->frame_buffer_create(
+			grid_pass, fb_attachments, device->get_draw_extent());
+
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
@@ -34,7 +65,7 @@ void Game::_on_start() {
 					.with_depth_test(
 							COMPARE_OP_LESS, false) // without depth write
 					.with_blend()
-					.build();
+					.build(grid_pass);
 
 	grid_shader = shader;
 	grid_pipeline = pipeline;
@@ -73,6 +104,9 @@ void Game::_on_update(float p_dt) {
 	renderer->add_custom_pass([&](CommandBuffer cmd) {
 		auto backend = get_rendering_device()->get_backend();
 
+		backend->command_begin_render_pass(cmd, grid_pass, grid_fb,
+				get_rendering_device()->get_draw_extent());
+
 		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
 
 		GridPushConstants push_constants;
@@ -85,6 +119,8 @@ void Game::_on_update(float p_dt) {
 				sizeof(GridPushConstants), &push_constants);
 
 		backend->command_draw(cmd, 6);
+
+		backend->command_end_render_pass(cmd);
 	});
 
 	DrawingContext ctx;
@@ -99,6 +135,9 @@ void Game::_on_destroy() {
 	auto backend = get_rendering_device()->get_backend();
 
 	backend->device_wait();
+
+	backend->frame_buffer_destroy(grid_fb);
+	backend->render_pass_destroy(grid_pass);
 
 	backend->pipeline_free(grid_pipeline);
 	backend->shader_free(grid_shader);

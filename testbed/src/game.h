@@ -4,6 +4,7 @@
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/renderer/renderer.h>
+#include <glitch/scene_graph/gltf_loader.h>
 
 #include "camera_controller.h"
 
@@ -39,6 +40,8 @@ private:
 	PerspectiveCamera camera;
 	Transform camera_transform;
 
+	RenderPass grid_pass;
+	FrameBuffer grid_fb;
 	Shader grid_shader;
 	Pipeline grid_pipeline;
 };

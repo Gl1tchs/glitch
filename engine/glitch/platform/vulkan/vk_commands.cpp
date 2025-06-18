@@ -178,7 +178,9 @@ void VulkanRenderBackend::command_begin_render_pass(CommandBuffer p_cmd,
 			(VkCommandBuffer)p_cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void VulkanRenderBackend::command_end_render_pass(CommandBuffer p_cmd) {}
+void VulkanRenderBackend::command_end_render_pass(CommandBuffer p_cmd) {
+	vkCmdEndRenderPass((VkCommandBuffer)p_cmd);
+}
 
 void VulkanRenderBackend::command_clear_color(CommandBuffer p_cmd,
 		Image p_image, const Color& p_clear_color,
