@@ -10,7 +10,7 @@
 /**
  * An ImGui window responsible for scene manipulation
  */
-class DebugPanel {
+class GL_API DebugPanel {
 public:
 	static void draw(const Ref<SceneNode>& p_graph_root);
 };

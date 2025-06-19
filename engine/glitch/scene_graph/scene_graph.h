@@ -9,7 +9,7 @@
 #include "glitch/core/uid.h"
 #include "glitch/renderer/mesh.h"
 
-struct SceneNode {
+struct GL_API SceneNode {
 	Transform transform;
 	glm::mat4 world_transform;
 
@@ -24,7 +24,7 @@ struct SceneNode {
 	void add_child(Ref<SceneNode> p_node);
 };
 
-class SceneGraph {
+class GL_API SceneGraph {
 public:
 	SceneGraph();
 
