@@ -26,10 +26,10 @@ void Game::_on_start() {
 
 	std::vector<RenderPassAttachment> attachments = {
 		{
-				.format = device->get_draw_image_format(),
+				.format = device->get_color_attachment_format(),
 		},
 		{
-				.format = device->get_depth_image_format(),
+				.format = device->get_depth_attachment_format(),
 				.is_depth_attachment = true,
 		},
 	};
@@ -45,12 +45,17 @@ void Game::_on_start() {
 
 	grid_pass = backend->render_pass_create(attachments, subpasses);
 
-	std::vector<Image> fb_attachments = {
-		device->get_draw_image(),
-		device->get_depth_image(),
-	};
-	grid_fb = backend->frame_buffer_create(
-			grid_pass, fb_attachments, device->get_draw_extent());
+	// TODO: make this useful and not bloated
+	Swapchain swapchain = device->get_swapchain();
+	for (const auto& attachment : backend->swapchain_get_images(swapchain)) {
+		std::vector<Image> fb_attachments = {
+			attachment,
+			device->get_depth_image(),
+		};
+
+		grid_fbs.push_back(backend->frame_buffer_create(
+				grid_pass, fb_attachments, device->get_draw_extent()));
+	}
 
 	auto [shader, pipeline] =
 			PipelineBuilder()
@@ -101,10 +106,11 @@ void Game::_on_update(float p_dt) {
 		scene_graph.get_root()->add_child(scene);
 	}
 
-	renderer->add_custom_pass([&](CommandBuffer cmd) {
+	renderer->add_custom_pass([&](CommandBuffer cmd, uint32_t image_index) {
 		auto backend = get_rendering_device()->get_backend();
 
-		backend->command_begin_render_pass(cmd, grid_pass, grid_fb,
+		backend->command_begin_render_pass(cmd, grid_pass,
+				grid_fbs[image_index],
 				get_rendering_device()->get_draw_extent());
 
 		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
@@ -136,7 +142,9 @@ void Game::_on_destroy() {
 
 	backend->device_wait();
 
-	backend->frame_buffer_destroy(grid_fb);
+	for (auto& grid_fb : grid_fbs) {
+		backend->frame_buffer_destroy(grid_fb);
+	}
 	backend->render_pass_destroy(grid_pass);
 
 	backend->pipeline_free(grid_pipeline);

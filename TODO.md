@@ -1,5 +1,7 @@
 # TODO
 
+- [ ] [testbed/src/game.cpp:48](testbed/src/game.cpp): Make frame buffers easier to set up or pre created.
+
 - [ ] Texture mipmaps
 - [ ] Fix rotation in debug panel to use quaternion instead of old euler angles
 - [ ] Resizing causes semaphore error

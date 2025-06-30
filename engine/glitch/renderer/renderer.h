@@ -24,7 +24,7 @@ struct PushConstants {
  */
 class GL_API Renderer {
 public:
-	using RenderFunc = std::function<void(CommandBuffer)>;
+	using RenderFunc = std::function<void(CommandBuffer, uint32_t)>;
 
 	Renderer();
 	~Renderer();

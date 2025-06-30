@@ -38,11 +38,6 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 	// initialize
 	backend->swapchain_resize(graphics_queue, swapchain, p_window->get_size());
 
-	draw_image = backend->image_create(draw_image_format, p_window->get_size(),
-			nullptr,
-			IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT |
-					IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-
 	depth_image =
 			backend->image_create(depth_image_format, p_window->get_size(),
 					nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -60,6 +55,9 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 		frame_data.render_fence = backend->fence_create();
 	}
 
+	current_swapchain_image = backend->swapchain_get_images(swapchain).front();
+	color_attachment_format = backend->swapchain_get_format(swapchain);
+
 	// initialize imgui context
 	_imgui_init();
 }
@@ -68,7 +66,6 @@ RenderDevice::~RenderDevice() {
 	backend->device_wait();
 
 	// destroy geometry pipeline resources
-	backend->image_free(draw_image);
 	backend->image_free(depth_image);
 
 	// destroy per-frame data
@@ -95,7 +92,8 @@ CommandBuffer RenderDevice::begin_render() {
 	backend->fence_wait(_get_current_frame().render_fence);
 
 	Optional<Image> swapchain_image = backend->swapchain_acquire_image(
-			swapchain, _get_current_frame().image_available_semaphore);
+			swapchain, _get_current_frame().image_available_semaphore,
+			&image_index);
 	if (!swapchain_image) {
 		_request_resize();
 		return nullptr;
@@ -113,13 +111,14 @@ CommandBuffer RenderDevice::begin_render() {
 
 	backend->command_begin(cmd);
 
-	backend->command_transition_image(
-			cmd, draw_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
+	backend->command_transition_image(cmd, current_swapchain_image,
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
 
-	backend->command_clear_color(cmd, draw_image, { 0.1f, 0.1f, 0.1f, 1.0f });
+	backend->command_clear_color(
+			cmd, current_swapchain_image, { 0.1f, 0.1f, 0.1f, 1.0f });
 
-	backend->command_transition_image(cmd, draw_image, IMAGE_LAYOUT_GENERAL,
-			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	backend->command_transition_image(cmd, current_swapchain_image,
+			IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	backend->command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
 			IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
@@ -140,28 +139,12 @@ void RenderDevice::end_render() {
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
-	backend->command_transition_image(cmd, draw_image,
-			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-	backend->command_copy_image_to_image(cmd, draw_image,
-			current_swapchain_image, get_draw_extent(),
-			backend->swapchain_get_extent(swapchain));
-
 	if (imgui_being_used) {
-		backend->command_transition_image(cmd, current_swapchain_image,
-				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
 		_imgui_pass(cmd, current_swapchain_image);
 	}
 
 	backend->command_transition_image(cmd, current_swapchain_image,
-			imgui_being_used ? IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-							 : IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			IMAGE_LAYOUT_PRESENT_SRC);
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_PRESENT_SRC);
 
 	backend->command_end(cmd);
 
@@ -205,10 +188,11 @@ void RenderDevice::imgui_end() {
 	}
 }
 
-glm::uvec2 RenderDevice::get_draw_extent() {
+glm::uvec2 RenderDevice::get_draw_extent() const {
 	const glm::uvec2 swapchain_extent =
 			backend->swapchain_get_extent(swapchain);
-	const glm::uvec3 draw_image_extent = backend->image_get_size(draw_image);
+	const glm::uvec3 draw_image_extent =
+			backend->image_get_size(current_swapchain_image);
 
 	return {
 		std::min(swapchain_extent.x, draw_image_extent.x),

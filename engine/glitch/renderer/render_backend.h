@@ -51,6 +51,8 @@ public:
 
 	virtual glm::uvec3 image_get_size(Image p_image) = 0;
 
+	virtual DataFormat image_get_format(Image p_image) = 0;
+
 	virtual Sampler sampler_create(
 			ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
@@ -94,6 +96,8 @@ public:
 			Swapchain p_swapchain, glm::uvec2 size) = 0;
 
 	virtual size_t swapchain_get_image_count(Swapchain p_swapchain) = 0;
+
+	virtual std::vector<Image> swapchain_get_images(Swapchain p_swapchain) = 0;
 
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed

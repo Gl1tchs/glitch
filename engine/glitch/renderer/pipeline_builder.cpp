@@ -1,9 +1,13 @@
 #include "glitch/renderer/pipeline_builder.h"
 
+#include "glitch/core/application.h"
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/render_device.h"
 
 PipelineBuilder::PipelineBuilder() {
+	Ref<RenderDevice> device =
+			Application::get_instance()->get_rendering_device();
+
 	vertex_input = {};
 	rasterization = {};
 	multisample = {};
@@ -11,8 +15,8 @@ PipelineBuilder::PipelineBuilder() {
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			RenderDevice::get_draw_image_format());
-	rendering_state.depth_attachment = RenderDevice::get_depth_image_format();
+			device->get_color_attachment_format());
+	rendering_state.depth_attachment = device->get_depth_attachment_format();
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(

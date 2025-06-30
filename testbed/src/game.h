@@ -41,7 +41,7 @@ private:
 	Transform camera_transform;
 
 	RenderPass grid_pass;
-	FrameBuffer grid_fb;
+	std::vector<FrameBuffer> grid_fbs;
 	Shader grid_shader;
 	Pipeline grid_pipeline;
 };

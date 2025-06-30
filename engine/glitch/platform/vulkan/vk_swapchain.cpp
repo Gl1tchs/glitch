@@ -80,6 +80,18 @@ size_t VulkanRenderBackend::swapchain_get_image_count(Swapchain p_swapchain) {
 	return swapchain->images.size();
 }
 
+std::vector<Image> VulkanRenderBackend::swapchain_get_images(
+		Swapchain p_swapchain) {
+	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
+
+	std::vector<Image> images(swapchain->images.size());
+	for (size_t i = 0; i < swapchain->images.size(); i++) {
+		images[i] = Image(&swapchain->images[i]);
+	}
+
+	return images;
+}
+
 Optional<Image> VulkanRenderBackend::swapchain_acquire_image(
 		Swapchain p_swapchain, Semaphore p_semaphore, uint32_t* o_image_index) {
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;

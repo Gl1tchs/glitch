@@ -73,19 +73,23 @@ public:
 	 */
 	void imgui_end();
 
-	glm::uvec2 get_draw_extent();
+	glm::uvec2 get_draw_extent() const;
 
-	Image get_draw_image() { return draw_image; }
+	uint32_t get_current_image_index() const { return image_index; }
+
+	Swapchain get_swapchain() { return swapchain; }
+
+	Image get_draw_image() { return current_swapchain_image; }
 
 	Image get_depth_image() { return depth_image; }
 
 	RenderStats& get_stats() { return stats; }
 
-	static DataFormat get_draw_image_format() {
-		return s_instance->draw_image_format;
+	static DataFormat get_color_attachment_format() {
+		return s_instance->color_attachment_format;
 	}
 
-	static DataFormat get_depth_image_format() {
+	static DataFormat get_depth_attachment_format() {
 		return s_instance->depth_image_format;
 	}
 
@@ -119,6 +123,7 @@ private:
 	CommandQueue present_queue;
 
 	Swapchain swapchain;
+	uint32_t image_index = 0;
 
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
@@ -126,9 +131,7 @@ private:
 	uint32_t frame_number = 0;
 
 	Image current_swapchain_image;
-
-	Image draw_image;
-	const DataFormat draw_image_format = DATA_FORMAT_R16G16B16A16_SFLOAT;
+	DataFormat color_attachment_format;
 
 	Image depth_image;
 	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;

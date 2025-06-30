@@ -52,7 +52,7 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 		// TODO: this should probably has their own render pass and a priority
 		// parameter should be given
 		for (auto& render_func : render_funcs) {
-			render_func(cmd);
+			render_func(cmd, device->get_current_image_index());
 		}
 		render_funcs.clear();
 

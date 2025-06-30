@@ -63,6 +63,8 @@ public:
 
 	glm::uvec3 image_get_size(Image p_image) override;
 
+	DataFormat image_get_format(Image p_image) override;
+
 	Sampler sampler_create(ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
 			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
@@ -134,6 +136,8 @@ public:
 			glm::uvec2 size) override;
 
 	size_t swapchain_get_image_count(Swapchain p_swapchain) override;
+
+	std::vector<Image> swapchain_get_images(Swapchain p_swapchain) override;
 
 	Optional<Image> swapchain_acquire_image(Swapchain p_swapchain,
 			Semaphore p_semaphore, uint32_t* o_image_index) override;
