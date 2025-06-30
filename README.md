@@ -44,6 +44,12 @@ cmake --build build
 
 ## 🛠️ Usage & Sandbox
 
+Testbed is just a gltf renderer and you can use it like so:
+
+```bash
+glitch-testbed my/gltf/model.gltf
+```
+
 Looking for examples? Check out the [testbed](testbed/), where Glitch is tested and extended with real-time experiments.
 
 ---
