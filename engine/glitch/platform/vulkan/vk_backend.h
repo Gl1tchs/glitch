@@ -63,6 +63,8 @@ public:
 
 	glm::uvec3 image_get_size(Image p_image) override;
 
+	DataFormat image_get_format(Image p_image) override;
+
 	Sampler sampler_create(ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
 			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
@@ -96,6 +98,27 @@ public:
 	std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(
 			Shader p_shader) override;
 
+	// Render pass
+
+	struct VulkanRenderPass {
+		VkRenderPass vk_render_pass;
+		std::vector<VkClearValue> clear_values;
+	};
+
+	RenderPass render_pass_create(
+			VectorView<RenderPassAttachment> p_attachments,
+			VectorView<SubpassInfo> p_subpasses) override;
+
+	void render_pass_destroy(RenderPass p_render_pass) override;
+
+	// Frame Buffer
+
+	FrameBuffer frame_buffer_create(RenderPass p_render_pass,
+			VectorView<Image> p_attachments,
+			const glm::uvec2& p_extent) override;
+
+	void frame_buffer_destroy(FrameBuffer p_frame_buffer) override;
+
 	// Swapchain
 
 	struct VulkanSwapchain {
@@ -113,6 +136,8 @@ public:
 			glm::uvec2 size) override;
 
 	size_t swapchain_get_image_count(Swapchain p_swapchain) override;
+
+	std::vector<Image> swapchain_get_images(Swapchain p_swapchain) override;
 
 	Optional<Image> swapchain_acquire_image(Swapchain p_swapchain,
 			Semaphore p_semaphore, uint32_t* o_image_index) override;
@@ -182,6 +207,15 @@ public:
 			BitField<PipelineDynamicStateFlags> p_dynamic_state,
 			RenderingState p_rendering_state) override;
 
+	Pipeline render_pipeline_create(Shader p_shader, RenderPass p_render_pass,
+			RenderPrimitive p_render_primitive,
+			PipelineVertexInputState p_vertex_input_state,
+			PipelineRasterizationState p_rasterization_state,
+			PipelineMultisampleState p_multisample_state,
+			PipelineDepthStencilState p_depth_stencil_state,
+			PipelineColorBlendState p_blend_state,
+			BitField<PipelineDynamicStateFlags> p_dynamic_state) override;
+
 	Pipeline compute_pipeline_create(Shader p_shader) override;
 
 	void pipeline_free(Pipeline p_pipeline) override;
@@ -232,6 +266,12 @@ public:
 			Image p_depth_attachment = GL_NULL_HANDLE) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
+
+	void command_begin_render_pass(CommandBuffer p_cmd,
+			RenderPass p_render_pass, FrameBuffer framebuffer,
+			const glm::uvec2& p_draw_extent) override;
+
+	void command_end_render_pass(CommandBuffer p_cmd) override;
 
 	// image layout must be IMAGE_LAYOUT_GENERAL
 	void command_clear_color(CommandBuffer p_cmd, Image p_image,

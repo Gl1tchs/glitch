@@ -17,6 +17,8 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(Sampler)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandPool)
 GL_DEFINE_HANDLE(CommandBuffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(CommandQueue)
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(RenderPass)
+GL_DEFINE_NON_DISPATCHABLE_HANDLE(FrameBuffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Swapchain)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Pipeline)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Shader)
@@ -284,6 +286,28 @@ struct ShaderUniform {
 	ShaderUniformType type = UNIFORM_TYPE_MAX;
 	uint32_t binding = 0xffffffff; // Binding index as specified in shader.
 	std::vector<void*> data;
+};
+
+struct RenderPassAttachment {
+	DataFormat format;
+	// TODO: implement
+	uint32_t sample_count = 1;
+	bool is_depth_attachment = false;
+};
+
+enum SubpassAttachmentType {
+	SUBPASS_ATTACHMENT_COLOR,
+	SUBPASS_ATTACHMENT_DEPTH_STENCIL,
+	SUBPASS_ATTACHMENT_INPUT,
+};
+
+struct SubpassAttachment {
+	uint32_t attachment_index;
+	SubpassAttachmentType type;
+};
+
+struct SubpassInfo {
+	std::vector<SubpassAttachment> attachments;
 };
 
 enum RenderPrimitive {

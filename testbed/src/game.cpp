@@ -1,8 +1,11 @@
 #include "game.h"
 
 #include <glitch/core/event/input.h>
-#include <glitch/scene_graph/gltf_loader.h>
+#include <glitch/renderer/pipeline_builder.h>
+#include <glitch/renderer/render_backend.h>
 #include <glitch/renderer/renderer.h>
+#include <glitch/renderer/shader_library.h>
+#include <glitch/scene_graph/gltf_loader.h>
 #include <imgui/imgui.h>
 
 Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
@@ -17,6 +20,24 @@ void Game::_on_start() {
 	scene_fut = gltf_loader.load_gltf_async(model_path);
 
 	camera_controller.set_camera(&camera, &camera_transform);
+
+	auto [shader, pipeline] =
+			PipelineBuilder()
+					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
+							ShaderLibrary::get_spirv_data(
+									"build/testbed/shaders/"
+									"infinite_grid.vert.spv"))
+					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
+							ShaderLibrary::get_spirv_data(
+									"build/testbed/shaders/"
+									"infinite_grid.frag.spv"))
+					.with_depth_test(
+							COMPARE_OP_LESS, false) // without depth write
+					.with_blend()
+					.build();
+
+	grid_shader = shader;
+	grid_pipeline = pipeline;
 }
 
 void Game::_on_update(float p_dt) {
@@ -43,11 +64,30 @@ void Game::_on_update(float p_dt) {
 	}
 
 	if (scene_fut.is_ready()) {
-		Ref<SceneNode> scene = scene_fut.get();
+		Ref<SceneNode> scene =
+				scene_fut.get()
+						.value(); // safe to call .value because of .is_ready
 		scene->transform.scale *= 0.5f;
 
 		scene_graph.get_root()->add_child(scene);
 	}
+
+	renderer->submit_func([&](CommandBuffer cmd) {
+		auto backend = get_rendering_device()->get_backend();
+
+		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
+
+		GridPushConstants push_constants;
+		push_constants.view_proj = camera.get_projection_matrix() *
+				camera.get_view_matrix(camera_transform);
+		push_constants.camera_pos = camera_transform.position;
+		push_constants.grid_size = 100.0f;
+
+		backend->command_push_constants(cmd, grid_shader, 0,
+				sizeof(GridPushConstants), &push_constants);
+
+		backend->command_draw(cmd, 6);
+	});
 
 	DrawingContext ctx;
 	ctx.scene_graph = &scene_graph;
@@ -57,4 +97,13 @@ void Game::_on_update(float p_dt) {
 	renderer->submit(ctx);
 }
 
-void Game::_on_destroy() {}
+void Game::_on_destroy() {
+	auto backend = get_rendering_device()->get_backend();
+
+	scene_fut.get();
+
+	backend->device_wait();
+
+	backend->pipeline_free(grid_pipeline);
+	backend->shader_free(grid_shader);
+}

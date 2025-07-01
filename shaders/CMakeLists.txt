@@ -10,9 +10,9 @@ file(GLOB_RECURSE COMP_FILES ${COMP_DIR}/*.comp)
 
 set(SHADER_ROOT "${CMAKE_SOURCE_DIR}/shaders")
 
-compile_shader_group(SPV_VS_LIST ${SHADER_ROOT} "${VS_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
-compile_shader_group(SPV_FS_LIST ${SHADER_ROOT} "${FS_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
-compile_shader_group(SPV_COMP_LIST ${SHADER_ROOT} "${COMP_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
+compile_shader_group(SPV_VS_LIST "${VS_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
+compile_shader_group(SPV_FS_LIST "${FS_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
+compile_shader_group(SPV_COMP_LIST "${COMP_FILES}" "${CMAKE_CURRENT_LIST_DIR}/include")
 
 add_custom_target(gl-shaders ALL
     DEPENDS ${SPV_VS_LIST} ${SPV_FS_LIST} ${SPV_COMP_LIST}

@@ -78,11 +78,16 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 		.bufferDeviceAddress = true,
 	};
 
+	VkPhysicalDeviceFeatures features = {
+		.depthBounds = true,
+	};
+
 	vkb::PhysicalDeviceSelector vkb_device_selector{ vkb_instance };
 	vkb::PhysicalDevice vkb_physical_device =
 			vkb_device_selector.set_minimum_version(1, 3)
 					.set_required_features_13(features13)
 					.set_required_features_12(features12)
+					.set_required_features(features)
 					.add_required_extensions({
 							"VK_KHR_dynamic_rendering",
 					})

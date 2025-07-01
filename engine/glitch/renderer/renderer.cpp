@@ -6,6 +6,10 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
 
+#ifdef GL_DEBUG_BUILD
+#include "glitch/debug/debug_panel.h"
+#endif
+
 Renderer::Renderer() :
 		device(Application::get_instance()->get_rendering_device()),
 		backend(device->get_backend()) {
@@ -45,21 +49,33 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 	CommandBuffer cmd = device->begin_render();
 	{
-		backend->command_begin_rendering(cmd, device->get_draw_extent(),
-				device->get_draw_image(), device->get_depth_image());
+		backend->command_begin_render_pass(cmd, device->get_render_pass(),
+				device->get_current_frame_buffer(), device->get_draw_extent());
+
+		// TODO: this should probably has their own render pass and a priority
+		// parameter should be given
+		for (auto& render_func : render_funcs) {
+			render_func(cmd);
+		}
+		render_funcs.clear();
+
 		// Render nodes individually
 		// TODO: preprocess and do an instanced rendering and ibl
 		_traverse_node_render(cmd, p_ctx.scene_graph->get_root());
 
-		backend->command_end_rendering(cmd);
+		backend->command_end_render_pass(cmd);
 	}
 	device->end_render();
 
 #ifdef GL_DEBUG_BUILD
 	device->imgui_begin();
-	debug_panel.draw(p_ctx.scene_graph->get_root());
+	DebugPanel::draw(p_ctx.scene_graph->get_root());
 	device->imgui_end();
 #endif
+}
+
+void Renderer::submit_func(RenderFunc&& p_func) {
+	render_funcs.push_back(p_func);
 }
 
 void Renderer::_preprocess_render(const DrawingContext& p_ctx) {

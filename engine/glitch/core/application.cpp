@@ -24,10 +24,10 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 	MaterialSystem::init();
 
 	// Register material definitions
-	MaterialSystem::register_definition(
-			"unlit_standarts", get_unlit_material_definition());
-	MaterialSystem::register_definition(
-			"urp_standart", get_urp_material_definition());
+	MaterialSystem::register_definition("unlit_standart",
+			get_unlit_material_definition(render_device->get_render_pass()));
+	MaterialSystem::register_definition("urp_standart",
+			get_urp_material_definition(render_device->get_render_pass()));
 }
 
 Application::~Application() {

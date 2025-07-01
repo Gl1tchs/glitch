@@ -176,6 +176,11 @@ glm::uvec3 VulkanRenderBackend::image_get_size(Image p_image) {
 	return size;
 }
 
+DataFormat VulkanRenderBackend::image_get_format(Image p_image) {
+	VulkanImage* image = (VulkanImage*)p_image;
+	return static_cast<DataFormat>(image->image_format);
+}
+
 Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_min_filter,
 		ImageFiltering p_mag_filter, ImageWrappingMode p_wrap_u,
 		ImageWrappingMode p_wrap_v, ImageWrappingMode p_wrap_w) {

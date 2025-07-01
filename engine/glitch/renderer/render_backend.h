@@ -51,6 +51,8 @@ public:
 
 	virtual glm::uvec3 image_get_size(Image p_image) = 0;
 
+	virtual DataFormat image_get_format(Image p_image) = 0;
+
 	virtual Sampler sampler_create(
 			ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
@@ -70,6 +72,21 @@ public:
 	virtual std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(
 			Shader p_shader) = 0;
 
+	// Render pass
+
+	virtual RenderPass render_pass_create(
+			VectorView<RenderPassAttachment> p_attachments,
+			VectorView<SubpassInfo> p_subpasses) = 0;
+
+	virtual void render_pass_destroy(RenderPass p_render_pass) = 0;
+
+	// Frame Buffer
+
+	virtual FrameBuffer frame_buffer_create(RenderPass p_render_pass,
+			VectorView<Image> p_attachments, const glm::uvec2& p_extent) = 0;
+
+	virtual void frame_buffer_destroy(FrameBuffer p_frame_buffer) = 0;
+
 	// Swapchain
 
 	// not valid until resized
@@ -79,6 +96,8 @@ public:
 			Swapchain p_swapchain, glm::uvec2 size) = 0;
 
 	virtual size_t swapchain_get_image_count(Swapchain p_swapchain) = 0;
+
+	virtual std::vector<Image> swapchain_get_images(Swapchain p_swapchain) = 0;
 
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed
@@ -125,6 +144,15 @@ public:
 			BitField<PipelineDynamicStateFlags> p_dynamic_state,
 			RenderingState p_rendering_state) = 0;
 
+	virtual Pipeline render_pipeline_create(Shader p_shader,
+			RenderPass p_render_pass, RenderPrimitive p_render_primitive,
+			PipelineVertexInputState p_vertex_input_state,
+			PipelineRasterizationState p_rasterization_state,
+			PipelineMultisampleState p_multisample_state,
+			PipelineDepthStencilState p_depth_stencil_state,
+			PipelineColorBlendState p_blend_state,
+			BitField<PipelineDynamicStateFlags> p_dynamic_state) = 0;
+
 	virtual Pipeline compute_pipeline_create(Shader p_shader) = 0;
 
 	virtual void pipeline_free(Pipeline p_pipeline) = 0;
@@ -161,6 +189,12 @@ public:
 	virtual void command_end(CommandBuffer p_cmd) = 0;
 
 	virtual void command_reset(CommandBuffer p_cmd) = 0;
+
+	virtual void command_begin_render_pass(CommandBuffer p_cmd,
+			RenderPass p_render_pass, FrameBuffer framebuffer,
+			const glm::uvec2& p_draw_extent) = 0;
+
+	virtual void command_end_render_pass(CommandBuffer p_cmd) = 0;
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
 			const glm::uvec2& p_draw_extent,

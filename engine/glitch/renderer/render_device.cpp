@@ -1,6 +1,7 @@
 #include "glitch/renderer/render_device.h"
 
 #include "glitch/platform/vulkan/vk_backend.h"
+#include "glitch/renderer/render_pass_builder.h"
 #include "glitch/renderer/types.h"
 
 #include <imgui.h>
@@ -34,18 +35,22 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
 
 	swapchain = backend->swapchain_create();
+	color_attachment_format = backend->swapchain_get_format(swapchain);
 
-	// initialize
-	backend->swapchain_resize(graphics_queue, swapchain, p_window->get_size());
+	render_pass =
+			RenderPassBuilder()
+					.add_color_attachment(color_attachment_format)
+					.add_depth_attachment(depth_image_format)
+					.add_subpass({
+							{
+									{ 0, SUBPASS_ATTACHMENT_COLOR },
+									{ 1, SUBPASS_ATTACHMENT_DEPTH_STENCIL },
+							},
+					})
+					.build();
 
-	draw_image = backend->image_create(draw_image_format, p_window->get_size(),
-			nullptr,
-			IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT |
-					IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-
-	depth_image =
-			backend->image_create(depth_image_format, p_window->get_size(),
-					nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	// initialize swapchain, framebuffers and depth images
+	_request_resize();
 
 	for (size_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
@@ -67,8 +72,12 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 RenderDevice::~RenderDevice() {
 	backend->device_wait();
 
+	for (auto& fb : swapchain_frame_buffers) {
+		backend->frame_buffer_destroy(fb);
+	}
+	backend->render_pass_destroy(render_pass);
+
 	// destroy geometry pipeline resources
-	backend->image_free(draw_image);
 	backend->image_free(depth_image);
 
 	// destroy per-frame data
@@ -95,7 +104,8 @@ CommandBuffer RenderDevice::begin_render() {
 	backend->fence_wait(_get_current_frame().render_fence);
 
 	Optional<Image> swapchain_image = backend->swapchain_acquire_image(
-			swapchain, _get_current_frame().image_available_semaphore);
+			swapchain, _get_current_frame().image_available_semaphore,
+			&image_index);
 	if (!swapchain_image) {
 		_request_resize();
 		return nullptr;
@@ -105,15 +115,7 @@ CommandBuffer RenderDevice::begin_render() {
 
 	backend->fence_reset(_get_current_frame().render_fence);
 
-	const glm::uvec2 swapchain_extent =
-			backend->swapchain_get_extent(swapchain);
-	const glm::uvec3 draw_image_extent = backend->image_get_size(draw_image);
-
-	// set render scale
-	draw_extent = {
-		std::min(swapchain_extent.x, draw_image_extent.x),
-		std::min(swapchain_extent.y, draw_image_extent.y),
-	};
+	glm::uvec2 draw_extent = get_draw_extent();
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
@@ -121,13 +123,14 @@ CommandBuffer RenderDevice::begin_render() {
 
 	backend->command_begin(cmd);
 
-	backend->command_transition_image(
-			cmd, draw_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
+	backend->command_transition_image(cmd, current_swapchain_image,
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
 
-	backend->command_clear_color(cmd, draw_image, { 0.1f, 0.1f, 0.1f, 1.0f });
+	backend->command_clear_color(
+			cmd, current_swapchain_image, { 0.1f, 0.1f, 0.1f, 1.0f });
 
-	backend->command_transition_image(cmd, draw_image, IMAGE_LAYOUT_GENERAL,
-			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	backend->command_transition_image(cmd, current_swapchain_image,
+			IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	backend->command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
 			IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
@@ -148,28 +151,12 @@ void RenderDevice::end_render() {
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
-	backend->command_transition_image(cmd, draw_image,
-			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-	backend->command_copy_image_to_image(cmd, draw_image,
-			current_swapchain_image, draw_extent,
-			backend->swapchain_get_extent(swapchain));
-
 	if (imgui_being_used) {
-		backend->command_transition_image(cmd, current_swapchain_image,
-				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
 		_imgui_pass(cmd, current_swapchain_image);
 	}
 
 	backend->command_transition_image(cmd, current_swapchain_image,
-			imgui_being_used ? IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-							 : IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			IMAGE_LAYOUT_PRESENT_SRC);
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_PRESENT_SRC);
 
 	backend->command_end(cmd);
 
@@ -213,6 +200,65 @@ void RenderDevice::imgui_end() {
 	}
 }
 
+glm::uvec2 RenderDevice::get_draw_extent() const {
+	const glm::uvec2 swapchain_extent =
+			backend->swapchain_get_extent(swapchain);
+
+	if (!current_swapchain_image) {
+		return swapchain_extent;
+	}
+
+	const glm::uvec3 draw_image_extent =
+			backend->image_get_size(current_swapchain_image);
+
+	return {
+		std::min(swapchain_extent.x, draw_image_extent.x),
+		std::min(swapchain_extent.y, draw_image_extent.y),
+	};
+}
+
+std::vector<FrameBuffer> RenderDevice::get_swapchain_framebuffers(
+		RenderPass p_render_pass) {
+	std::vector<FrameBuffer> framebuffers;
+	for (const auto& attachment : backend->swapchain_get_images(swapchain)) {
+		std::vector<Image> fb_attachments = {
+			attachment,
+			depth_image,
+		};
+
+		framebuffers.push_back(backend->frame_buffer_create(
+				p_render_pass, fb_attachments, get_draw_extent()));
+	}
+
+	return framebuffers;
+}
+
+RenderPass RenderDevice::get_render_pass() { return render_pass; }
+
+FrameBuffer RenderDevice::get_current_frame_buffer() {
+	return swapchain_frame_buffers[image_index];
+}
+
+uint32_t RenderDevice::get_current_image_index() const { return image_index; }
+
+Swapchain RenderDevice::get_swapchain() { return swapchain; }
+
+Image RenderDevice::get_draw_image() { return current_swapchain_image; }
+
+Image RenderDevice::get_depth_image() { return depth_image; }
+
+RenderStats& RenderDevice::get_stats() { return stats; }
+
+DataFormat RenderDevice::get_color_attachment_format() {
+	return s_instance->color_attachment_format;
+}
+
+DataFormat RenderDevice::get_depth_attachment_format() {
+	return s_instance->depth_image_format;
+}
+
+Ref<RenderBackend> RenderDevice::get_backend() { return s_instance->backend; }
+
 void RenderDevice::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 	GL_PROFILE_SCOPE;
 
@@ -230,7 +276,8 @@ void RenderDevice::_imgui_init() {
 	ImGuiIO& io = ImGui::GetIO();
 	(void)io;
 
-	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |=
+			ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
 	io.IniFilename = ".glitch/imgui.ini";
 
 	io.Fonts->Clear();
@@ -250,7 +297,25 @@ void RenderDevice::_imgui_init() {
 
 void RenderDevice::_request_resize() {
 	GL_PROFILE_SCOPE_N("RenderDevice::Swapchain Resize");
-	backend->swapchain_resize(graphics_queue, swapchain, window->get_size());
+
+	glm::uvec2 new_size = window->get_size();
+
+	backend->swapchain_resize(graphics_queue, swapchain, new_size);
+
+	// Resize depth image as well
+	if (depth_image) {
+		backend->image_free(depth_image);
+	}
+
+	depth_image = backend->image_create(depth_image_format, new_size, nullptr,
+			IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+	for (auto& fb : swapchain_frame_buffers) {
+		backend->frame_buffer_destroy(fb);
+	}
+	swapchain_frame_buffers.clear();
+
+	swapchain_frame_buffers = get_swapchain_framebuffers(render_pass);
 }
 
 void RenderDevice::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }

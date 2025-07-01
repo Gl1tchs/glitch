@@ -1,7 +1,8 @@
 #include "glitch/platform/vulkan/vk_backend.h"
+
 #include "glitch/renderer/types.h"
+
 #include <vulkan/vulkan_core.h>
-#include <algorithm>
 
 static const VkPrimitiveTopology GL_TO_VK_PRIMITIVE[RENDER_PRIMITIVE_MAX] = {
 	VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
@@ -185,23 +186,71 @@ static VkPipelineCache _load_pipeline_cache(VkDevice p_device,
 	return vk_pipeline_cache;
 }
 
-Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
-		RenderPrimitive p_render_primitive,
-		PipelineVertexInputState p_vertex_input_state,
-		PipelineRasterizationState p_rasterization_state,
-		PipelineMultisampleState p_multisample_state,
-		PipelineDepthStencilState p_depth_stencil_state,
-		PipelineColorBlendState p_blend_state,
-		BitField<PipelineDynamicStateFlags> p_dynamic_state,
-		RenderingState p_rendering_state) {
-	// input assembly state
+static VkPipelineVertexInputStateCreateInfo _get_vertex_input_state_info(
+		VulkanRenderBackend* backend, Shader p_shader,
+		PipelineVertexInputState p_vertex_input_state) {
+	VkVertexInputBindingDescription vertex_binding = {};
+	std::vector<VkVertexInputAttributeDescription> vertex_attributes;
+
+	// only populate if there is any vertex input configured
+	if (p_vertex_input_state.stride != 0) {
+		vertex_binding.binding = 0;
+		vertex_binding.stride = p_vertex_input_state.stride;
+		vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		for (const auto& input : backend->shader_get_vertex_inputs(p_shader)) {
+			VkVertexInputAttributeDescription attribute = {};
+			attribute.binding = 0;
+			attribute.format = static_cast<VkFormat>(input.format);
+			attribute.location = input.location;
+			attribute.offset = 0;
+
+			vertex_attributes.push_back(attribute);
+		}
+
+		// attributes should be sorted by location then assign the offsets
+		std::sort(vertex_attributes.begin(), vertex_attributes.end(),
+				[](const auto& lhs, const auto& rhs) {
+					return lhs.location < rhs.location;
+				});
+
+		uint32_t offset = 0;
+		for (auto& attr : vertex_attributes) {
+			size_t data_size =
+					get_data_format_size(static_cast<DataFormat>(attr.format));
+			GL_ASSERT(
+					data_size != 0, "Unsupported data type to calculate size.");
+
+			attr.offset = offset;
+			offset += data_size;
+		}
+	}
+
+	VkPipelineVertexInputStateCreateInfo vertex_info = {};
+	vertex_info.sType =
+			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertex_info.vertexBindingDescriptionCount =
+			p_vertex_input_state.stride != 0 ? 1 : 0;
+	vertex_info.pVertexBindingDescriptions = &vertex_binding;
+	vertex_info.vertexAttributeDescriptionCount = vertex_attributes.size();
+	vertex_info.pVertexAttributeDescriptions = vertex_attributes.data();
+
+	return vertex_info;
+}
+
+static VkPipelineInputAssemblyStateCreateInfo _get_input_assembly_state_info(
+		RenderPrimitive p_render_primitive) {
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
 	input_assembly.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	input_assembly.topology = GL_TO_VK_PRIMITIVE[p_render_primitive];
 	input_assembly.primitiveRestartEnable = false;
 
-	// rasterizer state
+	return input_assembly;
+}
+
+static VkPipelineRasterizationStateCreateInfo _get_rasterization_state_info(
+		PipelineRasterizationState p_rasterization_state) {
 	VkPipelineRasterizationStateCreateInfo rasterizer = {};
 	rasterizer.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -222,7 +271,11 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 			p_rasterization_state.depth_bias_slope_factor;
 	rasterizer.lineWidth = p_rasterization_state.line_width;
 
-	// multisampling state
+	return rasterizer;
+}
+
+static VkPipelineMultisampleStateCreateInfo _get_multisampling_state_info(
+		PipelineMultisampleState p_multisample_state) {
 	VkPipelineMultisampleStateCreateInfo multisampling = {};
 	multisampling.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -237,7 +290,11 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 			p_multisample_state.enable_alpha_to_coverage;
 	multisampling.alphaToOneEnable = p_multisample_state.enable_alpha_to_one;
 
-	// depth stencil state
+	return multisampling;
+}
+
+static VkPipelineDepthStencilStateCreateInfo _get_depth_stencil_state_info(
+		PipelineDepthStencilState p_depth_stencil_state) {
 	VkPipelineDepthStencilStateCreateInfo depth_stencil = {};
 	depth_stencil.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -282,7 +339,11 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 
 	depth_stencil.back = back_stencil_state;
 
-	// color blend attachment
+	return depth_stencil;
+}
+
+static std::vector<VkPipelineColorBlendAttachmentState>
+_get_color_blend_attachments(PipelineColorBlendState p_blend_state) {
 	std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
 	for (const auto& attachment : p_blend_state.attachments) {
 		VkPipelineColorBlendAttachmentState vk_attachment = {};
@@ -316,21 +377,30 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 		color_blend_attachments.push_back(vk_attachment);
 	}
 
+	return color_blend_attachments;
+}
+
+static VkPipelineColorBlendStateCreateInfo _get_color_blend_state_info(
+		PipelineColorBlendState p_blend_state,
+		const std::vector<VkPipelineColorBlendAttachmentState>& p_attachments) {
 	VkPipelineColorBlendStateCreateInfo color_blend = {};
 	color_blend.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	color_blend.logicOpEnable = p_blend_state.enable_logic_op;
 	color_blend.logicOp = GL_TO_VK_LOGIC_OP[p_blend_state.logic_op];
-	color_blend.attachmentCount =
-			static_cast<uint32_t>(color_blend_attachments.size());
-	color_blend.pAttachments = color_blend_attachments.data();
+	color_blend.attachmentCount = static_cast<uint32_t>(p_attachments.size());
+	color_blend.pAttachments = p_attachments.data();
 
 	color_blend.blendConstants[0] = p_blend_state.blend_constant.x;
 	color_blend.blendConstants[1] = p_blend_state.blend_constant.y;
 	color_blend.blendConstants[2] = p_blend_state.blend_constant.z;
 	color_blend.blendConstants[3] = p_blend_state.blend_constant.w;
 
-	// dynamic state
+	return color_blend;
+}
+
+static std::vector<VkDynamicState> _get_dynamic_states(
+		BitField<PipelineDynamicStateFlags> p_dynamic_state) {
 	std::vector<VkDynamicState> states = {
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
@@ -358,12 +428,77 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 		states.push_back(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	}
 
+	return states;
+}
+
+static VkPipelineDynamicStateCreateInfo _get_dynamic_state_info(
+		const std::vector<VkDynamicState>& p_states) {
 	VkPipelineDynamicStateCreateInfo dynamic_state = {};
 	dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamic_state.dynamicStateCount = static_cast<uint32_t>(states.size());
-	dynamic_state.pDynamicStates = states.data();
+	dynamic_state.dynamicStateCount = static_cast<uint32_t>(p_states.size());
+	dynamic_state.pDynamicStates = p_states.data();
 
-	// rendering state
+	return dynamic_state;
+}
+
+constexpr static VkPipelineViewportStateCreateInfo _get_viewport_state() {
+	VkPipelineViewportStateCreateInfo viewport_state = {};
+	viewport_state.sType =
+			VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewport_state.viewportCount = 1;
+	viewport_state.scissorCount = 1;
+
+	return viewport_state;
+}
+
+Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
+		RenderPrimitive p_render_primitive,
+		PipelineVertexInputState p_vertex_input_state,
+		PipelineRasterizationState p_rasterization_state,
+		PipelineMultisampleState p_multisample_state,
+		PipelineDepthStencilState p_depth_stencil_state,
+		PipelineColorBlendState p_blend_state,
+		BitField<PipelineDynamicStateFlags> p_dynamic_state,
+		RenderingState p_rendering_state) {
+	// Vertex info
+	const VkPipelineVertexInputStateCreateInfo vertex_info =
+			_get_vertex_input_state_info(this, p_shader, p_vertex_input_state);
+
+	// Input assembly state
+	const VkPipelineInputAssemblyStateCreateInfo input_assembly =
+			_get_input_assembly_state_info(p_render_primitive);
+
+	// Rasterizer state
+	const VkPipelineRasterizationStateCreateInfo rasterizer =
+			_get_rasterization_state_info(p_rasterization_state);
+
+	// Multisampling state
+	const VkPipelineMultisampleStateCreateInfo multisampling =
+			_get_multisampling_state_info(p_multisample_state);
+
+	// Depth stencil state
+	const VkPipelineDepthStencilStateCreateInfo depth_stencil =
+			_get_depth_stencil_state_info(p_depth_stencil_state);
+
+	// Color blend attachment
+	const std::vector<VkPipelineColorBlendAttachmentState>
+			color_blend_attachments =
+					_get_color_blend_attachments(p_blend_state);
+	const VkPipelineColorBlendStateCreateInfo color_blend =
+			_get_color_blend_state_info(p_blend_state, color_blend_attachments);
+
+	// Dynamic state
+	const std::vector<VkDynamicState> dynamic_states =
+			_get_dynamic_states(p_dynamic_state);
+
+	const VkPipelineDynamicStateCreateInfo dynamic_state =
+			_get_dynamic_state_info(dynamic_states);
+
+	// Viewport state
+	const VkPipelineViewportStateCreateInfo viewport_state =
+			_get_viewport_state();
+
+	// Rendering state
 	std::vector<VkFormat> vk_color_attachments;
 	for (size_t i = 0; i < p_rendering_state.color_attachments.size(); i++) {
 		vk_color_attachments.push_back(
@@ -378,63 +513,95 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 	rendering_info.depthAttachmentFormat =
 			static_cast<VkFormat>(p_rendering_state.depth_attachment);
 
-	VkVertexInputBindingDescription vertex_binding = {};
-	std::vector<VkVertexInputAttributeDescription> vertex_attributes;
-
-	// only populate if there is any vertex input configured
-	if (p_vertex_input_state.stride != 0) {
-		vertex_binding.binding = 0;
-		vertex_binding.stride = p_vertex_input_state.stride;
-		vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		for (const auto& input : shader_get_vertex_inputs(p_shader)) {
-			VkVertexInputAttributeDescription attribute = {};
-			attribute.binding = 0;
-			attribute.format = static_cast<VkFormat>(input.format);
-			attribute.location = input.location;
-			attribute.offset = 0;
-
-			vertex_attributes.push_back(attribute);
-		}
-
-		// attributes should be sorted by location then assign the offsets
-		std::sort(vertex_attributes.begin(), vertex_attributes.end(),
-				[](const auto& lhs, const auto& rhs) {
-					return lhs.location < rhs.location;
-				});
-
-		uint32_t offset = 0;
-		for (auto& attr : vertex_attributes) {
-			size_t data_size =
-					get_data_format_size(static_cast<DataFormat>(attr.format));
-			GL_ASSERT(
-					data_size != 0, "Unsupported data type to calculate size.");
-
-			attr.offset = offset;
-			offset += data_size;
-		}
-	}
-
-	VkPipelineVertexInputStateCreateInfo vertex_info = {};
-	vertex_info.sType =
-			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertex_info.vertexBindingDescriptionCount =
-			p_vertex_input_state.stride != 0 ? 1 : 0;
-	vertex_info.pVertexBindingDescriptions = &vertex_binding;
-	vertex_info.vertexAttributeDescriptionCount = vertex_attributes.size();
-	vertex_info.pVertexAttributeDescriptions = vertex_attributes.data();
-
-	VkPipelineViewportStateCreateInfo viewport_state = {};
-	viewport_state.sType =
-			VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewport_state.viewportCount = 1;
-	viewport_state.scissorCount = 1;
-
 	VulkanShader* shader = (VulkanShader*)p_shader;
 
 	VkGraphicsPipelineCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	create_info.pNext = &rendering_info,
+	create_info.stageCount =
+			static_cast<uint32_t>(shader->stage_create_infos.size());
+	create_info.pStages = shader->stage_create_infos.data();
+	create_info.pVertexInputState = &vertex_info;
+	create_info.pInputAssemblyState = &input_assembly;
+	create_info.pViewportState = &viewport_state;
+	create_info.pRasterizationState = &rasterizer;
+	create_info.pMultisampleState = &multisampling;
+	create_info.pDepthStencilState = &depth_stencil;
+	create_info.pColorBlendState = &color_blend;
+	create_info.pDynamicState = &dynamic_state;
+	create_info.layout = shader->pipeline_layout;
+
+	std::string cache_path =
+			std::format(".glitch/cache/{}.cache", shader->shader_hash);
+
+	VkPipelineCache vk_pipeline_cache = _load_pipeline_cache(
+			device, cache_path, physical_device_properties);
+
+	VkPipeline vk_pipeline = VK_NULL_HANDLE;
+	VK_CHECK(vkCreateGraphicsPipelines(
+			device, vk_pipeline_cache, 1, &create_info, nullptr, &vk_pipeline));
+
+	VulkanPipeline* pipeline =
+			VersatileResource::allocate<VulkanPipeline>(resources_allocator);
+	pipeline->vk_pipeline = vk_pipeline;
+	pipeline->vk_pipeline_cache = vk_pipeline_cache;
+	pipeline->shader_hash = shader->shader_hash;
+
+	return Pipeline(pipeline);
+}
+
+Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
+		RenderPass p_render_pass, RenderPrimitive p_render_primitive,
+		PipelineVertexInputState p_vertex_input_state,
+		PipelineRasterizationState p_rasterization_state,
+		PipelineMultisampleState p_multisample_state,
+		PipelineDepthStencilState p_depth_stencil_state,
+		PipelineColorBlendState p_blend_state,
+		BitField<PipelineDynamicStateFlags> p_dynamic_state) {
+	// Vertex info
+	const VkPipelineVertexInputStateCreateInfo vertex_info =
+			_get_vertex_input_state_info(this, p_shader, p_vertex_input_state);
+
+	// Input assembly state
+	const VkPipelineInputAssemblyStateCreateInfo input_assembly =
+			_get_input_assembly_state_info(p_render_primitive);
+
+	// Rasterizer state
+	const VkPipelineRasterizationStateCreateInfo rasterizer =
+			_get_rasterization_state_info(p_rasterization_state);
+
+	// Multisampling state
+	const VkPipelineMultisampleStateCreateInfo multisampling =
+			_get_multisampling_state_info(p_multisample_state);
+
+	// Depth stencil state
+	const VkPipelineDepthStencilStateCreateInfo depth_stencil =
+			_get_depth_stencil_state_info(p_depth_stencil_state);
+
+	// Color blend attachment
+	const std::vector<VkPipelineColorBlendAttachmentState>
+			color_blend_attachments =
+					_get_color_blend_attachments(p_blend_state);
+	const VkPipelineColorBlendStateCreateInfo color_blend =
+			_get_color_blend_state_info(p_blend_state, color_blend_attachments);
+
+	// Dynamic state
+	const std::vector<VkDynamicState> dynamic_states =
+			_get_dynamic_states(p_dynamic_state);
+
+	const VkPipelineDynamicStateCreateInfo dynamic_state =
+			_get_dynamic_state_info(dynamic_states);
+
+	// Viewport state
+	const VkPipelineViewportStateCreateInfo viewport_state =
+			_get_viewport_state();
+
+	VulkanShader* shader = (VulkanShader*)p_shader;
+	VulkanRenderPass* render_pass = (VulkanRenderPass*)p_render_pass;
+
+	VkGraphicsPipelineCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	create_info.renderPass = render_pass->vk_render_pass;
 	create_info.stageCount =
 			static_cast<uint32_t>(shader->stage_create_infos.size());
 	create_info.pStages = shader->stage_create_infos.data();

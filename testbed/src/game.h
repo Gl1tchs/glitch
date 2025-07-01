@@ -4,8 +4,15 @@
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/renderer/renderer.h>
+#include <glitch/scene_graph/gltf_loader.h>
 
 #include "camera_controller.h"
+
+struct GridPushConstants {
+	glm::mat4 view_proj;
+	glm::vec3 camera_pos;
+	float grid_size;
+};
 
 class Game : public Application {
 public:
@@ -32,4 +39,7 @@ private:
 	CameraController camera_controller;
 	PerspectiveCamera camera;
 	Transform camera_transform;
+
+	Shader grid_shader;
+	Pipeline grid_pipeline;
 };
