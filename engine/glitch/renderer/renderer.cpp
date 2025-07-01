@@ -49,21 +49,21 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 	CommandBuffer cmd = device->begin_render();
 	{
+		backend->command_begin_render_pass(cmd, device->get_render_pass(),
+				device->get_current_frame_buffer(), device->get_draw_extent());
+
 		// TODO: this should probably has their own render pass and a priority
 		// parameter should be given
 		for (auto& render_func : render_funcs) {
-			render_func(cmd, device->get_current_image_index());
+			render_func(cmd);
 		}
 		render_funcs.clear();
-
-		backend->command_begin_rendering(cmd, device->get_draw_extent(),
-				device->get_draw_image(), device->get_depth_image());
 
 		// Render nodes individually
 		// TODO: preprocess and do an instanced rendering and ibl
 		_traverse_node_render(cmd, p_ctx.scene_graph->get_root());
 
-		backend->command_end_rendering(cmd);
+		backend->command_end_render_pass(cmd);
 	}
 	device->end_render();
 
@@ -74,7 +74,7 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 #endif
 }
 
-void Renderer::add_custom_pass(RenderFunc&& p_func) {
+void Renderer::submit_func(RenderFunc&& p_func) {
 	render_funcs.push_back(p_func);
 }
 

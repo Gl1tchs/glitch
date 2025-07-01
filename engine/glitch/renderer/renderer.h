@@ -24,7 +24,7 @@ struct PushConstants {
  */
 class GL_API Renderer {
 public:
-	using RenderFunc = std::function<void(CommandBuffer, uint32_t)>;
+	using RenderFunc = std::function<void(CommandBuffer)>;
 
 	Renderer();
 	~Renderer();
@@ -34,7 +34,7 @@ public:
 	/**
 	 * Push a rendering function into stack using a render pass
 	 */
-	void add_custom_pass(RenderFunc&& p_func);
+	void submit_func(RenderFunc&& p_func);
 
 private:
 	void _preprocess_render(const DrawingContext& p_ctx);

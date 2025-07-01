@@ -40,8 +40,6 @@ private:
 	PerspectiveCamera camera;
 	Transform camera_transform;
 
-	RenderPass grid_pass;
-	std::vector<FrameBuffer> grid_fbs;
 	Shader grid_shader;
 	Pipeline grid_pipeline;
 };

@@ -75,29 +75,30 @@ public:
 
 	glm::uvec2 get_draw_extent() const;
 
-	uint32_t get_current_image_index() const { return image_index; }
+	std::vector<FrameBuffer> get_swapchain_framebuffers(
+			RenderPass p_render_pass);
 
-	Swapchain get_swapchain() { return swapchain; }
+	RenderPass get_render_pass();
 
-	Image get_draw_image() { return current_swapchain_image; }
+	FrameBuffer get_current_frame_buffer();
 
-	Image get_depth_image() { return depth_image; }
+	uint32_t get_current_image_index() const;
 
-	RenderStats& get_stats() { return stats; }
+	Swapchain get_swapchain();
 
-	static DataFormat get_color_attachment_format() {
-		return s_instance->color_attachment_format;
-	}
+	Image get_draw_image();
 
-	static DataFormat get_depth_attachment_format() {
-		return s_instance->depth_image_format;
-	}
+	Image get_depth_image();
 
-	static Ref<RenderBackend> get_backend() { return s_instance->backend; }
+	RenderStats& get_stats();
+
+	static DataFormat get_color_attachment_format();
+
+	static DataFormat get_depth_attachment_format();
+
+	static Ref<RenderBackend> get_backend();
 
 private:
-	void _geometry_pass(CommandBuffer p_cmd);
-
 	void _imgui_pass(CommandBuffer p_cmd, Image p_target_image);
 
 private:
@@ -123,17 +124,19 @@ private:
 	CommandQueue present_queue;
 
 	Swapchain swapchain;
+
 	uint32_t image_index = 0;
+	Image current_swapchain_image = nullptr;
+
+	RenderPass render_pass;
+	std::vector<FrameBuffer> swapchain_frame_buffers;
 
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 
-	uint32_t frame_number = 0;
-
-	Image current_swapchain_image;
 	DataFormat color_attachment_format;
 
-	Image depth_image;
+	Image depth_image = GL_NULL_HANDLE;
 	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;
 
 	// imgui data
@@ -141,4 +144,5 @@ private:
 
 	// misc
 	RenderStats stats = {};
+	uint32_t frame_number = 0;
 };

@@ -32,7 +32,7 @@
             "program": "${workspaceFolder}/out/glitch-testbed.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/testbed",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "externalTerminal"
         }

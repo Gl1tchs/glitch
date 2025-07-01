@@ -20,7 +20,13 @@ public:
 				std::future_status::ready;
 	}
 
-	T get() { return fut.get(); }
+	Optional<T> get() {
+		if (fut.valid()) {
+			return fut.get();
+		}
+
+		return {};
+	}
 
 private:
 	std::future<T> fut;

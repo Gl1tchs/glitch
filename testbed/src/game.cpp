@@ -21,42 +21,6 @@ void Game::_on_start() {
 
 	camera_controller.set_camera(&camera, &camera_transform);
 
-	auto device = get_rendering_device();
-	auto backend = device->get_backend();
-
-	std::vector<RenderPassAttachment> attachments = {
-		{
-				.format = device->get_color_attachment_format(),
-		},
-		{
-				.format = device->get_depth_attachment_format(),
-				.is_depth_attachment = true,
-		},
-	};
-
-	std::vector<SubpassInfo> subpasses = {
-		{
-				{
-						{ 0, SUBPASS_ATTACHMENT_COLOR },
-						{ 1, SUBPASS_ATTACHMENT_DEPTH_STENCIL },
-				},
-		},
-	};
-
-	grid_pass = backend->render_pass_create(attachments, subpasses);
-
-	// TODO: make this useful and not bloated
-	Swapchain swapchain = device->get_swapchain();
-	for (const auto& attachment : backend->swapchain_get_images(swapchain)) {
-		std::vector<Image> fb_attachments = {
-			attachment,
-			device->get_depth_image(),
-		};
-
-		grid_fbs.push_back(backend->frame_buffer_create(
-				grid_pass, fb_attachments, device->get_draw_extent()));
-	}
-
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
@@ -70,7 +34,7 @@ void Game::_on_start() {
 					.with_depth_test(
 							COMPARE_OP_LESS, false) // without depth write
 					.with_blend()
-					.build(grid_pass);
+					.build();
 
 	grid_shader = shader;
 	grid_pipeline = pipeline;
@@ -100,18 +64,16 @@ void Game::_on_update(float p_dt) {
 	}
 
 	if (scene_fut.is_ready()) {
-		Ref<SceneNode> scene = scene_fut.get();
+		Ref<SceneNode> scene =
+				scene_fut.get()
+						.value(); // safe to call .value because of .is_ready
 		scene->transform.scale *= 0.5f;
 
 		scene_graph.get_root()->add_child(scene);
 	}
 
-	renderer->add_custom_pass([&](CommandBuffer cmd, uint32_t image_index) {
+	renderer->submit_func([&](CommandBuffer cmd) {
 		auto backend = get_rendering_device()->get_backend();
-
-		backend->command_begin_render_pass(cmd, grid_pass,
-				grid_fbs[image_index],
-				get_rendering_device()->get_draw_extent());
 
 		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
 
@@ -125,8 +87,6 @@ void Game::_on_update(float p_dt) {
 				sizeof(GridPushConstants), &push_constants);
 
 		backend->command_draw(cmd, 6);
-
-		backend->command_end_render_pass(cmd);
 	});
 
 	DrawingContext ctx;
@@ -140,12 +100,9 @@ void Game::_on_update(float p_dt) {
 void Game::_on_destroy() {
 	auto backend = get_rendering_device()->get_backend();
 
-	backend->device_wait();
+	scene_fut.get();
 
-	for (auto& grid_fb : grid_fbs) {
-		backend->frame_buffer_destroy(grid_fb);
-	}
-	backend->render_pass_destroy(grid_pass);
+	backend->device_wait();
 
 	backend->pipeline_free(grid_pipeline);
 	backend->shader_free(grid_shader);
