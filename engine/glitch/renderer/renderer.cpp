@@ -3,7 +3,6 @@
 #include "glitch/core/application.h"
 #include "glitch/core/transform.h"
 #include "glitch/renderer/camera.h"
-#include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
 
 #ifdef GL_DEBUG_BUILD

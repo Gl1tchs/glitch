@@ -5,10 +5,8 @@
 #pragma once
 
 #include "glitch/core/window.h"
-
+#include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
-
-class RenderBackend;
 
 enum GraphicsAPI {
 	GRAPHICS_API_VULKAN,

@@ -275,7 +275,8 @@ public:
 
 	// ImGui
 
-	virtual void imgui_init_for_platform(GLFWwindow* p_glfw_window) = 0;
+	virtual void imgui_init_for_platform(
+			GLFWwindow* p_glfw_window, DataFormat p_color_format) = 0;
 
 	virtual void imgui_render_for_platform(CommandBuffer p_cmd) = 0;
 

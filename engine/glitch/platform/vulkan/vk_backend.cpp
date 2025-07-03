@@ -187,7 +187,8 @@ void VulkanRenderBackend::shutdown() { deletion_queue.flush(); }
 
 void VulkanRenderBackend::device_wait() { vkDeviceWaitIdle(device); }
 
-void VulkanRenderBackend::imgui_init_for_platform(GLFWwindow* p_glfw_window) {
+void VulkanRenderBackend::imgui_init_for_platform(
+		GLFWwindow* p_glfw_window, DataFormat p_color_format) {
 	VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
@@ -217,8 +218,8 @@ void VulkanRenderBackend::imgui_init_for_platform(GLFWwindow* p_glfw_window) {
 	init_info.Device = device;
 	init_info.Queue = graphics_queue.queue;
 	init_info.DescriptorPool = imgui_pool;
-	init_info.MinImageCount = 3;
-	init_info.ImageCount = 3;
+	init_info.MinImageCount = 2;
+	init_info.ImageCount = 2;
 	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	// dynamic rendering parameters for imgui to use
 	init_info.UseDynamicRendering = true;
@@ -226,7 +227,8 @@ void VulkanRenderBackend::imgui_init_for_platform(GLFWwindow* p_glfw_window) {
 	init_info.PipelineRenderingCreateInfo.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 	init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-	static VkFormat color_attachment = VK_FORMAT_R8G8B8A8_UNORM;
+
+	static VkFormat color_attachment = static_cast<VkFormat>(p_color_format);
 	init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats =
 			&color_attachment;
 

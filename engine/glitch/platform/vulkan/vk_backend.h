@@ -342,7 +342,8 @@ public:
 
 	// ImGui
 
-	void imgui_init_for_platform(GLFWwindow* p_glfw_window) override;
+	void imgui_init_for_platform(
+			GLFWwindow* p_glfw_window, DataFormat p_color_format) override;
 
 	void imgui_render_for_platform(CommandBuffer p_cmd) override;
 

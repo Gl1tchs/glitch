@@ -35,6 +35,11 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
 
 	swapchain = backend->swapchain_create();
+
+	// Resize swapchain to actualize swapchain format
+	glm::uvec2 new_size = window->get_size();
+	backend->swapchain_resize(graphics_queue, swapchain, new_size);
+
 	color_attachment_format = backend->swapchain_get_format(swapchain);
 
 	render_pass =
@@ -264,9 +269,9 @@ void RenderDevice::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 
 	backend->command_begin_rendering(
 			p_cmd, backend->swapchain_get_extent(swapchain), p_target_image);
-	{
-		backend->imgui_render_for_platform(p_cmd);
-	}
+
+	backend->imgui_render_for_platform(p_cmd);
+
 	backend->command_end_rendering(p_cmd);
 }
 
@@ -282,7 +287,8 @@ void RenderDevice::_imgui_init() {
 
 	io.Fonts->Clear();
 
-	backend->imgui_init_for_platform(window->get_native_window());
+	backend->imgui_init_for_platform(
+			window->get_native_window(), color_attachment_format);
 
 	// ImGui style changes
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -299,7 +305,6 @@ void RenderDevice::_request_resize() {
 	GL_PROFILE_SCOPE_N("RenderDevice::Swapchain Resize");
 
 	glm::uvec2 new_size = window->get_size();
-
 	backend->swapchain_resize(graphics_queue, swapchain, new_size);
 
 	// Resize depth image as well

@@ -127,15 +127,7 @@ DataFormat VulkanRenderBackend::swapchain_get_format(Swapchain p_swapchain) {
 	GL_ASSERT(p_swapchain != nullptr);
 
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
-	switch (swapchain->format) {
-		case VK_FORMAT_B8G8R8A8_UNORM:
-			return DATA_FORMAT_B8G8R8A8_UNORM;
-		case VK_FORMAT_R8G8B8A8_UNORM:
-			return DATA_FORMAT_R8G8B8A8_UNORM;
-		default:
-			GL_ASSERT(false, "Unknown swapchain format.");
-			return DATA_FORMAT_MAX;
-	}
+	return static_cast<DataFormat>(swapchain->format);
 }
 
 void VulkanRenderBackend::swapchain_free(Swapchain p_swapchain) {
