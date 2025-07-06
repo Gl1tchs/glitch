@@ -165,13 +165,24 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 			VK_VERSION_PATCH(physical_device_properties.apiVersion));
 #endif
 
-	imm_fence = fence_create();
-	imm_command_pool = command_pool_create((CommandQueue)&transfer_queue);
-	imm_command_buffer = command_pool_allocate(imm_command_pool);
+	imm_transfer.fence = fence_create();
+	imm_transfer.command_pool =
+			command_pool_create((CommandQueue)&transfer_queue);
+	imm_transfer.command_buffer =
+			command_pool_allocate(imm_transfer.command_pool);
+
+	imm_graphics.fence = fence_create();
+	imm_graphics.command_pool =
+			command_pool_create((CommandQueue)&graphics_queue);
+	imm_graphics.command_buffer =
+			command_pool_allocate(imm_graphics.command_pool);
 
 	deletion_queue.push_function([this]() {
-		command_pool_free(imm_command_pool);
-		fence_free(imm_fence);
+		fence_free(imm_transfer.fence);
+		command_pool_free(imm_transfer.command_pool);
+
+		fence_free(imm_graphics.fence);
+		command_pool_free(imm_graphics.command_pool);
 	});
 
 	deletion_queue.push_function([this]() {

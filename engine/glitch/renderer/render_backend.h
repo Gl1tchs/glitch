@@ -53,12 +53,15 @@ public:
 
 	virtual DataFormat image_get_format(Image p_image) = 0;
 
+	virtual uint32_t image_get_mip_levels(Image p_image) = 0;
+
 	virtual Sampler sampler_create(
 			ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
 			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
 			ImageWrappingMode p_wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
-			ImageWrappingMode p_wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE) = 0;
+			ImageWrappingMode p_wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			uint32_t p_mip_levels = 0) = 0;
 
 	virtual void sampler_free(Sampler p_sampler) = 0;
 
@@ -171,7 +174,8 @@ public:
 	// Commands
 
 	virtual void command_immediate_submit(
-			std::function<void(CommandBuffer p_cmd)>&& p_function) = 0;
+			std::function<void(CommandBuffer p_cmd)>&& p_function,
+			QueueType p_queue_type = QUEUE_TYPE_TRANSFER) = 0;
 
 	virtual CommandPool command_pool_create(CommandQueue p_queue) = 0;
 
@@ -268,10 +272,13 @@ public:
 
 	virtual void command_copy_image_to_image(CommandBuffer p_cmd,
 			Image p_src_image, Image p_dst_image,
-			const glm::uvec2& p_src_extent, const glm::uvec2& p_dst_extent) = 0;
+			const glm::uvec2& p_src_extent, const glm::uvec2& p_dst_extent,
+			uint32_t p_src_mip_level = 0, uint32_t p_dst_mip_level = 0) = 0;
 
 	virtual void command_transition_image(CommandBuffer p_cmd, Image p_image,
-			ImageLayout p_current_layout, ImageLayout p_new_layout) = 0;
+			ImageLayout p_current_layout, ImageLayout p_new_layout,
+			uint32_t p_base_mip_level = 0,
+			uint32_t p_level_count = GL_REMAINING_MIP_LEVELS) = 0;
 
 	// ImGui
 

@@ -23,11 +23,11 @@ Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 
 	Ref<Texture> tx = create_ref<Texture>();
 	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
-	tx->image = backend->image_create(
-			DATA_FORMAT_R8G8B8A8_UNORM, p_size, &color_data);
-	tx->sampler =
-			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
-					p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
+	tx->image = backend->image_create(DATA_FORMAT_R8G8B8A8_UNORM, p_size,
+			&color_data, IMAGE_USAGE_SAMPLED_BIT, true);
+	tx->sampler = backend->sampler_create(p_sampler.min_filter,
+			p_sampler.mag_filter, p_sampler.wrap_u, p_sampler.wrap_v,
+			p_sampler.wrap_w, backend->image_get_mip_levels(tx->image));
 
 	return tx;
 }
@@ -38,10 +38,11 @@ Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
 
 	Ref<Texture> tx = create_ref<Texture>();
 	tx->format = p_format;
-	tx->image = backend->image_create(p_format, p_size, p_data);
-	tx->sampler =
-			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
-					p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
+	tx->image = backend->image_create(
+			p_format, p_size, p_data, IMAGE_USAGE_SAMPLED_BIT, true);
+	tx->sampler = backend->sampler_create(p_sampler.min_filter,
+			p_sampler.mag_filter, p_sampler.wrap_u, p_sampler.wrap_v,
+			p_sampler.wrap_w, backend->image_get_mip_levels(tx->image));
 
 	return tx;
 }

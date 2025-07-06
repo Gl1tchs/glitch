@@ -17,7 +17,11 @@ Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
 void Game::_on_start() {
 	renderer = create_ref<Renderer>();
 
-	scene_fut = gltf_loader.load_gltf_async(model_path);
+	Ref<SceneNode> scene = gltf_loader.load_gltf(model_path);
+	scene->transform.scale *= 10.0f;
+	scene->transform.rotation.y = -1.0f;
+
+	scene_graph.get_root()->add_child(scene);
 
 	camera_controller.set_camera(&camera, &camera_transform);
 
@@ -63,15 +67,6 @@ void Game::_on_update(float p_dt) {
 		}
 	}
 
-	if (scene_fut.is_ready()) {
-		Ref<SceneNode> scene =
-				scene_fut.get()
-						.value(); // safe to call .value because of .is_ready
-		scene->transform.scale *= 0.5f;
-
-		scene_graph.get_root()->add_child(scene);
-	}
-
 	renderer->submit_func([&](CommandBuffer cmd) {
 		auto backend = get_rendering_device()->get_backend();
 
@@ -99,8 +94,6 @@ void Game::_on_update(float p_dt) {
 
 void Game::_on_destroy() {
 	auto backend = get_rendering_device()->get_backend();
-
-	scene_fut.get();
 
 	backend->device_wait();
 

@@ -52,6 +52,7 @@ public:
 		VmaAllocation allocation;
 		VkExtent3D image_extent;
 		VkFormat image_format;
+		uint32_t mip_levels;
 	};
 
 	Image image_create(DataFormat p_format, glm::uvec2 p_size,
@@ -65,12 +66,14 @@ public:
 
 	DataFormat image_get_format(Image p_image) override;
 
+	uint32_t image_get_mip_levels(Image p_image) override;
+
 	Sampler sampler_create(ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
 			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
 			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
 			ImageWrappingMode p_wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
-			ImageWrappingMode p_wrap_w =
-					IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE) override;
+			ImageWrappingMode p_wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			uint32_t p_mip_levels = 0) override;
 
 	void sampler_free(Sampler p_sampler) override;
 
@@ -241,7 +244,8 @@ public:
 	// Commands
 
 	void command_immediate_submit(
-			std::function<void(CommandBuffer p_cmd)>&& p_function) override;
+			std::function<void(CommandBuffer p_cmd)>&& p_function,
+			QueueType p_queue_type = QUEUE_TYPE_TRANSFER) override;
 
 	CommandPool command_pool_create(CommandQueue p_queue) override;
 
@@ -335,10 +339,13 @@ public:
 
 	void command_copy_image_to_image(CommandBuffer p_cmd, Image p_src_image,
 			Image p_dst_image, const glm::uvec2& p_src_extent,
-			const glm::uvec2& p_dst_extent) override;
+			const glm::uvec2& p_dst_extent, uint32_t p_src_mip_level = 0,
+			uint32_t p_dst_mip_level = 0) override;
 
 	void command_transition_image(CommandBuffer p_cmd, Image p_image,
-			ImageLayout p_current_layout, ImageLayout p_new_layout) override;
+			ImageLayout p_current_layout, ImageLayout p_new_layout,
+			uint32_t p_base_mip_level = 0,
+			uint32_t p_level_count = GL_REMAINING_MIP_LEVELS) override;
 
 	// ImGui
 
@@ -355,6 +362,9 @@ public:
 private:
 	Image _image_create(VkFormat p_format, VkExtent3D p_size,
 			BitField<VkImageUsageFlags> p_usage, bool p_mipmapped);
+
+	void _generate_image_mipmaps(
+			CommandBuffer p_cmd, Image p_image, glm::uvec2 p_size);
 
 	void _swapchain_release(VulkanSwapchain* p_swapchain);
 
@@ -397,9 +407,17 @@ private:
 	PagedAllocator<VersatileResource> resources_allocator;
 
 	// immediate commands
-	Fence imm_fence;
-	CommandBuffer imm_command_buffer;
-	CommandPool imm_command_pool;
+	struct ImmediateBuffer {
+		Fence fence;
+		CommandPool command_pool;
+		CommandBuffer command_buffer;
+	};
+
+	ImmediateBuffer imm_transfer;
+	std::mutex imm_cmd_transfer_mutex;
+
+	ImmediateBuffer imm_graphics;
+	std::mutex imm_cmd_graphics_mutex;
 
 	DeletionQueue deletion_queue;
 };

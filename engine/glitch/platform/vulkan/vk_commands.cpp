@@ -3,26 +3,40 @@
 #include <vulkan/vulkan_core.h>
 
 void VulkanRenderBackend::command_immediate_submit(
-		std::function<void(CommandBuffer p_cmd)>&& p_function) {
-	VK_CHECK(vkResetFences(device, 1, (VkFence*)&imm_fence));
+		std::function<void(CommandBuffer p_cmd)>&& p_function,
+		QueueType p_queue_type) {
+	std::mutex& cmd_mutex = (p_queue_type == QUEUE_TYPE_TRANSFER)
+			? imm_cmd_transfer_mutex
+			: imm_cmd_graphics_mutex;
 
-	command_reset(imm_command_buffer);
+	std::scoped_lock lock(cmd_mutex);
 
-	command_begin(imm_command_buffer);
+	ImmediateBuffer* imm = (p_queue_type == QUEUE_TYPE_TRANSFER)
+			? &imm_transfer
+			: &imm_graphics;
+
+	VK_CHECK(vkResetFences(device, 1, (VkFence*)&imm->fence));
+
+	command_reset(imm->command_buffer);
+
+	command_begin(imm->command_buffer);
 	{
 		// run the command
-		p_function(imm_command_buffer);
+		p_function(imm->command_buffer);
 	}
-	command_end(imm_command_buffer);
+	command_end(imm->command_buffer);
 
 	// submit command buffer to the queue and execute it.
 	// imm_fence will now block until the graphic commands finish
 	// execution
-	queue_submit(queue_get(QUEUE_TYPE_TRANSFER), imm_command_buffer, imm_fence);
+	queue_submit((p_queue_type == QUEUE_TYPE_TRANSFER)
+					? queue_get(QUEUE_TYPE_TRANSFER)
+					: queue_get(QUEUE_TYPE_GRAPHICS),
+			imm->command_buffer, imm->fence);
 
 	// wait till the operation finishes
-	VK_CHECK(
-			vkWaitForFences(device, 1, (VkFence*)&imm_fence, true, UINT64_MAX));
+	VK_CHECK(vkWaitForFences(
+			device, 1, (VkFence*)&imm->fence, true, UINT64_MAX));
 }
 
 CommandPool VulkanRenderBackend::command_pool_create(CommandQueue p_queue) {
@@ -382,7 +396,8 @@ void VulkanRenderBackend::command_copy_buffer_to_image(CommandBuffer p_cmd,
 
 void VulkanRenderBackend::command_copy_image_to_image(CommandBuffer p_cmd,
 		Image p_src_image, Image p_dst_image, const glm::uvec2& p_src_extent,
-		const glm::uvec2& p_dst_extent) {
+		const glm::uvec2& p_dst_extent, uint32_t p_src_mip_level,
+		uint32_t p_dst_mip_level) {
 	VkImageBlit2 blit_region = {};
 	blit_region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
 
@@ -397,12 +412,12 @@ void VulkanRenderBackend::command_copy_image_to_image(CommandBuffer p_cmd,
 	blit_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	blit_region.srcSubresource.baseArrayLayer = 0;
 	blit_region.srcSubresource.layerCount = 1;
-	blit_region.srcSubresource.mipLevel = 0;
+	blit_region.srcSubresource.mipLevel = p_src_mip_level;
 
 	blit_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	blit_region.dstSubresource.baseArrayLayer = 0;
 	blit_region.dstSubresource.layerCount = 1;
-	blit_region.dstSubresource.mipLevel = 0;
+	blit_region.dstSubresource.mipLevel = p_dst_mip_level;
 
 	VulkanImage* src_image = (VulkanImage*)p_src_image;
 	VulkanImage* dst_image = (VulkanImage*)p_dst_image;
@@ -421,7 +436,8 @@ void VulkanRenderBackend::command_copy_image_to_image(CommandBuffer p_cmd,
 }
 
 void VulkanRenderBackend::command_transition_image(CommandBuffer p_cmd,
-		Image p_image, ImageLayout p_current_layout, ImageLayout p_new_layout) {
+		Image p_image, ImageLayout p_current_layout, ImageLayout p_new_layout,
+		uint32_t p_base_mip_level, uint32_t p_level_count) {
 	VkImageAspectFlags aspect_mask =
 			(p_current_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL ||
 					p_new_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
@@ -436,8 +452,8 @@ void VulkanRenderBackend::command_transition_image(CommandBuffer p_cmd,
 
 	VkImageSubresourceRange sub_image = {};
 	sub_image.aspectMask = aspect_mask;
-	sub_image.baseMipLevel = 0;
-	sub_image.levelCount = VK_REMAINING_MIP_LEVELS;
+	sub_image.baseMipLevel = p_base_mip_level;
+	sub_image.levelCount = p_level_count;
 	sub_image.baseArrayLayer = 0;
 	sub_image.layerCount = VK_REMAINING_ARRAY_LAYERS;
 

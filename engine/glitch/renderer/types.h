@@ -27,6 +27,7 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(Fence)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore)
 
 #define GL_NULL_HANDLE nullptr
+#define GL_REMAINING_MIP_LEVELS (~0U)
 
 /**
  * Enum representing data formats in GPU
