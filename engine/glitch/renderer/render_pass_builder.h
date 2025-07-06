@@ -11,6 +11,8 @@ class RenderPassBuilder {
 public:
 	RenderPassBuilder();
 
+	RenderPassBuilder& add_attachment(RenderPassAttachment p_attachment);
+
 	RenderPassBuilder& add_color_attachment(DataFormat p_attachment);
 
 	RenderPassBuilder& add_depth_attachment(DataFormat p_attachment);

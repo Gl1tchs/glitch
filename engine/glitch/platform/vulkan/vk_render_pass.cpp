@@ -10,8 +10,10 @@ RenderPass VulkanRenderBackend::render_pass_create(
 		VkAttachmentDescription vk_attachment = {};
 		vk_attachment.format = static_cast<VkFormat>(attachment.format);
 		vk_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		vk_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		vk_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		vk_attachment.loadOp =
+				static_cast<VkAttachmentLoadOp>(attachment.load_op);
+		vk_attachment.storeOp =
+				static_cast<VkAttachmentStoreOp>(attachment.store_op);
 		vk_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		vk_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		vk_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

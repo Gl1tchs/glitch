@@ -44,7 +44,12 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 
 	render_pass =
 			RenderPassBuilder()
-					.add_color_attachment(color_attachment_format)
+					.add_attachment(RenderPassAttachment{
+							.format = color_attachment_format,
+							.load_op = ATTACHMENT_LOAD_OP_CLEAR,
+							.store_op = ATTACHMENT_STORE_OP_STORE,
+							.sample_count = 1,
+					})
 					.add_depth_attachment(depth_image_format)
 					.add_subpass({
 							{
