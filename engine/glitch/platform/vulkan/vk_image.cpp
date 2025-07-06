@@ -27,13 +27,20 @@ static BitField<VkImageUsageFlags> _gl_to_vk_image_usage_flags(
 
 Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
 		BitField<VkImageUsageFlags> p_usage, bool p_mipmapped) {
+	const uint32_t mip_levels = p_mipmapped
+			? static_cast<uint32_t>(std::floor(
+					  std::log2(std::max(p_size.width, p_size.height)))) +
+					1
+			: 1;
+
 	VkImageCreateInfo img_info = {};
 	img_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	img_info.pNext = nullptr;
 	img_info.imageType = VK_IMAGE_TYPE_2D;
 	img_info.format = p_format;
 	img_info.extent = p_size;
-	img_info.mipLevels = 1;
+	// Set mipmap levels
+	img_info.mipLevels = mip_levels;
 	img_info.arrayLayers = 1;
 	// for MSAA. we will not be using it by default, so default it to 1 sample
 	// per pixel.
@@ -41,12 +48,6 @@ Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
 	// optimal tiling, which means the image is stored on the best gpu format
 	img_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 	img_info.usage = p_usage;
-
-	if (p_mipmapped) {
-		img_info.mipLevels = static_cast<uint32_t>(std::floor(std::log2(
-									 std::max(p_size.width, p_size.height)))) +
-				1;
-	}
 
 	// always allocate images on dedicated GPU memory
 	VmaAllocationCreateInfo alloc_info = {};
@@ -76,7 +77,7 @@ Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
 	view_info.image = vk_image;
 	view_info.format = p_format;
 	view_info.subresourceRange.baseMipLevel = 0;
-	view_info.subresourceRange.levelCount = img_info.mipLevels;
+	view_info.subresourceRange.levelCount = mip_levels;
 	view_info.subresourceRange.baseArrayLayer = 0;
 	view_info.subresourceRange.layerCount = 1;
 	view_info.subresourceRange.aspectMask = aspect_flags;
@@ -90,10 +91,43 @@ Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
 	image->vk_image = vk_image;
 	image->vk_image_view = vk_image_view;
 	image->allocation = vma_allocation;
-	image->image_format = p_format;
 	image->image_extent = p_size;
+	image->image_format = p_format;
+	image->mip_levels = mip_levels;
 
 	return Image(image);
+}
+
+void VulkanRenderBackend::_generate_image_mipmaps(
+		CommandBuffer p_cmd, Image p_image, glm::uvec2 p_size) {
+	const uint32_t mip_levels = image_get_mip_levels(p_image);
+	int mip_width = p_size.x;
+	int mip_height = p_size.y;
+	for (uint32_t i = 1; i < mip_levels; i++) {
+		command_transition_image(p_cmd, p_image,
+				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1);
+
+		command_copy_image_to_image(p_cmd, p_image, p_image,
+				{ mip_width, mip_height },
+				{ mip_width > 1 ? mip_width / 2 : 1,
+						mip_height > 1 ? mip_height / 2 : 1 },
+				i - 1, i);
+
+		command_transition_image(p_cmd, p_image,
+				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, i - 1, 1);
+
+		if (mip_width > 1) {
+			mip_width /= 2;
+		}
+		if (mip_height > 1) {
+			mip_height /= 2;
+		}
+	}
+
+	command_transition_image(p_cmd, p_image, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mip_levels - 1, 1);
 }
 
 Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
@@ -126,32 +160,41 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 		Image new_image =
 				_image_create(vk_format, vk_size, image_usage, p_mipmapped);
 
-		command_immediate_submit([&](CommandBuffer p_cmd) {
-			command_transition_image(p_cmd, new_image, IMAGE_LAYOUT_UNDEFINED,
-					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		command_immediate_submit(
+				[&](CommandBuffer p_cmd) {
+					command_transition_image(p_cmd, new_image,
+							IMAGE_LAYOUT_UNDEFINED,
+							IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-			BufferImageCopyRegion copy_region = {};
-			copy_region.buffer_offset = 0;
-			copy_region.buffer_row_length = 0;
-			copy_region.buffer_image_height = 0;
-			copy_region.image_subresource = {};
-			copy_region.image_subresource.aspect_mask = IMAGE_ASPECT_COLOR_BIT;
-			copy_region.image_subresource.mip_level = 0;
-			copy_region.image_subresource.base_array_layer = 0;
-			copy_region.image_subresource.layer_count = 1;
-			copy_region.image_extent = { p_size.x, p_size.y, 1 };
-			copy_region.image_offset = { 0, 0, 0 };
+					BufferImageCopyRegion copy_region = {};
+					copy_region.buffer_offset = 0;
+					copy_region.buffer_row_length = 0;
+					copy_region.buffer_image_height = 0;
+					copy_region.image_subresource = {};
+					copy_region.image_subresource.aspect_mask =
+							IMAGE_ASPECT_COLOR_BIT;
+					copy_region.image_subresource.mip_level = 0;
+					copy_region.image_subresource.base_array_layer = 0;
+					copy_region.image_subresource.layer_count = 1;
+					copy_region.image_extent = { p_size.x, p_size.y, 1 };
+					copy_region.image_offset = { 0, 0, 0 };
 
-			VectorView<BufferImageCopyRegion> copy_view(copy_region);
+					VectorView<BufferImageCopyRegion> copy_view(copy_region);
 
-			// copy the buffer into the image
-			command_copy_buffer_to_image(
-					p_cmd, staging_buffer, new_image, copy_view);
+					// copy the buffer into the image
+					command_copy_buffer_to_image(
+							p_cmd, staging_buffer, new_image, copy_view);
 
-			command_transition_image(p_cmd, new_image,
-					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		});
+					// generate mipmaps
+					if (p_mipmapped) {
+						_generate_image_mipmaps(p_cmd, new_image, p_size);
+					} else {
+						command_transition_image(p_cmd, new_image,
+								IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+								IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+					}
+				},
+				QUEUE_TYPE_GRAPHICS);
 
 		buffer_free(staging_buffer);
 
@@ -181,9 +224,15 @@ DataFormat VulkanRenderBackend::image_get_format(Image p_image) {
 	return static_cast<DataFormat>(image->image_format);
 }
 
+uint32_t VulkanRenderBackend::image_get_mip_levels(Image p_image) {
+	VulkanImage* image = (VulkanImage*)p_image;
+	return image->mip_levels;
+}
+
 Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_min_filter,
 		ImageFiltering p_mag_filter, ImageWrappingMode p_wrap_u,
-		ImageWrappingMode p_wrap_v, ImageWrappingMode p_wrap_w) {
+		ImageWrappingMode p_wrap_v, ImageWrappingMode p_wrap_w,
+		uint32_t p_mip_levels) {
 	VkSamplerCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	create_info.minFilter = static_cast<VkFilter>(p_min_filter);
@@ -192,6 +241,13 @@ Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_min_filter,
 	create_info.addressModeU = static_cast<VkSamplerAddressMode>(p_wrap_u);
 	create_info.addressModeV = static_cast<VkSamplerAddressMode>(p_wrap_v);
 	create_info.addressModeW = static_cast<VkSamplerAddressMode>(p_wrap_w);
+
+	if (p_mip_levels > 0) {
+		create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		create_info.minLod = 0.0f;
+		create_info.maxLod = static_cast<float>(p_mip_levels);
+		create_info.mipLodBias = 0.0f;
+	}
 
 	VkSampler vk_sampler = VK_NULL_HANDLE;
 	VK_CHECK(vkCreateSampler(device, &create_info, nullptr, &vk_sampler));
