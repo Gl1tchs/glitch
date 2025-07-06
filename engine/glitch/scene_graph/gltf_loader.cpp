@@ -140,9 +140,13 @@ void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
 
 		glm::vec3 skew;
 		glm::vec4 perspective;
+		glm::fquat rotation_quat;
 
-		glm::decompose(mat, node->transform.scale, node->transform.rotation,
+		glm::decompose(mat, node->transform.scale, rotation_quat,
 				node->transform.position, skew, perspective);
+
+		node->transform.rotation =
+				glm::degrees(glm::eulerAngles(rotation_quat));
 	} else {
 		// Use TRS
 
@@ -152,11 +156,9 @@ void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
 		}
 
 		if (gltf_node.rotation.size() == 4) {
-			node->transform.rotation = glm::fquat(gltf_node.rotation[3], // w
-					gltf_node.rotation[0], // x
-					gltf_node.rotation[1], // y
-					gltf_node.rotation[2] // z
-			);
+			node->transform.rotation = glm::degrees(glm::eulerAngles(
+					glm::fquat(gltf_node.rotation[3], gltf_node.rotation[0],
+							gltf_node.rotation[1], gltf_node.rotation[2])));
 		}
 
 		if (gltf_node.scale.size() == 3) {

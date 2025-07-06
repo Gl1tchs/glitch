@@ -25,7 +25,7 @@ private:
 
 	float speed = SPEED_DEFAULT;
 
-	float sensitivity = 0.005f;
+	float sensitivity = 0.1f;
 	float pitch = 0.0f;
 	float yaw = 0.0f;
 

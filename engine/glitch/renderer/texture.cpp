@@ -1,12 +1,11 @@
 #include "glitch/renderer/texture.h"
 
 #include "glitch/core/hash.h"
-#include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/render_device.h"
 #include "glitch/renderer/types.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include <stb_image.h>
 
 Texture::~Texture() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();

@@ -5,14 +5,10 @@
 
 ## Renderer
 
-- [ ] Render pass attachment load and store OP for MSAA
-
 - [ ] Blender as Editor driven developement
-
   - [ ] Export blender model as gltf and import scene information from custom format that
         would also been exported by a custom blender plugin.
   - [ ] Use hot-reloadable meshes and references
-  - [ ] Edit scene information via debug panel
 
 - [ ] Scene graph.
   - [ ] Phong lighting model
@@ -21,7 +17,7 @@
   - [ ] Instanced rendering.
   - [ ] Text rendering.
   - [ ] Deferred rendering.
-- [ ] Mipmaps
+- [ ] Animations
 - [ ] LODs
 - [ ] Infinite far plane
 - [ ] Resolution setting

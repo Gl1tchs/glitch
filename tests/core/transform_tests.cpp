@@ -7,7 +7,7 @@ TEST_CASE("Transform initialization") {
 
 	CHECK(t.position == VEC3_ZERO);
 	CHECK(t.scale == VEC3_ONE);
-	CHECK(t.rotation == ZERO_ROTATION);
+	CHECK(t.rotation == VEC3_ZERO);
 }
 
 TEST_CASE("Translate transform") {
@@ -22,7 +22,7 @@ TEST_CASE("Rotate transform") {
 	Transform t;
 	t.rotate(90.0f, VEC3_UP);
 
-	CHECK(glm::eulerAngles(t.rotation) == glm::vec3{ 0.0f, 90.0f, 0.0f });
+	CHECK(t.rotation == glm::vec3{ 0.0f, 90.0f, 0.0f });
 }
 
 TEST_CASE("Transform directions") {

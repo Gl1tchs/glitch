@@ -59,6 +59,7 @@ target_include_directories(glitch
     ${GL_OUTPUT_DIR}/include
     ${GLFW_INCLUDES}
     ${SPIRV_REFLECT_INCLUDES}
+    ${JSON_INCLUDES}
     ${STB_INCLUDES}
     ${TINY_GLTF_INCLUDES}
     ${VMA_INCLUDES}

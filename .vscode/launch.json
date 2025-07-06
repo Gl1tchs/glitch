@@ -30,7 +30,9 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/out/glitch-testbed.exe",
-            "args": [],
+            "args": [
+                "C:/Users/gl1tch/Documents/GLTF/viking_room.glb"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

@@ -18,8 +18,8 @@ void Game::_on_start() {
 	renderer = create_ref<Renderer>();
 
 	Ref<SceneNode> scene = gltf_loader.load_gltf(model_path);
-	scene->transform.scale *= 10.0f;
-	scene->transform.rotation.y = -1.0f;
+	scene->transform.scale *= 5.0f;
+	scene->transform.rotation.y = 90.0f;
 
 	scene_graph.get_root()->add_child(scene);
 

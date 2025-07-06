@@ -11,13 +11,11 @@ inline constexpr glm::vec3 VEC3_FORWARD(0.0f, 0.0f, -1.0f);
 inline constexpr glm::vec3 VEC3_ZERO(0.0f, 0.0f, 0.0f);
 inline constexpr glm::vec3 VEC3_ONE(1.0f, 1.0f, 1.0f);
 
-inline constexpr glm::fquat ZERO_ROTATION = glm::fquat();
-
 inline constexpr glm::vec3 WORLD_UP = VEC3_UP;
 
 struct GL_API Transform {
 	glm::vec3 position = VEC3_ZERO;
-	glm::fquat rotation = ZERO_ROTATION;
+	glm::vec3 rotation = VEC3_ZERO;
 	glm::vec3 scale = VEC3_ONE;
 
 	void translate(const glm::vec3& p_translation);

@@ -26,14 +26,9 @@ void CameraController::update(float p_dt) {
 	pitch += -mouse_delta.y * sensitivity;
 
 	// Clamp pitch to avoid flipping
-	pitch = glm::clamp(pitch, glm::radians(-89.0f), glm::radians(89.0f));
+	pitch = glm::clamp(pitch, -89.0f, 89.0f);
 
-	// Rebuild rotation quaternion:
-	glm::fquat qPitch = glm::angleAxis(pitch, VEC3_RIGHT);
-	glm::fquat qYaw = glm::angleAxis(yaw, VEC3_UP);
-
-	// Final rotation: yaw first, then pitch
-	transform->rotation = qYaw * qPitch;
+	transform->rotation = { pitch, yaw, 0.0f };
 
 	// store last mouse pos to prevent instant rotations
 	last_mouse_pos = Input::get_mouse_position();
