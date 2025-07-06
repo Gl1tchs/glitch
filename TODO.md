@@ -1,9 +1,13 @@
 # TODO
 
-- [ ] Fix rotation in debug panel to use quaternion instead of old euler angles
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 
 ## Renderer
+
+- [ ] Rendering Settings
+  - Clear Color
+  - Resolution
+  - MSAA
 
 - [ ] Blender as Editor driven developement
   - [ ] Export blender model as gltf and import scene information from custom format that

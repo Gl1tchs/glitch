@@ -48,21 +48,7 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 	CommandBuffer cmd = device->begin_render();
 	{
-		backend->command_begin_render_pass(cmd, device->get_render_pass(),
-				device->get_current_frame_buffer(), device->get_draw_extent());
-
-		// TODO: this should probably has their own render pass and a priority
-		// parameter should be given
-		for (auto& render_func : render_funcs) {
-			render_func(cmd);
-		}
-		render_funcs.clear();
-
-		// Render nodes individually
-		// TODO: preprocess and do an instanced rendering and ibl
-		_traverse_node_render(cmd, p_ctx.scene_graph->get_root());
-
-		backend->command_end_render_pass(cmd);
+		_geometry_pass(cmd, p_ctx);
 	}
 	device->end_render();
 
@@ -119,6 +105,26 @@ void Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 	// TODO: Sort materials
 }
 
+void Renderer::_geometry_pass(
+		CommandBuffer p_cmd, const DrawingContext& p_ctx) {
+	backend->command_begin_render_pass(p_cmd, device->get_render_pass(),
+			device->get_current_frame_buffer(), device->get_draw_extent(),
+			settings.clear_color);
+
+	// TODO: this should probably has their own render pass and a priority
+	// parameter should be given
+	for (auto& render_func : render_funcs) {
+		render_func(p_cmd);
+	}
+	render_funcs.clear();
+
+	// Render nodes individually
+	// TODO: preprocess and do an instanced rendering and ibl
+	_traverse_node_render(p_cmd, p_ctx.scene_graph->get_root());
+
+	backend->command_end_render_pass(p_cmd);
+}
+
 void Renderer::_traverse_node_render(
 		CommandBuffer p_cmd, const Ref<SceneNode>& p_node) {
 	if (p_node->mesh) {
@@ -173,4 +179,8 @@ void Renderer::_render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
 			stats.renderer_stats.index_count += primitive->index_count;
 		}
 	}
+}
+
+void Renderer::set_clear_color(const Color& p_color) {
+	settings.clear_color = p_color;
 }

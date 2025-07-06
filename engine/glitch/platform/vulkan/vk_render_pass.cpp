@@ -109,18 +109,9 @@ RenderPass VulkanRenderBackend::render_pass_create(
 			VersatileResource::allocate<VulkanRenderPass>(resources_allocator);
 	render_pass_info->vk_render_pass = vk_render_pass;
 
-	// Populate clear colors
-	render_pass_info->clear_values.resize(p_attachments.size());
-	for (size_t i = 0; i < p_attachments.size(); ++i) {
-		auto& clear = render_pass_info->clear_values[i];
-		const auto& attachment = p_attachments[i];
-
-		if (attachment.is_depth_attachment) {
-			clear.depthStencil = { 1.0f, 0 };
-		} else {
-			clear.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
-		}
-	}
+	// Copy attachments
+	render_pass_info->attachments = std::vector<RenderPassAttachment>(
+			p_attachments.begin(), p_attachments.end());
 
 	return RenderPass(render_pass_info);
 }

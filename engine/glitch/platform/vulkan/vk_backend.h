@@ -105,7 +105,7 @@ public:
 
 	struct VulkanRenderPass {
 		VkRenderPass vk_render_pass;
-		std::vector<VkClearValue> clear_values;
+		std::vector<RenderPassAttachment> attachments;
 	};
 
 	RenderPass render_pass_create(
@@ -273,7 +273,8 @@ public:
 
 	void command_begin_render_pass(CommandBuffer p_cmd,
 			RenderPass p_render_pass, FrameBuffer framebuffer,
-			const glm::uvec2& p_draw_extent) override;
+			const glm::uvec2& p_draw_extent,
+			Color clear_color = COLOR_GRAY) override;
 
 	void command_end_render_pass(CommandBuffer p_cmd) override;
 

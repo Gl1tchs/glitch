@@ -196,7 +196,8 @@ public:
 
 	virtual void command_begin_render_pass(CommandBuffer p_cmd,
 			RenderPass p_render_pass, FrameBuffer framebuffer,
-			const glm::uvec2& p_draw_extent) = 0;
+			const glm::uvec2& p_draw_extent,
+			Color clear_color = COLOR_GRAY) = 0;
 
 	virtual void command_end_render_pass(CommandBuffer p_cmd) = 0;
 

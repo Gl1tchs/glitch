@@ -19,6 +19,10 @@ struct PushConstants {
 	glm::mat4 transform;
 };
 
+struct RendererSettings {
+	Color clear_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
+};
+
 /**
  * High level rendering interface
  */
@@ -36,8 +40,12 @@ public:
 	 */
 	void submit_func(RenderFunc&& p_func);
 
+	void set_clear_color(const Color& p_color);
+
 private:
 	void _preprocess_render(const DrawingContext& p_ctx);
+
+	void _geometry_pass(CommandBuffer p_cmd, const DrawingContext& p_ctx);
 
 	void _traverse_node_render(
 			CommandBuffer p_cmd, const Ref<SceneNode>& p_node);
@@ -59,4 +67,6 @@ private:
 	Buffer scene_data_buffer;
 
 	std::vector<RenderFunc> render_funcs;
+
+	RendererSettings settings = {};
 };

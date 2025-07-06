@@ -134,13 +134,7 @@ CommandBuffer RenderDevice::begin_render() {
 	backend->command_begin(cmd);
 
 	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL);
-
-	backend->command_clear_color(
-			cmd, current_swapchain_image, { 0.1f, 0.1f, 0.1f, 1.0f });
-
-	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	backend->command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
 			IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 

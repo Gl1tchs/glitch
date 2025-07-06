@@ -176,8 +176,23 @@ void VulkanRenderBackend::command_end_rendering(CommandBuffer p_cmd) {
 
 void VulkanRenderBackend::command_begin_render_pass(CommandBuffer p_cmd,
 		RenderPass p_render_pass, FrameBuffer framebuffer,
-		const glm::uvec2& p_draw_extent) {
+		const glm::uvec2& p_draw_extent, Color p_clear_color) {
 	VulkanRenderPass* render_pass_info = (VulkanRenderPass*)p_render_pass;
+
+	std::vector<VkClearValue> clear_values(
+			render_pass_info->attachments.size());
+	for (size_t i = 0; i < render_pass_info->attachments.size(); ++i) {
+		VkClearValue& clear = clear_values[i];
+		const RenderPassAttachment& attachment =
+				render_pass_info->attachments[i];
+
+		if (attachment.is_depth_attachment) {
+			clear.depthStencil = { 1.0f, 0 };
+		} else {
+			clear.color = { { p_clear_color.r, p_clear_color.g, p_clear_color.b,
+					1.0f } };
+		}
+	}
 
 	VkRenderPassBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -185,8 +200,8 @@ void VulkanRenderBackend::command_begin_render_pass(CommandBuffer p_cmd,
 	begin_info.framebuffer = VkFramebuffer(framebuffer);
 	begin_info.renderArea.offset = { 0, 0 };
 	begin_info.renderArea.extent = { p_draw_extent.x, p_draw_extent.y };
-	begin_info.clearValueCount = render_pass_info->clear_values.size();
-	begin_info.pClearValues = render_pass_info->clear_values.data();
+	begin_info.clearValueCount = clear_values.size();
+	begin_info.pClearValues = clear_values.data();
 
 	vkCmdBeginRenderPass(
 			(VkCommandBuffer)p_cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);

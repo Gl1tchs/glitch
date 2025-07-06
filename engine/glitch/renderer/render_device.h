@@ -137,10 +137,9 @@ private:
 	Image depth_image = GL_NULL_HANDLE;
 	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;
 
-	// imgui data
-	bool imgui_being_used = false;
-
-	// misc
 	RenderStats stats = {};
 	uint32_t frame_number = 0;
+
+	// imgui data
+	bool imgui_being_used = false;
 };
