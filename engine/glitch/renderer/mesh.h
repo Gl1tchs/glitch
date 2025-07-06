@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "glitch/renderer/frustum.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/types.h"
 
@@ -24,6 +25,8 @@ struct GL_API MeshPrimitive {
 	uint32_t index_count;
 
 	Ref<MaterialInstance> material;
+
+	AABB aabb;
 
 	~MeshPrimitive();
 

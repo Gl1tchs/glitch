@@ -8,6 +8,7 @@
 #include "glitch/core/transform.h"
 #include "glitch/core/uid.h"
 #include "glitch/renderer/mesh.h"
+#include "glitch/renderer/render_queue.h"
 
 struct GL_API SceneNode {
 	Transform transform;
@@ -32,9 +33,14 @@ public:
 
 	Ref<SceneNode> find_by_id(const UID& p_uid);
 
-	void update_transforms(); // optional: global transform propagation
+	RenderQueue construct_render_queue(Frustum p_frustum);
+
+	void update_transforms();
 
 private:
+	void _collect_render_items(const Ref<SceneNode>& p_node, Frustum p_frustum,
+			RenderQueue& p_queue);
+
 	void _update_node_transform(
 			const Ref<SceneNode>& p_node, const glm::mat4& p_parent_transform);
 

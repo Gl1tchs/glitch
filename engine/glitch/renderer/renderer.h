@@ -43,15 +43,9 @@ public:
 	void set_clear_color(const Color& p_color);
 
 private:
-	void _preprocess_render(const DrawingContext& p_ctx);
+	RenderQueue _preprocess_render(const DrawingContext& p_ctx);
 
-	void _geometry_pass(CommandBuffer p_cmd, const DrawingContext& p_ctx);
-
-	void _traverse_node_render(
-			CommandBuffer p_cmd, const Ref<SceneNode>& p_node);
-
-	void _render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
-			const Ref<Mesh>& p_mesh);
+	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue);
 
 private:
 	Ref<RenderDevice> device;

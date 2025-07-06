@@ -3,6 +3,18 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/render_device.h"
 
+static AABB _get_aabb_from_vertices(const std::vector<MeshVertex>& p_vertices) {
+	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+
+	for (const auto& v : p_vertices) {
+		min = glm::min(min, v.position);
+		max = glm::max(max, v.position);
+	}
+
+	return { min, max };
+}
+
 MeshPrimitive::~MeshPrimitive() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
@@ -76,6 +88,7 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 	primitive->vertex_buffer_address =
 			backend->buffer_get_device_address(primitive->vertex_buffer);
 	primitive->index_count = p_indices.size();
+	primitive->aabb = _get_aabb_from_vertices(p_vertices);
 
 	return primitive;
 }

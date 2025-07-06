@@ -44,11 +44,11 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 		return;
 	}
 
-	_preprocess_render(p_ctx);
+	const RenderQueue renderables = _preprocess_render(p_ctx);
 
 	CommandBuffer cmd = device->begin_render();
 	{
-		_geometry_pass(cmd, p_ctx);
+		_geometry_pass(cmd, renderables);
 	}
 	device->end_render();
 
@@ -63,19 +63,12 @@ void Renderer::submit_func(RenderFunc&& p_func) {
 	render_funcs.push_back(p_func);
 }
 
-void Renderer::_preprocess_render(const DrawingContext& p_ctx) {
+RenderQueue Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
 
 	// Update scene transforms
 	// TODO: dirty flags to cache
 	p_ctx.scene_graph->update_transforms();
-
-	// TODO:
-	// 1. Frustum culling (SceneNode → visible_nodes)
-	// 2. Material sorting:
-	//    - Opaque first (sort front-to-back)
-	//    - Then alpha-blended (sort back-to-front)
-	// 3. Batching: group meshes with same pipeline+material
 
 	// Set camera and scene data
 	camera = p_ctx.camera;
@@ -102,11 +95,23 @@ void Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 		scene_data_hash = hash;
 	}
 
-	// TODO: Sort materials
+	// Construct a frustum culled render queue to render only visible primitives
+	Frustum view_frustum = Frustum::from_view_proj(scene_data.view_projection);
+	RenderQueue render_queue =
+			p_ctx.scene_graph->construct_render_queue(view_frustum);
+
+	// Multilevel sorting by used pipeline and z index
+	render_queue.sort();
+
+	return render_queue;
 }
 
 void Renderer::_geometry_pass(
-		CommandBuffer p_cmd, const DrawingContext& p_ctx) {
+		CommandBuffer p_cmd, const RenderQueue& p_render_queue) {
+	if (p_render_queue.empty()) {
+		return;
+	}
+
 	backend->command_begin_render_pass(p_cmd, device->get_render_pass(),
 			device->get_current_frame_buffer(), device->get_draw_extent(),
 			settings.clear_color);
@@ -118,35 +123,18 @@ void Renderer::_geometry_pass(
 	}
 	render_funcs.clear();
 
-	// Render nodes individually
 	// TODO: preprocess and do an instanced rendering and ibl
-	_traverse_node_render(p_cmd, p_ctx.scene_graph->get_root());
 
-	backend->command_end_render_pass(p_cmd);
-}
+	Pipeline bound_pipeline = GL_NULL_HANDLE;
+	for (const RenderObject& renderable : p_render_queue) {
+		Ref<MeshPrimitive> primitive = renderable.primitive;
 
-void Renderer::_traverse_node_render(
-		CommandBuffer p_cmd, const Ref<SceneNode>& p_node) {
-	if (p_node->mesh) {
-		_render_mesh(p_cmd, p_node->world_transform, p_node->mesh);
-	}
-
-	// Render child nodes as well
-	for (Ref<SceneNode> child : p_node->children) {
-		_traverse_node_render(p_cmd, child);
-	}
-}
-
-void Renderer::_render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
-		const Ref<Mesh>& p_mesh) {
-	for (const auto& primitive : p_mesh->primitives) {
-		// Of course we need to bind the pipeline if it is really necessary
-		// but currently we don't have a mesh system. This same principle
-		// can also be told for drawing cubes only so i will just mark it as
-		// TODO:
-
-		backend->command_bind_graphics_pipeline(
-				p_cmd, primitive->material->definition->pipeline);
+		// Bind the pipeline if not already bound
+		Pipeline pipeline = primitive->material->definition->pipeline;
+		if (pipeline != bound_pipeline) {
+			backend->command_bind_graphics_pipeline(p_cmd, pipeline);
+			bound_pipeline = pipeline;
+		}
 
 		// set = 0 material data
 		backend->command_bind_uniform_sets(p_cmd,
@@ -158,7 +146,7 @@ void Renderer::_render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
 			push_constants.vertex_buffer = primitive->vertex_buffer_address;
 
 			// Object transformation
-			push_constants.transform = p_transform;
+			push_constants.transform = renderable.transform;
 
 			backend->command_push_constants(p_cmd,
 					primitive->material->definition->shader, 0,
@@ -179,6 +167,8 @@ void Renderer::_render_mesh(CommandBuffer p_cmd, const glm::mat4& p_transform,
 			stats.renderer_stats.index_count += primitive->index_count;
 		}
 	}
+
+	backend->command_end_render_pass(p_cmd);
 }
 
 void Renderer::set_clear_color(const Color& p_color) {

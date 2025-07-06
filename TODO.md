@@ -5,7 +5,6 @@
 ## Renderer
 
 - [ ] Rendering Settings
-  - Clear Color
   - Resolution
   - MSAA
 
@@ -16,8 +15,6 @@
 
 - [ ] Scene graph.
   - [ ] Phong lighting model
-  - [ ] Material batching and sorting
-  - [ ] Frustum culling
   - [ ] Instanced rendering.
   - [ ] Text rendering.
   - [ ] Deferred rendering.
