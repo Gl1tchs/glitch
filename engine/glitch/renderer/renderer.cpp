@@ -13,28 +13,11 @@ Renderer::Renderer() :
 		device(Application::get_instance()->get_rendering_device()),
 		backend(device->get_backend()) {
 	// scene buffer
-	scene_data_buffer = backend->buffer_create(sizeof(SceneData),
-			BUFFER_USAGE_STORAGE_BUFFER_BIT |
-					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-					BUFFER_USAGE_TRANSFER_SRC_BIT,
-			MEMORY_ALLOCATION_TYPE_CPU);
-
-	{
-		SceneData* scene_data_ptr =
-				(SceneData*)backend->buffer_map(scene_data_buffer);
-		memcpy(scene_data_ptr, &scene_data, sizeof(SceneData));
-		backend->buffer_unmap(scene_data_buffer);
-	}
-
-	push_constants.scene_buffer =
-			backend->buffer_get_device_address(scene_data_buffer);
+	scene_data_sbo = StorageBuffer::create(sizeof(SceneData), &scene_data);
+	push_constants.scene_buffer = scene_data_sbo->get_device_address();
 }
 
-Renderer::~Renderer() {
-	device->wait_for_device();
-
-	backend->buffer_free(scene_data_buffer);
-}
+Renderer::~Renderer() { device->wait_for_device(); }
 
 void Renderer::submit(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
@@ -85,13 +68,8 @@ RenderQueue Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 	size_t hash = hash64(scene_data.view_projection);
 	hash_combine(hash, hash64(scene_data.camera_position));
 
-	// TODO: this is very inefficient
 	if (scene_data_hash != hash) {
-		SceneData* scene_data_ptr =
-				(SceneData*)backend->buffer_map(scene_data_buffer);
-		memcpy(scene_data_ptr, &scene_data, sizeof(SceneData));
-		backend->buffer_unmap(scene_data_buffer);
-
+		scene_data_sbo->upload(&scene_data);
 		scene_data_hash = hash;
 	}
 

@@ -7,6 +7,7 @@
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/drawing_context.h"
 #include "glitch/renderer/render_device.h"
+#include "glitch/renderer/storage_buffer.h"
 
 struct SceneData {
 	glm::mat4 view_projection;
@@ -58,7 +59,7 @@ private:
 
 	SceneData scene_data;
 	size_t scene_data_hash;
-	Buffer scene_data_buffer;
+	Ref<StorageBuffer> scene_data_sbo;
 
 	std::vector<RenderFunc> render_funcs;
 
