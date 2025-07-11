@@ -2,11 +2,11 @@
 
 #include "glitch/core/application.h"
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/render_device.h"
+#include "glitch/renderer/renderer.h"
 
 PipelineBuilder::PipelineBuilder() {
-	Ref<RenderDevice> device =
-			Application::get_instance()->get_rendering_device();
+	Ref<Renderer> device =
+			Application::get_instance()->get_renderer();
 
 	vertex_input = {};
 	rasterization = {};
@@ -47,7 +47,7 @@ PipelineBuilder& PipelineBuilder::with_blend() {
 }
 
 std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	Shader shader = backend->shader_create_from_bytecode(shader_stages);
 

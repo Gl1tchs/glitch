@@ -19,7 +19,7 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 			[this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	render_device = create_ref<RenderDevice>(window);
+	renderer = create_ref<Renderer>(window);
 
 	MaterialSystem::init();
 
@@ -31,7 +31,7 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 }
 
 Application::~Application() {
-	render_device->wait_for_device();
+	renderer->wait_for_device();
 
 	// Destroy material system
 	MaterialSystem::destroy();

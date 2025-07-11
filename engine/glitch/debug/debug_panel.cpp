@@ -79,7 +79,7 @@ void DebugPanel::draw(const Ref<SceneNode>& p_graph_root) {
 					1.0f / std::max(stats.delta_time, 1e-6f));
 		}
 
-		ImGui::SeparatorText("RenderDevice");
+		ImGui::SeparatorText("Renderer");
 		{
 			ImGui::Text("Draw Calls: %d", stats.renderer_stats.draw_calls);
 			ImGui::Text("Index Count: %d", stats.renderer_stats.index_count);

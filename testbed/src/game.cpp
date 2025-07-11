@@ -3,7 +3,6 @@
 #include <glitch/core/event/input.h>
 #include <glitch/renderer/pipeline_builder.h>
 #include <glitch/renderer/render_backend.h>
-#include <glitch/renderer/renderer.h>
 #include <glitch/renderer/shader_library.h>
 #include <glitch/scene_graph/gltf_loader.h>
 
@@ -14,7 +13,7 @@ Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
 }
 
 void Game::_on_start() {
-	renderer = create_ref<Renderer>();
+	renderer = create_ref<SceneRenderer>();
 
 	Ref<SceneNode> scene = gltf_loader.load_gltf(model_path);
 	scene->transform.scale *= 5.0f;
@@ -64,7 +63,7 @@ void Game::_on_update(float p_dt) {
 	}
 
 	renderer->submit_func([&](CommandBuffer cmd) {
-		auto backend = get_rendering_device()->get_backend();
+		auto backend = get_renderer()->get_backend();
 
 		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
 
@@ -90,7 +89,7 @@ void Game::_on_update(float p_dt) {
 }
 
 void Game::_on_destroy() {
-	auto backend = get_rendering_device()->get_backend();
+	auto backend = get_renderer()->get_backend();
 
 	backend->device_wait();
 

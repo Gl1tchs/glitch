@@ -1,7 +1,7 @@
 #include "glitch/renderer/material.h"
 
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/render_device.h"
+#include "glitch/renderer/renderer.h"
 
 std::unordered_map<std::string, Ref<MaterialDefinition>>
 		MaterialSystem::s_definitions = {};
@@ -24,7 +24,7 @@ size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 }
 
 MaterialInstance::~MaterialInstance() {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	backend->device_wait();
 
@@ -43,7 +43,7 @@ void MaterialInstance::set_param(
 }
 
 void MaterialInstance::upload() {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	if (!definition) {
 		GL_LOG_ERROR("MaterialInstance::upload definition must not be null "
@@ -135,7 +135,7 @@ void MaterialInstance::upload() {
 }
 
 void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 	backend->command_bind_uniform_sets(
 			p_cmd, definition->shader, 0, uniform_set);
 }
@@ -143,7 +143,7 @@ void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
 void MaterialSystem::init() { s_definitions.clear(); }
 
 void MaterialSystem::destroy() {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 	for (auto& [name, definition] : s_definitions) {
 		backend->pipeline_free(definition->pipeline);
 		backend->shader_free(definition->shader);

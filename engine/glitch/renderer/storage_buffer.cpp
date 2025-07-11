@@ -1,14 +1,14 @@
 #include "glitch/renderer/storage_buffer.h"
 
-#include "glitch/renderer/render_device.h"
+#include "glitch/renderer/renderer.h"
 
 StorageBuffer::~StorageBuffer() {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 	backend->buffer_free(buffer);
 }
 
 Ref<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	Buffer buffer = backend->buffer_create(p_size,
 			BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -31,7 +31,7 @@ Ref<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
 void StorageBuffer::upload(const void* p_data) {
 	GL_ASSERT(p_data != nullptr);
 
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	Buffer staging_buffer = backend->buffer_create(
 			size, BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);

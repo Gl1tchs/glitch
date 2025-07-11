@@ -1,7 +1,7 @@
 #include "glitch/renderer/mesh.h"
 
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/render_device.h"
+#include "glitch/renderer/renderer.h"
 
 static AABB _get_aabb_from_vertices(const std::vector<MeshVertex>& p_vertices) {
 	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
@@ -16,7 +16,7 @@ static AABB _get_aabb_from_vertices(const std::vector<MeshVertex>& p_vertices) {
 }
 
 MeshPrimitive::~MeshPrimitive() {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	backend->buffer_free(vertex_buffer);
 	backend->buffer_free(index_buffer);
@@ -28,7 +28,7 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 		return nullptr;
 	}
 
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 	Ref<MeshPrimitive> primitive = create_ref<MeshPrimitive>();
 
 	const size_t vertex_size = p_vertices.size() * sizeof(MeshVertex);

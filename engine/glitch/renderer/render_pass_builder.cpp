@@ -1,7 +1,7 @@
 #include "glitch/renderer/render_pass_builder.h"
 
 #include "glitch/renderer/render_backend.h"
-#include "glitch/renderer/render_device.h"
+#include "glitch/renderer/renderer.h"
 
 RenderPassBuilder::RenderPassBuilder() {}
 
@@ -43,6 +43,6 @@ RenderPassBuilder& RenderPassBuilder::add_subpass(
 }
 
 RenderPass RenderPassBuilder::build() {
-	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	Ref<RenderBackend> backend = Renderer::get_backend();
 	return backend->render_pass_create(attachments, subpasses);
 }

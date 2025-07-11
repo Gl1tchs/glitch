@@ -5,7 +5,7 @@
 #pragma once
 
 #include "glitch/core/window.h"
-#include "glitch/renderer/render_device.h"
+#include "glitch/renderer/renderer.h"
 
 struct ApplicationPerfStats {
 	float delta_time;
@@ -41,7 +41,7 @@ public:
 
 	Ref<Window> get_window() { return window; }
 
-	Ref<RenderDevice> get_rendering_device() { return render_device; }
+	Ref<Renderer> get_renderer() { return renderer; }
 
 	// TODO: maybe this shouldn't be mutable
 	ApplicationPerfStats& get_perf_stats() { return perf_stats; }
@@ -66,7 +66,7 @@ private:
 	bool running = true;
 
 	Ref<Window> window;
-	Ref<RenderDevice> render_device;
+	Ref<Renderer> renderer;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

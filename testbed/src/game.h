@@ -3,8 +3,8 @@
 #include <glitch/core/application.h>
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
-#include <glitch/renderer/renderer.h>
 #include <glitch/scene_graph/gltf_loader.h>
+#include <glitch/scene_graph/scene_renderer.h>
 
 #include "camera_controller.h"
 
@@ -27,7 +27,7 @@ protected:
 	void _on_destroy() override;
 
 private:
-	Ref<Renderer> renderer;
+	Ref<SceneRenderer> renderer;
 
 	SceneGraph scene_graph;
 
