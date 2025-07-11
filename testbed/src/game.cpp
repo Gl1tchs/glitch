@@ -23,9 +23,9 @@ void Game::_on_start() {
 
 	scene_graph.get_root()->add_child(scene);
 
-	camera_controller.set_camera(&camera, &camera_transform);
+	camera_controller.set_camera(&camera);
 
-	auto [shader, pipeline] =
+	std::tie(grid_shader, grid_pipeline) =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
 							ShaderLibrary::get_spirv_data(
@@ -39,9 +39,6 @@ void Game::_on_start() {
 							COMPARE_OP_LESS, false) // without depth write
 					.with_blend()
 					.build();
-
-	grid_shader = shader;
-	grid_pipeline = pipeline;
 }
 
 void Game::_on_update(float p_dt) {
@@ -73,9 +70,9 @@ void Game::_on_update(float p_dt) {
 		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
 
 		GridPushConstants push_constants;
-		push_constants.view_proj = camera.get_projection_matrix() *
-				camera.get_view_matrix(camera_transform);
-		push_constants.camera_pos = camera_transform.position;
+		push_constants.view_proj =
+				camera.get_projection_matrix() * camera.get_view_matrix();
+		push_constants.camera_pos = camera.transform.position;
 		push_constants.grid_size = 100.0f;
 
 		backend->command_push_constants(cmd, grid_shader, 0,
@@ -87,7 +84,7 @@ void Game::_on_update(float p_dt) {
 	DrawingContext ctx;
 	ctx.scene_graph = &scene_graph;
 	ctx.camera = camera;
-	ctx.camera_transform = camera_transform;
+	ctx.settings.clear_color = COLOR_RED;
 
 	renderer->submit(ctx);
 }

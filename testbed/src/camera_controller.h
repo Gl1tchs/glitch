@@ -6,7 +6,7 @@ class CameraController {
 public:
 	CameraController();
 
-	void set_camera(Camera* p_camera, Transform* p_transform);
+	void set_camera(Camera* p_camera);
 
 	void update(float p_dt);
 
@@ -18,7 +18,6 @@ public:
 
 private:
 	Camera* camera;
-	Transform* transform;
 
 	const float SPEED_DEFAULT = 1.0f;
 	const float SPEED_TURBO = 3.0f;

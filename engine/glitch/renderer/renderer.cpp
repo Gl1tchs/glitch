@@ -31,7 +31,7 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 	CommandBuffer cmd = device->begin_render();
 	{
-		_geometry_pass(cmd, renderables);
+		_geometry_pass(cmd, renderables, p_ctx.settings);
 	}
 	device->end_render();
 
@@ -55,14 +55,12 @@ RenderQueue Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 
 	// Set camera and scene data
 	camera = p_ctx.camera;
-	camera_transform = p_ctx.camera_transform;
-
 	camera.aspect_ratio =
 			Application::get_instance()->get_window()->get_aspect_ratio();
 
-	scene_data.view_projection = camera.get_projection_matrix() *
-			camera.get_view_matrix(camera_transform);
-	scene_data.camera_position = camera_transform.position;
+	scene_data.view_projection =
+			camera.get_projection_matrix() * camera.get_view_matrix();
+	scene_data.camera_position = camera.transform.position;
 
 	// Reupload the scene buffer if it's updated
 	size_t hash = hash64(scene_data.view_projection);
@@ -84,15 +82,15 @@ RenderQueue Renderer::_preprocess_render(const DrawingContext& p_ctx) {
 	return render_queue;
 }
 
-void Renderer::_geometry_pass(
-		CommandBuffer p_cmd, const RenderQueue& p_render_queue) {
+void Renderer::_geometry_pass(CommandBuffer p_cmd,
+		const RenderQueue& p_render_queue, const RendererSettings& p_settings) {
 	if (p_render_queue.empty()) {
 		return;
 	}
 
 	backend->command_begin_render_pass(p_cmd, device->get_render_pass(),
 			device->get_current_frame_buffer(), device->get_draw_extent(),
-			settings.clear_color);
+			p_settings.clear_color);
 
 	// TODO: this should probably has their own render pass and a priority
 	// parameter should be given
@@ -145,8 +143,4 @@ void Renderer::_geometry_pass(
 	}
 
 	backend->command_end_render_pass(p_cmd);
-}
-
-void Renderer::set_clear_color(const Color& p_color) {
-	settings.clear_color = p_color;
 }

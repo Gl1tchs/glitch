@@ -5,9 +5,9 @@
 #pragma once
 
 #include "glitch/renderer/camera.h"
-#include "glitch/renderer/drawing_context.h"
 #include "glitch/renderer/render_device.h"
 #include "glitch/renderer/storage_buffer.h"
+#include "glitch/scene_graph/scene_graph.h"
 
 struct SceneData {
 	glm::mat4 view_projection;
@@ -21,7 +21,15 @@ struct PushConstants {
 };
 
 struct RendererSettings {
-	Color clear_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
+	Color clear_color = COLOR_GRAY;
+};
+
+struct DrawingContext {
+	SceneGraph* scene_graph;
+
+	PerspectiveCamera camera;
+
+	RendererSettings settings = {};
 };
 
 /**
@@ -41,12 +49,11 @@ public:
 	 */
 	void submit_func(RenderFunc&& p_func);
 
-	void set_clear_color(const Color& p_color);
-
 private:
 	RenderQueue _preprocess_render(const DrawingContext& p_ctx);
 
-	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue);
+	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue,
+			const RendererSettings& p_settings);
 
 private:
 	Ref<RenderDevice> device;
@@ -55,13 +62,10 @@ private:
 	PushConstants push_constants = {};
 
 	PerspectiveCamera camera;
-	Transform camera_transform;
 
 	SceneData scene_data;
 	size_t scene_data_hash;
 	Ref<StorageBuffer> scene_data_sbo;
 
 	std::vector<RenderFunc> render_funcs;
-
-	RendererSettings settings = {};
 };

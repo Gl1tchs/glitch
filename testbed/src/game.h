@@ -36,7 +36,6 @@ private:
 
 	CameraController camera_controller;
 	PerspectiveCamera camera;
-	Transform camera_transform;
 
 	Shader grid_shader;
 	Pipeline grid_pipeline;
