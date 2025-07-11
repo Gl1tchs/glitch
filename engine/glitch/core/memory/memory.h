@@ -23,3 +23,7 @@ template <typename T, typename... Args>
 inline constexpr Ref<T> create_ref(Args&&... args) {
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }
+
+inline constexpr size_t align_up(size_t p_offset, size_t p_alignment) {
+	return (p_offset + p_alignment - 1) & ~(p_alignment - 1);
+}

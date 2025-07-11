@@ -6,6 +6,23 @@
 std::unordered_map<std::string, Ref<MaterialDefinition>>
 		MaterialSystem::s_definitions = {};
 
+size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
+	switch (p_type) {
+		case ShaderUniformVariableType::INT:
+			return 4;
+		case ShaderUniformVariableType::FLOAT:
+			return 4;
+		case ShaderUniformVariableType::VEC2:
+			return 8;
+		case ShaderUniformVariableType::VEC3:
+			return 16;
+		case ShaderUniformVariableType::VEC4:
+			return 16;
+		default:
+			return 4;
+	}
+}
+
 MaterialInstance::~MaterialInstance() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
@@ -28,6 +45,12 @@ void MaterialInstance::set_param(
 void MaterialInstance::upload() {
 	Ref<RenderBackend> backend = RenderDevice::get_backend();
 
+	if (!definition) {
+		GL_LOG_ERROR("MaterialInstance::upload definition must not be null "
+					 "while uploading data.");
+		return;
+	}
+
 	// Calculate required buffer size
 	size_t buffer_size = 0;
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
@@ -40,6 +63,9 @@ void MaterialInstance::upload() {
 		if (meta == definition->uniforms.end()) {
 			continue;
 		}
+
+		const size_t alignment = uniform_type_std140_alignment(meta->type);
+		buffer_size = align_up(buffer_size, alignment);
 
 		const size_t variant_size = std::visit(
 				[](auto&& arg) -> size_t { return sizeof(arg); }, param);
@@ -72,6 +98,7 @@ void MaterialInstance::upload() {
 				MEMORY_ALLOCATION_TYPE_CPU);
 	}
 
+	// TODO: maybe do a persistent buffer to save time
 	void* gpu_ptr = backend->buffer_map(material_data_buffer);
 	std::memcpy(gpu_ptr, cpu_buffer.data(), buffer_size);
 	backend->buffer_unmap(material_data_buffer);
@@ -105,6 +132,12 @@ void MaterialInstance::upload() {
 	}
 
 	uniform_set = backend->uniform_set_create(uniforms, definition->shader, 0);
+}
+
+void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
+	Ref<RenderBackend> backend = RenderDevice::get_backend();
+	backend->command_bind_uniform_sets(
+			p_cmd, definition->shader, 0, uniform_set);
 }
 
 void MaterialSystem::init() { s_definitions.clear(); }

@@ -10,7 +10,7 @@
 /**
  * Storage buffer wrapper for easier access and data transfers
  */
-class StorageBuffer {
+class GL_API StorageBuffer {
 public:
 	~StorageBuffer();
 

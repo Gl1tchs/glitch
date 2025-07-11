@@ -115,9 +115,7 @@ void Renderer::_geometry_pass(
 		}
 
 		// set = 0 material data
-		backend->command_bind_uniform_sets(p_cmd,
-				primitive->material->definition->shader, 0,
-				primitive->material->uniform_set);
+		primitive->material->bind_uniform_set(p_cmd);
 
 		// Push constants
 		{

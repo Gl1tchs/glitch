@@ -20,6 +20,8 @@ enum class ShaderUniformVariableType {
 	TEXTURE,
 };
 
+GL_API size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type);
+
 struct ShaderUniformMetadata {
 	std::string name;
 	uint32_t binding;
@@ -50,6 +52,9 @@ struct GL_API MaterialInstance {
 	void set_param(const std::string& p_name, Ref<Texture> p_texture);
 
 	void upload(); // upload to GPU buffer, descriptor sets, etc.
+
+	// Binds descriptors for set = 0 index = 0
+	void bind_uniform_set(CommandBuffer p_cmd);
 };
 
 class GL_API MaterialSystem {
