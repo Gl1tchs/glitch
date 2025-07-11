@@ -121,7 +121,7 @@ void VulkanRenderBackend::command_reset(CommandBuffer p_cmd) {
 void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 		const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
 		Image p_depth_attachment) {
-	uint32_t attachments_size = p_color_attachments.data() == nullptr
+	const uint32_t attachments_size = p_color_attachments.data() == nullptr
 			? 0
 			: p_color_attachments.size();
 
@@ -135,10 +135,8 @@ void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 		info.pNext = nullptr;
 		info.imageView = vk_image->vk_image_view;
 		info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		info.loadOp =
-				VK_ATTACHMENT_LOAD_OP_LOAD; // TODO VK_ATTACHMENT_LOAD_OP_CLEAR
+		info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 		info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		// info.clearValue = clear_value; // TODO
 	}
 
 	VkRenderingAttachmentInfo depth_attachment_info{};
@@ -165,6 +163,42 @@ void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 	render_info.pColorAttachments = color_attachment_infos.data();
 	render_info.pDepthAttachment =
 			p_depth_attachment == nullptr ? nullptr : &depth_attachment_info;
+	render_info.pStencilAttachment = nullptr;
+
+	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);
+}
+
+void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
+		const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
+		Color p_clear_color) {
+	const uint32_t attachments_size = p_color_attachments.data() == nullptr
+			? 0
+			: p_color_attachments.size();
+
+	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
+			attachments_size);
+	for (uint32_t i = 0; i < attachments_size; i++) {
+		VulkanImage* vk_image = (VulkanImage*)p_color_attachments[i];
+
+		auto& info = color_attachment_infos[i];
+		info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		info.pNext = nullptr;
+		info.imageView = vk_image->vk_image_view;
+		info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		info.clearValue = VkClearValue{ { p_clear_color.r, p_clear_color.g,
+				p_clear_color.b, p_clear_color.a } };
+	}
+
+	VkRenderingInfo render_info = {};
+	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	render_info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 },
+		{ p_draw_extent.x, p_draw_extent.y } };
+	render_info.layerCount = 1;
+	render_info.colorAttachmentCount = attachments_size;
+	render_info.pColorAttachments = color_attachment_infos.data();
+	render_info.pDepthAttachment = nullptr;
 	render_info.pStencilAttachment = nullptr;
 
 	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);

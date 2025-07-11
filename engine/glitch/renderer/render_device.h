@@ -27,6 +27,11 @@ struct FrameData {
 	Fence render_fence;
 };
 
+struct RendererSettings {
+	Color clear_color = COLOR_GRAY;
+	float resolution_scale = 1.0f;
+};
+
 /**
  * Class representing the low level renderig interface that is responsible of
  * keeping cpu/gpu communication stable and making sure our drawing commands are
@@ -54,6 +59,12 @@ public:
 	 */
 	void end_render();
 
+	void clear_pass(CommandBuffer p_cmd, Color clear_color = COLOR_GRAY);
+
+	void begin_rendering(CommandBuffer p_cmd, RendererSettings p_settings = {});
+
+	void end_rendering(CommandBuffer p_cmd);
+
 	/**
 	 * Wait for rendering device operations to finish
 	 */
@@ -71,16 +82,8 @@ public:
 	 */
 	void imgui_end();
 
-	glm::uvec2 get_draw_extent() const;
-
-	std::vector<FrameBuffer> get_swapchain_framebuffers(
-			RenderPass p_render_pass);
-
-	RenderPass get_render_pass();
-
-	FrameBuffer get_current_frame_buffer();
-
-	uint32_t get_current_image_index() const;
+	// Sets scaling setting from 0.0 to 1.0
+	void set_render_scale(float p_scale);
 
 	Swapchain get_swapchain();
 
@@ -126,16 +129,16 @@ private:
 	uint32_t image_index = 0;
 	Image current_swapchain_image = nullptr;
 
-	RenderPass render_pass;
-	std::vector<FrameBuffer> swapchain_frame_buffers;
-
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 
-	DataFormat color_attachment_format;
+	const DataFormat color_attachment_format = DATA_FORMAT_R16G16B16A16_SFLOAT;
+	const DataFormat depth_attachment_format = DATA_FORMAT_D32_SFLOAT;
 
+	Image color_image = GL_NULL_HANDLE;
 	Image depth_image = GL_NULL_HANDLE;
-	const DataFormat depth_image_format = DATA_FORMAT_D32_SFLOAT;
+
+	float render_scale = 1.0f;
 
 	RenderStats stats = {};
 	uint32_t frame_number = 0;

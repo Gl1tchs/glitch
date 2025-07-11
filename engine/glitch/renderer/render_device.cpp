@@ -1,7 +1,6 @@
 #include "glitch/renderer/render_device.h"
 
 #include "glitch/platform/vulkan/vk_backend.h"
-#include "glitch/renderer/render_pass_builder.h"
 #include "glitch/renderer/types.h"
 
 #include <imgui.h>
@@ -36,29 +35,6 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 
 	swapchain = backend->swapchain_create();
 
-	// Resize swapchain to actualize swapchain format
-	glm::uvec2 new_size = window->get_size();
-	backend->swapchain_resize(graphics_queue, swapchain, new_size);
-
-	color_attachment_format = backend->swapchain_get_format(swapchain);
-
-	render_pass =
-			RenderPassBuilder()
-					.add_attachment(RenderPassAttachment{
-							.format = color_attachment_format,
-							.load_op = ATTACHMENT_LOAD_OP_CLEAR,
-							.store_op = ATTACHMENT_STORE_OP_STORE,
-							.sample_count = 1,
-					})
-					.add_depth_attachment(depth_image_format)
-					.add_subpass({
-							{
-									{ 0, SUBPASS_ATTACHMENT_COLOR },
-									{ 1, SUBPASS_ATTACHMENT_DEPTH_STENCIL },
-							},
-					})
-					.build();
-
 	// initialize swapchain, framebuffers and depth images
 	_request_resize();
 
@@ -82,12 +58,8 @@ RenderDevice::RenderDevice(Ref<Window> p_window) : window(p_window) {
 RenderDevice::~RenderDevice() {
 	backend->device_wait();
 
-	for (auto& fb : swapchain_frame_buffers) {
-		backend->frame_buffer_destroy(fb);
-	}
-	backend->render_pass_destroy(render_pass);
-
 	// destroy geometry pipeline resources
+	backend->image_free(color_image);
 	backend->image_free(depth_image);
 
 	// destroy per-frame data
@@ -125,7 +97,7 @@ CommandBuffer RenderDevice::begin_render() {
 
 	backend->fence_reset(_get_current_frame().render_fence);
 
-	glm::uvec2 draw_extent = get_draw_extent();
+	const glm::uvec3 draw_image_extent = backend->image_get_size(color_image);
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
@@ -133,14 +105,14 @@ CommandBuffer RenderDevice::begin_render() {
 
 	backend->command_begin(cmd);
 
-	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	backend->command_transition_image(cmd, color_image, IMAGE_LAYOUT_UNDEFINED,
+			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	backend->command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
 			IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
 	// dynamic state
-	backend->command_set_viewport(cmd, draw_extent);
-	backend->command_set_scissor(cmd, draw_extent);
+	backend->command_set_viewport(cmd, draw_image_extent);
+	backend->command_set_scissor(cmd, draw_image_extent);
 
 	return cmd;
 }
@@ -155,12 +127,29 @@ void RenderDevice::end_render() {
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
+	// Copy color image to swapchain
+	backend->command_transition_image(cmd, color_image,
+			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	backend->command_transition_image(cmd, current_swapchain_image,
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	backend->command_copy_image_to_image(cmd, color_image,
+			current_swapchain_image, backend->image_get_size(color_image),
+			backend->swapchain_get_extent(swapchain));
+
 	if (imgui_being_used) {
+		backend->command_transition_image(cmd, current_swapchain_image,
+				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
 		_imgui_pass(cmd, current_swapchain_image);
 	}
 
 	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_PRESENT_SRC);
+			imgui_being_used ? IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+							 : IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			IMAGE_LAYOUT_PRESENT_SRC);
 
 	backend->command_end(cmd);
 
@@ -180,6 +169,23 @@ void RenderDevice::end_render() {
 
 	// NOTE: maybe not?
 	current_swapchain_image = nullptr;
+}
+
+void RenderDevice::clear_pass(CommandBuffer p_cmd, Color clear_color) {
+	// Empty render pass just to clear image
+	backend->command_begin_rendering(p_cmd,
+			backend->image_get_size(color_image), color_image, clear_color);
+	backend->command_end_rendering(p_cmd);
+}
+
+void RenderDevice::begin_rendering(
+		CommandBuffer p_cmd, RendererSettings p_settings) {
+	backend->command_begin_rendering(p_cmd,
+			backend->image_get_size(color_image), color_image, depth_image);
+}
+
+void RenderDevice::end_rendering(CommandBuffer p_cmd) {
+	backend->command_end_rendering(p_cmd);
 }
 
 void RenderDevice::wait_for_device() { backend->device_wait(); }
@@ -204,50 +210,16 @@ void RenderDevice::imgui_end() {
 	}
 }
 
-glm::uvec2 RenderDevice::get_draw_extent() const {
-	const glm::uvec2 swapchain_extent =
-			backend->swapchain_get_extent(swapchain);
-
-	if (!current_swapchain_image) {
-		return swapchain_extent;
+void RenderDevice::set_render_scale(float p_scale) {
+	if (fabs(p_scale - render_scale) > 0.001f) {
+		render_scale = p_scale;
+		_request_resize(); // rebuild color & depth images
 	}
-
-	const glm::uvec3 draw_image_extent =
-			backend->image_get_size(current_swapchain_image);
-
-	return {
-		std::min(swapchain_extent.x, draw_image_extent.x),
-		std::min(swapchain_extent.y, draw_image_extent.y),
-	};
 }
-
-std::vector<FrameBuffer> RenderDevice::get_swapchain_framebuffers(
-		RenderPass p_render_pass) {
-	std::vector<FrameBuffer> framebuffers;
-	for (const auto& attachment : backend->swapchain_get_images(swapchain)) {
-		std::vector<Image> fb_attachments = {
-			attachment,
-			depth_image,
-		};
-
-		framebuffers.push_back(backend->frame_buffer_create(
-				p_render_pass, fb_attachments, get_draw_extent()));
-	}
-
-	return framebuffers;
-}
-
-RenderPass RenderDevice::get_render_pass() { return render_pass; }
-
-FrameBuffer RenderDevice::get_current_frame_buffer() {
-	return swapchain_frame_buffers[image_index];
-}
-
-uint32_t RenderDevice::get_current_image_index() const { return image_index; }
 
 Swapchain RenderDevice::get_swapchain() { return swapchain; }
 
-Image RenderDevice::get_draw_image() { return current_swapchain_image; }
+Image RenderDevice::get_draw_image() { return color_image; }
 
 Image RenderDevice::get_depth_image() { return depth_image; }
 
@@ -258,7 +230,7 @@ DataFormat RenderDevice::get_color_attachment_format() {
 }
 
 DataFormat RenderDevice::get_depth_attachment_format() {
-	return s_instance->depth_image_format;
+	return s_instance->depth_attachment_format;
 }
 
 Ref<RenderBackend> RenderDevice::get_backend() { return s_instance->backend; }
@@ -267,7 +239,7 @@ void RenderDevice::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 	GL_PROFILE_SCOPE;
 
 	backend->command_begin_rendering(
-			p_cmd, backend->swapchain_get_extent(swapchain), p_target_image);
+			p_cmd, backend->image_get_size(p_target_image), p_target_image);
 
 	backend->imgui_render_for_platform(p_cmd);
 
@@ -286,8 +258,8 @@ void RenderDevice::_imgui_init() {
 
 	io.Fonts->Clear();
 
-	backend->imgui_init_for_platform(
-			window->get_native_window(), color_attachment_format);
+	backend->imgui_init_for_platform(window->get_native_window(),
+			backend->swapchain_get_format(swapchain));
 
 	// ImGui style changes
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -303,23 +275,28 @@ void RenderDevice::_imgui_init() {
 void RenderDevice::_request_resize() {
 	GL_PROFILE_SCOPE_N("RenderDevice::Swapchain Resize");
 
-	glm::uvec2 new_size = window->get_size();
-	backend->swapchain_resize(graphics_queue, swapchain, new_size);
+	const glm::uvec2 window_px = window->get_size();
+	backend->swapchain_resize(graphics_queue, swapchain, window_px);
 
-	// Resize depth image as well
+	const glm::uvec2 new_size = {
+		std::max(1u, uint32_t(window_px.x * render_scale)),
+		std::max(1u, uint32_t(window_px.y * render_scale)),
+	};
+
+	// Resize depth and color image
+	if (color_image) {
+		backend->image_free(color_image);
+	}
+	color_image = backend->image_create(color_attachment_format, new_size,
+			nullptr,
+			IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_TRANSFER_SRC_BIT |
+					IMAGE_USAGE_TRANSFER_DST_BIT);
+
 	if (depth_image) {
 		backend->image_free(depth_image);
 	}
-
-	depth_image = backend->image_create(depth_image_format, new_size, nullptr,
-			IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-	for (auto& fb : swapchain_frame_buffers) {
-		backend->frame_buffer_destroy(fb);
-	}
-	swapchain_frame_buffers.clear();
-
-	swapchain_frame_buffers = get_swapchain_framebuffers(render_pass);
+	depth_image = backend->image_create(depth_attachment_format, new_size,
+			nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 void RenderDevice::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }

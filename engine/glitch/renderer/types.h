@@ -308,6 +308,7 @@ struct RenderPassAttachment {
 	DataFormat format;
 	AttachmentLoadOp load_op = ATTACHMENT_LOAD_OP_CLEAR;
 	AttachmentStoreOp store_op = ATTACHMENT_STORE_OP_STORE;
+	ImageLayout final_layout = IMAGE_LAYOUT_UNDEFINED;
 	// TODO: implement
 	uint32_t sample_count = 1;
 	bool is_depth_attachment = false;

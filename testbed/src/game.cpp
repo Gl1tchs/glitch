@@ -6,7 +6,6 @@
 #include <glitch/renderer/renderer.h>
 #include <glitch/renderer/shader_library.h>
 #include <glitch/scene_graph/gltf_loader.h>
-#include <imgui/imgui.h>
 
 Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
 	GL_ASSERT(p_info.argc == 2, "A GLTF Model path must be provided.");
@@ -84,6 +83,7 @@ void Game::_on_update(float p_dt) {
 	DrawingContext ctx;
 	ctx.scene_graph = &scene_graph;
 	ctx.camera = camera;
+	ctx.settings.resolution_scale = 1.0f;
 	ctx.settings.clear_color = COLOR_RED;
 
 	renderer->submit(ctx);

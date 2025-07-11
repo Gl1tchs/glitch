@@ -20,10 +20,6 @@ struct PushConstants {
 	glm::mat4 transform;
 };
 
-struct RendererSettings {
-	Color clear_color = COLOR_GRAY;
-};
-
 struct DrawingContext {
 	SceneGraph* scene_graph;
 

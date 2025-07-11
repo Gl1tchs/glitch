@@ -17,9 +17,15 @@ RenderPass VulkanRenderBackend::render_pass_create(
 		vk_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		vk_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		vk_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		vk_attachment.finalLayout = attachment.is_depth_attachment
-				? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-				: VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+		if (attachment.final_layout == IMAGE_LAYOUT_UNDEFINED) {
+			vk_attachment.finalLayout =
+					static_cast<VkImageLayout>(attachment.final_layout);
+		} else {
+			vk_attachment.finalLayout = attachment.is_depth_attachment
+					? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+					: VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		}
 
 		vk_attachments.push_back(vk_attachment);
 	}

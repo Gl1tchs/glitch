@@ -5,7 +5,6 @@
 ## Renderer
 
 - [ ] Rendering Settings
-  - Resolution
   - MSAA
 
 - [ ] Blender as Editor driven developement

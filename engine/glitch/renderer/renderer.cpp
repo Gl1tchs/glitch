@@ -29,8 +29,13 @@ void Renderer::submit(const DrawingContext& p_ctx) {
 
 	const RenderQueue renderables = _preprocess_render(p_ctx);
 
+	// Apply resolution setting
+	device->set_render_scale(p_ctx.settings.resolution_scale);
+
 	CommandBuffer cmd = device->begin_render();
 	{
+		device->clear_pass(cmd, p_ctx.settings.clear_color);
+
 		_geometry_pass(cmd, renderables, p_ctx.settings);
 	}
 	device->end_render();
@@ -88,9 +93,7 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd,
 		return;
 	}
 
-	backend->command_begin_render_pass(p_cmd, device->get_render_pass(),
-			device->get_current_frame_buffer(), device->get_draw_extent(),
-			p_settings.clear_color);
+	device->begin_rendering(p_cmd, p_settings);
 
 	// TODO: this should probably has their own render pass and a priority
 	// parameter should be given
@@ -142,5 +145,5 @@ void Renderer::_geometry_pass(CommandBuffer p_cmd,
 		}
 	}
 
-	backend->command_end_render_pass(p_cmd);
+	device->end_rendering(p_cmd);
 }

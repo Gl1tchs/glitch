@@ -206,6 +206,10 @@ public:
 			VectorView<Image> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) = 0;
 
+	virtual void command_begin_rendering(CommandBuffer p_cmd,
+			const glm::uvec2& p_draw_extent,
+			VectorView<Image> p_color_attachments, Color p_clear_color) = 0;
+
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
 
 	// image layout must be IMAGE_LAYOUT_GENERAL

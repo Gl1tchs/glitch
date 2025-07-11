@@ -269,6 +269,11 @@ public:
 			VectorView<Image> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) override;
 
+	void command_begin_rendering(CommandBuffer p_cmd,
+			const glm::uvec2& p_draw_extent,
+			VectorView<Image> p_color_attachments,
+			Color p_clear_color) override;
+
 	void command_end_rendering(CommandBuffer p_cmd) override;
 
 	void command_begin_render_pass(CommandBuffer p_cmd,

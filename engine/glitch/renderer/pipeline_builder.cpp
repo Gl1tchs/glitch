@@ -53,13 +53,10 @@ std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 
 	// If any render pass provided use it to build the pipeline otherwise get
 	// the default render pass from rendering device1
-	Pipeline pipeline = backend->render_pipeline_create(shader,
-			!p_render_pass ? Application::get_instance()
-									 ->get_rendering_device()
-									 ->get_render_pass()
-						   : p_render_pass,
-			RENDER_PRIMITIVE_TRIANGLES, vertex_input, rasterization,
-			multisample, depth_stencil_state, color_blend_state, 0);
+	Pipeline pipeline =
+			backend->render_pipeline_create(shader, RENDER_PRIMITIVE_TRIANGLES,
+					vertex_input, rasterization, multisample,
+					depth_stencil_state, color_blend_state, 0, rendering_state);
 
 	return std::make_pair(shader, pipeline);
 }
