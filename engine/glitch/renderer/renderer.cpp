@@ -83,6 +83,9 @@ CommandBuffer Renderer::begin_render() {
 
 	_reset_stats();
 
+	// Apply settings
+	_update_settings(framed_settings);
+
 	backend->fence_wait(_get_current_frame().render_fence);
 
 	Optional<Image> swapchain_image = backend->swapchain_acquire_image(
@@ -110,6 +113,10 @@ CommandBuffer Renderer::begin_render() {
 	backend->command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
 			IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
+	// Just so we can use msaa
+	backend->command_transition_image(cmd, current_swapchain_image,
+			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
 	// dynamic state
 	backend->command_set_viewport(cmd, draw_image_extent);
 	backend->command_set_scissor(cmd, draw_image_extent);
@@ -126,28 +133,37 @@ void Renderer::end_render() {
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
-	// Copy color image to swapchain
-	backend->command_transition_image(cmd, color_image,
-			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	const bool msaa_used = settings.msaa != IMAGE_SAMPLES_1;
 
-	backend->command_copy_image_to_image(cmd, color_image,
-			current_swapchain_image, backend->image_get_size(color_image),
-			backend->swapchain_get_extent(swapchain));
+	// Copy color image to swapchain if there isn't got a resolver
+	if (!msaa_used) {
+		backend->command_transition_image(cmd, current_swapchain_image,
+				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+		backend->command_transition_image(cmd, color_image,
+				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+		backend->command_copy_image_to_image(cmd, color_image,
+				current_swapchain_image, backend->image_get_size(color_image),
+				backend->swapchain_get_extent(swapchain));
+	}
 
 	if (imgui_being_used) {
-		backend->command_transition_image(cmd, current_swapchain_image,
-				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		if (!msaa_used) {
+			backend->command_transition_image(cmd, current_swapchain_image,
+					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		}
 
 		_imgui_pass(cmd, current_swapchain_image);
 	}
 
 	backend->command_transition_image(cmd, current_swapchain_image,
-			imgui_being_used ? IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-							 : IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			(!msaa_used && !imgui_being_used)
+					? IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+					: IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			IMAGE_LAYOUT_PRESENT_SRC);
 
 	backend->command_end(cmd);
@@ -170,17 +186,22 @@ void Renderer::end_render() {
 	current_swapchain_image = nullptr;
 }
 
-void Renderer::clear_pass(CommandBuffer p_cmd, Color clear_color) {
-	// Empty render pass just to clear image
-	backend->command_begin_rendering(p_cmd,
-			backend->image_get_size(color_image), color_image, clear_color);
-	backend->command_end_rendering(p_cmd);
-}
+void Renderer::begin_rendering(CommandBuffer p_cmd) {
+	RenderingAttachment color_attachment = {};
+	color_attachment.image = color_image;
+	color_attachment.layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	color_attachment.load_op = ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.clear_color = settings.clear_color;
 
-void Renderer::begin_rendering(
-		CommandBuffer p_cmd, RendererSettings p_settings) {
+	if (settings.msaa != IMAGE_SAMPLES_1) {
+		color_attachment.resolve_mode = RESOLVE_MODE_AVERAGE_BIT;
+		color_attachment.resolve_image = current_swapchain_image;
+		color_attachment.resolve_layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+
 	backend->command_begin_rendering(p_cmd,
-			backend->image_get_size(color_image), color_image, depth_image);
+			backend->image_get_size(color_image), color_attachment,
+			depth_image);
 }
 
 void Renderer::end_rendering(CommandBuffer p_cmd) {
@@ -209,11 +230,16 @@ void Renderer::imgui_end() {
 	}
 }
 
-void Renderer::set_render_scale(float p_scale) {
-	if (fabs(p_scale - render_scale) > 0.001f) {
-		render_scale = p_scale;
-		_request_resize(); // rebuild color & depth images
-	}
+void Renderer::set_clear_color(Color p_color) {
+	framed_settings.clear_color = p_color;
+}
+
+void Renderer::set_resolution_scale(float p_scale) {
+	framed_settings.resolution_scale = p_scale;
+}
+
+void Renderer::set_msaa_samples(ImageSamples p_samples) {
+	framed_settings.msaa = p_samples;
 }
 
 Swapchain Renderer::get_swapchain() { return swapchain; }
@@ -237,8 +263,12 @@ Ref<RenderBackend> Renderer::get_backend() { return s_instance->backend; }
 void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 	GL_PROFILE_SCOPE;
 
+	RenderingAttachment color_attachment = {};
+	color_attachment.image = p_target_image;
+	color_attachment.layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	backend->command_begin_rendering(
-			p_cmd, backend->image_get_size(p_target_image), p_target_image);
+			p_cmd, backend->image_get_size(p_target_image), color_attachment);
 
 	backend->imgui_render_for_platform(p_cmd);
 
@@ -271,6 +301,31 @@ void Renderer::_imgui_init() {
 	colors[ImGuiCol_TitleBg] = bg_color;
 }
 
+void Renderer::_update_settings(RendererSettings p_settings) {
+	bool resize_required = false;
+
+	settings.clear_color = p_settings.clear_color;
+
+	if (fabs(p_settings.resolution_scale - settings.resolution_scale) >
+			0.001f) {
+		settings.resolution_scale = p_settings.resolution_scale;
+
+		resize_required = true;
+	}
+
+	// TODO! check for max capable msaa for rendering device
+	if (settings.msaa != p_settings.msaa) {
+		settings.msaa = p_settings.msaa;
+
+		resize_required = true;
+	}
+
+	if (resize_required) {
+		// Update state
+		_request_resize();
+	}
+}
+
 void Renderer::_request_resize() {
 	GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
 
@@ -278,8 +333,8 @@ void Renderer::_request_resize() {
 	backend->swapchain_resize(graphics_queue, swapchain, window_px);
 
 	const glm::uvec2 new_size = {
-		std::max(1u, uint32_t(window_px.x * render_scale)),
-		std::max(1u, uint32_t(window_px.y * render_scale)),
+		std::max(1u, uint32_t(window_px.x * settings.resolution_scale)),
+		std::max(1u, uint32_t(window_px.y * settings.resolution_scale)),
 	};
 
 	// Resize depth and color image
@@ -289,13 +344,15 @@ void Renderer::_request_resize() {
 	color_image = backend->image_create(color_attachment_format, new_size,
 			nullptr,
 			IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_TRANSFER_SRC_BIT |
-					IMAGE_USAGE_TRANSFER_DST_BIT);
+					IMAGE_USAGE_TRANSFER_DST_BIT,
+			false, settings.msaa);
 
 	if (depth_image) {
 		backend->image_free(depth_image);
 	}
 	depth_image = backend->image_create(depth_attachment_format, new_size,
-			nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+			nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false,
+			settings.msaa);
 }
 
 void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }

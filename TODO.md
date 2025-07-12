@@ -6,7 +6,8 @@
 
 # Short Term
 
-- [ ] MSAA
+- [x] MSAA
+  - [ ] Get the setting on pipeline creation it shouldn't be per frame setting
 - [ ] Animation
 - [ ] Instanced rendering
 - [ ] Light objects

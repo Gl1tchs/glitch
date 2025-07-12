@@ -83,7 +83,8 @@ void Game::_on_update(float p_dt) {
 	ctx.scene_graph = &scene_graph;
 	ctx.camera = camera;
 	ctx.settings.resolution_scale = 1.0f;
-	ctx.settings.clear_color = COLOR_RED;
+	ctx.settings.clear_color = COLOR_GRAY;
+	ctx.settings.msaa = IMAGE_SAMPLES_8;
 
 	renderer->submit(ctx);
 }

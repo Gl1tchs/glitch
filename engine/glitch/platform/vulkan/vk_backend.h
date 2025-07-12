@@ -8,6 +8,12 @@
 #include "glitch/platform/vulkan/vk_common.h"
 #include "glitch/renderer/types.h"
 
+static_assert(
+		sizeof(ImageSubresourceLayers) == sizeof(VkImageSubresourceLayers));
+static_assert(sizeof(ImageResolve) == sizeof(VkImageResolve));
+static_assert(sizeof(BufferCopyRegion) == sizeof(VkBufferCopy));
+static_assert(sizeof(BufferImageCopyRegion) == sizeof(VkBufferImageCopy));
+
 class VulkanRenderBackend : public RenderBackend {
 public:
 	~VulkanRenderBackend() = default;
@@ -58,7 +64,8 @@ public:
 	Image image_create(DataFormat p_format, glm::uvec2 p_size,
 			const void* p_data = nullptr,
 			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT,
-			bool p_mipmapped = false) override;
+			bool p_mipmapped = false,
+			ImageSamples p_samples = IMAGE_SAMPLES_1) override;
 
 	void image_free(Image p_image) override;
 
@@ -266,13 +273,8 @@ public:
 
 	void command_begin_rendering(CommandBuffer p_cmd,
 			const glm::uvec2& p_draw_extent,
-			VectorView<Image> p_color_attachments,
-			Image p_depth_attachment = GL_NULL_HANDLE) override;
-
-	void command_begin_rendering(CommandBuffer p_cmd,
-			const glm::uvec2& p_draw_extent,
-			VectorView<Image> p_color_attachments,
-			Color p_clear_color) override;
+			VectorView<RenderingAttachment> p_color_attachments,
+			Image p_depth_attachment) override;
 
 	void command_end_rendering(CommandBuffer p_cmd) override;
 
@@ -368,7 +370,8 @@ public:
 
 private:
 	Image _image_create(VkFormat p_format, VkExtent3D p_size,
-			BitField<VkImageUsageFlags> p_usage, bool p_mipmapped);
+			BitField<VkImageUsageFlags> p_usage, bool p_mipmapped,
+			VkSampleCountFlagBits p_samples);
 
 	void _generate_image_mipmaps(
 			CommandBuffer p_cmd, Image p_image, glm::uvec2 p_size);

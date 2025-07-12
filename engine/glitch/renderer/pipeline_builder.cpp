@@ -5,12 +5,15 @@
 #include "glitch/renderer/renderer.h"
 
 PipelineBuilder::PipelineBuilder() {
-	Ref<Renderer> device =
-			Application::get_instance()->get_renderer();
+	Ref<Renderer> device = Application::get_instance()->get_renderer();
 
 	vertex_input = {};
 	rasterization = {};
-	multisample = {};
+	multisample = {
+		.sample_count = IMAGE_SAMPLES_8,
+		.enable_sample_shading = true,
+		.min_sample_shading = 0.2f,
+	};
 	depth_stencil_state = {};
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};

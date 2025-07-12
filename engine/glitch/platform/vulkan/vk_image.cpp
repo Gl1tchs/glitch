@@ -26,7 +26,8 @@ static BitField<VkImageUsageFlags> _gl_to_vk_image_usage_flags(
 }
 
 Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
-		BitField<VkImageUsageFlags> p_usage, bool p_mipmapped) {
+		BitField<VkImageUsageFlags> p_usage, bool p_mipmapped,
+		VkSampleCountFlagBits p_samples) {
 	const uint32_t mip_levels = p_mipmapped
 			? static_cast<uint32_t>(std::floor(
 					  std::log2(std::max(p_size.width, p_size.height)))) +
@@ -42,9 +43,8 @@ Image VulkanRenderBackend::_image_create(VkFormat p_format, VkExtent3D p_size,
 	// Set mipmap levels
 	img_info.mipLevels = mip_levels;
 	img_info.arrayLayers = 1;
-	// for MSAA. we will not be using it by default, so default it to 1 sample
-	// per pixel.
-	img_info.samples = VK_SAMPLE_COUNT_1_BIT;
+	// MSAA
+	img_info.samples = p_samples;
 	// optimal tiling, which means the image is stored on the best gpu format
 	img_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 	img_info.usage = p_usage;
@@ -131,15 +131,16 @@ void VulkanRenderBackend::_generate_image_mipmaps(
 }
 
 Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
-		const void* p_data, BitField<ImageUsageBits> p_usage,
-		bool p_mipmapped) {
+		const void* p_data, BitField<ImageUsageBits> p_usage, bool p_mipmapped,
+		ImageSamples p_samples) {
 	VkExtent3D vk_size = { p_size.x, p_size.y, 1 };
 	VkFormat vk_format = static_cast<VkFormat>(p_format);
 
 	BitField<VkImageUsageFlags> vk_usage = _gl_to_vk_image_usage_flags(p_usage);
 
 	if (!p_data) {
-		return _image_create(vk_format, vk_size, vk_usage, p_mipmapped);
+		return _image_create(vk_format, vk_size, vk_usage, p_mipmapped,
+				static_cast<VkSampleCountFlagBits>(p_samples));
 	} else {
 		const size_t data_size =
 				vk_size.depth * vk_size.width * vk_size.height * 4;
@@ -157,8 +158,8 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 		image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		image_usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-		Image new_image =
-				_image_create(vk_format, vk_size, image_usage, p_mipmapped);
+		Image new_image = _image_create(vk_format, vk_size, image_usage,
+				p_mipmapped, static_cast<VkSampleCountFlagBits>(p_samples));
 
 		command_immediate_submit(
 				[&](CommandBuffer p_cmd) {

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "glitch/core/color.h"
+
 // defines handles that are not needed to be freed by user
 #define GL_DEFINE_HANDLE(object) typedef struct object##_T* object;
 
@@ -28,6 +30,7 @@ GL_DEFINE_NON_DISPATCHABLE_HANDLE(Semaphore)
 
 #define GL_NULL_HANDLE nullptr
 #define GL_REMAINING_MIP_LEVELS (~0U)
+#define GL_REMAINING_ARRAY_LAYERS (~0U)
 
 /**
  * Enum representing data formats in GPU
@@ -210,6 +213,22 @@ struct ImageSubresourceLayers {
 	uint32_t layer_count;
 };
 
+enum ResolveMode {
+	RESOLVE_MODE_NONE = 0,
+	RESOLVE_MODE_SAMPLE_ZERO_BIT = 0x00000001,
+	RESOLVE_MODE_AVERAGE_BIT = 0x00000002,
+	RESOLVE_MODE_MIN_BIT = 0x00000004,
+	RESOLVE_MODE_MAX_BIT = 0x00000008,
+};
+
+struct ImageResolve {
+	ImageSubresourceLayers src_subresource;
+	glm::ivec3 src_offset;
+	ImageSubresourceLayers dst_subresource;
+	glm::ivec3 dst_offset;
+	glm::uvec3 extent;
+};
+
 enum ImageSamples {
 	IMAGE_SAMPLES_1 = 0x00000001,
 	IMAGE_SAMPLES_2 = 0x00000002,
@@ -327,6 +346,20 @@ struct SubpassAttachment {
 
 struct SubpassInfo {
 	std::vector<SubpassAttachment> attachments;
+};
+
+struct RenderingAttachment {
+	Image image;
+	ImageLayout layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	AttachmentLoadOp load_op = ATTACHMENT_LOAD_OP_DONT_CARE;
+	AttachmentStoreOp store_op = ATTACHMENT_STORE_OP_STORE;
+	// load_op must be set to ATTACHMENT_LOAD_OP_CLEAR
+	Color clear_color = COLOR_BLACK;
+
+	// For MSAA
+	ResolveMode resolve_mode = RESOLVE_MODE_NONE;
+	Image resolve_image = GL_NULL_HANDLE;
+	ImageLayout resolve_layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 };
 
 enum RenderPrimitive {

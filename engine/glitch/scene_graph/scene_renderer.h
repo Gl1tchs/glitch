@@ -48,8 +48,7 @@ public:
 private:
 	RenderQueue _preprocess_render(const DrawingContext& p_ctx);
 
-	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue,
-			const RendererSettings& p_settings);
+	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue);
 
 private:
 	Ref<Renderer> device;

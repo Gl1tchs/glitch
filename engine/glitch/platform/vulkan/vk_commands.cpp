@@ -119,27 +119,45 @@ void VulkanRenderBackend::command_reset(CommandBuffer p_cmd) {
 }
 
 void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
-		const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
+		const glm::uvec2& p_draw_extent,
+		VectorView<RenderingAttachment> p_color_attachments,
 		Image p_depth_attachment) {
-	const uint32_t attachments_size = p_color_attachments.data() == nullptr
-			? 0
-			: p_color_attachments.size();
+	std::vector<VkRenderingAttachmentInfo> color_attachment_infos;
+	for (const auto& attachment : p_color_attachments) {
+		VulkanImage* vk_image = (VulkanImage*)attachment.image;
 
-	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
-			attachments_size);
-	for (uint32_t i = 0; i < attachments_size; i++) {
-		VulkanImage* vk_image = (VulkanImage*)p_color_attachments[i];
-
-		auto& info = color_attachment_infos[i];
+		VkRenderingAttachmentInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 		info.pNext = nullptr;
 		info.imageView = vk_image->vk_image_view;
-		info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		info.imageLayout = static_cast<VkImageLayout>(attachment.layout);
+		info.loadOp = static_cast<VkAttachmentLoadOp>(attachment.load_op);
+		info.storeOp = static_cast<VkAttachmentStoreOp>(attachment.store_op);
+		// Set clear color if any provided
+		if (attachment.clear_color != COLOR_TRANSPARENT) {
+			info.clearValue = { {
+					attachment.clear_color.r,
+					attachment.clear_color.g,
+					attachment.clear_color.b,
+					attachment.clear_color.a,
+			} };
+		}
+
+		// Resolve image (MSAA) if provided
+		if (attachment.resolve_image != GL_NULL_HANDLE) {
+			VulkanImage* vk_resolve = (VulkanImage*)attachment.resolve_image;
+
+			info.resolveMode =
+					static_cast<VkResolveModeFlagBits>(attachment.resolve_mode);
+			info.resolveImageView = vk_resolve->vk_image_view;
+			info.resolveImageLayout =
+					static_cast<VkImageLayout>(attachment.resolve_layout);
+		}
+
+		color_attachment_infos.push_back(info);
 	}
 
-	VkRenderingAttachmentInfo depth_attachment_info{};
+	VkRenderingAttachmentInfo depth_attachment_info = {};
 	if (p_depth_attachment) {
 		VulkanImage* vk_depth_image = (VulkanImage*)p_depth_attachment;
 
@@ -159,46 +177,10 @@ void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
 	render_info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 },
 		{ p_draw_extent.x, p_draw_extent.y } };
 	render_info.layerCount = 1;
-	render_info.colorAttachmentCount = attachments_size;
+	render_info.colorAttachmentCount = color_attachment_infos.size();
 	render_info.pColorAttachments = color_attachment_infos.data();
 	render_info.pDepthAttachment =
 			p_depth_attachment == nullptr ? nullptr : &depth_attachment_info;
-	render_info.pStencilAttachment = nullptr;
-
-	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);
-}
-
-void VulkanRenderBackend::command_begin_rendering(CommandBuffer p_cmd,
-		const glm::uvec2& p_draw_extent, VectorView<Image> p_color_attachments,
-		Color p_clear_color) {
-	const uint32_t attachments_size = p_color_attachments.data() == nullptr
-			? 0
-			: p_color_attachments.size();
-
-	std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
-			attachments_size);
-	for (uint32_t i = 0; i < attachments_size; i++) {
-		VulkanImage* vk_image = (VulkanImage*)p_color_attachments[i];
-
-		auto& info = color_attachment_infos[i];
-		info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		info.pNext = nullptr;
-		info.imageView = vk_image->vk_image_view;
-		info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		info.clearValue = VkClearValue{ { p_clear_color.r, p_clear_color.g,
-				p_clear_color.b, p_clear_color.a } };
-	}
-
-	VkRenderingInfo render_info = {};
-	render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-	render_info.renderArea = VkRect2D{ VkOffset2D{ 0, 0 },
-		{ p_draw_extent.x, p_draw_extent.y } };
-	render_info.layerCount = 1;
-	render_info.colorAttachmentCount = attachments_size;
-	render_info.pColorAttachments = color_attachment_infos.data();
-	render_info.pDepthAttachment = nullptr;
 	render_info.pStencilAttachment = nullptr;
 
 	vkCmdBeginRendering((VkCommandBuffer)p_cmd, &render_info);

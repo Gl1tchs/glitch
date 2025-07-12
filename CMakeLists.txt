@@ -37,7 +37,6 @@ add_subdirectory(shaders)
 add_subdirectory(third_party)
 
 file(GLOB_RECURSE SOURCES
-    "${CMAKE_CURRENT_LIST_DIR}/include/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/engine/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/engine/*.cpp"
 )

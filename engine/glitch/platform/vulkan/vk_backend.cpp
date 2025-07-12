@@ -79,6 +79,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 	};
 
 	VkPhysicalDeviceFeatures features = {
+		.sampleRateShading = true,
 		.depthBounds = true,
 	};
 

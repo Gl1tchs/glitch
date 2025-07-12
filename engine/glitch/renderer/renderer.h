@@ -30,6 +30,7 @@ struct FrameData {
 struct RendererSettings {
 	Color clear_color = COLOR_GRAY;
 	float resolution_scale = 1.0f;
+	ImageSamples msaa = IMAGE_SAMPLES_1;
 };
 
 /**
@@ -59,9 +60,7 @@ public:
 	 */
 	void end_render();
 
-	void clear_pass(CommandBuffer p_cmd, Color clear_color = COLOR_GRAY);
-
-	void begin_rendering(CommandBuffer p_cmd, RendererSettings p_settings = {});
+	void begin_rendering(CommandBuffer p_cmd);
 
 	void end_rendering(CommandBuffer p_cmd);
 
@@ -82,8 +81,11 @@ public:
 	 */
 	void imgui_end();
 
-	// Sets scaling setting from 0.0 to 1.0
-	void set_render_scale(float p_scale);
+	void set_clear_color(Color p_color);
+
+	void set_resolution_scale(float p_scale);
+
+	void set_msaa_samples(ImageSamples p_samples);
 
 	Swapchain get_swapchain();
 
@@ -104,6 +106,8 @@ private:
 
 private:
 	void _imgui_init();
+
+	void _update_settings(RendererSettings p_settings);
 
 	void _request_resize();
 
@@ -132,13 +136,16 @@ private:
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 
-	const DataFormat color_attachment_format = DATA_FORMAT_R16G16B16A16_SFLOAT;
+	const DataFormat color_attachment_format = DATA_FORMAT_R8G8B8A8_UNORM;
 	const DataFormat depth_attachment_format = DATA_FORMAT_D32_SFLOAT;
 
 	Image color_image = GL_NULL_HANDLE;
 	Image depth_image = GL_NULL_HANDLE;
 
-	float render_scale = 1.0f;
+	// Settings
+	RendererSettings settings = {};
+	// not applied settings
+	RendererSettings framed_settings = {};
 
 	RenderStats stats = {};
 	uint32_t frame_number = 0;

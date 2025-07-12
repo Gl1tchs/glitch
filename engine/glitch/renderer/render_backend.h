@@ -45,7 +45,8 @@ public:
 	virtual Image image_create(DataFormat p_format, glm::uvec2 p_size,
 			const void* p_data = nullptr,
 			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT,
-			bool p_mipmapped = false) = 0;
+			bool p_mipmapped = false,
+			ImageSamples p_samples = IMAGE_SAMPLES_1) = 0;
 
 	virtual void image_free(Image p_image) = 0;
 
@@ -203,12 +204,8 @@ public:
 
 	virtual void command_begin_rendering(CommandBuffer p_cmd,
 			const glm::uvec2& p_draw_extent,
-			VectorView<Image> p_color_attachments,
+			VectorView<RenderingAttachment> p_color_attachments,
 			Image p_depth_attachment = GL_NULL_HANDLE) = 0;
-
-	virtual void command_begin_rendering(CommandBuffer p_cmd,
-			const glm::uvec2& p_draw_extent,
-			VectorView<Image> p_color_attachments, Color p_clear_color) = 0;
 
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
 

@@ -29,14 +29,13 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 
 	const RenderQueue renderables = _preprocess_render(p_ctx);
 
-	// Apply resolution setting
-	device->set_render_scale(p_ctx.settings.resolution_scale);
+	device->set_clear_color(p_ctx.settings.clear_color);
+	device->set_resolution_scale(p_ctx.settings.resolution_scale);
+	device->set_msaa_samples(p_ctx.settings.msaa);
 
 	CommandBuffer cmd = device->begin_render();
 	{
-		device->clear_pass(cmd, p_ctx.settings.clear_color);
-
-		_geometry_pass(cmd, renderables, p_ctx.settings);
+		_geometry_pass(cmd, renderables);
 	}
 	device->end_render();
 
@@ -87,13 +86,13 @@ RenderQueue SceneRenderer::_preprocess_render(const DrawingContext& p_ctx) {
 	return render_queue;
 }
 
-void SceneRenderer::_geometry_pass(CommandBuffer p_cmd,
-		const RenderQueue& p_render_queue, const RendererSettings& p_settings) {
+void SceneRenderer::_geometry_pass(
+		CommandBuffer p_cmd, const RenderQueue& p_render_queue) {
 	if (p_render_queue.empty()) {
 		return;
 	}
 
-	device->begin_rendering(p_cmd, p_settings);
+	device->begin_rendering(p_cmd);
 
 	// TODO: this should probably has their own render pass and a priority
 	// parameter should be given
