@@ -1,23 +1,27 @@
 # TODO
 
+## Bugs
+
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 
-## Renderer
+# Short Term
 
-- [ ] Rendering Settings
-  - MSAA
+- [ ] MSAA
+- [ ] Animation
+- [ ] Instanced rendering
+- [ ] Light objects
+- [ ] Post processing
+- [ ] Shadows
+
+## Long Term
 
 - [ ] Blender as Editor driven developement
+  - [ ] Serialization
   - [ ] Export blender model as gltf and import scene information from custom format that
         would also been exported by a custom blender plugin.
   - [ ] Use hot-reloadable meshes and references
 
-- [ ] Scene graph.
-  - [ ] Phong lighting model
-  - [ ] Instanced rendering.
-  - [ ] Text rendering.
-  - [ ] Deferred rendering.
-- [ ] Animations
+- [ ] Global illumination
+- [ ] Deferred rendering G Buffers.
+- [ ] Text rendering.
 - [ ] LODs
-- [ ] Infinite far plane
-- [ ] Resolution setting
