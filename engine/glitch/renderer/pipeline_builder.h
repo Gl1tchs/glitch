@@ -19,6 +19,9 @@ public:
 
 	PipelineBuilder& with_blend();
 
+	PipelineBuilder& with_multisample(
+			ImageSamples p_samples, bool p_enable_sample_shading = false);
+
 	/**
 	 * @param p_render_pass Optional render pass to build pipeline with. Default
 	 * will assume dynamic rendering.

@@ -9,11 +9,7 @@ PipelineBuilder::PipelineBuilder() {
 
 	vertex_input = {};
 	rasterization = {};
-	multisample = {
-		.sample_count = IMAGE_SAMPLES_8,
-		.enable_sample_shading = true,
-		.min_sample_shading = 0.2f,
-	};
+	multisample = {};
 	depth_stencil_state = {};
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};
@@ -45,6 +41,17 @@ PipelineBuilder& PipelineBuilder::with_depth_test(
 
 PipelineBuilder& PipelineBuilder::with_blend() {
 	color_blend_state = PipelineColorBlendState::create_blend();
+
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::with_multisample(
+		ImageSamples p_samples, bool p_enable_sample_shading) {
+	multisample.sample_count = IMAGE_SAMPLES_8;
+	if (p_enable_sample_shading) {
+		multisample.enable_sample_shading = true;
+		multisample.min_sample_shading = 0.2f;
+	}
 
 	return *this;
 }

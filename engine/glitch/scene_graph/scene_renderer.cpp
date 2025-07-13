@@ -3,21 +3,31 @@
 #include "glitch/core/application.h"
 #include "glitch/core/transform.h"
 #include "glitch/renderer/camera.h"
+#include "glitch/renderer/material_definitions.h"
 #include "glitch/renderer/types.h"
 
 #ifdef GL_DEBUG_BUILD
 #include "glitch/debug/debug_panel.h"
 #endif
 
-SceneRenderer::SceneRenderer() :
-		device(Application::get_instance()->get_renderer()),
-		backend(device->get_backend()) {
+SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
+		renderer(Application::get_instance()->get_renderer()),
+		backend(renderer->get_backend()) {
+	renderer->set_msaa_samples(p_specs.msaa);
+
+	// Register material definitions
+	MaterialSystem::init();
+	MaterialSystem::register_definition("unlit_standart",
+			get_unlit_material_definition(renderer->get_msaa_samples()));
+	MaterialSystem::register_definition("urp_standart",
+			get_urp_material_definition(renderer->get_msaa_samples()));
+
 	// scene buffer
 	scene_data_sbo = StorageBuffer::create(sizeof(SceneData), &scene_data);
 	push_constants.scene_buffer = scene_data_sbo->get_device_address();
 }
 
-SceneRenderer::~SceneRenderer() { device->wait_for_device(); }
+SceneRenderer::~SceneRenderer() { renderer->wait_for_device(); }
 
 void SceneRenderer::submit(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
@@ -29,20 +39,19 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 
 	const RenderQueue renderables = _preprocess_render(p_ctx);
 
-	device->set_clear_color(p_ctx.settings.clear_color);
-	device->set_resolution_scale(p_ctx.settings.resolution_scale);
-	device->set_msaa_samples(p_ctx.settings.msaa);
+	renderer->set_clear_color(p_ctx.settings.clear_color);
+	renderer->set_resolution_scale(p_ctx.settings.resolution_scale);
 
-	CommandBuffer cmd = device->begin_render();
+	CommandBuffer cmd = renderer->begin_render();
 	{
 		_geometry_pass(cmd, renderables);
 	}
-	device->end_render();
+	renderer->end_render();
 
 #ifdef GL_DEBUG_BUILD
-	device->imgui_begin();
+	renderer->imgui_begin();
 	DebugPanel::draw(p_ctx.scene_graph->get_root());
-	device->imgui_end();
+	renderer->imgui_end();
 #endif
 }
 
@@ -92,7 +101,7 @@ void SceneRenderer::_geometry_pass(
 		return;
 	}
 
-	device->begin_rendering(p_cmd);
+	renderer->begin_rendering(p_cmd);
 
 	// TODO: this should probably has their own render pass and a priority
 	// parameter should be given
@@ -144,5 +153,5 @@ void SceneRenderer::_geometry_pass(
 		}
 	}
 
-	device->end_rendering(p_cmd);
+	renderer->end_rendering(p_cmd);
 }

@@ -28,6 +28,10 @@ struct DrawingContext {
 	RendererSettings settings = {};
 };
 
+struct SceneRendererSpecification {
+	ImageSamples msaa;
+};
+
 /**
  * High level rendering interface
  */
@@ -35,7 +39,7 @@ class GL_API SceneRenderer {
 public:
 	using RenderFunc = std::function<void(CommandBuffer)>;
 
-	SceneRenderer();
+	SceneRenderer(const SceneRendererSpecification& p_specs);
 	~SceneRenderer();
 
 	void submit(const DrawingContext& p_ctx);
@@ -51,7 +55,7 @@ private:
 	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue);
 
 private:
-	Ref<Renderer> device;
+	Ref<Renderer> renderer;
 	Ref<RenderBackend> backend;
 
 	PushConstants push_constants = {};

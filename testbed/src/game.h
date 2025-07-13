@@ -27,11 +27,11 @@ protected:
 	void _on_destroy() override;
 
 private:
-	Ref<SceneRenderer> renderer;
+	Ref<SceneRenderer> scene_renderer;
 
 	SceneGraph scene_graph;
 
-	GLTFLoader gltf_loader;
+	Scope<GLTFLoader> gltf_loader;
 	std::string model_path = "";
 
 	CameraController camera_controller;

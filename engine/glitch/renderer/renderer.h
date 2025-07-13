@@ -30,7 +30,6 @@ struct FrameData {
 struct RendererSettings {
 	Color clear_color = COLOR_GRAY;
 	float resolution_scale = 1.0f;
-	ImageSamples msaa = IMAGE_SAMPLES_1;
 };
 
 /**
@@ -85,6 +84,9 @@ public:
 
 	void set_resolution_scale(float p_scale);
 
+	ImageSamples get_msaa_samples() const;
+	// Triggers resize and buffer recreation do not call this in begin_render /
+	// end_render
 	void set_msaa_samples(ImageSamples p_samples);
 
 	Swapchain get_swapchain();
@@ -106,8 +108,6 @@ private:
 
 private:
 	void _imgui_init();
-
-	void _update_settings(RendererSettings p_settings);
 
 	void _request_resize();
 
@@ -143,9 +143,8 @@ private:
 	Image depth_image = GL_NULL_HANDLE;
 
 	// Settings
+	ImageSamples msaa_samples = IMAGE_SAMPLES_1;
 	RendererSettings settings = {};
-	// not applied settings
-	RendererSettings framed_settings = {};
 
 	RenderStats stats = {};
 	uint32_t frame_number = 0;

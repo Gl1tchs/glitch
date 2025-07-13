@@ -13,11 +13,17 @@ Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
 }
 
 void Game::_on_start() {
-	renderer = create_ref<SceneRenderer>();
+	SceneRendererSpecification specs = {};
+	specs.msaa = IMAGE_SAMPLES_8;
 
-	Ref<SceneNode> scene = gltf_loader.load_gltf(model_path);
+	scene_renderer = create_ref<SceneRenderer>(specs);
+
+	// This must be created after scene renderer for it to initialize materials
+	gltf_loader = create_scope<GLTFLoader>();
+
+	Ref<SceneNode> scene = gltf_loader->load_gltf(model_path);
 	scene->transform.scale *= 5.0f;
-	scene->transform.rotation.y = 90.0f;
+	scene->transform.rotation.y = 188.0f;
 
 	scene_graph.get_root()->add_child(scene);
 
@@ -36,6 +42,7 @@ void Game::_on_start() {
 					.with_depth_test(
 							COMPARE_OP_LESS, false) // without depth write
 					.with_blend()
+					.with_multisample(get_renderer()->get_msaa_samples(), true)
 					.build();
 }
 
@@ -62,7 +69,7 @@ void Game::_on_update(float p_dt) {
 		}
 	}
 
-	renderer->submit_func([&](CommandBuffer cmd) {
+	scene_renderer->submit_func([&](CommandBuffer cmd) {
 		auto backend = get_renderer()->get_backend();
 
 		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
@@ -84,9 +91,8 @@ void Game::_on_update(float p_dt) {
 	ctx.camera = camera;
 	ctx.settings.resolution_scale = 1.0f;
 	ctx.settings.clear_color = COLOR_GRAY;
-	ctx.settings.msaa = IMAGE_SAMPLES_8;
 
-	renderer->submit(ctx);
+	scene_renderer->submit(ctx);
 }
 
 void Game::_on_destroy() {

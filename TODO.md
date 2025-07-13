@@ -6,13 +6,17 @@
 
 # Short Term
 
+- [ ] Renderer recreation
 - [x] MSAA
-  - [ ] Get the setting on pipeline creation it shouldn't be per frame setting
+  - [x] Get the setting on pipeline creation it shouldn't be per frame setting
 - [ ] Animation
 - [ ] Instanced rendering
 - [ ] Light objects
 - [ ] Post processing
 - [ ] Shadows
+- [ ] Transparent materials
+- [ ] Cubemaps
+
 
 ## Long Term
 
@@ -22,6 +26,7 @@
         would also been exported by a custom blender plugin.
   - [ ] Use hot-reloadable meshes and references
 
+- [ ] Particles and effects
 - [ ] Global illumination
 - [ ] Deferred rendering G Buffers.
 - [ ] Text rendering.

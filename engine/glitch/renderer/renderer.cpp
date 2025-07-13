@@ -28,7 +28,7 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			break;
 	}
 
-	backend->init(p_window);
+	backend->init(window);
 
 	graphics_queue = backend->queue_get(QUEUE_TYPE_GRAPHICS);
 	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
@@ -83,9 +83,6 @@ CommandBuffer Renderer::begin_render() {
 
 	_reset_stats();
 
-	// Apply settings
-	_update_settings(framed_settings);
-
 	backend->fence_wait(_get_current_frame().render_fence);
 
 	Optional<Image> swapchain_image = backend->swapchain_acquire_image(
@@ -133,7 +130,7 @@ void Renderer::end_render() {
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
-	const bool msaa_used = settings.msaa != IMAGE_SAMPLES_1;
+	const bool msaa_used = msaa_samples != IMAGE_SAMPLES_1;
 
 	// Copy color image to swapchain if there isn't got a resolver
 	if (!msaa_used) {
@@ -193,7 +190,7 @@ void Renderer::begin_rendering(CommandBuffer p_cmd) {
 	color_attachment.load_op = ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.clear_color = settings.clear_color;
 
-	if (settings.msaa != IMAGE_SAMPLES_1) {
+	if (msaa_samples != IMAGE_SAMPLES_1) {
 		color_attachment.resolve_mode = RESOLVE_MODE_AVERAGE_BIT;
 		color_attachment.resolve_image = current_swapchain_image;
 		color_attachment.resolve_layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -231,15 +228,26 @@ void Renderer::imgui_end() {
 }
 
 void Renderer::set_clear_color(Color p_color) {
-	framed_settings.clear_color = p_color;
+	settings.clear_color = p_color;
 }
 
 void Renderer::set_resolution_scale(float p_scale) {
-	framed_settings.resolution_scale = p_scale;
+	if (fabs(p_scale - settings.resolution_scale) > 0.001f) {
+		settings.resolution_scale = p_scale;
+
+		_request_resize();
+	}
 }
 
+ImageSamples Renderer::get_msaa_samples() const { return msaa_samples; }
+
 void Renderer::set_msaa_samples(ImageSamples p_samples) {
-	framed_settings.msaa = p_samples;
+	// TODO: check for device specification
+	if (msaa_samples != p_samples) {
+		msaa_samples = p_samples;
+
+		_request_resize();
+	}
 }
 
 Swapchain Renderer::get_swapchain() { return swapchain; }
@@ -301,31 +309,6 @@ void Renderer::_imgui_init() {
 	colors[ImGuiCol_TitleBg] = bg_color;
 }
 
-void Renderer::_update_settings(RendererSettings p_settings) {
-	bool resize_required = false;
-
-	settings.clear_color = p_settings.clear_color;
-
-	if (fabs(p_settings.resolution_scale - settings.resolution_scale) >
-			0.001f) {
-		settings.resolution_scale = p_settings.resolution_scale;
-
-		resize_required = true;
-	}
-
-	// TODO! check for max capable msaa for rendering device
-	if (settings.msaa != p_settings.msaa) {
-		settings.msaa = p_settings.msaa;
-
-		resize_required = true;
-	}
-
-	if (resize_required) {
-		// Update state
-		_request_resize();
-	}
-}
-
 void Renderer::_request_resize() {
 	GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
 
@@ -345,14 +328,14 @@ void Renderer::_request_resize() {
 			nullptr,
 			IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_TRANSFER_SRC_BIT |
 					IMAGE_USAGE_TRANSFER_DST_BIT,
-			false, settings.msaa);
+			false, msaa_samples);
 
 	if (depth_image) {
 		backend->image_free(depth_image);
 	}
 	depth_image = backend->image_create(depth_attachment_format, new_size,
 			nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false,
-			settings.msaa);
+			msaa_samples);
 }
 
 void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }

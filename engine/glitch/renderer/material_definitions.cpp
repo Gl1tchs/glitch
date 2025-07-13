@@ -4,7 +4,7 @@
 #include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/types.h"
 
-MaterialDefinition get_unlit_material_definition() {
+MaterialDefinition get_unlit_material_definition(ImageSamples p_msaa_samples) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
@@ -13,7 +13,8 @@ MaterialDefinition get_unlit_material_definition() {
 					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/unlit/mesh.frag.spv"))
-					.with_depth_test(COMPARE_OP_LESS)
+					.with_depth_test()
+					.with_multisample(p_msaa_samples, true)
 					.build();
 
 	MaterialDefinition definition;
@@ -27,7 +28,7 @@ MaterialDefinition get_unlit_material_definition() {
 	return definition;
 }
 
-MaterialDefinition get_urp_material_definition() {
+MaterialDefinition get_urp_material_definition(ImageSamples p_msaa_samples) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
@@ -36,7 +37,8 @@ MaterialDefinition get_urp_material_definition() {
 					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/urp/mesh.frag.spv"))
-					.with_depth_test(COMPARE_OP_LESS)
+					.with_depth_test()
+					.with_multisample(p_msaa_samples, true)
 					.build();
 
 	MaterialDefinition definition;
