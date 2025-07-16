@@ -31,11 +31,11 @@ void Game::_on_start() {
 
 	std::tie(grid_shader, grid_pipeline) =
 			PipelineBuilder()
-					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
+					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_spirv_data(
 									"build/testbed/shaders/"
 									"infinite_grid.vert.spv"))
-					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
+					.add_shader_stage(ShaderStage::FRAGMENT,
 							ShaderLibrary::get_spirv_data(
 									"build/testbed/shaders/"
 									"infinite_grid.frag.spv"))

@@ -14,7 +14,7 @@ public:
 	PipelineBuilder();
 
 	PipelineBuilder& add_shader_stage(
-			ShaderStageBits p_stage, const std::vector<uint32_t>& p_spirv_data);
+			ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data);
 
 	PipelineBuilder& with_depth_test(
 			CompareOperator p_op = CompareOperator::LESS,

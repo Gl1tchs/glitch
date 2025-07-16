@@ -21,7 +21,7 @@ PipelineBuilder::PipelineBuilder() {
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
-		ShaderStageBits p_stage, const std::vector<uint32_t>& p_spirv_data) {
+		ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data) {
 	SpirvData shader_data = {};
 	shader_data.stage = p_stage;
 	shader_data.byte_code = p_spirv_data;
@@ -49,6 +49,23 @@ PipelineBuilder& PipelineBuilder::with_blend() {
 
 PipelineBuilder& PipelineBuilder::with_multisample(
 		uint32_t p_samples, bool p_enable_sample_shading) {
+	const uint32_t max_sample_count =
+			Renderer::get_backend()->get_max_msaa_samples();
+
+	if (p_samples % 2 != 0) {
+		GL_LOG_ERROR(
+				"[PipelineBuilder] MSAA sample count must be divisible by 2");
+		return *this;
+	}
+
+	if (p_samples > max_sample_count) {
+		GL_LOG_ERROR("[PipelineBuilder] MSAA sample of {} exceeds device "
+					 "capability of {}. "
+					 "Defaulting to 1 samples.",
+				p_samples, max_sample_count);
+		return *this;
+	}
+
 	multisample.sample_count = p_samples;
 	if (p_enable_sample_shading) {
 		multisample.enable_sample_shading = true;

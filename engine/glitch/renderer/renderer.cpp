@@ -247,17 +247,19 @@ void Renderer::set_msaa_samples(uint32_t p_samples) {
 	const uint32_t max_sample_count = backend->get_max_msaa_samples();
 
 	if (p_samples % 2 != 0) {
-		GL_LOG_ERROR("MSAA Sample must be divisible by 2");
+		GL_LOG_ERROR("MSAA sample count must be divisible by 2");
 		return;
 	}
 
 	if (p_samples > max_sample_count) {
-		GL_LOG_ERROR("MSAA Sample of {} exceeds device capability of {}.",
+		GL_LOG_ERROR(
+				"[Renderer] MSAA sample of {} exceeds device capability of {}. "
+				"Defaulting to 1 samples.",
 				p_samples, max_sample_count);
+		msaa_samples = 1;
 		return;
 	}
 
-	// TODO: check for device specification
 	if (msaa_samples != p_samples) {
 		msaa_samples = p_samples;
 
