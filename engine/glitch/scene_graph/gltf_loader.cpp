@@ -10,6 +10,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
+namespace gl {
+
 enum GLTFParsingFlags : uint16_t {
 	GLTF_PARSING_FLAG_NO_UV = 0x1,
 	GLTF_PARSING_FLAG_NO_NORMALS = 0x2,
@@ -193,26 +195,26 @@ static ImageFiltering _gltf_to_image_filtering(int p_gltf_filter) {
 		case TINYGLTF_TEXTURE_FILTER_NEAREST:
 		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
 		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
-			return IMAGE_FILTERING_NEAREST;
+			return ImageFiltering::NEAREST;
 		case TINYGLTF_TEXTURE_FILTER_LINEAR:
 		case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST:
 		case TINYGLTF_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR:
-			return IMAGE_FILTERING_LINEAR;
+			return ImageFiltering::LINEAR;
 		default:
-			return IMAGE_FILTERING_LINEAR;
+			return ImageFiltering::LINEAR;
 	}
 }
 
 static ImageWrappingMode _gltf_to_image_wrapping(int p_gltf_wrap) {
 	switch (p_gltf_wrap) {
 		case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
-			return IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
+			return ImageWrappingMode::CLAMP_TO_EDGE;
 		case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
-			return IMAGE_WRAPPING_MODE_MIRRORED_REPEAT;
+			return ImageWrappingMode::MIRRORED_REPEAT;
 		case TINYGLTF_TEXTURE_WRAP_REPEAT:
-			return IMAGE_WRAPPING_MODE_REPEAT;
+			return ImageWrappingMode::REPEAT;
 		default:
-			return IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
+			return ImageWrappingMode::CLAMP_TO_EDGE;
 	}
 }
 
@@ -515,16 +517,16 @@ Ref<Texture> GLTFLoader::_load_texture(int texture_index,
 		DataFormat format;
 		switch (gltf_image.component) {
 			case 1:
-				format = DATA_FORMAT_R8_UNORM;
+				format = DataFormat::R8_UNORM;
 				break;
 			case 2:
-				format = DATA_FORMAT_R8G8_UNORM;
+				format = DataFormat::R8G8_UNORM;
 				break;
 			case 3:
-				format = DATA_FORMAT_R8G8B8_UNORM;
+				format = DataFormat::R8G8B8_UNORM;
 				break;
 			case 4:
-				format = DATA_FORMAT_R8G8B8A8_UNORM;
+				format = DataFormat::R8G8B8A8_UNORM;
 				break;
 			default:
 				GL_ASSERT(false,
@@ -545,3 +547,5 @@ Ref<Texture> GLTFLoader::_load_texture(int texture_index,
 
 	return texture;
 }
+
+} //namespace gl

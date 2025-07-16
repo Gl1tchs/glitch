@@ -1,15 +1,17 @@
 #include "glitch/platform/vulkan/vk_backend.h"
 
+namespace gl {
+
 CommandQueue VulkanRenderBackend::queue_get(QueueType p_type) {
 	VulkanQueue* queue;
 	switch (p_type) {
-		case QUEUE_TYPE_GRAPHICS:
+		case QueueType::GRAPHICS:
 			queue = &graphics_queue;
 			break;
-		case QUEUE_TYPE_PRESENT:
+		case QueueType::PRESENT:
 			queue = &present_queue;
 			break;
-		case QUEUE_TYPE_TRANSFER:
+		case QueueType::TRANSFER:
 			queue = &transfer_queue;
 			break;
 		default:
@@ -87,3 +89,5 @@ bool VulkanRenderBackend::queue_present(CommandQueue p_queue,
 	const VkResult res = vkQueuePresentKHR(queue->queue, &present_info);
 	return res == VK_SUCCESS;
 }
+
+} //namespace gl

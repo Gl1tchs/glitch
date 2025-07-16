@@ -7,20 +7,23 @@
 
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 class PipelineBuilder {
 public:
 	PipelineBuilder();
 
 	PipelineBuilder& add_shader_stage(
-			ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data);
+			ShaderStageBits p_stage, const std::vector<uint32_t>& p_spirv_data);
 
 	PipelineBuilder& with_depth_test(
-			CompareOperator p_op = COMPARE_OP_LESS, bool p_depth_write = true);
+			CompareOperator p_op = CompareOperator::LESS,
+			bool p_depth_write = true);
 
 	PipelineBuilder& with_blend();
 
 	PipelineBuilder& with_multisample(
-			ImageSamples p_samples, bool p_enable_sample_shading = false);
+			uint32_t p_samples, bool p_enable_sample_shading = false);
 
 	/**
 	 * @param p_render_pass Optional render pass to build pipeline with. Default
@@ -38,3 +41,5 @@ private:
 	PipelineColorBlendState color_blend_state;
 	RenderingState rendering_state;
 };
+
+} //namespace gl

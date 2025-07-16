@@ -8,6 +8,8 @@
 
 #include "camera_controller.h"
 
+using namespace gl;
+
 struct GridPushConstants {
 	glm::mat4 view_proj;
 	glm::vec3 camera_pos;

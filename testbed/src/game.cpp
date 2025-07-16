@@ -14,7 +14,7 @@ Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
 
 void Game::_on_start() {
 	SceneRendererSpecification specs = {};
-	specs.msaa = IMAGE_SAMPLES_8;
+	specs.msaa = 4;
 
 	scene_renderer = create_ref<SceneRenderer>(specs);
 
@@ -40,7 +40,7 @@ void Game::_on_start() {
 									"build/testbed/shaders/"
 									"infinite_grid.frag.spv"))
 					.with_depth_test(
-							COMPARE_OP_LESS, false) // without depth write
+							CompareOperator::LESS, false) // without depth write
 					.with_blend()
 					.with_multisample(get_renderer()->get_msaa_samples(), true)
 					.build();

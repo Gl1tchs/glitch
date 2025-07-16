@@ -6,6 +6,8 @@
 
 #include "glitch/core/transform.h"
 
+namespace gl {
+
 struct GL_API Camera {
 	Transform transform;
 
@@ -36,3 +38,5 @@ struct GL_API PerspectiveCamera : Camera {
 	glm::mat4 get_view_matrix() const override;
 	glm::mat4 get_projection_matrix() const override;
 };
+
+} //namespace gl

@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 /**
  * A very light weight span-like vector abstraction with only a pointer
  * and size, that can be indexed and compared.
@@ -46,3 +48,5 @@ private:
 	const T* _ptr = nullptr;
 	size_t _size = 0;
 };
+
+} //namespace gl

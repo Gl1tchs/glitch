@@ -41,5 +41,3 @@
 #include <glm/glm.hpp>
 
 #include <glitch/core/core.h>
-
-namespace fs = std::filesystem;

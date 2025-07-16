@@ -1,5 +1,7 @@
 #include "glitch/platform/vulkan/vk_backend.h"
 
+namespace gl {
+
 static BitField<VkImageUsageFlags> _gl_to_vk_image_usage_flags(
 		BitField<ImageUsageBits> p_usage) {
 	BitField<VkImageUsageFlags> vk_usage;
@@ -105,8 +107,8 @@ void VulkanRenderBackend::_generate_image_mipmaps(
 	int mip_height = p_size.y;
 	for (uint32_t i = 1; i < mip_levels; i++) {
 		command_transition_image(p_cmd, p_image,
-				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1);
+				ImageLayout::TRANSFER_DST_OPTIMAL,
+				ImageLayout::TRANSFER_SRC_OPTIMAL, i - 1, 1);
 
 		command_copy_image_to_image(p_cmd, p_image, p_image,
 				{ mip_width, mip_height },
@@ -115,8 +117,8 @@ void VulkanRenderBackend::_generate_image_mipmaps(
 				i - 1, i);
 
 		command_transition_image(p_cmd, p_image,
-				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-				IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, i - 1, 1);
+				ImageLayout::TRANSFER_SRC_OPTIMAL,
+				ImageLayout::SHADER_READ_ONLY_OPTIMAL, i - 1, 1);
 
 		if (mip_width > 1) {
 			mip_width /= 2;
@@ -126,13 +128,13 @@ void VulkanRenderBackend::_generate_image_mipmaps(
 		}
 	}
 
-	command_transition_image(p_cmd, p_image, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mip_levels - 1, 1);
+	command_transition_image(p_cmd, p_image, ImageLayout::TRANSFER_DST_OPTIMAL,
+			ImageLayout::SHADER_READ_ONLY_OPTIMAL, mip_levels - 1, 1);
 }
 
 Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 		const void* p_data, BitField<ImageUsageBits> p_usage, bool p_mipmapped,
-		ImageSamples p_samples) {
+		uint32_t p_samples) {
 	VkExtent3D vk_size = { p_size.x, p_size.y, 1 };
 	VkFormat vk_format = static_cast<VkFormat>(p_format);
 
@@ -146,7 +148,7 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 				vk_size.depth * vk_size.width * vk_size.height * 4;
 
 		Buffer staging_buffer = buffer_create(data_size,
-				BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+				BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
 
 		uint8_t* mapped_data = buffer_map(staging_buffer);
 		{
@@ -164,8 +166,8 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 		command_immediate_submit(
 				[&](CommandBuffer p_cmd) {
 					command_transition_image(p_cmd, new_image,
-							IMAGE_LAYOUT_UNDEFINED,
-							IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+							ImageLayout::UNDEFINED,
+							ImageLayout::TRANSFER_DST_OPTIMAL);
 
 					BufferImageCopyRegion copy_region = {};
 					copy_region.buffer_offset = 0;
@@ -191,11 +193,11 @@ Image VulkanRenderBackend::image_create(DataFormat p_format, glm::uvec2 p_size,
 						_generate_image_mipmaps(p_cmd, new_image, p_size);
 					} else {
 						command_transition_image(p_cmd, new_image,
-								IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-								IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+								ImageLayout::TRANSFER_DST_OPTIMAL,
+								ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 					}
 				},
-				QUEUE_TYPE_GRAPHICS);
+				QueueType::GRAPHICS);
 
 		buffer_free(staging_buffer);
 
@@ -259,3 +261,5 @@ Sampler VulkanRenderBackend::sampler_create(ImageFiltering p_min_filter,
 void VulkanRenderBackend::sampler_free(Sampler p_sampler) {
 	vkDestroySampler(device, (VkSampler)p_sampler, nullptr);
 }
+
+} //namespace gl

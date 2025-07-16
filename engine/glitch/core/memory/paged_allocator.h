@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 /**
  * Class representing a dynamic allocator that will grow when
  * the underlying data exceeds `page_size`
@@ -44,3 +46,5 @@ private:
 		}
 	}
 };
+
+} //namespace gl

@@ -9,6 +9,8 @@
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 typedef uint64_t MeshHandle;
 
 struct MeshVertex {
@@ -37,3 +39,5 @@ struct GL_API MeshPrimitive {
 struct Mesh {
 	std::vector<Ref<MeshPrimitive>> primitives;
 };
+
+} //namespace gl

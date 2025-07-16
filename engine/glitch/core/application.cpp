@@ -4,6 +4,8 @@
 #include "glitch/core/timer.h"
 #include "glitch/renderer/material.h"
 
+namespace gl {
+
 Application* Application::s_instance = nullptr;
 
 Application::Application(const ApplicationCreateInfo& p_info) {
@@ -82,3 +84,5 @@ void Application::_process_main_thread_queue() {
 }
 
 Application* Application::get_instance() { return s_instance; }
+
+} //namespace gl

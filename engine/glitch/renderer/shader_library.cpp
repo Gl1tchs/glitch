@@ -2,6 +2,8 @@
 
 #include "shader_bundle.gen.h"
 
+namespace gl {
+
 ShaderLibrary& ShaderLibrary::get() {
 	static ShaderLibrary s_shader_library;
 	return s_shader_library;
@@ -44,3 +46,5 @@ std::vector<uint32_t> ShaderLibrary::get_spirv_data(
 	file.read(reinterpret_cast<char*>(buffer.data()), file_size);
 	return buffer;
 }
+
+} //namespace gl

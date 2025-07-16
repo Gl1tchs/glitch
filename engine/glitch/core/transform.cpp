@@ -2,6 +2,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+namespace gl {
+
 void Transform::translate(const glm::vec3& p_translation) {
 	position += p_translation;
 }
@@ -32,3 +34,5 @@ glm::mat4 Transform::to_mat4() const {
 
 	return transform;
 }
+
+} //namespace gl

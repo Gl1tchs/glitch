@@ -1,5 +1,7 @@
 #include "glitch/platform/vulkan/vk_backend.h"
 
+namespace gl {
+
 Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
 		BitField<BufferUsageBits> p_usage,
 		MemoryAllocationType p_allocation_type) {
@@ -11,7 +13,7 @@ Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
 
 	VmaAllocationCreateInfo alloc_create_info = {};
 	switch (p_allocation_type) {
-		case MEMORY_ALLOCATION_TYPE_CPU: {
+		case MemoryAllocationType::CPU: {
 			bool is_src = p_usage.has_flag(BUFFER_USAGE_TRANSFER_SRC_BIT);
 			bool is_dst = p_usage.has_flag(BUFFER_USAGE_TRANSFER_DST_BIT);
 			if (is_src && !is_dst) {
@@ -31,7 +33,7 @@ Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
 					(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		} break;
-		case MEMORY_ALLOCATION_TYPE_GPU: {
+		case MemoryAllocationType::GPU: {
 			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
 			if (p_size <= SMALL_ALLOCATION_MAX_SIZE) {
@@ -127,3 +129,5 @@ VmaPool VulkanRenderBackend::_find_or_create_small_allocs_pool(
 
 	return pool;
 }
+
+} //namespace gl

@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 enum MouseButton {
 	MOUSE_BUTTON_1 = 0,
 	MOUSE_BUTTON_2 = 1,
@@ -18,3 +20,5 @@ enum MouseButton {
 	MOUSE_BUTTON_RIGHT = MOUSE_BUTTON_2,
 	MOUSE_BUTTON_MIDDLE = MOUSE_BUTTON_3,
 };
+
+}

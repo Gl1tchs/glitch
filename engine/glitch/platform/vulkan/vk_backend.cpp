@@ -16,6 +16,8 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
 
+namespace gl {
+
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL _vk_debug_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		VkDebugUtilsMessageTypeFlagsEXT message_type,
@@ -276,3 +278,5 @@ void* VulkanRenderBackend::imgui_image_upload(
 void VulkanRenderBackend::imgui_image_free(void* p_set) {
 	ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)p_set);
 }
+
+} //namespace gl

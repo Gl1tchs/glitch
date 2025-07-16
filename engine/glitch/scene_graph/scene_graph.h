@@ -10,6 +10,8 @@
 #include "glitch/renderer/mesh.h"
 #include "glitch/renderer/render_queue.h"
 
+namespace gl {
+
 struct GL_API SceneNode {
 	Transform transform;
 	glm::mat4 world_transform;
@@ -47,3 +49,5 @@ private:
 private:
 	Ref<SceneNode> root;
 };
+
+} //namespace gl

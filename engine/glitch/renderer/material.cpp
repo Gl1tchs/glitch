@@ -3,6 +3,8 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
+namespace gl {
+
 std::unordered_map<std::string, Ref<MaterialDefinition>>
 		MaterialSystem::s_definitions = {};
 
@@ -95,7 +97,7 @@ void MaterialInstance::upload() {
 	if (!material_data_buffer) {
 		material_data_buffer = backend->buffer_create(buffer_size,
 				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
-				MEMORY_ALLOCATION_TYPE_CPU);
+				MemoryAllocationType::CPU);
 	}
 
 	// TODO: maybe do a persistent buffer to save time
@@ -171,3 +173,5 @@ Ref<MaterialInstance> MaterialSystem::create_instance(
 
 	return instance;
 }
+
+} //namespace gl

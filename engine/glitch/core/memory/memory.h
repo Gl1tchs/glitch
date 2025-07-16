@@ -8,6 +8,8 @@
 
 #define GL_FREE(m_ptr) free(m_ptr)
 
+namespace gl {
+
 template <typename T> using Weak = std::weak_ptr<T>;
 
 template <typename T> using Scope = std::unique_ptr<T>;
@@ -27,3 +29,4 @@ inline constexpr Ref<T> create_ref(Args&&... args) {
 inline constexpr size_t align_up(size_t p_offset, size_t p_alignment) {
 	return (p_offset + p_alignment - 1) & ~(p_alignment - 1);
 }
+} //namespace gl

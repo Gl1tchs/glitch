@@ -6,6 +6,8 @@
 
 struct GLFWwindow;
 
+namespace gl {
+
 enum WindowCursorMode {
 	WINDOW_CURSOR_MODE_NORMAL = 0,
 	WINDOW_CURSOR_MODE_HIDDEN = 1,
@@ -47,3 +49,5 @@ private:
 
 	WindowCursorMode cursor_mode = WINDOW_CURSOR_MODE_NORMAL;
 };
+
+} //namespace gl

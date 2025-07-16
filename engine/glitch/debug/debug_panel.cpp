@@ -6,6 +6,8 @@
 
 #include <imgui.h>
 
+namespace gl {
+
 static bool s_show_panel = false;
 static SceneNode* s_selected_node = nullptr;
 
@@ -99,3 +101,5 @@ void DebugPanel::draw(const Ref<SceneNode>& p_graph_root) {
 	}
 	ImGui::End();
 }
+
+} //namespace gl

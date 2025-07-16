@@ -7,6 +7,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+namespace gl {
+
 Texture::~Texture() {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
@@ -21,8 +23,8 @@ Ref<Texture> Texture::create(const Color& p_color, const glm::uvec2& p_size,
 	const uint32_t color_data = p_color.as_uint();
 
 	Ref<Texture> tx = create_ref<Texture>();
-	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
-	tx->image = backend->image_create(DATA_FORMAT_R8G8B8A8_UNORM, p_size,
+	tx->format = DataFormat::R8G8B8A8_UNORM;
+	tx->image = backend->image_create(DataFormat::R8G8B8A8_UNORM, p_size,
 			&color_data, IMAGE_USAGE_SAMPLED_BIT, true);
 	tx->sampler = backend->sampler_create(p_sampler.min_filter,
 			p_sampler.mag_filter, p_sampler.wrap_u, p_sampler.wrap_v,
@@ -55,9 +57,9 @@ Ref<Texture> Texture::load_from_path(
 			stbi_load(p_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
 
 	Ref<Texture> tx = create_ref<Texture>();
-	tx->format = DATA_FORMAT_R8G8B8A8_UNORM;
+	tx->format = DataFormat::R8G8B8A8_UNORM;
 	tx->image = backend->image_create(
-			DATA_FORMAT_R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);
+			DataFormat::R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);
 	tx->sampler =
 			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
 					p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
@@ -90,3 +92,5 @@ template <> size_t hash64(const Texture& p_texture) {
 	hash_combine(seed, p_texture.get_sampler());
 	return seed;
 }
+
+} //namespace gl

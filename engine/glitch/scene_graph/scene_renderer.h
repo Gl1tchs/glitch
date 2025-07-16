@@ -9,6 +9,8 @@
 #include "glitch/renderer/storage_buffer.h"
 #include "glitch/scene_graph/scene_graph.h"
 
+namespace gl {
+
 struct SceneData {
 	glm::mat4 view_projection;
 	glm::vec3 camera_position;
@@ -29,7 +31,7 @@ struct DrawingContext {
 };
 
 struct SceneRendererSpecification {
-	ImageSamples msaa;
+	uint32_t msaa = 1;
 };
 
 /**
@@ -68,3 +70,5 @@ private:
 
 	std::vector<RenderFunc> render_funcs;
 };
+
+} //namespace gl

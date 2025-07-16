@@ -7,6 +7,8 @@
 
 #include "glitch/scene_graph/scene_graph.h"
 
+namespace gl {
+
 /**
  * An ImGui window responsible for scene manipulation
  */
@@ -14,3 +16,5 @@ class GL_API DebugPanel {
 public:
 	static void draw(const Ref<SceneNode>& p_graph_root);
 };
+
+} //namespace gl

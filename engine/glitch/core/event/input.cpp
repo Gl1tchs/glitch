@@ -2,6 +2,8 @@
 
 #include "glitch/core/event/event_system.h"
 
+namespace gl {
+
 inline static std::unordered_map<KeyCode, bool> key_press_states = {};
 inline static std::unordered_map<KeyCode, bool> key_release_states = {};
 inline static std::unordered_map<KeyCode, bool> keys_held_states = {};
@@ -112,3 +114,5 @@ glm::vec2 Input::get_scroll_offset() {
 	scroll_offset = { 0, 0 };
 	return old_scroll_offset;
 }
+
+} //namespace gl

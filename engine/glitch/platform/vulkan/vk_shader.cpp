@@ -4,6 +4,8 @@
 #include <spirv_reflect.h>
 #include <vulkan/vulkan_core.h>
 
+namespace gl {
+
 static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 		SpvReflectDescriptorType p_type) {
 	switch (p_type) {
@@ -37,7 +39,7 @@ static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 
 static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 		uint32_t p_binding, VkDescriptorType p_type,
-		uint32_t p_descriptor_count, ShaderStage p_stage,
+		uint32_t p_descriptor_count, ShaderStageBits p_stage,
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>&
 				p_bindings) {
 	const auto it = p_bindings.find(p_set);
@@ -71,7 +73,7 @@ static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 }
 
 static void _add_push_constant_range_if_not_exists(uint32_t p_size,
-		uint32_t p_offset, ShaderStage stage,
+		uint32_t p_offset, ShaderStageBits stage,
 		std::vector<VkPushConstantRange>& p_ranges) {
 	const auto it = std::find_if(p_ranges.begin(), p_ranges.end(),
 			[=](const VkPushConstantRange& push_constant) -> bool {
@@ -312,3 +314,5 @@ VulkanRenderBackend::shader_get_vertex_inputs(Shader p_shader) {
 	VulkanShader* shader_info = (VulkanShader*)p_shader;
 	return shader_info->vertex_input_variables;
 }
+
+} //namespace gl

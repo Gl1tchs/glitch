@@ -1,5 +1,7 @@
 #include "glitch/core/uid.h"
 
+namespace gl {
+
 static std::random_device random_device;
 
 static thread_local std::mt19937_64 engine(random_device());
@@ -31,3 +33,5 @@ UID& UID::operator=(uint64_t&& p_other) {
 	value = p_other;
 	return *this;
 }
+
+} //namespace gl

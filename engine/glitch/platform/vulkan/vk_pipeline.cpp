@@ -4,98 +4,15 @@
 
 #include <vulkan/vulkan_core.h>
 
-static const VkPrimitiveTopology GL_TO_VK_PRIMITIVE[RENDER_PRIMITIVE_MAX] = {
-	VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
-	VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
-	VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
-	VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
-	VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
-	VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-	VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
-	VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-	VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
-	VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-	VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
-};
-
-static const VkCompareOp GL_TO_VK_COMPARE_OP[COMPARE_OP_MAX] = {
-	VK_COMPARE_OP_NEVER,
-	VK_COMPARE_OP_LESS,
-	VK_COMPARE_OP_EQUAL,
-	VK_COMPARE_OP_LESS_OR_EQUAL,
-	VK_COMPARE_OP_GREATER,
-	VK_COMPARE_OP_NOT_EQUAL,
-	VK_COMPARE_OP_GREATER_OR_EQUAL,
-	VK_COMPARE_OP_ALWAYS,
-};
-
-static const VkStencilOp GL_TO_VK_STENCIL_OP[STENCIL_OP_MAX] = {
-	VK_STENCIL_OP_KEEP,
-	VK_STENCIL_OP_ZERO,
-	VK_STENCIL_OP_REPLACE,
-	VK_STENCIL_OP_INCREMENT_AND_CLAMP,
-	VK_STENCIL_OP_DECREMENT_AND_CLAMP,
-	VK_STENCIL_OP_INVERT,
-	VK_STENCIL_OP_INCREMENT_AND_WRAP,
-	VK_STENCIL_OP_DECREMENT_AND_WRAP,
-};
-
-static const VkLogicOp GL_TO_VK_LOGIC_OP[LOGIC_OP_MAX] = {
-	VK_LOGIC_OP_CLEAR,
-	VK_LOGIC_OP_AND,
-	VK_LOGIC_OP_AND_REVERSE,
-	VK_LOGIC_OP_COPY,
-	VK_LOGIC_OP_AND_INVERTED,
-	VK_LOGIC_OP_NO_OP,
-	VK_LOGIC_OP_XOR,
-	VK_LOGIC_OP_OR,
-	VK_LOGIC_OP_NOR,
-	VK_LOGIC_OP_EQUIVALENT,
-	VK_LOGIC_OP_INVERT,
-	VK_LOGIC_OP_OR_REVERSE,
-	VK_LOGIC_OP_COPY_INVERTED,
-	VK_LOGIC_OP_OR_INVERTED,
-	VK_LOGIC_OP_NAND,
-	VK_LOGIC_OP_SET,
-};
-
-static const VkBlendFactor GL_TO_VK_BLEND_FACTOR[BLEND_FACTOR_MAX] = {
-	VK_BLEND_FACTOR_ZERO,
-	VK_BLEND_FACTOR_ONE,
-	VK_BLEND_FACTOR_SRC_COLOR,
-	VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
-	VK_BLEND_FACTOR_DST_COLOR,
-	VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
-	VK_BLEND_FACTOR_SRC_ALPHA,
-	VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-	VK_BLEND_FACTOR_DST_ALPHA,
-	VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
-	VK_BLEND_FACTOR_CONSTANT_COLOR,
-	VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
-	VK_BLEND_FACTOR_CONSTANT_ALPHA,
-	VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
-	VK_BLEND_FACTOR_SRC_ALPHA_SATURATE,
-	VK_BLEND_FACTOR_SRC1_COLOR,
-	VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
-	VK_BLEND_FACTOR_SRC1_ALPHA,
-	VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
-};
-
-static const VkBlendOp GL_TO_VK_BLEND_OP[BLEND_OP_MAX] = {
-	VK_BLEND_OP_ADD,
-	VK_BLEND_OP_SUBTRACT,
-	VK_BLEND_OP_REVERSE_SUBTRACT,
-	VK_BLEND_OP_MIN,
-	VK_BLEND_OP_MAX,
-};
+namespace gl {
 
 static VkCullModeFlagBits _gl_to_vk_cull_mode(PolygonCullMode cull_mode) {
 	switch (cull_mode) {
-		case POLYGON_CULL_DISABLED:
+		case PolygonCullMode::DISABLED:
 			return VK_CULL_MODE_NONE;
-		case POLYGON_CULL_FRONT:
+		case PolygonCullMode::FRONT:
 			return VK_CULL_MODE_FRONT_BIT;
-		case POLYGON_CULL_BACK:
+		case PolygonCullMode::BACK:
 			return VK_CULL_MODE_BACK_BIT;
 		default:
 			return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
@@ -243,7 +160,8 @@ static VkPipelineInputAssemblyStateCreateInfo _get_input_assembly_state_info(
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
 	input_assembly.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	input_assembly.topology = GL_TO_VK_PRIMITIVE[p_render_primitive];
+	input_assembly.topology =
+			static_cast<VkPrimitiveTopology>(p_render_primitive);
 	input_assembly.primitiveRestartEnable = false;
 
 	return input_assembly;
@@ -262,7 +180,7 @@ static VkPipelineRasterizationStateCreateInfo _get_rasterization_state_info(
 			: VK_POLYGON_MODE_FILL;
 	rasterizer.cullMode = _gl_to_vk_cull_mode(p_rasterization_state.cull_mode);
 	rasterizer.frontFace =
-			p_rasterization_state.front_face == POLYGON_FRONT_FACE_CLOCKWISE
+			p_rasterization_state.front_face == PolygonFrontFace::CLOCKWISE
 			? VK_FRONT_FACE_CLOCKWISE
 			: VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = p_rasterization_state.depth_bias_enabled;
@@ -300,8 +218,8 @@ static VkPipelineDepthStencilStateCreateInfo _get_depth_stencil_state_info(
 			VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depth_stencil.depthTestEnable = p_depth_stencil_state.enable_depth_test;
 	depth_stencil.depthWriteEnable = p_depth_stencil_state.enable_depth_write;
-	depth_stencil.depthCompareOp =
-			GL_TO_VK_COMPARE_OP[p_depth_stencil_state.depth_compare_operator];
+	depth_stencil.depthCompareOp = static_cast<VkCompareOp>(
+			p_depth_stencil_state.depth_compare_operator);
 	depth_stencil.depthBoundsTestEnable =
 			p_depth_stencil_state.enable_depth_range;
 	depth_stencil.minDepthBounds = p_depth_stencil_state.depth_range_min;
@@ -310,13 +228,13 @@ static VkPipelineDepthStencilStateCreateInfo _get_depth_stencil_state_info(
 
 	VkStencilOpState front_stencil_state;
 	front_stencil_state.failOp =
-			GL_TO_VK_STENCIL_OP[p_depth_stencil_state.front_op.fail];
+			static_cast<VkStencilOp>(p_depth_stencil_state.front_op.fail);
 	front_stencil_state.passOp =
-			GL_TO_VK_STENCIL_OP[p_depth_stencil_state.front_op.pass];
+			static_cast<VkStencilOp>(p_depth_stencil_state.front_op.pass);
 	front_stencil_state.depthFailOp =
-			GL_TO_VK_STENCIL_OP[p_depth_stencil_state.front_op.depth_fail];
+			static_cast<VkStencilOp>(p_depth_stencil_state.front_op.depth_fail);
 	front_stencil_state.compareOp =
-			GL_TO_VK_COMPARE_OP[p_depth_stencil_state.front_op.compare];
+			static_cast<VkCompareOp>(p_depth_stencil_state.front_op.compare);
 	front_stencil_state.compareMask =
 			p_depth_stencil_state.front_op.compare_mask;
 	front_stencil_state.writeMask = p_depth_stencil_state.front_op.write_mask;
@@ -326,13 +244,13 @@ static VkPipelineDepthStencilStateCreateInfo _get_depth_stencil_state_info(
 
 	VkStencilOpState back_stencil_state;
 	back_stencil_state.failOp =
-			GL_TO_VK_STENCIL_OP[p_depth_stencil_state.back_op.fail];
+			static_cast<VkStencilOp>(p_depth_stencil_state.back_op.fail);
 	back_stencil_state.passOp =
-			GL_TO_VK_STENCIL_OP[p_depth_stencil_state.back_op.pass];
+			static_cast<VkStencilOp>(p_depth_stencil_state.back_op.pass);
 	back_stencil_state.depthFailOp =
-			GL_TO_VK_STENCIL_OP[p_depth_stencil_state.back_op.depth_fail];
+			static_cast<VkStencilOp>(p_depth_stencil_state.back_op.depth_fail);
 	back_stencil_state.compareOp =
-			GL_TO_VK_COMPARE_OP[p_depth_stencil_state.back_op.compare];
+			static_cast<VkCompareOp>(p_depth_stencil_state.back_op.compare);
 	back_stencil_state.compareMask = p_depth_stencil_state.back_op.compare_mask;
 	back_stencil_state.writeMask = p_depth_stencil_state.back_op.write_mask;
 	back_stencil_state.reference = p_depth_stencil_state.back_op.reference;
@@ -349,17 +267,17 @@ _get_color_blend_attachments(PipelineColorBlendState p_blend_state) {
 		VkPipelineColorBlendAttachmentState vk_attachment = {};
 		vk_attachment.blendEnable = attachment.enable_blend;
 		vk_attachment.srcColorBlendFactor =
-				GL_TO_VK_BLEND_FACTOR[attachment.src_color_blend_factor];
+				static_cast<VkBlendFactor>(attachment.src_color_blend_factor);
 		vk_attachment.dstColorBlendFactor =
-				GL_TO_VK_BLEND_FACTOR[attachment.dst_color_blend_factor];
+				static_cast<VkBlendFactor>(attachment.dst_color_blend_factor);
 		vk_attachment.colorBlendOp =
-				GL_TO_VK_BLEND_OP[attachment.color_blend_op];
+				static_cast<VkBlendOp>(attachment.color_blend_op);
 		vk_attachment.srcAlphaBlendFactor =
-				GL_TO_VK_BLEND_FACTOR[attachment.src_alpha_blend_factor];
+				static_cast<VkBlendFactor>(attachment.src_alpha_blend_factor);
 		vk_attachment.dstAlphaBlendFactor =
-				GL_TO_VK_BLEND_FACTOR[attachment.dst_alpha_blend_factor];
+				static_cast<VkBlendFactor>(attachment.dst_alpha_blend_factor);
 		vk_attachment.alphaBlendOp =
-				GL_TO_VK_BLEND_OP[attachment.alpha_blend_op];
+				static_cast<VkBlendOp>(attachment.alpha_blend_op);
 
 		if (attachment.write_r) {
 			vk_attachment.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
@@ -387,7 +305,7 @@ static VkPipelineColorBlendStateCreateInfo _get_color_blend_state_info(
 	color_blend.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	color_blend.logicOpEnable = p_blend_state.enable_logic_op;
-	color_blend.logicOp = GL_TO_VK_LOGIC_OP[p_blend_state.logic_op];
+	color_blend.logicOp = static_cast<VkLogicOp>(p_blend_state.logic_op);
 	color_blend.attachmentCount = static_cast<uint32_t>(p_attachments.size());
 	color_blend.pAttachments = p_attachments.data();
 
@@ -708,3 +626,5 @@ void VulkanRenderBackend::pipeline_free(Pipeline p_pipeline) {
 
 	VersatileResource::free(resources_allocator, pipeline);
 }
+
+} //namespace gl

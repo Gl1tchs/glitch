@@ -5,6 +5,8 @@
 
 #pragma once
 
+namespace gl {
+
 template <typename T> class Future {
 public:
 	Future() = default;
@@ -31,3 +33,5 @@ public:
 private:
 	std::future<T> fut;
 };
+
+} //namespace gl

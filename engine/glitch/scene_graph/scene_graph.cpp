@@ -1,5 +1,7 @@
 #include "glitch/scene_graph/scene_graph.h"
 
+namespace gl {
+
 void SceneNode::add_child(Ref<SceneNode> p_node) { children.push_back(p_node); }
 
 SceneGraph::SceneGraph() {
@@ -78,3 +80,5 @@ void SceneGraph::_update_node_transform(
 		_update_node_transform(child, p_node->world_transform);
 	}
 }
+
+} //namespace gl

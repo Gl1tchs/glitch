@@ -4,6 +4,8 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
+namespace gl {
+
 PipelineBuilder::PipelineBuilder() {
 	Ref<Renderer> device = Application::get_instance()->get_renderer();
 
@@ -19,7 +21,7 @@ PipelineBuilder::PipelineBuilder() {
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
-		ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data) {
+		ShaderStageBits p_stage, const std::vector<uint32_t>& p_spirv_data) {
 	SpirvData shader_data = {};
 	shader_data.stage = p_stage;
 	shader_data.byte_code = p_spirv_data;
@@ -31,7 +33,7 @@ PipelineBuilder& PipelineBuilder::add_shader_stage(
 
 PipelineBuilder& PipelineBuilder::with_depth_test(
 		CompareOperator p_op, bool p_depth_write) {
-	depth_stencil_state.depth_compare_operator = COMPARE_OP_LESS;
+	depth_stencil_state.depth_compare_operator = CompareOperator::LESS;
 	depth_stencil_state.enable_depth_test = true;
 	depth_stencil_state.enable_depth_write = p_depth_write;
 	depth_stencil_state.enable_depth_range = true;
@@ -46,8 +48,8 @@ PipelineBuilder& PipelineBuilder::with_blend() {
 }
 
 PipelineBuilder& PipelineBuilder::with_multisample(
-		ImageSamples p_samples, bool p_enable_sample_shading) {
-	multisample.sample_count = IMAGE_SAMPLES_8;
+		uint32_t p_samples, bool p_enable_sample_shading) {
+	multisample.sample_count = p_samples;
 	if (p_enable_sample_shading) {
 		multisample.enable_sample_shading = true;
 		multisample.min_sample_shading = 0.2f;
@@ -63,10 +65,12 @@ std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 
 	// If any render pass provided use it to build the pipeline otherwise get
 	// the default render pass from rendering device1
-	Pipeline pipeline =
-			backend->render_pipeline_create(shader, RENDER_PRIMITIVE_TRIANGLES,
-					vertex_input, rasterization, multisample,
-					depth_stencil_state, color_blend_state, 0, rendering_state);
+	Pipeline pipeline = backend->render_pipeline_create(shader,
+			RenderPrimitive::TRIANGLE_LIST, vertex_input, rasterization,
+			multisample, depth_stencil_state, color_blend_state, 0,
+			rendering_state);
 
 	return std::make_pair(shader, pipeline);
 }
+
+} //namespace gl

@@ -7,6 +7,8 @@
 
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 class RenderPassBuilder {
 public:
 	RenderPassBuilder();
@@ -25,3 +27,5 @@ private:
 	std::vector<RenderPassAttachment> attachments;
 	std::vector<SubpassInfo> subpasses;
 };
+
+} //namespace gl

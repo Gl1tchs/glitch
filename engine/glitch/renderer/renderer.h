@@ -8,8 +8,10 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/types.h"
 
-enum GraphicsAPI {
-	GRAPHICS_API_VULKAN,
+namespace gl {
+
+enum class GraphicsAPI {
+	VULKAN,
 };
 
 [[nodiscard]] GL_API GraphicsAPI find_proper_api() noexcept;
@@ -47,9 +49,9 @@ public:
 	 * transactions.
 	 * @note If you want to draw directly to `draw_image` using compute shaders
 	 * you must transition the image layout from
-	 * IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to IMAGE_LAYOUT_GENERAL and after
+	 * ImageLayout::COLOR_ATTACHMENT_OPTIMAL to ImageLayout::GENERAL and after
 	 * when you are done with it, you must retransition the layout into
-	 * IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL.
+	 * ImageLayout::COLOR_ATTACHMENT_OPTIMAL.
 	 */
 	CommandBuffer begin_render();
 
@@ -84,10 +86,10 @@ public:
 
 	void set_resolution_scale(float p_scale);
 
-	ImageSamples get_msaa_samples() const;
+	uint32_t get_msaa_samples() const;
 	// Triggers resize and buffer recreation do not call this in begin_render /
 	// end_render
-	void set_msaa_samples(ImageSamples p_samples);
+	void set_msaa_samples(uint32_t p_samples);
 
 	Swapchain get_swapchain();
 
@@ -136,14 +138,14 @@ private:
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 
-	const DataFormat color_attachment_format = DATA_FORMAT_R8G8B8A8_UNORM;
-	const DataFormat depth_attachment_format = DATA_FORMAT_D32_SFLOAT;
+	const DataFormat color_attachment_format = DataFormat::R8G8B8A8_UNORM;
+	const DataFormat depth_attachment_format = DataFormat::D32_SFLOAT;
 
 	Image color_image = GL_NULL_HANDLE;
 	Image depth_image = GL_NULL_HANDLE;
 
 	// Settings
-	ImageSamples msaa_samples = IMAGE_SAMPLES_1;
+	uint32_t msaa_samples = 1;
 	RendererSettings settings = {};
 
 	RenderStats stats = {};
@@ -152,3 +154,5 @@ private:
 	// imgui data
 	bool imgui_being_used = false;
 };
+
+} //namespace gl

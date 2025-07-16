@@ -10,6 +10,8 @@
 #include "glitch/debug/debug_panel.h"
 #endif
 
+namespace gl {
+
 SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 		renderer(Application::get_instance()->get_renderer()),
 		backend(renderer->get_backend()) {
@@ -140,7 +142,7 @@ void SceneRenderer::_geometry_pass(
 
 		// Render
 		backend->command_bind_index_buffer(
-				p_cmd, primitive->index_buffer, 0, INDEX_TYPE_UINT32);
+				p_cmd, primitive->index_buffer, 0, IndexType::UINT32);
 
 		backend->command_draw_indexed(p_cmd, primitive->index_count);
 
@@ -155,3 +157,5 @@ void SceneRenderer::_geometry_pass(
 
 	renderer->end_rendering(p_cmd);
 }
+
+} //namespace gl

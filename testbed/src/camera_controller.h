@@ -2,6 +2,8 @@
 
 #include <glitch/renderer/camera.h>
 
+using namespace gl;
+
 class CameraController {
 public:
 	CameraController();

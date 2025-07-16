@@ -3,6 +3,8 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+namespace gl {
+
 OrthographicCamera::OrthographicCamera() : Camera() {
 	near_clip = -1.0f;
 	far_clip = 1.0f;
@@ -37,3 +39,5 @@ glm::mat4 PerspectiveCamera::get_projection_matrix() const {
 
 	return proj;
 }
+
+} //namespace gl

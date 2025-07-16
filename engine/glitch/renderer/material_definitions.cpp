@@ -4,7 +4,9 @@
 #include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/types.h"
 
-MaterialDefinition get_unlit_material_definition(ImageSamples p_msaa_samples) {
+namespace gl {
+
+MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
@@ -28,7 +30,7 @@ MaterialDefinition get_unlit_material_definition(ImageSamples p_msaa_samples) {
 	return definition;
 }
 
-MaterialDefinition get_urp_material_definition(ImageSamples p_msaa_samples) {
+MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
 					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
@@ -58,3 +60,5 @@ MaterialDefinition get_urp_material_definition(ImageSamples p_msaa_samples) {
 
 	return definition;
 }
+
+} //namespace gl

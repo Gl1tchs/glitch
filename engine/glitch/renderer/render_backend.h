@@ -10,6 +10,8 @@
 #include "glitch/core/window.h"
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 /**
  * Abstract class who is responsible of communicating with GPU
  */
@@ -45,8 +47,7 @@ public:
 	virtual Image image_create(DataFormat p_format, glm::uvec2 p_size,
 			const void* p_data = nullptr,
 			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT,
-			bool p_mipmapped = false,
-			ImageSamples p_samples = IMAGE_SAMPLES_1) = 0;
+			bool p_mipmapped = false, uint32_t p_samples = 1) = 0;
 
 	virtual void image_free(Image p_image) = 0;
 
@@ -57,11 +58,11 @@ public:
 	virtual uint32_t image_get_mip_levels(Image p_image) = 0;
 
 	virtual Sampler sampler_create(
-			ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
-			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
-			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
-			ImageWrappingMode p_wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
-			ImageWrappingMode p_wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+			ImageFiltering p_min_filter = ImageFiltering::LINEAR,
+			ImageFiltering p_mag_filter = ImageFiltering::LINEAR,
+			ImageWrappingMode p_wrap_u = ImageWrappingMode::CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_v = ImageWrappingMode::CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_w = ImageWrappingMode::CLAMP_TO_EDGE,
 			uint32_t p_mip_levels = 0) = 0;
 
 	virtual void sampler_free(Sampler p_sampler) = 0;
@@ -176,7 +177,7 @@ public:
 
 	virtual void command_immediate_submit(
 			std::function<void(CommandBuffer p_cmd)>&& p_function,
-			QueueType p_queue_type = QUEUE_TYPE_TRANSFER) = 0;
+			QueueType p_queue_type = QueueType::TRANSFER) = 0;
 
 	virtual CommandPool command_pool_create(CommandQueue p_queue) = 0;
 
@@ -209,7 +210,7 @@ public:
 
 	virtual void command_end_rendering(CommandBuffer p_cmd) = 0;
 
-	// image layout must be IMAGE_LAYOUT_GENERAL
+	// image layout must be ImageLayout::GENERAL
 	virtual void command_clear_color(CommandBuffer p_cmd, Image p_image,
 			const Color& p_clear_color,
 			ImageAspectFlags p_image_aspect = IMAGE_ASPECT_COLOR_BIT) = 0;
@@ -246,7 +247,7 @@ public:
 
 	virtual void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
 			uint32_t p_first_set, VectorView<UniformSet> p_uniform_sets,
-			PipelineType p_type = PIPELINE_TYPE_GRAPHICS) = 0;
+			PipelineType p_type = PipelineType::GRAPHICS) = 0;
 
 	virtual void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
 			uint64_t p_offset, uint32_t p_size,
@@ -267,7 +268,7 @@ public:
 	virtual void command_copy_buffer(CommandBuffer p_cmd, Buffer p_src_buffer,
 			Buffer p_dst_buffer, VectorView<BufferCopyRegion> p_regions) = 0;
 
-	// image layout must be IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+	// image layout must be ImageLayout::TRANSFER_DST_OPTIMAL
 	virtual void command_copy_buffer_to_image(CommandBuffer p_cmd,
 			Buffer p_src_buffer, Image p_dst_image,
 			VectorView<BufferImageCopyRegion> p_regions) = 0;
@@ -295,3 +296,5 @@ public:
 
 	virtual void imgui_image_free(void* p_set) = 0;
 };
+
+} //namespace gl

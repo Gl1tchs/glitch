@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 class GL_API Timer {
 public:
 	using Clock = std::chrono::high_resolution_clock;
@@ -19,3 +21,5 @@ public:
 private:
 	std::chrono::time_point<Clock> last_frame_time;
 };
+
+} //namespace gl

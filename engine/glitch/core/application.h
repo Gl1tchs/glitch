@@ -7,6 +7,8 @@
 #include "glitch/core/window.h"
 #include "glitch/renderer/renderer.h"
 
+namespace gl {
+
 struct ApplicationPerfStats {
 	float delta_time;
 
@@ -73,3 +75,5 @@ private:
 
 	ApplicationPerfStats perf_stats = {};
 };
+
+} //namespace gl
