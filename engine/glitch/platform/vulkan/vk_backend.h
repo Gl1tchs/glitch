@@ -29,6 +29,8 @@ public:
 
 	void device_wait() override;
 
+	uint32_t get_max_msaa_samples() const override;
+
 	// Buffer
 
 	struct VulkanBuffer {

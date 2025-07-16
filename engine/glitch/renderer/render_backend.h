@@ -28,6 +28,8 @@ public:
 
 	virtual CommandQueue queue_get(QueueType p_type) = 0;
 
+	virtual uint32_t get_max_msaa_samples() const = 0;
+
 	// Buffer
 
 	virtual Buffer buffer_create(uint64_t p_size,

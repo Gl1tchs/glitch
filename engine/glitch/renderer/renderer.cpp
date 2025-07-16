@@ -244,6 +244,19 @@ void Renderer::set_resolution_scale(float p_scale) {
 uint32_t Renderer::get_msaa_samples() const { return msaa_samples; }
 
 void Renderer::set_msaa_samples(uint32_t p_samples) {
+	const uint32_t max_sample_count = backend->get_max_msaa_samples();
+
+	if (p_samples % 2 != 0) {
+		GL_LOG_ERROR("MSAA Sample must be divisible by 2");
+		return;
+	}
+
+	if (p_samples > max_sample_count) {
+		GL_LOG_ERROR("MSAA Sample of {} exceeds device capability of {}.",
+				p_samples, max_sample_count);
+		return;
+	}
+
 	// TODO: check for device specification
 	if (msaa_samples != p_samples) {
 		msaa_samples = p_samples;

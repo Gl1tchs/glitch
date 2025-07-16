@@ -201,6 +201,28 @@ void VulkanRenderBackend::shutdown() { deletion_queue.flush(); }
 
 void VulkanRenderBackend::device_wait() { vkDeviceWaitIdle(device); }
 
+uint32_t VulkanRenderBackend::get_max_msaa_samples() const {
+	const BitField<VkSampleCountFlags> counts =
+			physical_device_properties.limits.framebufferColorSampleCounts &
+			physical_device_properties.limits.framebufferDepthSampleCounts;
+
+	if (counts.has_flag(VK_SAMPLE_COUNT_64_BIT)) {
+		return 64;
+	} else if (counts.has_flag(VK_SAMPLE_COUNT_32_BIT)) {
+		return 32;
+	} else if (counts.has_flag(VK_SAMPLE_COUNT_16_BIT)) {
+		return 16;
+	} else if (counts.has_flag(VK_SAMPLE_COUNT_8_BIT)) {
+		return 8;
+	} else if (counts.has_flag(VK_SAMPLE_COUNT_4_BIT)) {
+		return 4;
+	} else if (counts.has_flag(VK_SAMPLE_COUNT_2_BIT)) {
+		return 2;
+	}
+
+	return 1;
+}
+
 void VulkanRenderBackend::imgui_init_for_platform(
 		GLFWwindow* p_glfw_window, DataFormat p_color_format) {
 	VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
