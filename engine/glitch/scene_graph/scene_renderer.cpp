@@ -6,10 +6,6 @@
 #include "glitch/renderer/material_definitions.h"
 #include "glitch/renderer/types.h"
 
-#ifdef GL_DEBUG_BUILD
-#include "glitch/debug/debug_panel.h"
-#endif
-
 namespace gl {
 
 SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
@@ -41,6 +37,7 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 
 	const RenderQueue renderables = _preprocess_render(p_ctx);
 
+	renderer->set_render_present_mode(false);
 	renderer->set_clear_color(p_ctx.settings.clear_color);
 	renderer->set_resolution_scale(p_ctx.settings.resolution_scale);
 
@@ -49,12 +46,6 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 		_geometry_pass(cmd, renderables);
 	}
 	renderer->end_render();
-
-#ifdef GL_DEBUG_BUILD
-	renderer->imgui_begin();
-	DebugPanel::draw(p_ctx.scene_graph->get_root());
-	renderer->imgui_end();
-#endif
 }
 
 void SceneRenderer::submit_func(RenderFunc&& p_func) {

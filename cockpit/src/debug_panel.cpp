@@ -1,14 +1,10 @@
-#include "glitch/debug/debug_panel.h"
+#include "debug_panel.h"
 
-#include "glitch/core/application.h"
-#include "glitch/core/event/input.h"
-#include "glitch/core/transform.h"
+#include <glitch/core/application.h>
+#include <glitch/core/transform.h>
 
-#include <imgui.h>
+#include <imgui/imgui.h>
 
-namespace gl {
-
-static bool s_show_panel = false;
 static SceneNode* s_selected_node = nullptr;
 
 static void _traverse_render_node_hierarchy(const Ref<SceneNode>& p_node) {
@@ -62,14 +58,6 @@ static void _render_node_properties(SceneNode* p_node) {
 }
 
 void DebugPanel::draw(const Ref<SceneNode>& p_graph_root) {
-	if (Input::is_key_pressed_once(KEY_CODE_F3)) {
-		s_show_panel = !s_show_panel;
-	}
-
-	if (!s_show_panel) {
-		return;
-	}
-
 	ImGui::Begin("Stats");
 	{
 		const ApplicationPerfStats& stats =
@@ -101,5 +89,3 @@ void DebugPanel::draw(const Ref<SceneNode>& p_graph_root) {
 	}
 	ImGui::End();
 }
-
-} //namespace gl

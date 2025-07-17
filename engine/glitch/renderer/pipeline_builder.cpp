@@ -52,16 +52,10 @@ PipelineBuilder& PipelineBuilder::with_multisample(
 	const uint32_t max_sample_count =
 			Renderer::get_backend()->get_max_msaa_samples();
 
-	if (p_samples != 1 && p_samples % 2 != 0) {
-		GL_LOG_ERROR(
-				"[PipelineBuilder] MSAA sample count must be divisible by 2");
-		return *this;
-	}
-
-	if (p_samples > max_sample_count) {
-		GL_LOG_ERROR("[PipelineBuilder] MSAA sample of {} exceeds device "
-					 "capability of {}. "
-					 "Defaulting to 1 samples.",
+	if ((p_samples != 1 && p_samples % 2 != 0) ||
+			p_samples > max_sample_count) {
+		GL_LOG_ERROR("Invalid MSAA sample count: {}. Must be 1 or "
+					 "power-of-two, and ≤ {}",
 				p_samples, max_sample_count);
 		return *this;
 	}

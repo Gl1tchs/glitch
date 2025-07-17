@@ -27,6 +27,9 @@ struct FrameData {
 
 	Semaphore image_available_semaphore, render_finished_semaphore;
 	Fence render_fence;
+
+	void init(CommandQueue p_queue);
+	void destroy();
 };
 
 struct RendererSettings {
@@ -83,6 +86,11 @@ public:
 	 */
 	void imgui_end();
 
+	/**
+	 * Sets whether the renderer should present the image into swapchain or not.
+	 */
+	void set_render_present_mode(bool p_present_to_swapchain);
+
 	void set_clear_color(Color p_color);
 
 	void set_resolution_scale(float p_scale);
@@ -95,9 +103,12 @@ public:
 
 	Swapchain get_swapchain();
 
-	Image get_draw_image();
+	/**
+	 * Get descriptor set of the final image to use with imgui image
+	 */
+	void* get_final_image_descriptor() const;
 
-	Image get_depth_image();
+	glm::uvec2 get_final_image_size() const;
 
 	RenderStats& get_stats();
 
@@ -143,10 +154,15 @@ private:
 	const DataFormat color_attachment_format = DataFormat::R8G8B8A8_UNORM;
 	const DataFormat depth_attachment_format = DataFormat::D32_SFLOAT;
 
+	Image final_image = GL_NULL_HANDLE;
+	void* final_image_descriptor = GL_NULL_HANDLE;
+	Sampler default_sampler = GL_NULL_HANDLE;
+
 	Image color_image = GL_NULL_HANDLE;
 	Image depth_image = GL_NULL_HANDLE;
 
 	// Settings
+	bool should_present_to_swapchain = true;
 	uint32_t msaa_samples = 1;
 	RendererSettings settings = {};
 
