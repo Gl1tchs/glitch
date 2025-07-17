@@ -8,6 +8,8 @@
 #include "glitch/platform/vulkan/vk_common.h"
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 static_assert(
 		sizeof(ImageSubresourceLayers) == sizeof(VkImageSubresourceLayers));
 static_assert(sizeof(ImageResolve) == sizeof(VkImageResolve));
@@ -26,6 +28,8 @@ public:
 	// Device
 
 	void device_wait() override;
+
+	uint32_t get_max_msaa_samples() const override;
 
 	// Buffer
 
@@ -64,8 +68,7 @@ public:
 	Image image_create(DataFormat p_format, glm::uvec2 p_size,
 			const void* p_data = nullptr,
 			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT,
-			bool p_mipmapped = false,
-			ImageSamples p_samples = IMAGE_SAMPLES_1) override;
+			bool p_mipmapped = false, uint32_t p_samples = 1) override;
 
 	void image_free(Image p_image) override;
 
@@ -75,11 +78,11 @@ public:
 
 	uint32_t image_get_mip_levels(Image p_image) override;
 
-	Sampler sampler_create(ImageFiltering p_min_filter = IMAGE_FILTERING_LINEAR,
-			ImageFiltering p_mag_filter = IMAGE_FILTERING_LINEAR,
-			ImageWrappingMode p_wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
-			ImageWrappingMode p_wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
-			ImageWrappingMode p_wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE,
+	Sampler sampler_create(ImageFiltering p_min_filter = ImageFiltering::LINEAR,
+			ImageFiltering p_mag_filter = ImageFiltering::LINEAR,
+			ImageWrappingMode p_wrap_u = ImageWrappingMode::CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_v = ImageWrappingMode::CLAMP_TO_EDGE,
+			ImageWrappingMode p_wrap_w = ImageWrappingMode::CLAMP_TO_EDGE,
 			uint32_t p_mip_levels = 0) override;
 
 	void sampler_free(Sampler p_sampler) override;
@@ -252,7 +255,7 @@ public:
 
 	void command_immediate_submit(
 			std::function<void(CommandBuffer p_cmd)>&& p_function,
-			QueueType p_queue_type = QUEUE_TYPE_TRANSFER) override;
+			QueueType p_queue_type = QueueType::TRANSFER) override;
 
 	CommandPool command_pool_create(CommandQueue p_queue) override;
 
@@ -285,7 +288,7 @@ public:
 
 	void command_end_render_pass(CommandBuffer p_cmd) override;
 
-	// image layout must be IMAGE_LAYOUT_GENERAL
+	// image layout must be ImageLayout::GENERAL
 	void command_clear_color(CommandBuffer p_cmd, Image p_image,
 			const Color& p_clear_color,
 			ImageAspectFlags p_image_aspect = IMAGE_ASPECT_COLOR_BIT) override;
@@ -321,7 +324,7 @@ public:
 
 	void command_bind_uniform_sets(CommandBuffer p_cmd, Shader p_shader,
 			uint32_t p_first_set, VectorView<UniformSet> p_uniform_sets,
-			PipelineType p_type = PIPELINE_TYPE_GRAPHICS) override;
+			PipelineType p_type = PipelineType::GRAPHICS) override;
 
 	void command_push_constants(CommandBuffer p_cmd, Shader p_shader,
 			uint64_t p_offset, uint32_t p_size,
@@ -431,3 +434,5 @@ private:
 
 	DeletionQueue deletion_queue;
 };
+
+} //namespace gl

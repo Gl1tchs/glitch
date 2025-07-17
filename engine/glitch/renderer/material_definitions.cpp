@@ -4,13 +4,15 @@
 #include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/types.h"
 
-MaterialDefinition get_unlit_material_definition(ImageSamples p_msaa_samples) {
+namespace gl {
+
+MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
-					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
+					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/unlit/mesh.vert.spv"))
-					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
+					.add_shader_stage(ShaderStage::FRAGMENT,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/unlit/mesh.frag.spv"))
 					.with_depth_test()
@@ -28,13 +30,13 @@ MaterialDefinition get_unlit_material_definition(ImageSamples p_msaa_samples) {
 	return definition;
 }
 
-MaterialDefinition get_urp_material_definition(ImageSamples p_msaa_samples) {
+MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
-					.add_shader_stage(SHADER_STAGE_VERTEX_BIT,
+					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/urp/mesh.vert.spv"))
-					.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT,
+					.add_shader_stage(ShaderStage::FRAGMENT,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/urp/mesh.frag.spv"))
 					.with_depth_test()
@@ -59,3 +61,5 @@ MaterialDefinition get_urp_material_definition(ImageSamples p_msaa_samples) {
 
 	return definition;
 }
+
+} //namespace gl

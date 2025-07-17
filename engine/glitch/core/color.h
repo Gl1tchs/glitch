@@ -6,6 +6,8 @@
 
 #include "glitch/core/hash.h"
 
+namespace gl {
+
 /**
  * Color representing Red,Green,Blue,Alpha values in 32-bit floats.
  */
@@ -75,3 +77,5 @@ template <> inline size_t hash64(const Color& p_color) {
 	hash_combine(seed, p_color.as_uint());
 	return seed;
 }
+
+} //namespace gl

@@ -7,6 +7,8 @@
 #include "glitch/core/event/key_code.h"
 #include "glitch/core/event/mouse_button.h"
 
+namespace gl {
+
 class GL_API Input {
 public:
 	static void init();
@@ -25,3 +27,5 @@ public:
 
 	static glm::vec2 get_scroll_offset();
 };
+
+} //namespace gl

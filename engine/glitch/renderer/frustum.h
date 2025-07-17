@@ -5,6 +5,8 @@
 
 #pragma once
 
+namespace gl {
+
 struct GL_API Frustum {
 	glm::vec4 planes[6]; // left, right, bottom, top, near, far
 
@@ -19,3 +21,5 @@ struct GL_API AABB {
 
 	AABB transform(const glm::mat4& p_transform);
 };
+
+} //namespace gl

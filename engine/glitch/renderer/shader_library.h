@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 class GL_API ShaderLibrary {
 public:
 	static ShaderLibrary& get();
@@ -19,3 +21,5 @@ public:
 	 */
 	static std::vector<uint32_t> get_spirv_data(const fs::path& p_filepath);
 };
+
+} //namespace gl

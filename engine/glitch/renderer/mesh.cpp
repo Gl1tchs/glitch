@@ -3,7 +3,9 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
-static AABB _get_aabb_from_vertices(const std::vector<MeshVertex>& p_vertices) {
+namespace gl {
+
+static AABB _get_aabb_from_vertices(const std::span<MeshVertex>& p_vertices) {
 	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
 	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
 
@@ -23,7 +25,8 @@ MeshPrimitive::~MeshPrimitive() {
 }
 
 Ref<MeshPrimitive> MeshPrimitive::create(
-		std::vector<MeshVertex> p_vertices, std::vector<uint32_t> p_indices) {
+		const std::span<MeshVertex>& p_vertices,
+		const std::span<uint32_t>& p_indices) {
 	if (p_vertices.empty() || p_indices.empty()) {
 		return nullptr;
 	}
@@ -37,7 +40,7 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 	const size_t data_size = vertex_size + index_size;
 
 	Buffer staging_buffer = backend->buffer_create(data_size,
-			BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+			BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
 
 	uint8_t* mapped_data = backend->buffer_map(staging_buffer);
 	{
@@ -55,13 +58,13 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 					BUFFER_USAGE_STORAGE_BUFFER_BIT |
 							BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 							BUFFER_USAGE_TRANSFER_DST_BIT,
-					MEMORY_ALLOCATION_TYPE_GPU);
+					MemoryAllocationType::GPU);
 
 	// Create index buffer
 	primitive->index_buffer = backend->buffer_create(
 			p_indices.size() * sizeof(uint32_t),
 			BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT,
-			MEMORY_ALLOCATION_TYPE_GPU);
+			MemoryAllocationType::GPU);
 
 	backend->command_immediate_submit([&](CommandBuffer p_cmd) {
 		BufferCopyRegion region;
@@ -92,3 +95,5 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 
 	return primitive;
 }
+
+} //namespace gl

@@ -1,5 +1,7 @@
 #include "glitch/core/timer.h"
 
+namespace gl {
+
 Timer::Timer() : last_frame_time(Clock::now()) {}
 
 float Timer::get_elapsed_milliseconds() {
@@ -21,3 +23,5 @@ float Timer::get_delta_time() {
 	last_frame_time = current_time;
 	return delta_time.count();
 }
+
+} //namespace gl

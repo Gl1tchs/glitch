@@ -7,6 +7,8 @@
 
 #include <GLFW/glfw3.h>
 
+namespace gl {
+
 static void _glfw_error_callback(int p_error, const char* p_description) {
 	GL_LOG_ERROR("GLFW error {}: {}.", p_error, p_description);
 }
@@ -163,3 +165,5 @@ void Window::_assign_event_delegates() {
 				event::notify(scroll_event);
 			});
 }
+
+} //namespace gl

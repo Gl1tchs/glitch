@@ -7,6 +7,8 @@
 
 #include "glitch/renderer/mesh.h"
 
+namespace gl {
+
 struct RenderObject {
 	glm::mat4 transform;
 	Ref<MeshPrimitive> primitive;
@@ -36,3 +38,5 @@ public:
 private:
 	std::vector<RenderObject> renderables;
 };
+
+} //namespace gl

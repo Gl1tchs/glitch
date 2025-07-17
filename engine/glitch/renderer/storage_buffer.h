@@ -7,6 +7,8 @@
 
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 /**
  * Storage buffer wrapper for easier access and data transfers
  */
@@ -26,3 +28,5 @@ private:
 	size_t size;
 	BufferDeviceAddress gpu_addr;
 };
+
+} //namespace gl

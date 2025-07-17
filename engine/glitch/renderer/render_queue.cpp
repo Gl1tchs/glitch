@@ -1,5 +1,7 @@
 #include "glitch/renderer/render_queue.h"
 
+namespace gl {
+
 void RenderQueue::add(const RenderObject& p_renderable) {
 	renderables.push_back(p_renderable);
 }
@@ -25,3 +27,5 @@ RenderQueue::ConstIter RenderQueue::begin() const {
 	return renderables.begin();
 }
 RenderQueue::ConstIter RenderQueue::end() const { return renderables.end(); }
+
+} //namespace gl

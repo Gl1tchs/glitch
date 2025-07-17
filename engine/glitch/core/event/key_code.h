@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 enum KeyCode {
 	KEY_CODE_SPACE = 32,
 	KEY_CODE_APOSTROPHE = 39, /* ' */
@@ -129,3 +131,5 @@ enum KeyCode {
 	KEY_CODE_MENU = 348,
 	KEY_CODE_LAST = KEY_CODE_MENU,
 };
+
+}

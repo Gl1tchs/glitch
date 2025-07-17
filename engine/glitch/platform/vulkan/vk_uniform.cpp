@@ -1,5 +1,7 @@
 #include "glitch/platform/vulkan/vk_backend.h"
 
+namespace gl {
+
 UniformSet VulkanRenderBackend::uniform_set_create(
 		VectorView<ShaderUniform> p_uniforms, Shader p_shader,
 		uint32_t p_set_index) {
@@ -322,3 +324,5 @@ void VulkanRenderBackend::_uniform_pool_unreference(
 		}
 	}
 }
+
+} //namespace gl

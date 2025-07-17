@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 /**
  * Struct representing a queue which deletor functions can be assigned into and
  * later they will be deleted in the reverse order you have pushed.
@@ -23,3 +25,5 @@ struct DeletionQueue {
 		deletors.clear();
 	}
 };
+
+} //namespace gl

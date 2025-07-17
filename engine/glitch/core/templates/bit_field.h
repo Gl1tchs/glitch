@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 /**
  * Class that makes flag functionality a little bit simpler.
  */
@@ -27,3 +29,5 @@ public:
 		return BitField<T>(value ^ p_b.value);
 	}
 };
+
+} //namespace gl

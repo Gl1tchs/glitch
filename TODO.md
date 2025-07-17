@@ -6,9 +6,8 @@
 
 # Short Term
 
+- [ ] GIS Terrain loading + LOD with quadtrees
 - [ ] Renderer recreation
-- [x] MSAA
-  - [x] Get the setting on pipeline creation it shouldn't be per frame setting
 - [ ] Animation
 - [ ] Instanced rendering
 - [ ] Light objects
@@ -16,17 +15,14 @@
 - [ ] Shadows
 - [ ] Transparent materials
 - [ ] Cubemaps
+- [ ] GPU Particle system
+- [ ] Physics engine for ballistics and destructible environments
+- [ ] Multi-Camera modes (satellite/drone/infantry) with recon overlays
+- [ ] Tactical UI overlay with unit commands and targeting
 
 
 ## Long Term
 
-- [ ] Blender as Editor driven developement
-  - [ ] Serialization
-  - [ ] Export blender model as gltf and import scene information from custom format that
-        would also been exported by a custom blender plugin.
-  - [ ] Use hot-reloadable meshes and references
-
-- [ ] Particles and effects
 - [ ] Global illumination
 - [ ] Deferred rendering G Buffers.
 - [ ] Text rendering.

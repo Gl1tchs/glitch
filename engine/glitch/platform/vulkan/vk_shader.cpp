@@ -4,6 +4,8 @@
 #include <spirv_reflect.h>
 #include <vulkan/vulkan_core.h>
 
+namespace gl {
+
 static VkDescriptorType _spv_reflect_descriptor_type_to_vk(
 		SpvReflectDescriptorType p_type) {
 	switch (p_type) {
@@ -40,10 +42,11 @@ static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 		uint32_t p_descriptor_count, ShaderStage p_stage,
 		std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>>&
 				p_bindings) {
+	const int stage_bit = static_cast<int>(p_stage);
+
 	const auto it = p_bindings.find(p_set);
 	if (it != p_bindings.end()) {
 		// set exists look for binding
-
 		std::vector<VkDescriptorSetLayoutBinding>& set_bindings = it->second;
 
 		const auto binding_it = std::find_if(set_bindings.begin(),
@@ -53,8 +56,8 @@ static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 				});
 		if (binding_it != set_bindings.end()) {
 			// set, binding already exists now add stage if not exists
-			if (!(binding_it->stageFlags & p_stage)) {
-				binding_it->stageFlags |= p_stage;
+			if (!(binding_it->stageFlags & stage_bit)) {
+				binding_it->stageFlags |= stage_bit;
 			}
 			return;
 		}
@@ -64,7 +67,7 @@ static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 	layout_binding.binding = p_binding;
 	layout_binding.descriptorType = p_type;
 	layout_binding.descriptorCount = p_descriptor_count;
-	layout_binding.stageFlags = p_stage;
+	layout_binding.stageFlags = stage_bit;
 	layout_binding.pImmutableSamplers = nullptr;
 
 	p_bindings[p_set].push_back(layout_binding);
@@ -73,6 +76,8 @@ static void _add_descriptor_set_layout_binding_if_not_exists(uint32_t p_set,
 static void _add_push_constant_range_if_not_exists(uint32_t p_size,
 		uint32_t p_offset, ShaderStage stage,
 		std::vector<VkPushConstantRange>& p_ranges) {
+	const int stage_bit = static_cast<int>(stage);
+
 	const auto it = std::find_if(p_ranges.begin(), p_ranges.end(),
 			[=](const VkPushConstantRange& push_constant) -> bool {
 				return push_constant.size == p_size &&
@@ -80,8 +85,8 @@ static void _add_push_constant_range_if_not_exists(uint32_t p_size,
 			});
 	if (it != p_ranges.end()) {
 		// push constant already exists now add the stage
-		if (!(it->stageFlags & stage)) {
-			it->stageFlags |= stage;
+		if (!(it->stageFlags & stage_bit)) {
+			it->stageFlags |= stage_bit;
 		}
 		return;
 	}
@@ -89,7 +94,7 @@ static void _add_push_constant_range_if_not_exists(uint32_t p_size,
 	VkPushConstantRange range = {};
 	range.size = p_size;
 	range.offset = p_offset;
-	range.stageFlags = stage;
+	range.stageFlags = stage_bit;
 
 	p_ranges.push_back(range);
 }
@@ -115,7 +120,7 @@ Shader VulkanRenderBackend::shader_create_from_bytecode(
 		GL_ASSERT(result == SPV_REFLECT_RESULT_SUCCESS);
 
 		// vertex input variables
-		if (shader.stage & SHADER_STAGE_VERTEX_BIT) {
+		if (shader.stage == ShaderStage::VERTEX) {
 			uint32_t input_count = 0;
 			GL_ASSERT(spvReflectEnumerateInputVariables(&module, &input_count,
 							  nullptr) == SPV_REFLECT_RESULT_SUCCESS);
@@ -312,3 +317,5 @@ VulkanRenderBackend::shader_get_vertex_inputs(Shader p_shader) {
 	VulkanShader* shader_info = (VulkanShader*)p_shader;
 	return shader_info->vertex_input_variables;
 }
+
+} //namespace gl

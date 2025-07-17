@@ -3,6 +3,8 @@
 #include <VkBootstrap.h>
 #include <vulkan/vulkan_core.h>
 
+namespace gl {
+
 void VulkanRenderBackend::_swapchain_release(VulkanSwapchain* p_swapchain) {
 	// destroy swapchain resources
 	for (int i = 0; i < p_swapchain->images.size(); i++) {
@@ -138,3 +140,5 @@ void VulkanRenderBackend::swapchain_free(Swapchain p_swapchain) {
 
 	delete swapchain;
 }
+
+} //namespace gl

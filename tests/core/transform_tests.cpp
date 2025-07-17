@@ -2,6 +2,8 @@
 
 #include "glitch/core/transform.h"
 
+using namespace gl;
+
 TEST_CASE("Transform initialization") {
 	Transform t;
 

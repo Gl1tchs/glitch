@@ -2,6 +2,8 @@
 
 #include "glitch/renderer/renderer.h"
 
+namespace gl {
+
 StorageBuffer::~StorageBuffer() {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 	backend->buffer_free(buffer);
@@ -14,7 +16,7 @@ Ref<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
 			BUFFER_USAGE_STORAGE_BUFFER_BIT |
 					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 					BUFFER_USAGE_TRANSFER_DST_BIT,
-			MEMORY_ALLOCATION_TYPE_GPU);
+			MemoryAllocationType::GPU);
 
 	Ref<StorageBuffer> sbo = create_ref<StorageBuffer>();
 	sbo->buffer = buffer;
@@ -34,7 +36,7 @@ void StorageBuffer::upload(const void* p_data) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	Buffer staging_buffer = backend->buffer_create(
-			size, BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_ALLOCATION_TYPE_CPU);
+			size, BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
 
 	void* staging_data = backend->buffer_map(staging_buffer);
 	memcpy(staging_data, p_data, size);
@@ -56,3 +58,5 @@ void StorageBuffer::upload(const void* p_data) {
 BufferDeviceAddress StorageBuffer::get_device_address() const {
 	return gpu_addr;
 }
+
+} //namespace gl

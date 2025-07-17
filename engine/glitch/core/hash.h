@@ -4,6 +4,8 @@
 
 #pragma once
 
+namespace gl {
+
 template <typename T>
 inline void hash_combine(std::size_t& p_seed, T const& p_value) {
 	p_seed ^= std::hash<T>()(p_value) + 0x9e3779b9 + (p_seed << 6) +
@@ -52,3 +54,5 @@ template <> inline size_t hash64(const glm::mat4& p_m) {
 	}
 	return seed;
 }
+
+} //namespace gl

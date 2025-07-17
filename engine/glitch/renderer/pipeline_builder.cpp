@@ -4,8 +4,10 @@
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
+namespace gl {
+
 PipelineBuilder::PipelineBuilder() {
-	Ref<Renderer> device = Application::get_instance()->get_renderer();
+	Ref<Renderer> renderer = Application::get_instance()->get_renderer();
 
 	primitive_type = RENDER_PRIMITIVE_TRIANGLES;
 	vertex_input = {};
@@ -15,8 +17,8 @@ PipelineBuilder::PipelineBuilder() {
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			device->get_color_attachment_format());
-	rendering_state.depth_attachment = device->get_depth_attachment_format();
+			renderer->get_color_attachment_format());
+	rendering_state.depth_attachment = renderer->get_depth_attachment_format();
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
@@ -32,7 +34,7 @@ PipelineBuilder& PipelineBuilder::add_shader_stage(
 
 PipelineBuilder& PipelineBuilder::with_depth_test(
 		CompareOperator p_op, bool p_depth_write) {
-	depth_stencil_state.depth_compare_operator = COMPARE_OP_LESS;
+	depth_stencil_state.depth_compare_operator = CompareOperator::LESS;
 	depth_stencil_state.enable_depth_test = true;
 	depth_stencil_state.enable_depth_write = p_depth_write;
 	depth_stencil_state.enable_depth_range = true;
@@ -47,8 +49,19 @@ PipelineBuilder& PipelineBuilder::with_blend() {
 }
 
 PipelineBuilder& PipelineBuilder::with_multisample(
-		ImageSamples p_samples, bool p_enable_sample_shading) {
-	multisample.sample_count = IMAGE_SAMPLES_8;
+		uint32_t p_samples, bool p_enable_sample_shading) {
+	const uint32_t max_sample_count =
+			Renderer::get_backend()->get_max_msaa_samples();
+
+	if ((p_samples != 1 && p_samples % 2 != 0) ||
+			p_samples > max_sample_count) {
+		GL_LOG_ERROR("Invalid MSAA sample count: {}. Must be 1 or "
+					 "power-of-two, and ≤ {}",
+				p_samples, max_sample_count);
+		return *this;
+	}
+
+	multisample.sample_count = p_samples;
 	if (p_enable_sample_shading) {
 		multisample.enable_sample_shading = true;
 		multisample.min_sample_shading = 0.2f;
@@ -76,3 +89,5 @@ std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 
 	return std::make_pair(shader, pipeline);
 }
+
+} //namespace gl

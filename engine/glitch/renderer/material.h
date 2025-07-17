@@ -8,6 +8,8 @@
 #include "glitch/renderer/texture.h"
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 using ShaderUniformVariable =
 		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color>;
 
@@ -73,3 +75,5 @@ private:
 	static std::unordered_map<std::string, Ref<MaterialDefinition>>
 			s_definitions;
 };
+
+} //namespace gl

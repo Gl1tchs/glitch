@@ -15,6 +15,8 @@ class Model;
 class Mesh;
 } //namespace tinygltf
 
+namespace gl {
+
 class GL_API GLTFLoader {
 public:
 	GLTFLoader();
@@ -53,3 +55,5 @@ private:
 	// model + texture_index hash = texture
 	std::unordered_map<size_t, Ref<Texture>> loaded_textures;
 };
+
+} //namespace gl

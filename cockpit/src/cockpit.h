@@ -8,16 +8,18 @@
 
 #include "camera_controller.h"
 
+using namespace gl;
+
 struct GridPushConstants {
 	glm::mat4 view_proj;
 	glm::vec3 camera_pos;
 	float grid_size;
 };
 
-class Game : public Application {
+class CockpitApplication : public Application {
 public:
-	Game(const ApplicationCreateInfo& info);
-	virtual ~Game() = default;
+	CockpitApplication(const ApplicationCreateInfo& info);
+	virtual ~CockpitApplication() = default;
 
 protected:
 	void _on_start() override;

@@ -1,5 +1,6 @@
 #include "glitch/core/debug/log.h"
 
+namespace gl {
 std::string deserialize_log_level(LogLevel p_level) {
 	switch (p_level) {
 		case LOG_LEVEL_TRACE:
@@ -63,3 +64,5 @@ std::string Logger::_get_colored_message(
 
 	return p_message; // No color for the default case
 }
+
+} //namespace gl

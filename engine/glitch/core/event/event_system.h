@@ -3,6 +3,8 @@
 #include "glitch/core/event/key_code.h"
 #include "glitch/core/event/mouse_button.h"
 
+namespace gl {
+
 struct KeyPressEvent {
 	KeyCode key_code;
 };
@@ -60,3 +62,5 @@ template <typename T> inline void notify(T& p_event) {
 }
 
 } // namespace event
+
+} //namespace gl

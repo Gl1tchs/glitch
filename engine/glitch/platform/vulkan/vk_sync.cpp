@@ -1,5 +1,7 @@
 #include "glitch/platform/vulkan/vk_backend.h"
 
+namespace gl {
+
 Fence VulkanRenderBackend::fence_create() {
 	VkFenceCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -37,3 +39,5 @@ Semaphore VulkanRenderBackend::semaphore_create() {
 void VulkanRenderBackend::semaphore_free(Semaphore p_semaphore) {
 	vkDestroySemaphore(device, (VkSemaphore)p_semaphore, nullptr);
 }
+
+} //namespace gl

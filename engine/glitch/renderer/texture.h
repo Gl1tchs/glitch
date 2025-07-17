@@ -7,12 +7,14 @@
 #include "glitch/core/color.h"
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 struct TextureSamplerOptions {
-	ImageFiltering mag_filter = IMAGE_FILTERING_LINEAR;
-	ImageFiltering min_filter = IMAGE_FILTERING_LINEAR;
-	ImageWrappingMode wrap_u = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
-	ImageWrappingMode wrap_v = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
-	ImageWrappingMode wrap_w = IMAGE_WRAPPING_MODE_CLAMP_TO_EDGE;
+	ImageFiltering mag_filter = ImageFiltering::LINEAR;
+	ImageFiltering min_filter = ImageFiltering::LINEAR;
+	ImageWrappingMode wrap_u = ImageWrappingMode::CLAMP_TO_EDGE;
+	ImageWrappingMode wrap_v = ImageWrappingMode::CLAMP_TO_EDGE;
+	ImageWrappingMode wrap_w = ImageWrappingMode::CLAMP_TO_EDGE;
 };
 
 /**
@@ -48,3 +50,5 @@ private:
 };
 
 template <> size_t hash64(const Texture& p_texture);
+
+} //namespace gl

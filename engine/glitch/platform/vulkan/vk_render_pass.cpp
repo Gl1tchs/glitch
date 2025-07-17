@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+namespace gl {
+
 RenderPass VulkanRenderBackend::render_pass_create(
 		VectorView<RenderPassAttachment> p_attachments,
 		VectorView<SubpassInfo> p_subpasses) {
@@ -18,7 +20,7 @@ RenderPass VulkanRenderBackend::render_pass_create(
 		vk_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		vk_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-		if (attachment.final_layout == IMAGE_LAYOUT_UNDEFINED) {
+		if (attachment.final_layout == ImageLayout::UNDEFINED) {
 			vk_attachment.finalLayout =
 					static_cast<VkImageLayout>(attachment.final_layout);
 		} else {
@@ -159,3 +161,5 @@ FrameBuffer VulkanRenderBackend::frame_buffer_create(RenderPass p_render_pass,
 void VulkanRenderBackend::frame_buffer_destroy(FrameBuffer p_frame_buffer) {
 	vkDestroyFramebuffer(device, (VkFramebuffer)p_frame_buffer, nullptr);
 }
+
+} //namespace gl

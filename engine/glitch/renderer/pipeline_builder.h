@@ -7,6 +7,8 @@
 
 #include "glitch/renderer/types.h"
 
+namespace gl {
+
 class PipelineBuilder {
 public:
 	PipelineBuilder();
@@ -15,12 +17,13 @@ public:
 			ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data);
 
 	PipelineBuilder& with_depth_test(
-			CompareOperator p_op = COMPARE_OP_LESS, bool p_depth_write = true);
+			CompareOperator p_op = CompareOperator::LESS,
+			bool p_depth_write = true);
 
 	PipelineBuilder& with_blend();
 
 	PipelineBuilder& with_multisample(
-			ImageSamples p_samples, bool p_enable_sample_shading = false);
+			uint32_t p_samples, bool p_enable_sample_shading = false);
 
 	PipelineBuilder& set_render_primitive(RenderPrimitive p_prim);
 
@@ -41,3 +44,5 @@ private:
 	PipelineColorBlendState color_blend_state;
 	RenderingState rendering_state;
 };
+
+} //namespace gl

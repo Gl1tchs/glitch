@@ -2,6 +2,8 @@
 
 #include "glitch/core/memory/paged_allocator.h"
 
+namespace gl {
+
 template <typename... RESOURCE_TYPES> struct VersatileResourceTemplate {
 	static constexpr size_t RESOURCE_SIZES[] = { sizeof(RESOURCE_TYPES)... };
 	static constexpr size_t MAX_RESOURCE_SIZE = *std::max_element(
@@ -21,3 +23,5 @@ template <typename... RESOURCE_TYPES> struct VersatileResourceTemplate {
 				reinterpret_cast<VersatileResourceTemplate*>(p_object));
 	}
 };
+
+} //namespace gl

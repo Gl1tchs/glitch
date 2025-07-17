@@ -6,6 +6,8 @@
 
 #include "glitch/core/defines.h"
 
+namespace gl {
+
 enum LogLevel {
 	LOG_LEVEL_TRACE = 0,
 	LOG_LEVEL_INFO,
@@ -14,7 +16,7 @@ enum LogLevel {
 	LOG_LEVEL_FATAL,
 };
 
-std::string deserialize_log_level(LogLevel p_level);
+std::string GL_API deserialize_log_level(LogLevel p_level);
 
 class GL_API Logger {
 public:
@@ -34,3 +36,5 @@ private:
 	Logger::log(LOG_LEVEL_WARNING, std::format(__VA_ARGS__))
 #define GL_LOG_ERROR(...) Logger::log(LOG_LEVEL_ERROR, std::format(__VA_ARGS__))
 #define GL_LOG_FATAL(...) Logger::log(LOG_LEVEL_FATAL, std::format(__VA_ARGS__))
+
+} //namespace gl

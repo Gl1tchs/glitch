@@ -1,5 +1,7 @@
 #include "glitch/renderer/frustum.h"
 
+namespace gl {
+
 Frustum Frustum::from_view_proj(const glm::mat4 p_view_proj) {
 	Frustum frustum;
 
@@ -74,3 +76,5 @@ AABB AABB::transform(const glm::mat4& p_transform) {
 
 	return result;
 }
+
+} //namespace gl

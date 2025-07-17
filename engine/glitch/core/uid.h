@@ -1,5 +1,7 @@
 #pragma once
 
+namespace gl {
+
 /**
  * 64-bit randomized unique identifier.
  */
@@ -24,10 +26,12 @@ struct GL_API UID {
 
 inline const UID INVALID_UID = 0;
 
+} //namespace gl
+
 namespace std {
 template <typename T> struct hash;
 
-template <> struct hash<UID> {
-	size_t operator()(const UID& p_uuid) const { return (uint64_t)p_uuid; }
+template <> struct hash<gl::UID> {
+	size_t operator()(const gl::UID& p_uuid) const { return (uint64_t)p_uuid; }
 };
 } //namespace std

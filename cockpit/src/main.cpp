@@ -1,13 +1,13 @@
 #define GL_MAIN_IMPLEMENTATION
 #include <glitch/core/entrypoint.h>
 
-#include "game.h"
+#include "cockpit.h"
 
 Application* create_application(int argc, const char** argv) {
 	ApplicationCreateInfo info = {
-		.name = "Glitch Sandbox",
+		.name = "Glitch Cockpit",
 		.argc = argc,
 		.argv = argv,
 	};
-	return new Game(info);
+	return new CockpitApplication(info);
 }

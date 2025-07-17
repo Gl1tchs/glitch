@@ -5,22 +5,47 @@
 
 #include <imgui.h>
 
-[[nodiscard]] GraphicsAPI find_proper_api() noexcept {
-	return GRAPHICS_API_VULKAN;
+namespace gl {
+
+[[nodiscard]] GraphicsAPI get_proper_render_backend() noexcept {
+	return GraphicsAPI::VULKAN;
 }
 
 static GraphicsAPI s_api;
 
 Renderer* Renderer::s_instance = nullptr;
 
+void FrameData::init(CommandQueue p_queue) {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	command_pool = backend->command_pool_create(p_queue);
+	command_buffer = backend->command_pool_allocate(command_pool);
+
+	image_available_semaphore = backend->semaphore_create();
+	render_finished_semaphore = backend->semaphore_create();
+
+	render_fence = backend->fence_create();
+}
+
+void FrameData::destroy() {
+	Ref<RenderBackend> backend = Renderer::get_backend();
+
+	backend->command_pool_free(command_pool);
+
+	backend->semaphore_free(image_available_semaphore);
+	backend->semaphore_free(render_finished_semaphore);
+
+	backend->fence_free(render_fence);
+}
+
 Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	GL_ASSERT(
 			s_instance == nullptr, "Only one instance of renderer can exists!");
 	s_instance = this;
 
-	s_api = find_proper_api();
+	s_api = get_proper_render_backend();
 	switch (s_api) {
-		case GRAPHICS_API_VULKAN:
+		case GraphicsAPI::VULKAN:
 			backend = create_ref<VulkanRenderBackend>();
 			break;
 		default:
@@ -30,50 +55,45 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 
 	backend->init(window);
 
-	graphics_queue = backend->queue_get(QUEUE_TYPE_GRAPHICS);
-	present_queue = backend->queue_get(QUEUE_TYPE_PRESENT);
+	default_sampler = backend->sampler_create();
 
+	graphics_queue = backend->queue_get(QueueType::GRAPHICS);
+	present_queue = backend->queue_get(QueueType::PRESENT);
+
+	// initialize swapchain
+	const glm::uvec2 window_px = window->get_size();
 	swapchain = backend->swapchain_create();
+	backend->swapchain_resize(graphics_queue, swapchain, window_px);
 
-	// initialize swapchain, framebuffers and depth images
+	// initialize imgui
+	_imgui_init();
+
+	// initialize framebuffers and render images
 	_request_resize();
 
 	for (size_t i = 0; i < SWAPCHAIN_BUFFER_SIZE; i++) {
 		FrameData& frame_data = frames[i];
-
-		frame_data.command_pool = backend->command_pool_create(graphics_queue);
-		frame_data.command_buffer =
-				backend->command_pool_allocate(frame_data.command_pool);
-
-		frame_data.image_available_semaphore = backend->semaphore_create();
-		frame_data.render_finished_semaphore = backend->semaphore_create();
-
-		frame_data.render_fence = backend->fence_create();
+		frame_data.init(graphics_queue);
 	}
-
-	// initialize imgui context
-	_imgui_init();
 }
 
 Renderer::~Renderer() {
 	backend->device_wait();
 
 	// destroy geometry pipeline resources
+	backend->image_free(final_image);
 	backend->image_free(color_image);
 	backend->image_free(depth_image);
 
 	// destroy per-frame data
 	for (auto& frame_data : frames) {
-		backend->command_pool_free(frame_data.command_pool);
-
-		backend->semaphore_free(frame_data.image_available_semaphore);
-		backend->semaphore_free(frame_data.render_finished_semaphore);
-
-		backend->fence_free(frame_data.render_fence);
+		frame_data.destroy();
 	}
 
 	// swapchain cleanup
 	backend->swapchain_free(swapchain);
+
+	backend->sampler_free(default_sampler);
 
 	backend->shutdown();
 }
@@ -105,14 +125,16 @@ CommandBuffer Renderer::begin_render() {
 
 	backend->command_begin(cmd);
 
-	backend->command_transition_image(cmd, color_image, IMAGE_LAYOUT_UNDEFINED,
-			IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	backend->command_transition_image(cmd, depth_image, IMAGE_LAYOUT_UNDEFINED,
-			IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+	backend->command_transition_image(cmd, color_image, ImageLayout::UNDEFINED,
+			ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	backend->command_transition_image(cmd, depth_image, ImageLayout::UNDEFINED,
+			ImageLayout::DEPTH_ATTACHMENT_OPTIMAL);
 
 	// Just so we can use msaa
 	backend->command_transition_image(cmd, current_swapchain_image,
-			IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	backend->command_transition_image(cmd, final_image, ImageLayout::UNDEFINED,
+			ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 
 	// dynamic state
 	backend->command_set_viewport(cmd, draw_image_extent);
@@ -124,44 +146,56 @@ CommandBuffer Renderer::begin_render() {
 void Renderer::end_render() {
 	GL_PROFILE_SCOPE;
 
-	if (!current_swapchain_image) {
+	if (should_present_to_swapchain && !current_swapchain_image) {
 		GL_LOG_FATAL("Renderer::end_render: There is no image to render to!");
 	}
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
-	const bool msaa_used = msaa_samples != IMAGE_SAMPLES_1;
+	const bool msaa_used = msaa_samples != 1;
 
-	// Copy color image to swapchain if there isn't got a resolver
+	Image render_target =
+			should_present_to_swapchain ? current_swapchain_image : final_image;
+
+	// Copy color image to final image if there isn't got a resolver
 	if (!msaa_used) {
-		backend->command_transition_image(cmd, current_swapchain_image,
-				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
 		backend->command_transition_image(cmd, color_image,
-				IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+				ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+				ImageLayout::TRANSFER_SRC_OPTIMAL);
+		backend->command_transition_image(cmd, render_target,
+				ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+				ImageLayout::TRANSFER_DST_OPTIMAL);
 
-		backend->command_copy_image_to_image(cmd, color_image,
-				current_swapchain_image, backend->image_get_size(color_image),
-				backend->swapchain_get_extent(swapchain));
+		backend->command_copy_image_to_image(cmd, color_image, render_target,
+				backend->image_get_size(color_image),
+				backend->image_get_size(render_target));
+	}
+
+	// Transition into shader read only to use as a viewport image
+	// Do this before imgui, if final_image being used as an imgui image
+	// image layout must be set to SHADER_READ_ONLY_OPTIMAL
+	if (!should_present_to_swapchain) {
+		backend->command_transition_image(cmd, final_image,
+				!msaa_used ? ImageLayout::TRANSFER_DST_OPTIMAL
+						   : ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+				ImageLayout::SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	if (imgui_being_used) {
-		if (!msaa_used) {
+		if (should_present_to_swapchain && !msaa_used) {
 			backend->command_transition_image(cmd, current_swapchain_image,
-					IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+					ImageLayout::TRANSFER_DST_OPTIMAL,
+					ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 		}
 
 		_imgui_pass(cmd, current_swapchain_image);
 	}
 
 	backend->command_transition_image(cmd, current_swapchain_image,
-			(!msaa_used && !imgui_being_used)
-					? IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-					: IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			IMAGE_LAYOUT_PRESENT_SRC);
+			(should_present_to_swapchain && !msaa_used && !imgui_being_used)
+					? ImageLayout::TRANSFER_DST_OPTIMAL
+					: ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+			ImageLayout::PRESENT_SRC);
 
 	backend->command_end(cmd);
 
@@ -177,23 +211,23 @@ void Renderer::end_render() {
 
 	// reset the state
 	imgui_being_used = false;
-	frame_number++;
-
-	// NOTE: maybe not?
 	current_swapchain_image = nullptr;
+	frame_number++;
 }
 
 void Renderer::begin_rendering(CommandBuffer p_cmd) {
 	RenderingAttachment color_attachment = {};
 	color_attachment.image = color_image;
-	color_attachment.layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	color_attachment.load_op = ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
+	color_attachment.load_op = AttachmentLoadOp::CLEAR;
 	color_attachment.clear_color = settings.clear_color;
 
-	if (msaa_samples != IMAGE_SAMPLES_1) {
+	if (msaa_samples != 1) {
 		color_attachment.resolve_mode = RESOLVE_MODE_AVERAGE_BIT;
-		color_attachment.resolve_image = current_swapchain_image;
-		color_attachment.resolve_layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		color_attachment.resolve_image = should_present_to_swapchain
+				? current_swapchain_image
+				: final_image;
+		color_attachment.resolve_layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
 	}
 
 	backend->command_begin_rendering(p_cmd,
@@ -227,6 +261,10 @@ void Renderer::imgui_end() {
 	}
 }
 
+void Renderer::set_render_present_mode(bool p_present_to_swapchain) {
+	should_present_to_swapchain = p_present_to_swapchain;
+}
+
 void Renderer::set_clear_color(Color p_color) {
 	settings.clear_color = p_color;
 }
@@ -239,10 +277,20 @@ void Renderer::set_resolution_scale(float p_scale) {
 	}
 }
 
-ImageSamples Renderer::get_msaa_samples() const { return msaa_samples; }
+uint32_t Renderer::get_msaa_samples() const { return msaa_samples; }
 
-void Renderer::set_msaa_samples(ImageSamples p_samples) {
-	// TODO: check for device specification
+void Renderer::set_msaa_samples(uint32_t p_samples) {
+	const uint32_t max_sample_count = backend->get_max_msaa_samples();
+
+	if ((p_samples != 1 && p_samples % 2 != 0) ||
+			p_samples > max_sample_count) {
+		GL_LOG_ERROR("Invalid MSAA sample count: {}. Must be 1 or "
+					 "power-of-two, and ≤ {}",
+				p_samples, max_sample_count);
+		msaa_samples = 1;
+		return;
+	}
+
 	if (msaa_samples != p_samples) {
 		msaa_samples = p_samples;
 
@@ -252,9 +300,13 @@ void Renderer::set_msaa_samples(ImageSamples p_samples) {
 
 Swapchain Renderer::get_swapchain() { return swapchain; }
 
-Image Renderer::get_draw_image() { return color_image; }
+void* Renderer::get_final_image_descriptor() const {
+	return final_image_descriptor;
+}
 
-Image Renderer::get_depth_image() { return depth_image; }
+glm::uvec2 Renderer::get_final_image_size() const {
+	return backend->image_get_size(final_image);
+}
 
 RenderStats& Renderer::get_stats() { return stats; }
 
@@ -273,7 +325,7 @@ void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 
 	RenderingAttachment color_attachment = {};
 	color_attachment.image = p_target_image;
-	color_attachment.layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	color_attachment.layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
 
 	backend->command_begin_rendering(
 			p_cmd, backend->image_get_size(p_target_image), color_attachment);
@@ -320,7 +372,21 @@ void Renderer::_request_resize() {
 		std::max(1u, uint32_t(window_px.y * settings.resolution_scale)),
 	};
 
-	// Resize depth and color image
+	// Resize depth, color and final image
+	if (final_image) {
+		backend->image_free(final_image);
+	}
+	final_image =
+			backend->image_create(color_attachment_format, new_size, nullptr,
+					IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT |
+							IMAGE_USAGE_TRANSFER_DST_BIT);
+
+	if (final_image_descriptor) {
+		backend->imgui_image_free(final_image_descriptor);
+	}
+	final_image_descriptor =
+			backend->imgui_image_upload(final_image, default_sampler);
+
 	if (color_image) {
 		backend->image_free(color_image);
 	}
@@ -339,3 +405,5 @@ void Renderer::_request_resize() {
 }
 
 void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }
+
+} //namespace gl

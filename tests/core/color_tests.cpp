@@ -3,6 +3,8 @@
 
 #include "glitch/core/color.h"
 
+using namespace gl;
+
 TEST_CASE("Color Default Constructor") {
 	Color color;
 	CHECK(color == Color(0.0f, 0.0f, 0.0f, 1.0f)); // Black with full opacity

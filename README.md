@@ -1,20 +1,22 @@
-# 🚀 Glitch — Rendering Engine & Application Framework
+# Glitch — Tactical Simulation Rendering Engine & Framework
 
-Glitch is a modular, modern C++ rendering engine built primarily around Vulkan. It's designed for **real-time graphics**, **game development**, and **interactive simulations**.
+Glitch is a modular, modern C++ rendering engine built primarily on Vulkan, designed for real-time graphics, game development,
+interactive simulations, and now advanced tactical / military-grade applications.
+
+## Features (WIP)
+
+- Vulkan-based renderer with modern GPU pipeline
+- Scene graph system for spatial hierarchy
+- Mesh, material, and texture abstraction
+- GIS/terrain integration with heightmaps & geospatial referencing (work in progress)
+- Destructible environment support (planned voxel & mesh fracture) (work in progress)
+- Physics integration for ballistics, rockets, and vehicle simulation (work in progress)
+- Multi-layered camera systems: drone/satellite views + recon overlays (work in progress)
+- Modular rendering backend with future-proof support for compute shaders & advanced post-processing
 
 ---
 
-## 🧠 Features (WIP)
-
-- 🖼️ Vulkan-based renderer with modern GPU pipeline
-- 🧱 Scene graph system for spatial hierarchy
-- 📦 Mesh, material, and texture abstraction
-- 🧠 GLTF 2.0 model loading (via `tinygltf`)
-- 🔧 Modular rendering backend system
-
----
-
-## ⚙️ Building
+## Building
 
 ### 🔗 Dependencies
 
@@ -39,43 +41,3 @@ Or with CMake directly:
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
-
----
-
-## 🛠️ Usage & Sandbox
-
-Testbed is just a gltf renderer and you can use it like so:
-
-```bash
-glitch-testbed my/gltf/model.gltf
-```
-
-Looking for examples? Check out the [testbed](testbed/), where Glitch is tested and extended with real-time experiments.
-
----
-
-## 🛣️ Roadmap / What's Next?
-
-Here’s the current plan for Glitch, split by priority:
-
-### 🔜 Short Term
-
-- [x] Scene graph traversal with transform propagation
-- [x] Basic mesh/material rendering
-- [x] Camera + transform control
-- [x] GLTF loader
-- [ ] Bounding volume hierarchy for frustum culling
-- [ ] Material sorting and draw call batching
-- [ ] Directional lighting with shadows (PCF)
-- [ ] Instanced rendering
-- [ ] IBL support (diffuse/specular probes)
-- [ ] Forward+ lighting with clustered culling
-- [ ] Particle system (GPU-based)
-
-### 🧠 Long Term
-
-- [ ] Decals (deferred or forward projection)
-- [ ] Post-processing framework (FXAA, bloom, SSAO)
-- [ ] GPU profiling / debug UI
-- [ ] Hot-reloadable shaders
-- [ ] Multi-threaded render graph

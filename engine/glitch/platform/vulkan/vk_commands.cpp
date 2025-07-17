@@ -2,16 +2,18 @@
 
 #include <vulkan/vulkan_core.h>
 
+namespace gl {
+
 void VulkanRenderBackend::command_immediate_submit(
 		std::function<void(CommandBuffer p_cmd)>&& p_function,
 		QueueType p_queue_type) {
-	std::mutex& cmd_mutex = (p_queue_type == QUEUE_TYPE_TRANSFER)
+	std::mutex& cmd_mutex = (p_queue_type == QueueType::TRANSFER)
 			? imm_cmd_transfer_mutex
 			: imm_cmd_graphics_mutex;
 
 	std::scoped_lock lock(cmd_mutex);
 
-	ImmediateBuffer* imm = (p_queue_type == QUEUE_TYPE_TRANSFER)
+	ImmediateBuffer* imm = (p_queue_type == QueueType::TRANSFER)
 			? &imm_transfer
 			: &imm_graphics;
 
@@ -29,9 +31,9 @@ void VulkanRenderBackend::command_immediate_submit(
 	// submit command buffer to the queue and execute it.
 	// imm_fence will now block until the graphic commands finish
 	// execution
-	queue_submit((p_queue_type == QUEUE_TYPE_TRANSFER)
-					? queue_get(QUEUE_TYPE_TRANSFER)
-					: queue_get(QUEUE_TYPE_GRAPHICS),
+	queue_submit((p_queue_type == QueueType::TRANSFER)
+					? queue_get(QueueType::TRANSFER)
+					: queue_get(QueueType::GRAPHICS),
 			imm->command_buffer, imm->fence);
 
 	// wait till the operation finishes
@@ -295,7 +297,7 @@ void VulkanRenderBackend::command_bind_index_buffer(CommandBuffer p_cmd,
 
 	vkCmdBindIndexBuffer((VkCommandBuffer)p_cmd, index_buffer->vk_buffer,
 			p_offset,
-			p_index_type == INDEX_TYPE_UINT16 ? VK_INDEX_TYPE_UINT16
+			p_index_type == IndexType::UINT16 ? VK_INDEX_TYPE_UINT16
 											  : VK_INDEX_TYPE_UINT32);
 }
 
@@ -343,7 +345,7 @@ void VulkanRenderBackend::command_bind_uniform_sets(CommandBuffer p_cmd,
 	}
 
 	vkCmdBindDescriptorSets((VkCommandBuffer)p_cmd,
-			p_type == PIPELINE_TYPE_GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS
+			p_type == PipelineType::GRAPHICS ? VK_PIPELINE_BIND_POINT_GRAPHICS
 											 : VK_PIPELINE_BIND_POINT_COMPUTE,
 			shader->pipeline_layout, p_first_set, p_uniform_sets.size(),
 			uniform_sets.data(), 0, nullptr);
@@ -470,8 +472,8 @@ void VulkanRenderBackend::command_transition_image(CommandBuffer p_cmd,
 		Image p_image, ImageLayout p_current_layout, ImageLayout p_new_layout,
 		uint32_t p_base_mip_level, uint32_t p_level_count) {
 	VkImageAspectFlags aspect_mask =
-			(p_current_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL ||
-					p_new_layout == IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+			(p_current_layout == ImageLayout::DEPTH_ATTACHMENT_OPTIMAL ||
+					p_new_layout == ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
 			? VK_IMAGE_ASPECT_DEPTH_BIT
 			: VK_IMAGE_ASPECT_COLOR_BIT;
 
@@ -509,3 +511,5 @@ void VulkanRenderBackend::command_transition_image(CommandBuffer p_cmd,
 
 	vkCmdPipelineBarrier2((VkCommandBuffer)p_cmd, &dep_info);
 }
+
+} //namespace gl
