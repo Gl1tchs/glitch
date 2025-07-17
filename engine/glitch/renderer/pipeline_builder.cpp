@@ -9,7 +9,7 @@ namespace gl {
 PipelineBuilder::PipelineBuilder() {
 	Ref<Renderer> renderer = Application::get_instance()->get_renderer();
 
-	primitive_type = RENDER_PRIMITIVE_TRIANGLES;
+	primitive_type = RenderPrimitive::TRIANGLE_LIST;
 	vertex_input = {};
 	rasterization = {};
 	multisample = {};

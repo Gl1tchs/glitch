@@ -41,7 +41,7 @@ MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples) {
 									"pipelines/urp/mesh.frag.spv"))
 					.with_depth_test()
 					.with_multisample(p_msaa_samples, true)
-					.set_render_primitive(RENDER_PRIMITIVE_LINES)
+					.set_render_primitive(RenderPrimitive::TRIANGLE_LIST)
 					.build();
 
 	MaterialDefinition definition;
