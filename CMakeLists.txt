@@ -4,8 +4,8 @@ project(glitch)
 
 set(PROJECT_VERSION "0.1.0")
 
-option(GL_BUILD_TESTBED "Build Testbed application" ON)
-set(GL_BUILD_TESTBED ${GL_BUILD_TESTBED})
+option(GL_BUILD_COCKPIT "Build Cockpit editor application" ON)
+set(GL_BUILD_COCKPIT ${GL_BUILD_COCKPIT})
 
 option(GL_BUILD_TESTS "Build tests!" ON)
 set(GL_BUILD_TESTS ${GL_BUILD_TESTS})
@@ -111,8 +111,8 @@ if (GL_BUILD_DOCS AND DOXYGEN_FOUND)
     )
 endif()
 
-if (GL_BUILD_TESTBED)
-    add_subdirectory(testbed)
+if (GL_BUILD_COCKPIT)
+    add_subdirectory(cockpit)
 endif()
 
 if (GL_BUILD_TESTS)

@@ -1,4 +1,4 @@
-#include "game.h"
+#include "cockpit.h"
 
 #include <glitch/core/event/input.h>
 #include <glitch/renderer/pipeline_builder.h>
@@ -6,13 +6,14 @@
 #include <glitch/renderer/shader_library.h>
 #include <glitch/scene_graph/gltf_loader.h>
 
-Game::Game(const ApplicationCreateInfo& p_info) : Application(p_info) {
+CockpitApplication::CockpitApplication(const ApplicationCreateInfo& p_info) :
+		Application(p_info) {
 	GL_ASSERT(p_info.argc == 2, "A GLTF Model path must be provided.");
 
 	model_path = p_info.argv[1];
 }
 
-void Game::_on_start() {
+void CockpitApplication::_on_start() {
 	SceneRendererSpecification specs = {};
 	specs.msaa = 4;
 
@@ -46,7 +47,7 @@ void Game::_on_start() {
 					.build();
 }
 
-void Game::_on_update(float p_dt) {
+void CockpitApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
 	static bool mouse_disabled = false;
@@ -95,7 +96,7 @@ void Game::_on_update(float p_dt) {
 	scene_renderer->submit(ctx);
 }
 
-void Game::_on_destroy() {
+void CockpitApplication::_on_destroy() {
 	auto backend = get_renderer()->get_backend();
 
 	backend->device_wait();

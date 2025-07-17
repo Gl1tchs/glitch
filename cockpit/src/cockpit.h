@@ -16,10 +16,10 @@ struct GridPushConstants {
 	float grid_size;
 };
 
-class Game : public Application {
+class CockpitApplication : public Application {
 public:
-	Game(const ApplicationCreateInfo& info);
-	virtual ~Game() = default;
+	CockpitApplication(const ApplicationCreateInfo& info);
+	virtual ~CockpitApplication() = default;
 
 protected:
 	void _on_start() override;

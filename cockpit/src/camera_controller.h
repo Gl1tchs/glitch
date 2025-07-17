@@ -32,5 +32,5 @@ private:
 
 	glm::vec2 last_mouse_pos;
 
-	friend class Game;
+	friend class CockpitApplication;
 };

@@ -12,7 +12,7 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 	GL_ASSERT(!s_instance, "Only one instance can exists at a time!");
 	s_instance = this;
 
-	WindowCreateInfo window_info{};
+	WindowCreateInfo window_info = {};
 	window_info.title = p_info.name;
 	window = create_ref<Window>(window_info);
 
