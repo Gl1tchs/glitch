@@ -7,6 +7,7 @@
 PipelineBuilder::PipelineBuilder() {
 	Ref<Renderer> device = Application::get_instance()->get_renderer();
 
+	primitive_type = RENDER_PRIMITIVE_TRIANGLES;
 	vertex_input = {};
 	rasterization = {};
 	multisample = {};
@@ -56,6 +57,12 @@ PipelineBuilder& PipelineBuilder::with_multisample(
 	return *this;
 }
 
+PipelineBuilder& PipelineBuilder::set_render_primitive(RenderPrimitive p_prim) {
+	primitive_type = p_prim;
+
+	return *this;
+}
+
 std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
@@ -63,10 +70,9 @@ std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 
 	// If any render pass provided use it to build the pipeline otherwise get
 	// the default render pass from rendering device1
-	Pipeline pipeline =
-			backend->render_pipeline_create(shader, RENDER_PRIMITIVE_TRIANGLES,
-					vertex_input, rasterization, multisample,
-					depth_stencil_state, color_blend_state, 0, rendering_state);
+	Pipeline pipeline = backend->render_pipeline_create(shader, primitive_type,
+			vertex_input, rasterization, multisample, depth_stencil_state,
+			color_blend_state, 0, rendering_state);
 
 	return std::make_pair(shader, pipeline);
 }

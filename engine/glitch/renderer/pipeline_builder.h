@@ -22,6 +22,8 @@ public:
 	PipelineBuilder& with_multisample(
 			ImageSamples p_samples, bool p_enable_sample_shading = false);
 
+	PipelineBuilder& set_render_primitive(RenderPrimitive p_prim);
+
 	/**
 	 * @param p_render_pass Optional render pass to build pipeline with. Default
 	 * will assume dynamic rendering.
@@ -31,6 +33,7 @@ public:
 private:
 	std::vector<SpirvData> shader_stages;
 
+	RenderPrimitive primitive_type;
 	PipelineVertexInputState vertex_input;
 	PipelineRasterizationState rasterization;
 	PipelineMultisampleState multisample;
