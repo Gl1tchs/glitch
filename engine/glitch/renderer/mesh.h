@@ -32,8 +32,8 @@ struct GL_API MeshPrimitive {
 
 	~MeshPrimitive();
 
-	static Ref<MeshPrimitive> create(std::vector<MeshVertex> p_vertices,
-			std::vector<uint32_t> p_indices);
+	static Ref<MeshPrimitive> create(const std::span<MeshVertex>& p_vertices,
+			const std::span<uint32_t>& p_indices);
 };
 
 struct Mesh {

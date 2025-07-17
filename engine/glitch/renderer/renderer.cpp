@@ -7,7 +7,7 @@
 
 namespace gl {
 
-[[nodiscard]] GraphicsAPI find_proper_api() noexcept {
+[[nodiscard]] GraphicsAPI get_proper_render_backend() noexcept {
 	return GraphicsAPI::VULKAN;
 }
 
@@ -20,7 +20,7 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			s_instance == nullptr, "Only one instance of renderer can exists!");
 	s_instance = this;
 
-	s_api = find_proper_api();
+	s_api = get_proper_render_backend();
 	switch (s_api) {
 		case GraphicsAPI::VULKAN:
 			backend = create_ref<VulkanRenderBackend>();
@@ -246,7 +246,7 @@ uint32_t Renderer::get_msaa_samples() const { return msaa_samples; }
 void Renderer::set_msaa_samples(uint32_t p_samples) {
 	const uint32_t max_sample_count = backend->get_max_msaa_samples();
 
-	if (p_samples % 2 != 0) {
+	if (p_samples != 1 && p_samples % 2 != 0) {
 		GL_LOG_ERROR("MSAA sample count must be divisible by 2");
 		return;
 	}

@@ -184,7 +184,6 @@ enum class ImageLayout : int {
 	READ_ONLY_OPTIMAL = 1000314000,
 	ATTACHMENT_OPTIMAL = 1000314001,
 	PRESENT_SRC = 1000001002,
-	MAX_ENUM = 0x7FFFFFFF
 };
 
 enum class ImageFiltering : int {

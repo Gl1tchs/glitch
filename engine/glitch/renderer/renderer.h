@@ -14,7 +14,7 @@ enum class GraphicsAPI {
 	VULKAN,
 };
 
-[[nodiscard]] GL_API GraphicsAPI find_proper_api() noexcept;
+[[nodiscard]] GL_API GraphicsAPI get_proper_render_backend() noexcept;
 
 struct RenderStats {
 	uint32_t draw_calls;
@@ -47,11 +47,6 @@ public:
 	/**
 	 * Begin rendering context, reset state, do necessary image
 	 * transactions.
-	 * @note If you want to draw directly to `draw_image` using compute shaders
-	 * you must transition the image layout from
-	 * ImageLayout::COLOR_ATTACHMENT_OPTIMAL to ImageLayout::GENERAL and after
-	 * when you are done with it, you must retransition the layout into
-	 * ImageLayout::COLOR_ATTACHMENT_OPTIMAL.
 	 */
 	CommandBuffer begin_render();
 
@@ -61,8 +56,14 @@ public:
 	 */
 	void end_render();
 
+	/**
+	 * Start drawing
+	 */
 	void begin_rendering(CommandBuffer p_cmd);
 
+	/**
+	 * End drawing
+	 */
 	void end_rendering(CommandBuffer p_cmd);
 
 	/**
@@ -87,6 +88,7 @@ public:
 	void set_resolution_scale(float p_scale);
 
 	uint32_t get_msaa_samples() const;
+
 	// Triggers resize and buffer recreation do not call this in begin_render /
 	// end_render
 	void set_msaa_samples(uint32_t p_samples);

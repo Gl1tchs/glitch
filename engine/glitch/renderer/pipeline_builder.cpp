@@ -7,7 +7,7 @@
 namespace gl {
 
 PipelineBuilder::PipelineBuilder() {
-	Ref<Renderer> device = Application::get_instance()->get_renderer();
+	Ref<Renderer> renderer = Application::get_instance()->get_renderer();
 
 	vertex_input = {};
 	rasterization = {};
@@ -16,8 +16,8 @@ PipelineBuilder::PipelineBuilder() {
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};
 	rendering_state.color_attachments.push_back(
-			device->get_color_attachment_format());
-	rendering_state.depth_attachment = device->get_depth_attachment_format();
+			renderer->get_color_attachment_format());
+	rendering_state.depth_attachment = renderer->get_depth_attachment_format();
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
@@ -52,7 +52,7 @@ PipelineBuilder& PipelineBuilder::with_multisample(
 	const uint32_t max_sample_count =
 			Renderer::get_backend()->get_max_msaa_samples();
 
-	if (p_samples % 2 != 0) {
+	if (p_samples != 1 && p_samples % 2 != 0) {
 		GL_LOG_ERROR(
 				"[PipelineBuilder] MSAA sample count must be divisible by 2");
 		return *this;

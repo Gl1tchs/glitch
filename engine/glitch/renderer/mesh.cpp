@@ -5,7 +5,7 @@
 
 namespace gl {
 
-static AABB _get_aabb_from_vertices(const std::vector<MeshVertex>& p_vertices) {
+static AABB _get_aabb_from_vertices(const std::span<MeshVertex>& p_vertices) {
 	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
 	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
 
@@ -25,7 +25,8 @@ MeshPrimitive::~MeshPrimitive() {
 }
 
 Ref<MeshPrimitive> MeshPrimitive::create(
-		std::vector<MeshVertex> p_vertices, std::vector<uint32_t> p_indices) {
+		const std::span<MeshVertex>& p_vertices,
+		const std::span<uint32_t>& p_indices) {
 	if (p_vertices.empty() || p_indices.empty()) {
 		return nullptr;
 	}
