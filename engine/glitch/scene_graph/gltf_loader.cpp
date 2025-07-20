@@ -79,11 +79,14 @@ static size_t _hash_gltf_model(const tinygltf::Model& p_model) {
 	return seed;
 }
 
-Ref<SceneNode> GLTFLoader::load_gltf(
+Result<Ref<SceneNode>, std::string> GLTFLoader::load_gltf(
 		const fs::path& p_path, Ref<MaterialInstance> p_overload_material) {
 	// TODO: better validation
-	GL_ASSERT(p_path.has_extension() && p_path.extension() == ".glb" ||
-			p_path.extension() == ".gltf")
+	if (!p_path.has_extension() ||
+			!(p_path.extension() == ".glb" || p_path.extension() == ".gltf")) {
+		return make_err<Ref<SceneNode>>(
+				std::string("Unable to parse non gltf formats."));
+	}
 
 	tinygltf::Model model;
 	tinygltf::TinyGLTF loader;
@@ -96,7 +99,9 @@ Ref<SceneNode> GLTFLoader::load_gltf(
 		ret = loader.LoadASCIIFromFile(&model, &err, &warn, p_path.string());
 	}
 
-	GL_ASSERT(ret, err.c_str());
+	if (!ret) {
+		return make_err<Ref<SceneNode>>(err);
+	}
 
 	Ref<SceneNode> base_node = create_ref<SceneNode>();
 
@@ -112,11 +117,12 @@ Ref<SceneNode> GLTFLoader::load_gltf(
 	return base_node;
 }
 
-Future<Ref<SceneNode>> GLTFLoader::load_gltf_async(
+Future<Result<Ref<SceneNode>, std::string>> GLTFLoader::load_gltf_async(
 		const fs::path& p_path, Ref<MaterialInstance> p_overload_material) {
-	return Future<Ref<SceneNode>>::async([this, p_path, p_overload_material]() {
-		return load_gltf(p_path, p_overload_material);
-	});
+	return Future<Result<Ref<SceneNode>, std::string>>::async(
+			[this, p_path, p_overload_material]() {
+				return load_gltf(p_path, p_overload_material);
+			});
 }
 
 void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,

@@ -26,11 +26,15 @@ void CockpitApplication::_on_start() {
 	// This must be created after scene renderer for it to initialize materials
 	gltf_loader = create_scope<GLTFLoader>();
 
-	Ref<SceneNode> scene = gltf_loader->load_gltf(model_path);
-	scene->transform.scale *= 5.0f;
-	scene->transform.rotation.y = 188.0f;
+	if (auto res = gltf_loader->load_gltf(model_path); res) {
+		Ref<SceneNode> scene = *res;
+		scene->transform.scale *= 5.0f;
+		scene->transform.rotation.y = 188.0f;
 
-	scene_graph.get_root()->add_child(scene);
+		scene_graph.get_root()->add_child(scene);
+	} else {
+		GL_LOG_ERROR("{}", res.get_error());
+	}
 
 	camera_controller.set_camera(&camera);
 

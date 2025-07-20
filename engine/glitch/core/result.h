@@ -14,47 +14,58 @@ namespace gl {
  */
 template <typename T, typename E> class GL_API Result {
 public:
-	constexpr Result() : _has_value(false) {}
+	using ValueType = T;
+	using ErrorType = E;
 
-	constexpr Result(T&& p_val) : _has_value(true) {
-		new (&_val) T(std::move(p_val));
+	constexpr Result() noexcept = delete;
+
+	constexpr Result(ValueType&& p_val) noexcept : _data(std::move(p_val)) {}
+	constexpr Result(const ValueType& p_val) noexcept : _data(p_val) {}
+
+	constexpr explicit Result(ErrorType&& p_err) : _data(std::move(p_err)) {}
+	constexpr explicit Result(const ErrorType& p_err) : _data(p_err) {}
+
+	constexpr bool has_value() const noexcept {
+		return std::holds_alternative<ValueType>(_data);
 	}
 
-	~Result() {
-		if (_has_value) {
-			_val.~T();
-		} else {
-			_err.~E();
-		}
+	constexpr bool has_error() const noexcept {
+		return std::holds_alternative<ErrorType>(_data);
 	}
 
-	constexpr T& get_value() { return _val; }
-	constexpr E& get_error() { return _err; }
+	constexpr explicit operator bool() const noexcept { return has_value(); }
 
-	constexpr bool has_value() const { return _has_value; }
-	constexpr bool has_error() const { return !_has_value; }
+	constexpr ValueType& get_value() noexcept {
+		return std::get<ValueType>(_data);
+	}
+	constexpr const ValueType& get_value() const noexcept {
+		return std::get<ValueType>(_data);
+	}
 
-	constexpr operator bool() const { return _has_value; }
-	constexpr T& operator*() { return _val; }
+	constexpr ErrorType& get_error() noexcept {
+		return std::get<ErrorType>(_data);
+	}
+	constexpr const ErrorType& get_error() const noexcept {
+		return std::get<ErrorType>(_data);
+	}
+
+	constexpr ValueType& operator*() noexcept { return get_value(); }
+	constexpr const ValueType& operator*() const noexcept {
+		return get_value();
+	}
+
+	constexpr bool operator==(const Result& other) const noexcept {
+		return _data == other._data;
+	}
 
 private:
-	union {
-		T _val;
-		E _err;
-	};
+	std::variant<ValueType, ErrorType> _data;
 
-	bool _has_value;
-
-	template <typename U, typename V>
-	friend constexpr Result<U, V> make_err(V&&);
+	template <typename U, typename V> friend constexpr Result<U, V> make_err(V);
 };
 
-template <typename _T, typename E> constexpr Result<_T, E> make_err(E&& p_err) {
-	Result<_T, E> res;
-	new (&res._err) E(std::move(p_err));
-	res._has_value = false;
-
-	return res;
+template <typename T, typename E> constexpr Result<T, E> make_err(E p_err) {
+	return Result<T, E>(std::forward<E>(p_err));
 }
 
 } //namespace gl

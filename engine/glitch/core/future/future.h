@@ -22,12 +22,12 @@ public:
 				std::future_status::ready;
 	}
 
-	Optional<T> get() {
+	Result<T, bool> get() {
 		if (fut.valid()) {
 			return fut.get();
 		}
 
-		return {};
+		return make_err<T>(false);
 	}
 
 private:
