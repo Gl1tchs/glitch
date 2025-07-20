@@ -1,4 +1,4 @@
-#include "cockpit.h"
+#include "editor.h"
 
 #include <glitch/core/event/input.h>
 #include <glitch/renderer/pipeline_builder.h>
@@ -10,14 +10,14 @@
 
 #include "debug_panel.h"
 
-CockpitApplication::CockpitApplication(const ApplicationCreateInfo& p_info) :
+EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
 		Application(p_info) {
 	GL_ASSERT(p_info.argc == 2, "A GLTF Model path must be provided.");
 
 	model_path = p_info.argv[1];
 }
 
-void CockpitApplication::_on_start() {
+void EditorApplication::_on_start() {
 	SceneRendererSpecification specs = {};
 	specs.msaa = 4;
 
@@ -42,7 +42,7 @@ void CockpitApplication::_on_start() {
 	get_renderer()->add_pass(grid_pass, -10);
 }
 
-void CockpitApplication::_on_update(float p_dt) {
+void EditorApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
 	grid_pass->set_camera(camera);
@@ -194,4 +194,4 @@ void CockpitApplication::_on_update(float p_dt) {
 	get_renderer()->imgui_end();
 }
 
-void CockpitApplication::_on_destroy() {}
+void EditorApplication::_on_destroy() {}

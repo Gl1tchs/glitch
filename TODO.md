@@ -18,9 +18,7 @@
 - [ ] Transparent materials
 - [ ] Cubemaps
 - [ ] GPU Particle system
-- [ ] Physics engine for ballistics and destructible environments
-- [ ] Multi-Camera modes (satellite/drone/infantry) with recon overlays
-- [ ] Tactical UI overlay with unit commands and targeting
+- [ ] Physics engine
 
 ## Long Term
 

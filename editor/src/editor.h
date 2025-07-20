@@ -11,10 +11,10 @@
 
 using namespace gl;
 
-class CockpitApplication : public Application {
+class EditorApplication : public Application {
 public:
-	CockpitApplication(const ApplicationCreateInfo& info);
-	virtual ~CockpitApplication() = default;
+	EditorApplication(const ApplicationCreateInfo& info);
+	virtual ~EditorApplication() = default;
 
 protected:
 	void _on_start() override;

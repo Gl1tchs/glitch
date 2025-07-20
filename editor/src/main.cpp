@@ -1,7 +1,7 @@
 #define GL_MAIN_IMPLEMENTATION
 #include <glitch/core/entrypoint.h>
 
-#include "cockpit.h"
+#include "editor.h"
 
 Application* create_application(int argc, const char** argv) {
 	ApplicationCreateInfo info = {
@@ -9,5 +9,5 @@ Application* create_application(int argc, const char** argv) {
 		.argc = argc,
 		.argv = argv,
 	};
-	return new CockpitApplication(info);
+	return new EditorApplication(info);
 }

@@ -1,17 +1,13 @@
-# Glitch — Tactical Simulation Rendering Engine & Framework
+# Glitch — A Yet Another Vulkan Engine
 
-Glitch is a modular, modern C++ rendering engine built primarily on Vulkan, designed for real-time graphics, game development,
-interactive simulations, and now advanced tactical / military-grade applications.
+Glitch is a modular, modern C++ rendering engine built primarily on Vulkan, designed for real-time graphics, game development
+and interactive simulations.
 
 ## Features (WIP)
 
 - Vulkan-based renderer with modern GPU pipeline
 - Scene graph system for spatial hierarchy
 - Mesh, material, and texture abstraction
-- GIS/terrain integration with heightmaps & geospatial referencing (work in progress)
-- Destructible environment support (planned voxel & mesh fracture) (work in progress)
-- Physics integration for ballistics, rockets, and vehicle simulation (work in progress)
-- Multi-layered camera systems: drone/satellite views + recon overlays (work in progress)
 - Modular rendering backend with future-proof support for compute shaders & advanced post-processing
 
 ---
