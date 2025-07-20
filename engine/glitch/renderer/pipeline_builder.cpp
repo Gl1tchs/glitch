@@ -1,14 +1,11 @@
 #include "glitch/renderer/pipeline_builder.h"
 
-#include "glitch/core/application.h"
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
 namespace gl {
 
 PipelineBuilder::PipelineBuilder() {
-	Ref<Renderer> renderer = Application::get_instance()->get_renderer();
-
 	primitive_type = RenderPrimitive::TRIANGLE_LIST;
 	vertex_input = {};
 	rasterization = {};
@@ -16,9 +13,19 @@ PipelineBuilder::PipelineBuilder() {
 	depth_stencil_state = {};
 	color_blend_state = PipelineColorBlendState::create_disabled();
 	rendering_state = {};
-	rendering_state.color_attachments.push_back(
-			renderer->get_color_attachment_format());
-	rendering_state.depth_attachment = renderer->get_depth_attachment_format();
+}
+
+PipelineBuilder& PipelineBuilder::add_color_attachment(DataFormat p_format) {
+	rendering_state.color_attachments.push_back(p_format);
+	return *this;
+}
+
+PipelineBuilder& PipelineBuilder::set_depth_attachment(
+		Optional<DataFormat> p_format) {
+	if (p_format) {
+		rendering_state.depth_attachment = *p_format;
+	}
+	return *this;
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(

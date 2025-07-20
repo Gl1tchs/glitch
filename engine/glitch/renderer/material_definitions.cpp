@@ -6,9 +6,12 @@
 
 namespace gl {
 
-MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples) {
+MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples,
+		DataFormat p_color_attachment, DataFormat p_depth_attachment) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
+					.add_color_attachment(p_color_attachment)
+					.set_depth_attachment(p_depth_attachment)
 					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/unlit/mesh.vert.spv"))
@@ -30,9 +33,12 @@ MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples) {
 	return definition;
 }
 
-MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples) {
+MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples,
+		DataFormat p_color_attachment, DataFormat p_depth_attachment) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
+					.add_color_attachment(p_color_attachment)
+					.set_depth_attachment(p_depth_attachment)
 					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_bundled_spirv(
 									"pipelines/urp/mesh.vert.spv"))

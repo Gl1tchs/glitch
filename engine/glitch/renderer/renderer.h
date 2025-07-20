@@ -33,9 +33,10 @@ struct FrameData {
 };
 
 struct RendererSettings {
-	Color clear_color = COLOR_GRAY;
 	float resolution_scale = 1.0f;
 };
+
+class GraphicsPass;
 
 /**
  * Class representing the low level renderig interface that is responsible of
@@ -60,18 +61,37 @@ public:
 	void end_render();
 
 	/**
-	 * Start drawing
+	 * @param priority Sets priority of the pass execute order. Higher
+	 * priority will put other passes behind.
 	 */
-	void begin_rendering(CommandBuffer p_cmd);
+	void add_pass(Ref<GraphicsPass> p_pass, int p_priority = 0);
 
-	/**
-	 * End drawing
-	 */
+	// Execute render passes
+	void execute(CommandBuffer p_cmd);
+
+	// Start drawing
+	void begin_rendering(CommandBuffer p_cmd, Image p_color_attachment,
+			Image p_depth_attachment,
+			Optional<Color> p_clear_color = std::nullopt);
+
+	// End drawing
 	void end_rendering(CommandBuffer p_cmd);
 
+	enum class ImageCreateError { None = 0, IdExists };
+
+	Result<Image, ImageCreateError> create_render_image(
+			const std::string& p_name, DataFormat p_format,
+			BitField<ImageUsageBits> p_usage);
+
+	Optional<Image> get_render_image(const std::string& p_name);
+
 	/**
-	 * Wait for rendering device operations to finish
+	 * Set the swapchain target image to get blittet into.
+	 * If set to "" will use the first color attachment available
 	 */
+	void set_swapchain_target(const std::string& p_name);
+
+	// Wait for rendering device operations to finish
 	void wait_for_device();
 
 	/**
@@ -81,17 +101,13 @@ public:
 	 */
 	void imgui_begin();
 
-	/**
-	 * Ends imgui rendering context
-	 */
+	// Ends imgui rendering context
 	void imgui_end();
 
-	/**
-	 * Sets whether the renderer should present the image into swapchain or not.
-	 */
-	void set_render_present_mode(bool p_present_to_swapchain);
+	// Settings
 
-	void set_clear_color(Color p_color);
+	// Sets whether the renderer should present the image into swapchain or not.
+	void set_render_present_mode(bool p_present_to_swapchain);
 
 	void set_resolution_scale(float p_scale);
 
@@ -101,11 +117,13 @@ public:
 	// end_render
 	void set_msaa_samples(uint32_t p_samples);
 
+	// Accessors
+
 	Swapchain get_swapchain();
 
-	/**
-	 * Get descriptor set of the final image to use with imgui image
-	 */
+	glm::uvec2 get_resolution_extent() const;
+
+	// Get descriptor set of the final image to use with imgui image
 	void* get_final_image_descriptor() const;
 
 	glm::uvec2 get_final_image_size() const;
@@ -151,15 +169,21 @@ private:
 	static constexpr uint8_t SWAPCHAIN_BUFFER_SIZE = 2;
 	FrameData frames[SWAPCHAIN_BUFFER_SIZE];
 
-	const DataFormat color_attachment_format = DataFormat::R8G8B8A8_UNORM;
-	const DataFormat depth_attachment_format = DataFormat::D32_SFLOAT;
-
 	Image final_image = GL_NULL_HANDLE;
 	void* final_image_descriptor = GL_NULL_HANDLE;
 	Sampler default_sampler = GL_NULL_HANDLE;
 
-	Image color_image = GL_NULL_HANDLE;
-	Image depth_image = GL_NULL_HANDLE;
+	struct RenderImage {
+		Image image;
+		DataFormat format;
+		BitField<ImageUsageBits> usage;
+		bool is_depth_attachment;
+	};
+
+	std::unordered_map<std::string, RenderImage> renderpass_images;
+	std::string swapchain_target_image_id = "";
+
+	std::vector<std::pair<Ref<GraphicsPass>, int>> graphics_passes;
 
 	// Settings
 	bool should_present_to_swapchain = true;

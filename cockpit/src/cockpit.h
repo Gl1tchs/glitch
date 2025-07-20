@@ -7,14 +7,9 @@
 #include <glitch/scene_graph/scene_renderer.h>
 
 #include "camera_controller.h"
+#include "grid_pass.h"
 
 using namespace gl;
-
-struct GridPushConstants {
-	glm::mat4 view_proj;
-	glm::vec3 camera_pos;
-	float grid_size;
-};
 
 class CockpitApplication : public Application {
 public:
@@ -33,12 +28,11 @@ private:
 
 	SceneGraph scene_graph;
 
+	Ref<GridPass> grid_pass;
+
 	Scope<GLTFLoader> gltf_loader;
 	std::string model_path = "";
 
 	CameraController camera_controller;
 	PerspectiveCamera camera;
-
-	Shader grid_shader;
-	Pipeline grid_pipeline;
 };

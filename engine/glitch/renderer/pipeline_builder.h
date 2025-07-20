@@ -13,6 +13,10 @@ class PipelineBuilder {
 public:
 	PipelineBuilder();
 
+	PipelineBuilder& add_color_attachment(DataFormat p_format);
+
+	PipelineBuilder& set_depth_attachment(Optional<DataFormat> p_format);
+
 	PipelineBuilder& add_shader_stage(
 			ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data);
 

@@ -1,6 +1,7 @@
 #include "glitch/renderer/renderer.h"
 
 #include "glitch/platform/vulkan/vk_backend.h"
+#include "glitch/renderer/graphics_pass.h"
 #include "glitch/renderer/types.h"
 
 #include <imgui.h>
@@ -80,10 +81,16 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 Renderer::~Renderer() {
 	backend->device_wait();
 
-	// destroy geometry pipeline resources
+	// destroy image and renderpass resources
 	backend->image_free(final_image);
-	backend->image_free(color_image);
-	backend->image_free(depth_image);
+	for (auto& [name, render_image] : renderpass_images) {
+		backend->image_free(render_image.image);
+	}
+
+	// Explicitly delete graphics passes
+	for (auto& [pass, _] : graphics_passes) {
+		pass.reset();
+	}
 
 	// destroy per-frame data
 	for (auto& frame_data : frames) {
@@ -117,7 +124,8 @@ CommandBuffer Renderer::begin_render() {
 
 	backend->fence_reset(_get_current_frame().render_fence);
 
-	const glm::uvec3 draw_image_extent = backend->image_get_size(color_image);
+	const glm::uvec3 draw_image_extent =
+			glm::uvec3(get_resolution_extent(), 1.0);
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
@@ -125,10 +133,18 @@ CommandBuffer Renderer::begin_render() {
 
 	backend->command_begin(cmd);
 
-	backend->command_transition_image(cmd, color_image, ImageLayout::UNDEFINED,
-			ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-	backend->command_transition_image(cmd, depth_image, ImageLayout::UNDEFINED,
-			ImageLayout::DEPTH_ATTACHMENT_OPTIMAL);
+	// Transition renderpass attachments
+	for (const auto& [id, render_image] : renderpass_images) {
+		if (render_image.is_depth_attachment) {
+			backend->command_transition_image(cmd, render_image.image,
+					ImageLayout::UNDEFINED,
+					ImageLayout::DEPTH_ATTACHMENT_OPTIMAL);
+		} else {
+			backend->command_transition_image(cmd, render_image.image,
+					ImageLayout::UNDEFINED,
+					ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+		}
+	}
 
 	// Just so we can use msaa
 	backend->command_transition_image(cmd, current_swapchain_image,
@@ -154,20 +170,44 @@ void Renderer::end_render() {
 
 	const bool msaa_used = msaa_samples != 1;
 
+	// Get final image to copy
+	Image final_color_attachment = GL_NULL_HANDLE;
+	if (swapchain_target_image_id.empty()) {
+		for (const auto& [id, render_image] : renderpass_images) {
+			if (render_image.is_depth_attachment) {
+				continue;
+			}
+
+			final_color_attachment = render_image.image;
+		}
+	} else {
+		const auto final_color_attachment_it =
+				renderpass_images.find(swapchain_target_image_id);
+		if (final_color_attachment_it != renderpass_images.end()) {
+			final_color_attachment = final_color_attachment_it->second.image;
+		}
+	}
+
+	// TODO!
+	if (!final_color_attachment) {
+		GL_LOG_ERROR("Unable to find color attachment to render");
+		return;
+	}
+
 	Image render_target =
 			should_present_to_swapchain ? current_swapchain_image : final_image;
 
 	// Copy color image to final image if there isn't got a resolver
 	if (!msaa_used) {
-		backend->command_transition_image(cmd, color_image,
+		backend->command_transition_image(cmd, final_color_attachment,
 				ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
 				ImageLayout::TRANSFER_SRC_OPTIMAL);
 		backend->command_transition_image(cmd, render_target,
 				ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
 				ImageLayout::TRANSFER_DST_OPTIMAL);
 
-		backend->command_copy_image_to_image(cmd, color_image, render_target,
-				backend->image_get_size(color_image),
+		backend->command_copy_image_to_image(cmd, final_color_attachment,
+				render_target, backend->image_get_size(final_color_attachment),
 				backend->image_get_size(render_target));
 	}
 
@@ -215,12 +255,35 @@ void Renderer::end_render() {
 	frame_number++;
 }
 
-void Renderer::begin_rendering(CommandBuffer p_cmd) {
+void Renderer::add_pass(Ref<GraphicsPass> p_pass, int p_priority) {
+	p_pass->setup(*this);
+
+	graphics_passes.push_back(std::make_pair(p_pass, p_priority));
+}
+
+void Renderer::execute(CommandBuffer p_cmd) {
+	std::sort(graphics_passes.begin(), graphics_passes.end(),
+			[](const auto& lhs, const auto& rhs) -> bool {
+				return lhs.second < rhs.second;
+			});
+
+	for (auto& [pass, _] : graphics_passes) {
+		pass->execute(p_cmd, *this);
+	}
+}
+
+void Renderer::begin_rendering(CommandBuffer p_cmd, Image p_color_attachment,
+		Image p_depth_attachment, Optional<Color> p_clear_color) {
 	RenderingAttachment color_attachment = {};
-	color_attachment.image = color_image;
+	color_attachment.image = p_color_attachment;
 	color_attachment.layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
-	color_attachment.load_op = AttachmentLoadOp::CLEAR;
-	color_attachment.clear_color = settings.clear_color;
+
+	if (p_clear_color) {
+		color_attachment.load_op = AttachmentLoadOp::CLEAR;
+		color_attachment.clear_color = *p_clear_color;
+	} else {
+		color_attachment.load_op = AttachmentLoadOp::LOAD;
+	}
 
 	if (msaa_samples != 1) {
 		color_attachment.resolve_mode = RESOLVE_MODE_AVERAGE_BIT;
@@ -231,12 +294,57 @@ void Renderer::begin_rendering(CommandBuffer p_cmd) {
 	}
 
 	backend->command_begin_rendering(p_cmd,
-			backend->image_get_size(color_image), color_attachment,
-			depth_image);
+			backend->image_get_size(p_color_attachment), color_attachment,
+			p_depth_attachment);
 }
 
 void Renderer::end_rendering(CommandBuffer p_cmd) {
 	backend->command_end_rendering(p_cmd);
+}
+
+Result<Image, Renderer::ImageCreateError> Renderer::create_render_image(
+		const std::string& p_name, DataFormat p_format,
+		BitField<ImageUsageBits> p_usage) {
+	if (renderpass_images.find(p_name) != renderpass_images.end()) {
+		return make_err<Image>(ImageCreateError::IdExists);
+	}
+
+	if (!p_usage.has_flag(IMAGE_USAGE_TRANSFER_SRC_BIT)) {
+		p_usage.set_flag(IMAGE_USAGE_TRANSFER_SRC_BIT);
+	}
+	if (!p_usage.has_flag(IMAGE_USAGE_TRANSFER_DST_BIT)) {
+		p_usage.set_flag(IMAGE_USAGE_TRANSFER_DST_BIT);
+	}
+
+	const bool is_depth_format = p_format == DataFormat::D16_UNORM ||
+			p_format == DataFormat::D16_UNORM_S8_UINT ||
+			p_format == DataFormat::D24_UNORM_S8_UINT ||
+			p_format == DataFormat::D32_SFLOAT;
+
+	RenderImage render_image;
+	render_image.image = backend->image_create(p_format,
+			get_resolution_extent(), nullptr, p_usage, false, msaa_samples);
+	render_image.format = p_format;
+	render_image.usage = p_usage;
+	render_image.is_depth_attachment = is_depth_format;
+
+	// bookkeep
+	renderpass_images[p_name] = render_image;
+
+	return render_image.image;
+}
+
+Optional<Image> Renderer::get_render_image(const std::string& p_name) {
+	const auto it = renderpass_images.find(p_name);
+	if (it == renderpass_images.end()) {
+		return {};
+	}
+
+	return it->second.image;
+}
+
+void Renderer::set_swapchain_target(const std::string& p_name) {
+	swapchain_target_image_id = p_name;
 }
 
 void Renderer::wait_for_device() { backend->device_wait(); }
@@ -263,10 +371,6 @@ void Renderer::imgui_end() {
 
 void Renderer::set_render_present_mode(bool p_present_to_swapchain) {
 	should_present_to_swapchain = p_present_to_swapchain;
-}
-
-void Renderer::set_clear_color(Color p_color) {
-	settings.clear_color = p_color;
 }
 
 void Renderer::set_resolution_scale(float p_scale) {
@@ -300,6 +404,14 @@ void Renderer::set_msaa_samples(uint32_t p_samples) {
 
 Swapchain Renderer::get_swapchain() { return swapchain; }
 
+glm::uvec2 Renderer::get_resolution_extent() const {
+	const glm::uvec2 swapchain_size = backend->swapchain_get_extent(swapchain);
+	return {
+		std::max(1u, uint32_t(swapchain_size.x * settings.resolution_scale)),
+		std::max(1u, uint32_t(swapchain_size.y * settings.resolution_scale)),
+	};
+}
+
 void* Renderer::get_final_image_descriptor() const {
 	return final_image_descriptor;
 }
@@ -309,14 +421,6 @@ glm::uvec2 Renderer::get_final_image_size() const {
 }
 
 RenderStats& Renderer::get_stats() { return stats; }
-
-DataFormat Renderer::get_color_attachment_format() {
-	return s_instance->color_attachment_format;
-}
-
-DataFormat Renderer::get_depth_attachment_format() {
-	return s_instance->depth_attachment_format;
-}
 
 Ref<RenderBackend> Renderer::get_backend() { return s_instance->backend; }
 
@@ -367,19 +471,16 @@ void Renderer::_request_resize() {
 	const glm::uvec2 window_px = window->get_size();
 	backend->swapchain_resize(graphics_queue, swapchain, window_px);
 
-	const glm::uvec2 new_size = {
-		std::max(1u, uint32_t(window_px.x * settings.resolution_scale)),
-		std::max(1u, uint32_t(window_px.y * settings.resolution_scale)),
-	};
+	const glm::uvec2 new_size = get_resolution_extent();
 
 	// Resize depth, color and final image
 	if (final_image) {
 		backend->image_free(final_image);
 	}
-	final_image =
-			backend->image_create(color_attachment_format, new_size, nullptr,
-					IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT |
-							IMAGE_USAGE_TRANSFER_DST_BIT);
+	final_image = backend->image_create(
+			backend->swapchain_get_format(swapchain), new_size, nullptr,
+			IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT |
+					IMAGE_USAGE_TRANSFER_DST_BIT);
 
 	if (final_image_descriptor) {
 		backend->imgui_image_free(final_image_descriptor);
@@ -387,21 +488,15 @@ void Renderer::_request_resize() {
 	final_image_descriptor =
 			backend->imgui_image_upload(final_image, default_sampler);
 
-	if (color_image) {
-		backend->image_free(color_image);
-	}
-	color_image = backend->image_create(color_attachment_format, new_size,
-			nullptr,
-			IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_TRANSFER_SRC_BIT |
-					IMAGE_USAGE_TRANSFER_DST_BIT,
-			false, msaa_samples);
+	// Recreate renderpass attachments
+	for (auto& [id, render_image] : renderpass_images) {
+		if (render_image.image) {
+			backend->image_free(render_image.image);
+		}
 
-	if (depth_image) {
-		backend->image_free(depth_image);
+		render_image.image = backend->image_create(render_image.format,
+				new_size, nullptr, render_image.usage, false, msaa_samples);
 	}
-	depth_image = backend->image_create(depth_attachment_format, new_size,
-			nullptr, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false,
-			msaa_samples);
 }
 
 void Renderer::_reset_stats() { memset(&stats, 0, sizeof(RenderStats)); }

@@ -38,48 +38,19 @@ void CockpitApplication::_on_start() {
 
 	camera_controller.set_camera(&camera);
 
-	std::tie(grid_shader, grid_pipeline) =
-			PipelineBuilder()
-					.add_shader_stage(ShaderStage::VERTEX,
-							ShaderLibrary::get_spirv_data(
-									"build/testbed/shaders/"
-									"infinite_grid.vert.spv"))
-					.add_shader_stage(ShaderStage::FRAGMENT,
-							ShaderLibrary::get_spirv_data(
-									"build/testbed/shaders/"
-									"infinite_grid.frag.spv"))
-					.with_depth_test(
-							CompareOperator::LESS, false) // without depth write
-					.with_blend()
-					.with_multisample(get_renderer()->get_msaa_samples(), true)
-					.build();
+	grid_pass = create_ref<GridPass>();
+	get_renderer()->add_pass(grid_pass, -10);
 }
 
 void CockpitApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
-	scene_renderer->submit_func([&](CommandBuffer cmd) {
-		auto backend = get_renderer()->get_backend();
-
-		backend->command_bind_graphics_pipeline(cmd, grid_pipeline);
-
-		GridPushConstants push_constants;
-		push_constants.view_proj =
-				camera.get_projection_matrix() * camera.get_view_matrix();
-		push_constants.camera_pos = camera.transform.position;
-		push_constants.grid_size = 100.0f;
-
-		backend->command_push_constants(cmd, grid_shader, 0,
-				sizeof(GridPushConstants), &push_constants);
-
-		backend->command_draw(cmd, 6);
-	});
+	grid_pass->set_camera(camera);
 
 	DrawingContext ctx;
 	ctx.scene_graph = &scene_graph;
 	ctx.camera = camera;
 	ctx.settings.resolution_scale = 1.0f;
-	ctx.settings.clear_color = COLOR_GRAY;
 
 	scene_renderer->submit(ctx);
 
@@ -223,11 +194,4 @@ void CockpitApplication::_on_update(float p_dt) {
 	get_renderer()->imgui_end();
 }
 
-void CockpitApplication::_on_destroy() {
-	auto backend = get_renderer()->get_backend();
-
-	backend->device_wait();
-
-	backend->pipeline_free(grid_pipeline);
-	backend->shader_free(grid_shader);
-}
+void CockpitApplication::_on_destroy() {}
