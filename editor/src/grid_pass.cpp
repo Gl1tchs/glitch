@@ -24,11 +24,11 @@ void GridPass::setup(Renderer& p_renderer) {
 					.set_depth_attachment(depth_attachment_format)
 					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_spirv_data(
-									"build/testbed/shaders/"
+									"build/editor/shaders/"
 									"infinite_grid.vert.spv"))
 					.add_shader_stage(ShaderStage::FRAGMENT,
 							ShaderLibrary::get_spirv_data(
-									"build/testbed/shaders/"
+									"build/editor/shaders/"
 									"infinite_grid.frag.spv"))
 					.with_depth_test(
 							CompareOperator::LESS, false) // without depth write

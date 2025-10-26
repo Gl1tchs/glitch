@@ -55,13 +55,11 @@ target_include_directories(glitch
     ${CMAKE_CURRENT_LIST_DIR}/engine
     ${GLM_INCLUDES}
     PRIVATE
+    ${VENDOR_DIR}/include # header only libraries
     ${GL_OUTPUT_DIR}/include
     ${GLFW_INCLUDES}
     ${SPIRV_REFLECT_INCLUDES}
-    ${JSON_INCLUDES}
-    ${STB_INCLUDES}
     ${TINY_GLTF_INCLUDES}
-    ${VMA_INCLUDES}
     ${IMGUI_INCLUDES}
     ${Vulkan_INCLUDE_DIRS}
 )
@@ -69,9 +67,7 @@ target_include_directories(glitch
 target_link_libraries(glitch
     PUBLIC
     ${GLFW_LIBS}
-    ${VMA_LIBS}
     ${VK_BOOTSTRAP_LIBS}
-    ${IMGUI_LIBS}
     ${Vulkan_LIBRARIES}
 )
 

@@ -5,9 +5,11 @@
 #include "glitch/platform/vulkan/vk_common.h"
 
 #include <VkBootstrap.h>
-#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -256,17 +258,18 @@ void VulkanRenderBackend::imgui_init_for_platform(
 	init_info.DescriptorPool = imgui_pool;
 	init_info.MinImageCount = 2;
 	init_info.ImageCount = 2;
-	init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	init_info.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 	// dynamic rendering parameters for imgui to use
 	init_info.UseDynamicRendering = true;
-	init_info.PipelineRenderingCreateInfo = {};
-	init_info.PipelineRenderingCreateInfo.sType =
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo = {};
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-	init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo
+			.colorAttachmentCount = 1;
 
 	static VkFormat color_attachment = static_cast<VkFormat>(p_color_format);
-	init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats =
-			&color_attachment;
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo
+			.pColorAttachmentFormats = &color_attachment;
 
 	ImGui_ImplGlfw_InitForVulkan(p_glfw_window, true);
 	ImGui_ImplVulkan_Init(&init_info);

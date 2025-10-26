@@ -1,7 +1,10 @@
+# Project files
+.glitch/
+
+# Editor folders
 .vs/
 .cache/
 .idea/
-
 vcpkg_installed/
 
 # Compiled Object files
@@ -46,9 +49,10 @@ vcpkg_installed/
 *.VC.db
 *.VC.opendb
 
-[Bb]uild/
-[Bb]in/
-[Oo]ut/
+build/
+bin/*
+out/
 Testing/
 
-.glitch/
+!bin/tracy-v0.12.2
+!bin/tracy-v0.12.2/*.exe

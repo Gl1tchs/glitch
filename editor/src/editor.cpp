@@ -6,7 +6,7 @@
 #include <glitch/renderer/shader_library.h>
 #include <glitch/scene_graph/gltf_loader.h>
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 #include "debug_panel.h"
 

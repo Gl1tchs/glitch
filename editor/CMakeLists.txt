@@ -1,18 +1,19 @@
 include(ShaderUtils)
 
-file(GLOB_RECURSE COCKPIT_SOURCES
+file(GLOB_RECURSE EDITOR_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/*.h"
 )
 
-add_executable(glitch-editor ${COCKPIT_SOURCES})
+add_executable(glitch-editor ${EDITOR_SOURCES})
 
 target_include_directories(glitch-editor
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_SOURCE_DIR}/engine
+    ${IMGUI_INCLUDES}
+    ${GLM_INCLUDES}
     ${CMAKE_SOURCE_DIR}/third_party
-    ${CMAKE_SOURCE_DIR}/third_party/stb
 )
 
 target_link_libraries(glitch-editor PUBLIC glitch)

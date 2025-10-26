@@ -3,7 +3,7 @@
 #include <glitch/core/application.h>
 #include <glitch/core/transform.h>
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 
 static SceneNode* s_selected_node = nullptr;
 

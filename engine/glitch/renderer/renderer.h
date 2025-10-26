@@ -14,8 +14,6 @@ enum class GraphicsAPI {
 	VULKAN,
 };
 
-[[nodiscard]] GL_API GraphicsAPI get_proper_render_backend() noexcept;
-
 struct RenderStats {
 	uint32_t draw_calls;
 	uint32_t triangle_count;
@@ -151,8 +149,6 @@ private:
 	};
 
 private:
-	static Renderer* s_instance;
-
 	Ref<Window> window;
 
 	// drawing data

@@ -1,78 +1,108 @@
-# doctest
-set(DOCTEST_INCLUDES ${VENDOR_DIR}/doctest/doctest PARENT_SCOPE)
-set(DOCTEST_LIBS doctest::doctest PARENT_SCOPE)
+include(FetchContent)
 
+# ------------------- doctest -------------------
 if (GL_BUILD_TESTS)
+    FetchContent_Declare(
+        doctest
+        GIT_REPOSITORY https://github.com/doctest/doctest.git
+        GIT_TAG v2.4.12
+    )
+
     set(DOCTEST_NO_INSTALL ON CACHE BOOL "" FORCE)
-    add_subdirectory(doctest)
+    FetchContent_MakeAvailable(doctest)
+    set(DOCTEST_INCLUDES ${doctest_SOURCE_DIR}/doctest CACHE INTERNAL "")
+    set(DOCTEST_LIBS doctest::doctest CACHE INTERNAL "")
 endif()
 
-# Tracy profiler
-set(TRACY_INCLUDES ${VENDOR_DIR}/tracy/public PARENT_SCOPE)
-set(TRACY_LIBS TracyClient PARENT_SCOPE)
-
+# ------------------- Tracy profiler -------------------
 if (GL_ENABLE_PROFILING)
-    add_subdirectory(tracy)
+    FetchContent_Declare(
+        tracy
+        GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+        GIT_TAG v0.12.2 # TracyClient and tracy instance need to have the same version
+    )
+    FetchContent_MakeAvailable(tracy)
+    set(TRACY_INCLUDES ${tracy_SOURCE_DIR}/public CACHE INTERNAL "")
+    set(TRACY_LIBS TracyClient CACHE INTERNAL "")
 endif()
 
-# GLFW
-set(GLFW_INCLUDES ${VENDOR_DIR}/glfw/include PARENT_SCOPE)
-set(GLFW_LIBS glfw PARENT_SCOPE)
-
+# ------------------- GLFW -------------------
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(glfw)
+FetchContent_MakeAvailable(glfw)
+set(GLFW_INCLUDES ${glfw_SOURCE_DIR}/include CACHE INTERNAL "")
+set(GLFW_LIBS glfw CACHE INTERNAL "")
 
-# glm
-set(GLM_INCLUDES ${VENDOR_DIR}/glm PARENT_SCOPE)
+# ------------------- glm -------------------
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.2
+)
+FetchContent_MakeAvailable(glm)
+set(GLM_INCLUDES ${glm_SOURCE_DIR} CACHE INTERNAL "")
 
-# ImGui
-set(IMGUI_INCLUDES ${VENDOR_DIR}/imgui PARENT_SCOPE)
+# ------------------- ImGui -------------------
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG docking
+)
+FetchContent_MakeAvailable(imgui)
+set(IMGUI_INCLUDES ${imgui_SOURCE_DIR} CACHE INTERNAL "")
 set(IMGUI_FILES
-    "${VENDOR_DIR}/imgui/imgui.h"
-    "${VENDOR_DIR}/imgui/imgui_internal.h"
-    "${VENDOR_DIR}/imgui/imgui.cpp"
-    "${VENDOR_DIR}/imgui/imgui_demo.cpp"
-    "${VENDOR_DIR}/imgui/imgui_draw.cpp"
-    "${VENDOR_DIR}/imgui/imgui_widgets.cpp"
-    "${VENDOR_DIR}/imgui/imgui_tables.cpp"
-    "${VENDOR_DIR}/imgui/backends/imgui_impl_vulkan.h"
-    "${VENDOR_DIR}/imgui/backends/imgui_impl_vulkan.cpp"
-    "${VENDOR_DIR}/imgui/backends/imgui_impl_glfw.h"
-    "${VENDOR_DIR}/imgui/backends/imgui_impl_glfw.cpp"
-    "${VENDOR_DIR}/imgui/misc/cpp/imgui_stdlib.h"
-    "${VENDOR_DIR}/imgui/misc/cpp/imgui_stdlib.cpp"
-    PARENT_SCOPE
+    "${imgui_SOURCE_DIR}/imgui.h"
+    "${imgui_SOURCE_DIR}/imgui_internal.h"
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.h"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+    "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h"
+    "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp"
+    CACHE INTERNAL ""
 )
 
-# SPIRV-Reflect
-set(SPIRV_REFLECT_INCLUDES ${VENDOR_DIR}/SPIRV-Reflect PARENT_SCOPE)
+# ------------------- SPIRV-Reflect -------------------
+FetchContent_Declare(
+    spirv_reflect
+    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(spirv_reflect)
+set(SPIRV_REFLECT_INCLUDES ${spirv_reflect_SOURCE_DIR} CACHE INTERNAL "")
 set(SPIRV_REFLECT_FILES
-    "${VENDOR_DIR}/SPIRV-Reflect/spirv_reflect.h"
-    "${VENDOR_DIR}/SPIRV-Reflect/spirv_reflect.cpp"
-    PARENT_SCOPE
+    "${spirv_reflect_SOURCE_DIR}/spirv_reflect.h"
+    "${spirv_reflect_SOURCE_DIR}/spirv_reflect.cpp"
+    CACHE INTERNAL ""
 )
 
-# Json
-set(JSON_INCLUDES ${VENDOR_DIR}/json PARENT_SCOPE)
+# ------------------- TinyGLTF -------------------
+FetchContent_Declare(
+    tinygltf
+    GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
+    GIT_TAG release
+)
+FetchContent_MakeAvailable(tinygltf)
+set(TINY_GLTF_INCLUDES ${tinygltf_SOURCE_DIR} CACHE INTERNAL "")
 
-# STB
-set(STB_INCLUDES ${VENDOR_DIR}/stb PARENT_SCOPE)
-
-# TinyGLTF
-set(TINY_GLTF_INCLUDES ${VENDOR_DIR}/tinygltf PARENT_SCOPE)
-
-# VkBootstrap
-set(VK_BOOTSTRAP_INCLUDES ${VENDOR_DIR}/vk-bootstrap/src PARENT_SCOPE)
-set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap PARENT_SCOPE)
-
+# ------------------- VkBootstrap -------------------
+FetchContent_Declare(
+    vkbootstrap
+    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
+    GIT_TAG main
+)
 set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
 set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ${GL_BUILD_DYNAMIC_LIBS} CACHE BOOL "" FORCE)
-add_subdirectory(vk-bootstrap)
-
-# VulkanMemoryAllocator
-set(VMA_INCLUDES ${VENDOR_DIR}/VulkanMemoryAllocator/include PARENT_SCOPE)
-set(VMA_LIBS GPUOpen::VulkanMemoryAllocator PARENT_SCOPE)
-
-set(VMA_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(VulkanMemoryAllocator)
+FetchContent_MakeAvailable(vkbootstrap)
+set(VK_BOOTSTRAP_INCLUDES ${vkbootstrap_SOURCE_DIR}/src CACHE INTERNAL "")
+set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap CACHE INTERNAL "")

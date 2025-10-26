@@ -8,13 +8,7 @@
 
 namespace gl {
 
-[[nodiscard]] GraphicsAPI get_proper_render_backend() noexcept {
-	return GraphicsAPI::VULKAN;
-}
-
-static GraphicsAPI s_api;
-
-Renderer* Renderer::s_instance = nullptr;
+static Renderer* s_instance = nullptr;
 
 void FrameData::init(CommandQueue p_queue) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
@@ -44,16 +38,8 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 			s_instance == nullptr, "Only one instance of renderer can exists!");
 	s_instance = this;
 
-	s_api = get_proper_render_backend();
-	switch (s_api) {
-		case GraphicsAPI::VULKAN:
-			backend = create_ref<VulkanRenderBackend>();
-			break;
-		default:
-			GL_ASSERT(false, "Selected graphics API not implemented.");
-			break;
-	}
-
+	// We do not support other render backends for now.
+	backend = create_ref<VulkanRenderBackend>();
 	backend->init(window);
 
 	default_sampler = backend->sampler_create();
