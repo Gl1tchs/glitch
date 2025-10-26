@@ -107,6 +107,7 @@ public:
 	// Sets whether the renderer should present the image into swapchain or not.
 	void set_render_present_mode(bool p_present_to_swapchain);
 
+	float get_resolution_scale() const;
 	void set_resolution_scale(float p_scale);
 
 	uint32_t get_msaa_samples() const;

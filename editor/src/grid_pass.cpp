@@ -42,7 +42,7 @@ void GridPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 
 	p_renderer.begin_rendering(p_cmd,
 			p_renderer.get_render_image("geo_albedo").value(),
-			p_renderer.get_render_image("geo_depth").value(), COLOR_GRAY);
+			p_renderer.get_render_image("geo_depth").value());
 
 	backend->command_bind_graphics_pipeline(p_cmd, grid_pipeline);
 

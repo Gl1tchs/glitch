@@ -99,7 +99,7 @@ CommandBuffer Renderer::begin_render() {
 
 	s_backend->fence_wait(_get_current_frame().render_fence);
 
-	Optional<Image> swapchain_image = s_backend->swapchain_acquire_image(
+	const Optional<Image> swapchain_image = s_backend->swapchain_acquire_image(
 			swapchain, _get_current_frame().image_available_semaphore,
 			&image_index);
 	if (!swapchain_image) {
@@ -117,7 +117,6 @@ CommandBuffer Renderer::begin_render() {
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
 	s_backend->command_reset(cmd);
-
 	s_backend->command_begin(cmd);
 
 	// Transition renderpass attachments
@@ -181,7 +180,7 @@ void Renderer::end_render() {
 		return;
 	}
 
-	Image render_target =
+	const Image render_target =
 			should_present_to_swapchain ? current_swapchain_image : final_image;
 
 	// Copy color image to final image if there isn't got a resolver
@@ -250,12 +249,17 @@ void Renderer::add_pass(Ref<GraphicsPass> p_pass, int p_priority) {
 }
 
 void Renderer::execute(CommandBuffer p_cmd) {
+	// Sort based on priority
 	std::sort(graphics_passes.begin(), graphics_passes.end(),
 			[](const auto& lhs, const auto& rhs) -> bool {
 				return lhs.second < rhs.second;
 			});
 
-	for (auto& [pass, _] : graphics_passes) {
+	for (const auto& [pass, _prior] : graphics_passes) {
+		if (!pass->is_active()) {
+			continue;
+		}
+
 		pass->execute(p_cmd, *this);
 	}
 }
@@ -359,6 +363,10 @@ void Renderer::imgui_end() {
 
 void Renderer::set_render_present_mode(bool p_present_to_swapchain) {
 	should_present_to_swapchain = p_present_to_swapchain;
+}
+
+float Renderer::get_resolution_scale() const {
+	return settings.resolution_scale;
 }
 
 void Renderer::set_resolution_scale(float p_scale) {

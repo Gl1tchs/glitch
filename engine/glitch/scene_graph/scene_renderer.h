@@ -6,6 +6,7 @@
 
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/renderer.h"
+#include "glitch/scene_graph/passes/clear_pass.h"
 #include "glitch/scene_graph/passes/mesh_pass.h"
 #include "glitch/scene_graph/scene_graph.h"
 
@@ -47,6 +48,7 @@ private:
 	Ref<Renderer> renderer;
 	Ref<RenderBackend> backend;
 
+	Ref<ClearPass> clear_pass;
 	Ref<MeshPass> mesh_pass;
 
 	std::vector<RenderFunc> render_funcs;

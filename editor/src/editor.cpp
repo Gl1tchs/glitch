@@ -21,12 +21,12 @@ void EditorApplication::_on_start() {
 	// This must be created after scene renderer for it to initialize materials
 	gltf_loader = create_scope<GLTFLoader>();
 
-	camera.transform.position = { -7.98f, 3.48f, -4.18f };
-	camera.transform.rotation = { -16.5f, -113.89f, 0.0f };
+	camera.transform.position = { 0.0f, 0.5f, 3.0f };
+	camera.transform.rotation = { -5.0f, 0.0, 0.0f };
 	camera_controller.set_camera(&camera);
 
 	grid_pass = create_ref<GridPass>();
-	get_renderer()->add_pass(grid_pass, -10);
+	get_renderer()->add_pass(grid_pass, -5);
 }
 
 void EditorApplication::_on_update(float p_dt) {
@@ -194,6 +194,32 @@ void EditorApplication::_on_update(float p_dt) {
 					ImGui::Text("Index Count: %d",
 							stats.renderer_stats.index_count);
 				}
+			}
+			ImGui::End();
+
+			ImGui::Begin("Settings");
+			{
+				ImGui::SeparatorText("Editor");
+
+				static bool s_render_grid = true;
+				if (ImGui::Checkbox("Render Grid", &s_render_grid)) {
+					grid_pass->set_active(s_render_grid);
+				}
+
+				ImGui::SeparatorText("Camera");
+
+				ImGui::DragFloat3(
+						"Position", &camera.transform.position.x, 0.1f);
+				ImGui::DragFloat("Pitch", &camera.transform.rotation.x, 1.0f);
+				ImGui::DragFloat("Yaw", &camera.transform.rotation.y, 1.0f);
+
+				// TODO?
+				// ImGui::SeparatorText("Renderer");
+				// static float s_resolution_scale = 1.0f;
+				// if (ImGui::DragFloat("Resolution Scale", &s_resolution_scale,
+				// 			0.01f, 0.01f, 1.0f, "%.2f")) {
+				// 	get_renderer()->set_resolution_scale(s_resolution_scale);
+				// }
 			}
 			ImGui::End();
 

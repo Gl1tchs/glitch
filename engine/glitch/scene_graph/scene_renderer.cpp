@@ -11,7 +11,10 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 		backend(renderer->get_backend()) {
 	renderer->set_msaa_samples(p_specs.msaa);
 
-	// Create and initialize mesh pass
+	// Create and initialize graphics passes
+	clear_pass = create_ref<ClearPass>();
+	renderer->add_pass(clear_pass, -10);
+
 	mesh_pass = create_ref<MeshPass>();
 	renderer->add_pass(mesh_pass);
 

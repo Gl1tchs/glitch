@@ -1,22 +1,11 @@
 #include "glitch/scene_graph/passes/mesh_pass.h"
+
 #include "glitch/core/application.h"
 
 namespace gl {
 
-MeshPass::~MeshPass() {}
-
 void MeshPass::setup(Renderer& p_renderer) {
 	GL_PROFILE_SCOPE;
-
-	// Create pass resources
-	p_renderer.create_render_image("geo_albedo",
-			Renderer::get_backend()->swapchain_get_format(
-					p_renderer.get_swapchain()),
-			IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-	p_renderer.create_render_image("geo_depth", DataFormat::D32_SFLOAT,
-			IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-	// p_renderer.set_swapchain_target("geo_albedo");
 
 	scene_data_sbo = StorageBuffer::create(sizeof(SceneData), &scene_data);
 	push_constants.scene_buffer = scene_data_sbo->get_device_address();

@@ -1,5 +1,5 @@
 /**
- * @file imgui_pass.h
+ * @file mesh_pass.h
  *
  */
 
@@ -27,7 +27,7 @@ public:
 		glm::mat4 transform;
 	};
 
-	virtual ~MeshPass();
+	virtual ~MeshPass() = default;
 
 	void setup(Renderer& p_renderer) override;
 	void execute(CommandBuffer p_cmd, Renderer& p_renderer) override;
