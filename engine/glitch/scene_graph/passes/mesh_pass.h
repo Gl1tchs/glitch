@@ -16,15 +16,23 @@ class MeshPass : public GraphicsPass {
 public:
 	GL_DEFINE_GRAPHICS_PASS("Mesh Pass")
 
-	struct SceneData {
+	struct alignas(16) SceneBuffer {
 		glm::mat4 view_projection;
 		glm::vec3 camera_position;
+		float _pad0;
+		int num_point_lights;
+		int num_spotlights;
+		int _pad1[2];
+		DirectionalLight directional_light;
+		std::array<PointLight, 16> point_lights;
+		std::array<Spotlight, 16> spotlights;
 	};
 
 	struct PushConstants {
+		glm::mat4 transform;
 		BufferDeviceAddress vertex_buffer;
 		BufferDeviceAddress scene_buffer;
-		glm::mat4 transform;
+		BufferDeviceAddress light_buffer;
 	};
 
 	virtual ~MeshPass() = default;
@@ -41,7 +49,7 @@ private:
 	PerspectiveCamera camera;
 
 	PushConstants push_constants = {};
-	SceneData scene_data;
+	SceneBuffer scene_data;
 	size_t scene_data_hash;
 	Ref<StorageBuffer> scene_data_sbo;
 };

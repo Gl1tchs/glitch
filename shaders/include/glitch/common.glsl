@@ -1,6 +1,8 @@
 #ifndef COMMON_GLSL
 #define COMMON_GLSL
 
+#include "glitch/light_sources.glsl"
+
 #extension GL_EXT_buffer_reference : require
 
 struct MeshVertex {
@@ -10,19 +12,25 @@ struct MeshVertex {
 	float uv_y;
 };
 
-layout(buffer_reference, std430) readonly buffer VertexBuffer {
+layout(buffer_reference, std140) readonly buffer VertexBuffer {
 	MeshVertex vertices[];
 };
 
-layout(buffer_reference, std430) readonly buffer SceneBuffer {
+layout(buffer_reference, std140) readonly buffer SceneBuffer {
 	mat4 view_projection;
 	vec3 camera_position;
+
+	int num_point_lights;
+	int num_spotlights;
+	DirectionalLight directional_light;
+	PointLight point_lights[16];
+	Spotlight spotlights[16];
 };
 
-layout(push_constant, std430) uniform constants {
+layout(push_constant, std140) uniform constants {
+	mat4 transform;
 	VertexBuffer vertex_buffer;
 	SceneBuffer scene_buffer;
-	mat4 transform;
 }
 u_push_constants;
 

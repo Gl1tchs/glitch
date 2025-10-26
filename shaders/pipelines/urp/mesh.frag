@@ -10,7 +10,6 @@ layout(location = 0) out vec4 o_color;
 
 // Simple light params
 const vec3 light_pos = vec3(-15.0, 12.5, -12.5);
-const vec3 light_color = vec3(1.0, 1.0, 1.0);
 
 const float ambient_strength = 0.1;
 const float specular_strength = 0.5;
@@ -18,6 +17,8 @@ const float shininess = 32.0;
 
 void main() {
 	SceneBuffer scene_data = u_push_constants.scene_buffer;
+
+	const vec3 light_color = scene_data.directional_light.color.rgb;
 
 	// Sample textures
 	vec3 diffuse_color = vec3(texture(u_diffuse_texture, v_uv));
@@ -32,6 +33,7 @@ void main() {
 	vec3 norm = normalize(v_normal); // Note: If you want, you can do normal
 									 // mapping here using u_normal_texture
 	vec3 light_dir = normalize(light_pos - v_position);
+	// vec3 light_dir = scene_data.directional_light.direction.xyz;
 	float diff = max(dot(norm, light_dir), 0.0);
 
 	vec3 diffuse = diff * light_color * diffuse_color * ao;

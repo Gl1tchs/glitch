@@ -95,6 +95,16 @@ void SceneGraph::_collect_render_items(
 		}
 	}
 
+	if (p_node->directional_light) {
+		p_queue.push_light_source(*p_node->directional_light);
+	}
+	if (p_node->point_light) {
+		p_queue.push_light_source(*p_node->point_light);
+	}
+	if (p_node->spotlight) {
+		p_queue.push_light_source(*p_node->spotlight);
+	}
+
 	for (const auto& child : p_node->children) {
 		_collect_render_items(child, p_frustum, p_queue);
 	}

@@ -1,6 +1,9 @@
 # TODO
 
 - [ ] Instanced rendering
+- [ ] Light sources
+- [ ] Parallax mapping
+- [ ] Shadow maps
 - [ ] Per Frame Allocators
 
 ## Bugs

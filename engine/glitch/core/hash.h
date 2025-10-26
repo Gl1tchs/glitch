@@ -45,6 +45,16 @@ template <> inline size_t hash64(const glm::vec3& p_v) {
 	return seed;
 }
 
+template <> inline size_t hash64(const glm::vec4& p_v) {
+	size_t seed = 0;
+	hash_combine(seed, p_v.x);
+	hash_combine(seed, p_v.y);
+	hash_combine(seed, p_v.z);
+	hash_combine(seed, p_v.w);
+	return seed;
+}
+
+
 template <> inline size_t hash64(const glm::mat4& p_m) {
 	size_t seed = 0;
 	for (int col = 0; col < 4; ++col) {

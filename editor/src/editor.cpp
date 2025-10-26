@@ -27,6 +27,12 @@ void EditorApplication::_on_start() {
 
 	grid_pass = create_ref<GridPass>();
 	get_renderer()->add_pass(grid_pass, -5);
+
+	auto dir_light = create_ref<SceneNode>();
+	dir_light->directional_light = create_ref<DirectionalLight>();
+	dir_light->directional_light->direction = { -1, -1, -1 };
+	dir_light->directional_light->color = { 1, 1, 1 };
+	scene_graph.get_root()->add_child(dir_light);
 }
 
 void EditorApplication::_on_update(float p_dt) {
@@ -317,4 +323,12 @@ void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 	ImGui::DragFloat3("Position", &selected_node->transform.position.x, 0.1f);
 	ImGui::DragFloat3("Rotation", &selected_node->transform.rotation.x, 0.1f);
 	ImGui::DragFloat3("Scale", &selected_node->transform.scale.x, 0.1f);
+
+	if (p_node->directional_light) {
+		ImGui::SeparatorText("Directional Light");
+
+		ImGui::DragFloat3(
+				"Direction", &p_node->directional_light->direction.x, 0.1f);
+		ImGui::ColorPicker4("Color", &p_node->directional_light->color.r);
+	}
 }

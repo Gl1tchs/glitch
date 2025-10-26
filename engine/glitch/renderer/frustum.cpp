@@ -2,7 +2,7 @@
 
 namespace gl {
 
-Frustum Frustum::from_view_proj(const glm::mat4 p_view_proj) {
+Frustum Frustum::from_view_proj(const glm::mat4& p_view_proj) {
 	Frustum frustum;
 
 	// Transpose because GLM matrices are column-major

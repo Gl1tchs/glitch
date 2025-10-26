@@ -21,7 +21,7 @@ struct Color {
 	 * Gray-Scale constructor, fills every component
 	 * except `alpha` to `p_value`
 	 */
-	explicit constexpr Color(float p_value = 0.0f) :
+	constexpr Color(float p_value = 0.0f) :
 			r(p_value), g(p_value), b(p_value) {}
 
 	constexpr Color(

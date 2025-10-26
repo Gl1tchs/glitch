@@ -5,6 +5,7 @@
 #pragma once
 
 #include "glitch/renderer/camera.h"
+#include "glitch/renderer/light_sources.h"
 #include "glitch/renderer/renderer.h"
 #include "glitch/scene_graph/passes/clear_pass.h"
 #include "glitch/scene_graph/passes/mesh_pass.h"

@@ -46,8 +46,8 @@ struct GL_API MaterialInstance {
 	std::unordered_map<std::string, Ref<Texture>> textures;
 
 	Buffer material_data_buffer;
-	UniformSet uniform_set;
-
+	UniformSet material_set;
+	
 	~MaterialInstance();
 
 	void set_param(const std::string& p_name, ShaderUniformVariable p_value);
