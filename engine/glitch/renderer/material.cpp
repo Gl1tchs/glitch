@@ -5,8 +5,8 @@
 
 namespace gl {
 
-std::unordered_map<std::string, Ref<MaterialDefinition>>
-		MaterialSystem::s_definitions = {};
+static std::unordered_map<std::string, Ref<MaterialDefinition>>
+		s_definitions = {};
 
 size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 	switch (p_type) {
@@ -55,12 +55,16 @@ void MaterialInstance::upload() {
 
 	// Calculate required buffer size
 	size_t buffer_size = 0;
+
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
+	write_order.reserve(params.size());
 
 	for (const auto& [name, param] : params) {
 		const auto meta = std::find_if(definition->uniforms.begin(),
 				definition->uniforms.end(),
-				[&](const ShaderUniformMetadata& u) { return u.name == name; });
+				[&name](const ShaderUniformMetadata& u) {
+					return u.name == name;
+				});
 
 		if (meta == definition->uniforms.end()) {
 			continue;
@@ -78,7 +82,7 @@ void MaterialInstance::upload() {
 	}
 
 	// Allocate and write to a contiguous CPU-side buffer
-	std::vector<uint8_t> cpu_buffer(buffer_size);
+	std::vector<std::byte> cpu_buffer(buffer_size);
 	for (const auto& [offset, meta] : write_order) {
 		auto it = params.find(meta.name);
 		if (it == params.end()) {
@@ -86,7 +90,7 @@ void MaterialInstance::upload() {
 		}
 
 		std::visit(
-				[&](auto&& arg) {
+				[&cpu_buffer, &offset](auto&& arg) {
 					using T = std::decay_t<decltype(arg)>;
 					std::memcpy(cpu_buffer.data() + offset, &arg, sizeof(T));
 				},
@@ -107,18 +111,22 @@ void MaterialInstance::upload() {
 
 	// Bind it to uniform set
 	std::vector<ShaderUniform> uniforms;
+	uniforms.reserve(textures.size() + 1);
 
-	ShaderUniform material_data_uniform;
-	material_data_uniform.type = UNIFORM_TYPE_UNIFORM_BUFFER;
-	material_data_uniform.binding = 0;
-	material_data_uniform.data.push_back(material_data_buffer);
+	ShaderUniform material_data_uniform = {
+		.type = UNIFORM_TYPE_UNIFORM_BUFFER,
+		.binding = 0,
+		.data = { material_data_buffer },
+	};
 	uniforms.push_back(material_data_uniform);
 
 	// Upload textures
 	for (const auto& [name, texture] : textures) {
 		const auto meta = std::find_if(definition->uniforms.begin(),
 				definition->uniforms.end(),
-				[&](const ShaderUniformMetadata& u) { return u.name == name; });
+				[&name](const ShaderUniformMetadata& u) {
+					return u.name == name;
+				});
 
 		if (meta == definition->uniforms.end()) {
 			continue;

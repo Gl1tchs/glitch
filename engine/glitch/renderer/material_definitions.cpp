@@ -22,12 +22,13 @@ MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples,
 					.with_multisample(p_msaa_samples, true)
 					.build();
 
-	MaterialDefinition definition;
-	definition.shader = shader;
-	definition.pipeline = pipeline;
-	definition.uniforms = {
-		{ "base_color", 0, ShaderUniformVariableType::VEC4 },
-		{ "u_diffuse_texture", 1, ShaderUniformVariableType::TEXTURE },
+	MaterialDefinition definition = {
+		.shader = shader,
+		.pipeline = pipeline,
+		.uniforms = {
+			{ "base_color", 0, ShaderUniformVariableType::VEC4 },
+			{ "u_diffuse_texture", 1, ShaderUniformVariableType::TEXTURE },
+		},
 	};
 
 	return definition;
@@ -50,19 +51,19 @@ MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples,
 					.set_render_primitive(RenderPrimitive::TRIANGLE_LIST)
 					.build();
 
-	MaterialDefinition definition;
-	definition.shader = shader;
-	definition.pipeline = pipeline;
-	definition.uniforms = {
-		{ "base_color", 0, ShaderUniformVariableType::VEC4 },
-		{ "metallic", 0, ShaderUniformVariableType::FLOAT },
-		{ "roughness", 0, ShaderUniformVariableType::FLOAT },
-		{ "u_diffuse_texture", 1, ShaderUniformVariableType::TEXTURE },
-		{ "u_normal_texture", 2, ShaderUniformVariableType::TEXTURE },
-		{ "u_metallic_roughness_texture", 3,
-				ShaderUniformVariableType::TEXTURE },
-		{ "u_ambient_occlusion_texture", 4,
-				ShaderUniformVariableType::TEXTURE },
+	MaterialDefinition definition {
+		.shader = shader, .pipeline = pipeline,
+		.uniforms = {
+			{ "base_color", 0, ShaderUniformVariableType::VEC4 },
+			{ "metallic", 0, ShaderUniformVariableType::FLOAT },
+			{ "roughness", 0, ShaderUniformVariableType::FLOAT },
+			{ "u_diffuse_texture", 1, ShaderUniformVariableType::TEXTURE },
+			{ "u_normal_texture", 2, ShaderUniformVariableType::TEXTURE },
+			{ "u_metallic_roughness_texture", 3,
+					ShaderUniformVariableType::TEXTURE },
+			{ "u_ambient_occlusion_texture", 4,
+					ShaderUniformVariableType::TEXTURE },
+		},
 	};
 
 	return definition;

@@ -1,17 +1,16 @@
 # TODO
 
+- [ ] Instanced rendering
+
 ## Bugs
 
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
-
 - [ ] Renderer::create_render_image expects same format as swapchain for color attachments
 
 # Short Term
 
-- [ ] GIS Terrain loading + LOD with quadtrees
 - [ ] Renderer recreation
 - [ ] Animation
-- [ ] Instanced rendering
 - [ ] Light objects
 - [ ] Post processing
 - [ ] Shadows

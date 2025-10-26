@@ -6,7 +6,7 @@
 
 namespace gl {
 
-Application* Application::s_instance = nullptr;
+static Application* s_instance = nullptr;
 
 Application::Application(const ApplicationCreateInfo& p_info) {
 	GL_ASSERT(!s_instance, "Only one instance can exists at a time!");
@@ -81,6 +81,16 @@ void Application::_process_main_thread_queue() {
 	}
 
 	main_thread_queue.clear();
+}
+
+Ref<Window> Application::get_window() { return window; }
+
+Ref<Renderer> Application::get_renderer() { return renderer; }
+
+ApplicationPerfStats& Application::get_perf_stats() { return perf_stats; }
+
+Ref<RenderBackend> Application::get_render_backend() {
+	return Renderer::get_backend();
 }
 
 Application* Application::get_instance() { return s_instance; }

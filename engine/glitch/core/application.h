@@ -41,12 +41,14 @@ public:
 	 */
 	static void enqueue_main_thread(MainThreadFunc p_function);
 
-	Ref<Window> get_window() { return window; }
+	Ref<Window> get_window();
 
-	Ref<Renderer> get_renderer() { return renderer; }
+	Ref<Renderer> get_renderer();
 
 	// TODO: maybe this shouldn't be mutable
-	ApplicationPerfStats& get_perf_stats() { return perf_stats; }
+	ApplicationPerfStats& get_perf_stats();
+
+	static Ref<RenderBackend> get_render_backend();
 
 	static Application* get_instance();
 
@@ -63,8 +65,6 @@ protected:
 	inline virtual void _on_destroy() {}
 
 private:
-	static Application* s_instance;
-
 	bool running = true;
 
 	Ref<Window> window;

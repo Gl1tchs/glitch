@@ -36,6 +36,8 @@ void EditorApplication::_on_start() {
 		GL_LOG_ERROR("{}", res.get_error());
 	}
 
+	camera.transform.position = { -7.98f, 3.48f, -4.18f };
+	camera.transform.rotation = { -16.5f, -113.89f, 0.0f };
 	camera_controller.set_camera(&camera);
 
 	grid_pass = create_ref<GridPass>();
@@ -44,6 +46,9 @@ void EditorApplication::_on_start() {
 
 void EditorApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
+
+	// Rotate the model
+	scene_graph.get_root()->transform.rotation.y += p_dt * 10.0f;
 
 	grid_pass->set_camera(camera);
 

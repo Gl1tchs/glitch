@@ -13,7 +13,7 @@ namespace gl {
 using ShaderUniformVariable =
 		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color>;
 
-enum class ShaderUniformVariableType {
+enum class ShaderUniformVariableType : int {
 	INT,
 	FLOAT,
 	VEC2,
@@ -70,10 +70,6 @@ public:
 			const std::string& p_name, MaterialDefinition p_def);
 
 	static Ref<MaterialInstance> create_instance(const std::string& p_def_name);
-
-private:
-	static std::unordered_map<std::string, Ref<MaterialDefinition>>
-			s_definitions;
 };
 
 } //namespace gl

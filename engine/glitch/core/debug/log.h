@@ -8,7 +8,7 @@
 
 namespace gl {
 
-enum LogLevel {
+enum LogLevel : uint8_t {
 	LOG_LEVEL_TRACE = 0,
 	LOG_LEVEL_INFO,
 	LOG_LEVEL_WARNING,

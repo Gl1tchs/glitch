@@ -30,7 +30,7 @@ Frustum Frustum::from_view_proj(const glm::mat4 p_view_proj) {
 	return frustum;
 }
 
-bool AABB::is_inside_frustum(const Frustum& p_frustum) {
+bool AABB::is_inside_frustum(const Frustum& p_frustum) const {
 	for (int i = 0; i < 6; ++i) {
 		const glm::vec4& plane = p_frustum.planes[i];
 
@@ -63,12 +63,13 @@ AABB AABB::transform(const glm::mat4& p_transform) {
 		{ max.x, max.y, max.z },
 	};
 
-	AABB result;
-	result.min = glm::vec3(std::numeric_limits<float>::max());
-	result.max = glm::vec3(std::numeric_limits<float>::lowest());
+	AABB result = {
+		.min = glm::vec3(std::numeric_limits<float>::max()),
+		.max = glm::vec3(std::numeric_limits<float>::lowest()),
+	};
 
 	for (int i = 0; i < 8; ++i) {
-		glm::vec3 transformed =
+		const glm::vec3 transformed =
 				glm::vec3(p_transform * glm::vec4(corners[i], 1.0f));
 		result.min = glm::min(result.min, transformed);
 		result.max = glm::max(result.max, transformed);

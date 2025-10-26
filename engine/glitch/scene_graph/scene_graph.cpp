@@ -50,7 +50,7 @@ void SceneGraph::_collect_render_items(
 	if (p_node->mesh) {
 		for (auto& prim : p_node->mesh->primitives) {
 			// If objects is not inside of the view frustum, discard it.
-			AABB aabb = prim->aabb.transform(p_node->world_transform);
+			const AABB aabb = prim->aabb.transform(p_node->world_transform);
 			if (!aabb.is_inside_frustum(p_frustum)) {
 				continue;
 			}

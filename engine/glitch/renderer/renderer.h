@@ -151,9 +151,6 @@ private:
 private:
 	Ref<Window> window;
 
-	// drawing data
-	Ref<RenderBackend> backend;
-
 	CommandQueue graphics_queue;
 	CommandQueue present_queue;
 
