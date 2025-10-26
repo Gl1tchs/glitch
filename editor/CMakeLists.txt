@@ -16,7 +16,10 @@ target_include_directories(glitch-editor
     ${CMAKE_SOURCE_DIR}/third_party
 )
 
-target_link_libraries(glitch-editor PUBLIC glitch)
+target_link_libraries(glitch-editor PRIVATE
+    glitch
+    ${TINYFD_LIBS}
+)
 
 set(SHADER_LIST
     ${CMAKE_CURRENT_LIST_DIR}/shaders/infinite_grid.vert

@@ -1,6 +1,7 @@
 # TODO
 
 - [ ] Instanced rendering
+- [ ] Per Frame Allocators
 
 ## Bugs
 
@@ -16,8 +17,10 @@
 - [ ] Shadows
 - [ ] Transparent materials
 - [ ] Cubemaps
+- [ ] ASset system and serialization
 - [ ] GPU Particle system
 - [ ] Physics engine
+- [ ] Scripting
 
 ## Long Term
 

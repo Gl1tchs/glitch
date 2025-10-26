@@ -35,6 +35,39 @@ Ref<SceneNode> SceneGraph::find_by_id(const UID& p_uid) {
 	return result;
 }
 
+bool SceneGraph::remove_node(const UID& p_uid) {
+	if (!root || root->debug_id == p_uid) {
+		return false;
+	}
+
+	std::function<bool(Ref<SceneNode>)> traverse_and_remove;
+	traverse_and_remove = [&](Ref<SceneNode> p_node) -> bool {
+		// Try to delete from children
+		const auto num_erased = std::erase_if(
+				p_node->children, [&](const Ref<SceneNode>& child) {
+					return child->debug_id == p_uid;
+				});
+
+		// Found and deleted
+		if (num_erased > 0) {
+			return true;
+		}
+
+		for (const auto& child : p_node->children) {
+			if (traverse_and_remove(child)) {
+				// If a deeper call returned true, propagate it up to exit
+				// immediately.
+				return true;
+			}
+		}
+
+		// The node was not found in this branch of the scene graph.
+		return false;
+	};
+
+	return traverse_and_remove(root);
+}
+
 RenderQueue SceneGraph::construct_render_queue(Frustum p_frustum) {
 	RenderQueue render_queue;
 	_collect_render_items(root, p_frustum, render_queue);

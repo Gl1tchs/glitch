@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glitch/core/application.h>
+#include <glitch/core/deletion_queue.h>
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/scene_graph/gltf_loader.h>
@@ -24,15 +25,23 @@ protected:
 	void _on_destroy() override;
 
 private:
+	void _traverse_render_node_hierarchy(const Ref<SceneNode>& p_node);
+
+	void _render_hierarchy_context_menu(const Ref<SceneNode>& p_node);
+
+	void _render_node_properties(Ref<SceneNode> p_node);
+
+private:
 	Ref<SceneRenderer> scene_renderer;
 
 	SceneGraph scene_graph;
-
-	Ref<GridPass> grid_pass;
-
 	Scope<GLTFLoader> gltf_loader;
-	std::string model_path = "";
 
 	CameraController camera_controller;
 	PerspectiveCamera camera;
+
+	Ref<GridPass> grid_pass;
+
+	Ref<SceneNode> selected_node = nullptr;
+	DeletionQueue node_deletion_queue;
 };

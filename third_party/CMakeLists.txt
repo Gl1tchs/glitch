@@ -106,3 +106,8 @@ set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ${GL_BUILD_DYNAMIC_LIBS} CACHE BOOL "
 FetchContent_MakeAvailable(vkbootstrap)
 set(VK_BOOTSTRAP_INCLUDES ${vkbootstrap_SOURCE_DIR}/src CACHE INTERNAL "")
 set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap CACHE INTERNAL "")
+
+# ------------------- tinyfiledialogs -------------------
+add_subdirectory(tinyfiledialogs)
+
+set(TINYFD_LIBS tinyfiledialogs CACHE INTERNAL "")

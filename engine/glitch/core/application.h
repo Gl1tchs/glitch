@@ -20,8 +20,7 @@ struct ApplicationPerfStats {
 
 struct ApplicationCreateInfo {
 	const char* name;
-	int argc;
-	const char** argv;
+	VectorView<const char*> args;
 };
 
 typedef std::function<void(void)> MainThreadFunc;

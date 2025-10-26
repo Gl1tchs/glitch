@@ -7,15 +7,10 @@
 #include <glitch/scene_graph/gltf_loader.h>
 
 #include <imgui.h>
-
-#include "debug_panel.h"
+#include <tinyfiledialogs/tinyfiledialogs.h>
 
 EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
-		Application(p_info) {
-	GL_ASSERT(p_info.argc == 2, "A GLTF Model path must be provided.");
-
-	model_path = p_info.argv[1];
-}
+		Application(p_info) {}
 
 void EditorApplication::_on_start() {
 	SceneRendererSpecification specs = {};
@@ -25,16 +20,6 @@ void EditorApplication::_on_start() {
 
 	// This must be created after scene renderer for it to initialize materials
 	gltf_loader = create_scope<GLTFLoader>();
-
-	if (auto res = gltf_loader->load_gltf(model_path); res) {
-		Ref<SceneNode> scene = *res;
-		scene->transform.scale *= 5.0f;
-		scene->transform.rotation.y = 188.0f;
-
-		scene_graph.get_root()->add_child(scene);
-	} else {
-		GL_LOG_ERROR("{}", res.get_error());
-	}
 
 	camera.transform.position = { -7.98f, 3.48f, -4.18f };
 	camera.transform.rotation = { -16.5f, -113.89f, 0.0f };
@@ -46,9 +31,6 @@ void EditorApplication::_on_start() {
 
 void EditorApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
-
-	// Rotate the model
-	scene_graph.get_root()->transform.rotation.y += p_dt * 10.0f;
 
 	grid_pass->set_camera(camera);
 
@@ -82,7 +64,7 @@ void EditorApplication::_on_update(float p_dt) {
 		}
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("EveDockSpace", nullptr, window_flags);
+		ImGui::Begin("GL_DOCK_SPACE", nullptr, window_flags);
 		ImGui::PopStyleVar(3);
 
 		// DockSpace
@@ -91,7 +73,7 @@ void EditorApplication::_on_update(float p_dt) {
 		float min_win_size_x = style.WindowMinSize.x;
 		style.WindowMinSize.x = 200.0f;
 		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
-			ImGuiID dockspace_id = ImGui::GetID("EveDockSpace");
+			ImGuiID dockspace_id = ImGui::GetID("GL_DOCK_SPACE");
 			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 		}
 
@@ -99,31 +81,32 @@ void EditorApplication::_on_update(float p_dt) {
 		{
 			if (ImGui::BeginMainMenuBar()) {
 				if (ImGui::BeginMenu("File")) {
-					if (ImGui::MenuItem("New")) {
-						// handle new
+					if (ImGui::MenuItem("Load GLTF Model")) {
+						constexpr const char* FILTER_PATERNS[2] = { "*.glb",
+							"*.gltf" };
+						const char* path =
+								tinyfd_openFileDialog("Load Model", "",
+										sizeof(FILTER_PATERNS) /
+												sizeof(FILTER_PATERNS[0]),
+										FILTER_PATERNS, "GLTF Files", 0);
+
+						if (path) {
+							if (auto scene = gltf_loader->load_gltf(path)) {
+								(*scene)->debug_name =
+										fs::path(path).filename().string();
+								scene_graph.get_root()->add_child(*scene);
+							} else {
+								GL_LOG_ERROR("{}", scene.get_error());
+							}
+						}
 					}
-					if (ImGui::MenuItem("Open", "Ctrl+O")) {
-						// handle open
-					}
-					if (ImGui::MenuItem("Save", "Ctrl+S")) {
-						// handle save
-					}
+
 					ImGui::Separator();
-					if (ImGui::MenuItem("Exit", "Alt+F4")) {
-						// handle exit
+
+					if (ImGui::MenuItem("Exit")) {
+						Application::quit();
 					}
-					ImGui::EndMenu();
-				}
 
-				if (ImGui::BeginMenu("Edit")) {
-					ImGui::MenuItem("Undo", "Ctrl+Z");
-					ImGui::MenuItem("Redo", "Ctrl+Y");
-					ImGui::EndMenu();
-				}
-
-				if (ImGui::BeginMenu("View")) {
-					static bool show_console = true;
-					ImGui::MenuItem("Show Console", nullptr, &show_console);
 					ImGui::EndMenu();
 				}
 
@@ -192,11 +175,120 @@ void EditorApplication::_on_update(float p_dt) {
 			ImGui::PopStyleVar();
 			ImGui::End();
 
-			DebugPanel::draw(ctx.scene_graph->get_root());
+			ImGui::Begin("Stats");
+			{
+				const ApplicationPerfStats& stats =
+						Application::get_instance()->get_perf_stats();
+
+				ImGui::SeparatorText("Application");
+				{
+					ImGui::Text("Event Loop: %.3f (FPS: %.2f)",
+							stats.delta_time,
+							1.0f / std::max(stats.delta_time, 1e-6f));
+				}
+
+				ImGui::SeparatorText("Renderer");
+				{
+					ImGui::Text(
+							"Draw Calls: %d", stats.renderer_stats.draw_calls);
+					ImGui::Text("Index Count: %d",
+							stats.renderer_stats.index_count);
+				}
+			}
+			ImGui::End();
+
+			ImGui::Begin("Hierarchy");
+			{
+				_traverse_render_node_hierarchy(scene_graph.get_root());
+			}
+			ImGui::End();
+
+			ImGui::Begin("Inspector");
+			if (selected_node) {
+				_render_node_properties(selected_node);
+			}
+			ImGui::End();
 		}
 		ImGui::End();
 	}
+
 	get_renderer()->imgui_end();
+
+	// Delete nodes if any requested
+	node_deletion_queue.flush();
 }
 
 void EditorApplication::_on_destroy() {}
+
+void EditorApplication::_traverse_render_node_hierarchy(
+		const Ref<SceneNode>& p_node) {
+	if (!p_node) {
+		return;
+	}
+
+	ImGui::PushID(p_node->debug_id);
+
+	const std::string label = p_node->debug_name.empty()
+			? std::format("{}", p_node->debug_id.value)
+			: p_node->debug_name;
+
+	const bool is_selected =
+			selected_node && p_node->debug_id == selected_node->debug_id;
+
+	if (p_node->children.empty()) {
+		if (ImGui::Selectable(label.c_str(), is_selected)) {
+			selected_node = p_node;
+		}
+
+		_render_hierarchy_context_menu(p_node);
+	} else {
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
+				ImGuiTreeNodeFlags_OpenOnDoubleClick;
+
+		if (is_selected) {
+			flags |= ImGuiTreeNodeFlags_Selected;
+		}
+
+		bool node_open = ImGui::TreeNodeEx(label.c_str(), flags);
+
+		if (ImGui::IsItemClicked()) {
+			selected_node = p_node;
+		}
+
+		_render_hierarchy_context_menu(p_node);
+
+		if (node_open) {
+			for (const auto& child : p_node->children) {
+				_traverse_render_node_hierarchy(child);
+			}
+			ImGui::TreePop();
+		}
+	}
+
+	ImGui::PopID();
+}
+
+void EditorApplication::_render_hierarchy_context_menu(
+		const Ref<SceneNode>& p_node) {
+	if (ImGui::BeginPopupContextItem("HIERARCHY_ITEM_CONTEXT_MENU",
+				ImGuiPopupFlags_MouseButtonRight)) {
+		if (ImGui::MenuItem("Delete")) {
+			node_deletion_queue.push_function([&]() {
+				get_render_backend()->device_wait();
+				scene_graph.remove_node(p_node->debug_id);
+			});
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
+	ImGui::Text(
+			"ID: %s", std::format("{}", selected_node->debug_id.value).c_str());
+
+	ImGui::SeparatorText("Transform");
+
+	ImGui::DragFloat3("Position", &selected_node->transform.position.x, 0.1f);
+	ImGui::DragFloat3("Rotation", &selected_node->transform.rotation.x, 0.1f);
+	ImGui::DragFloat3("Scale", &selected_node->transform.scale.x, 0.1f);
+}

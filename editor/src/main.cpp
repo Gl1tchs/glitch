@@ -3,11 +3,10 @@
 
 #include "editor.h"
 
-Application* create_application(int argc, const char** argv) {
+Application* create_application(gl::VectorView<const char*> p_args) {
 	ApplicationCreateInfo info = {
-		.name = "Glitch Cockpit",
-		.argc = argc,
-		.argv = argv,
+		.name = "Glitch Editor",
+		.args = p_args,
 	};
 	return new EditorApplication(info);
 }

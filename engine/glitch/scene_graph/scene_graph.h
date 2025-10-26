@@ -35,6 +35,9 @@ public:
 
 	Ref<SceneNode> find_by_id(const UID& p_uid);
 
+	// TODO: add parent to the node
+	bool remove_node(const UID& p_uid);
+
 	RenderQueue construct_render_queue(Frustum p_frustum);
 
 	void update_transforms();
