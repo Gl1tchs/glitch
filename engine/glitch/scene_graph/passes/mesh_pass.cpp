@@ -89,7 +89,7 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 		Ref<MeshPrimitive> primitive = renderable.primitive;
 
 		// Bind the pipeline if not already bound
-		Pipeline pipeline = primitive->material->definition->pipeline;
+		Pipeline pipeline = primitive->material->get_pipeline();
 		if (pipeline != bound_pipeline) {
 			backend->command_bind_graphics_pipeline(p_cmd, pipeline);
 			bound_pipeline = pipeline;
@@ -106,8 +106,8 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			push_constants.transform = renderable.transform;
 
 			backend->command_push_constants(p_cmd,
-					primitive->material->definition->shader, 0,
-					sizeof(PushConstants), &push_constants);
+					primitive->material->get_shader(), 0, sizeof(PushConstants),
+					&push_constants);
 		}
 
 		// Render

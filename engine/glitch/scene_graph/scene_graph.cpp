@@ -88,6 +88,10 @@ void SceneGraph::_collect_render_items(
 				continue;
 			}
 
+			if (prim->material->is_dirty()) {
+				prim->material->upload();
+			}
+
 			RenderObject item;
 			item.transform = p_node->world_transform;
 			item.primitive = prim;

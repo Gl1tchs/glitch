@@ -9,10 +9,12 @@ void RenderQueue::add(const RenderObject& p_renderable) {
 void RenderQueue::sort() {
 	std::sort(renderables.begin(), renderables.end(),
 			[](const RenderObject& a, const RenderObject& b) {
-				return std::tie(a.primitive->material->definition->pipeline,
-							   a.transform[3].z) <
-						std::tie(b.primitive->material->definition->pipeline,
-								b.transform[3].z);
+				const Pipeline a_pipeline =
+						a.primitive->material->get_pipeline();
+				const Pipeline b_pipeline =
+						b.primitive->material->get_pipeline();
+				return std::tie(a_pipeline, a.transform[3].z) <
+						std::tie(b_pipeline, b.transform[3].z);
 			});
 }
 

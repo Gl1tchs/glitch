@@ -10,6 +10,10 @@
 #include <misc/cpp/imgui_stdlib.h>
 #include <tinyfiledialogs/tinyfiledialogs.h>
 
+template <class... Ts> struct overloaded : Ts... {
+	using Ts::operator()...;
+};
+
 EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
 		Application(p_info) {}
 
@@ -357,6 +361,57 @@ void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 		ImGui::SeparatorText("Mesh");
 		ImGui::PushID("MESH_PROPS");
 
+		ImGui::Text("Primitives: %zu", p_node->mesh->primitives.size());
+
+		ImGui::SeparatorText("Material");
+
+		const Ref<MeshPrimitive> prim = p_node->mesh->primitives.front();
+		const Ref<MaterialInstance> mat = prim->material;
+
+		for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
+			ShaderUniformVariable value = *mat->get_param(uniform.name);
+			std::visit(overloaded{ [&](int& arg) {
+									  if (ImGui::InputInt(
+												  uniform.name.c_str(), &arg)) {
+										  mat->set_param(uniform.name, arg);
+									  }
+								  },
+							   [&](float& arg) {
+								   if (ImGui::InputFloat(
+											   uniform.name.c_str(), &arg)) {
+									   mat->set_param(uniform.name, arg);
+								   }
+							   },
+							   [&](glm::vec2& arg) {
+								   if (ImGui::InputFloat2(
+											   uniform.name.c_str(), &arg.x)) {
+									   mat->set_param(uniform.name, arg);
+								   }
+							   },
+							   [&](glm::vec3& arg) {
+								   if (ImGui::InputFloat3(
+											   uniform.name.c_str(), &arg.x)) {
+									   mat->set_param(uniform.name, arg);
+								   }
+							   },
+							   [&](glm::vec4& arg) {
+								   if (ImGui::InputFloat3(
+											   uniform.name.c_str(), &arg.x)) {
+									   mat->set_param(uniform.name, arg);
+								   }
+							   },
+							   [&](Color& arg) {
+								   if (ImGui::ColorEdit4(
+											   uniform.name.c_str(), &arg.r)) {
+									   mat->set_param(uniform.name, arg);
+								   }
+							   },
+							   [](Ref<Texture>& arg) {
+								   // TODO
+							   } },
+					value);
+		}
+
 		ImGui::PopID();
 	}
 
@@ -384,7 +439,8 @@ void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 		ImGui::PopID();
 	}
 
-	ImGui::SetCursorPosY(ImGui::GetCursorPos().y + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
+	ImGui::SetCursorPosY(ImGui::GetCursorPos().y +
+			ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
 
 	if (ImGui::Button("Add Component", ImVec2(-1, 0))) {
 		ImGui::OpenPopup("NODE_ADD_COMPONENT");

@@ -10,8 +10,8 @@
 
 namespace gl {
 
-using ShaderUniformVariable =
-		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color>;
+using ShaderUniformVariable = std::variant<int, float, glm::vec2, glm::vec3,
+		glm::vec4, Color, Ref<Texture>>;
 
 enum class ShaderUniformVariableType : int {
 	INT,
@@ -39,24 +39,37 @@ struct MaterialDefinition {
 	std::vector<ShaderUniformMetadata> uniforms;
 };
 
-struct GL_API MaterialInstance {
-	Ref<MaterialDefinition> definition;
-
-	std::map<std::string, ShaderUniformVariable> params;
-	std::unordered_map<std::string, Ref<Texture>> textures;
-
-	Buffer material_data_buffer;
-	UniformSet material_set;
-	
+class GL_API MaterialInstance {
+public:
+	MaterialInstance(Ref<MaterialDefinition> p_definition);
 	~MaterialInstance();
 
+	Ref<MaterialDefinition> get_definition() const;
+	Pipeline get_pipeline() const;
+	Shader get_shader() const;
+
+	UniformSet get_set() const;
+
+	const std::vector<ShaderUniformMetadata>& get_uniforms() const;
+
+	Optional<ShaderUniformVariable> get_param(const std::string& p_name);
 	void set_param(const std::string& p_name, ShaderUniformVariable p_value);
-	void set_param(const std::string& p_name, Ref<Texture> p_texture);
+
+	bool is_dirty() const;
 
 	void upload(); // upload to GPU buffer, descriptor sets, etc.
 
 	// Binds descriptors for set = 0 index = 0
 	void bind_uniform_set(CommandBuffer p_cmd);
+
+private:
+	Ref<MaterialDefinition> definition;
+
+	Buffer material_data_buffer = GL_NULL_HANDLE;
+	UniformSet material_set = GL_NULL_HANDLE;
+
+	std::map<std::string, ShaderUniformVariable> params;
+	bool dirty = false;
 };
 
 class GL_API MaterialSystem {

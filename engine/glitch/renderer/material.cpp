@@ -25,6 +25,9 @@ size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 	}
 }
 
+MaterialInstance::MaterialInstance(Ref<MaterialDefinition> p_definition) :
+		definition(p_definition) {}
+
 MaterialInstance::~MaterialInstance() {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
@@ -34,17 +37,42 @@ MaterialInstance::~MaterialInstance() {
 	backend->buffer_free(material_data_buffer);
 }
 
+Ref<MaterialDefinition> MaterialInstance::get_definition() const {
+	return definition;
+}
+
+Pipeline MaterialInstance::get_pipeline() const { return definition->pipeline; }
+
+Shader MaterialInstance::get_shader() const { return definition->shader; }
+
+UniformSet MaterialInstance::get_set() const { return material_set; }
+
+Optional<ShaderUniformVariable> MaterialInstance::get_param(
+		const std::string& p_name) {
+	const auto it = params.find(p_name);
+	if (it == params.end()) {
+		return {};
+	}
+
+	return it->second;
+}
+
+const std::vector<ShaderUniformMetadata>&
+MaterialInstance::get_uniforms() const {
+	return definition->uniforms;
+}
+
 void MaterialInstance::set_param(
 		const std::string& p_name, ShaderUniformVariable p_value) {
 	params[p_name] = p_value;
+	dirty = true;
 }
 
-void MaterialInstance::set_param(
-		const std::string& p_name, Ref<Texture> p_texture) {
-	textures[p_name] = p_texture;
-}
+bool MaterialInstance::is_dirty() const { return dirty; }
 
 void MaterialInstance::upload() {
+	GL_PROFILE_SCOPE;
+
 	Ref<RenderBackend> backend = Renderer::get_backend();
 
 	if (!definition) {
@@ -53,12 +81,14 @@ void MaterialInstance::upload() {
 		return;
 	}
 
-	// Calculate required buffer size
-	size_t buffer_size = 0;
+	// Texture, binding
+	std::vector<std::pair<Ref<Texture>, int>> textures;
 
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
 	write_order.reserve(params.size());
 
+	// Calculate required buffer size
+	size_t buffer_size = 0;
 	for (const auto& [name, param] : params) {
 		const auto meta = std::find_if(definition->uniforms.begin(),
 				definition->uniforms.end(),
@@ -67,6 +97,20 @@ void MaterialInstance::upload() {
 				});
 
 		if (meta == definition->uniforms.end()) {
+			continue;
+		}
+
+		if (meta->type == ShaderUniformVariableType::TEXTURE) {
+			// TODO: maybe a little overkill
+			std::visit(
+					[&textures, &meta](const auto& arg) {
+						using T = std::decay_t<decltype(arg)>;
+						if constexpr (std::is_same_v<T, Ref<Texture>>) {
+							textures.push_back(
+									std::make_pair(arg, meta->binding));
+						}
+					},
+					param);
 			continue;
 		}
 
@@ -84,7 +128,7 @@ void MaterialInstance::upload() {
 	// Allocate and write to a contiguous CPU-side buffer
 	std::vector<std::byte> cpu_buffer(buffer_size);
 	for (const auto& [offset, meta] : write_order) {
-		auto it = params.find(meta.name);
+		const auto it = params.find(meta.name);
 		if (it == params.end()) {
 			continue;
 		}
@@ -121,27 +165,20 @@ void MaterialInstance::upload() {
 	uniforms.push_back(material_data_uniform);
 
 	// Upload textures
-	for (const auto& [name, texture] : textures) {
-		const auto meta = std::find_if(definition->uniforms.begin(),
-				definition->uniforms.end(),
-				[&name](const ShaderUniformMetadata& u) {
-					return u.name == name;
-				});
-
-		if (meta == definition->uniforms.end()) {
-			continue;
-		}
-
-		ShaderUniform uniform = texture->get_uniform(meta->binding);
+	for (const auto& [texture, binding] : textures) {
+		ShaderUniform uniform = texture->get_uniform(binding);
 		uniforms.push_back(uniform);
 	}
 
 	// free the previous uniform set if already exists
 	if (material_set) {
+		backend->device_wait();
 		backend->uniform_set_free(material_set);
 	}
 
 	material_set = backend->uniform_set_create(uniforms, definition->shader, 0);
+
+	dirty = false;
 }
 
 void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
@@ -176,10 +213,7 @@ Ref<MaterialInstance> MaterialSystem::create_instance(
 		return nullptr;
 	}
 
-	Ref<MaterialInstance> instance = create_ref<MaterialInstance>();
-	instance->definition = it->second;
-
-	return instance;
+	return create_ref<MaterialInstance>(it->second);
 }
 
 } //namespace gl
