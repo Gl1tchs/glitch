@@ -95,6 +95,15 @@ void SceneGraph::_collect_render_items(
 		}
 	}
 
+	if (p_node->directional_light) {
+		p_queue.push_light_source(*p_node->directional_light);
+	}
+	if (p_node->point_light) {
+		p_node->point_light->position =
+				glm::vec4(p_node->transform.position, 0.0f);
+		p_queue.push_light_source(*p_node->point_light);
+	}
+
 	for (const auto& child : p_node->children) {
 		_collect_render_items(child, p_frustum, p_queue);
 	}

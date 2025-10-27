@@ -10,7 +10,7 @@ namespace gl {
 struct GL_API Frustum {
 	glm::vec4 planes[6]; // left, right, bottom, top, near, far
 
-	static Frustum from_view_proj(const glm::mat4 p_view_proj);
+	static Frustum from_view_proj(const glm::mat4& p_view_proj);
 };
 
 struct GL_API AABB {

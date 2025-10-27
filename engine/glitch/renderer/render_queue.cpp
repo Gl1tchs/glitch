@@ -28,4 +28,9 @@ RenderQueue::ConstIter RenderQueue::begin() const {
 }
 RenderQueue::ConstIter RenderQueue::end() const { return renderables.end(); }
 
+void RenderQueue::clear_light_sources() {
+	directional_light = {};
+	point_lights.clear();
+}
+
 } //namespace gl

@@ -30,7 +30,7 @@ MaterialInstance::~MaterialInstance() {
 
 	backend->device_wait();
 
-	backend->uniform_set_free(uniform_set);
+	backend->uniform_set_free(material_set);
 	backend->buffer_free(material_data_buffer);
 }
 
@@ -137,17 +137,17 @@ void MaterialInstance::upload() {
 	}
 
 	// free the previous uniform set if already exists
-	if (uniform_set) {
-		backend->uniform_set_free(uniform_set);
+	if (material_set) {
+		backend->uniform_set_free(material_set);
 	}
 
-	uniform_set = backend->uniform_set_create(uniforms, definition->shader, 0);
+	material_set = backend->uniform_set_create(uniforms, definition->shader, 0);
 }
 
 void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
 	Ref<RenderBackend> backend = Renderer::get_backend();
 	backend->command_bind_uniform_sets(
-			p_cmd, definition->shader, 0, uniform_set);
+			p_cmd, definition->shader, 0, material_set);
 }
 
 void MaterialSystem::init() { s_definitions.clear(); }

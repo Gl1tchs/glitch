@@ -7,6 +7,7 @@
 
 #include "glitch/core/transform.h"
 #include "glitch/core/uid.h"
+#include "glitch/renderer/light_sources.h"
 #include "glitch/renderer/mesh.h"
 #include "glitch/renderer/render_queue.h"
 
@@ -23,6 +24,8 @@ struct GL_API SceneNode {
 
 	// Components
 	Ref<Mesh> mesh = nullptr;
+	Ref<DirectionalLight> directional_light = nullptr;
+	Ref<PointLight> point_light = nullptr;
 
 	void add_child(Ref<SceneNode> p_node);
 };

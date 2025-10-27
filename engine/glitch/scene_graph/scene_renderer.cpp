@@ -25,11 +25,11 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 
 	// Register material definitions
 	MaterialSystem::init();
-	MaterialSystem::register_definition("unlit_standart",
-			get_unlit_material_definition(renderer->get_msaa_samples(),
+	MaterialSystem::register_definition("unlit_standard",
+			get_unlit_standard_definition(renderer->get_msaa_samples(),
 					color_attachment_format, depth_attachment_format));
-	MaterialSystem::register_definition("urp_standart",
-			get_urp_material_definition(renderer->get_msaa_samples(),
+	MaterialSystem::register_definition("pbr_standard",
+			get_pbr_standard_definition(renderer->get_msaa_samples(),
 					color_attachment_format, depth_attachment_format));
 }
 

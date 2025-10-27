@@ -6,7 +6,7 @@
 
 namespace gl {
 
-MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples,
+MaterialDefinition get_unlit_standard_definition(uint32_t p_msaa_samples,
 		DataFormat p_color_attachment, DataFormat p_depth_attachment) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
@@ -34,7 +34,7 @@ MaterialDefinition get_unlit_material_definition(uint32_t p_msaa_samples,
 	return definition;
 }
 
-MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples,
+MaterialDefinition get_pbr_standard_definition(uint32_t p_msaa_samples,
 		DataFormat p_color_attachment, DataFormat p_depth_attachment) {
 	auto [shader, pipeline] =
 			PipelineBuilder()
@@ -42,10 +42,10 @@ MaterialDefinition get_urp_material_definition(uint32_t p_msaa_samples,
 					.set_depth_attachment(p_depth_attachment)
 					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_bundled_spirv(
-									"pipelines/urp/mesh.vert.spv"))
+									"pipelines/pbr/mesh.vert.spv"))
 					.add_shader_stage(ShaderStage::FRAGMENT,
 							ShaderLibrary::get_bundled_spirv(
-									"pipelines/urp/mesh.frag.spv"))
+									"pipelines/pbr/mesh.frag.spv"))
 					.with_depth_test()
 					.with_multisample(p_msaa_samples, true)
 					.set_render_primitive(RenderPrimitive::TRIANGLE_LIST)

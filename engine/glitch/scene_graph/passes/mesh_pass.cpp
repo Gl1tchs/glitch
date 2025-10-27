@@ -7,7 +7,7 @@ namespace gl {
 void MeshPass::setup(Renderer& p_renderer) {
 	GL_PROFILE_SCOPE;
 
-	scene_data_sbo = StorageBuffer::create(sizeof(SceneData), &scene_data);
+	scene_data_sbo = StorageBuffer::create(sizeof(SceneBuffer), &scene_data);
 	push_constants.scene_buffer = scene_data_sbo->get_device_address();
 }
 
@@ -24,28 +24,59 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 	camera.aspect_ratio =
 			Application::get_instance()->get_window()->get_aspect_ratio();
 
-	scene_data.view_projection =
-			camera.get_projection_matrix() * camera.get_view_matrix();
-	scene_data.camera_position = camera.transform.position;
-
-	// Reupload the scene buffer if it's updated
-	size_t hash = hash64(scene_data.view_projection);
-	hash_combine(hash, hash64(scene_data.camera_position));
-
-	if (scene_data_hash != hash) {
-		scene_data_sbo->upload(&scene_data);
-		scene_data_hash = hash;
-	}
-
 	// TODO: dirty flags to cache
 	graph->update_transforms();
 
+	const glm::mat4 view_proj =
+			camera.get_projection_matrix() * camera.get_view_matrix();
+
 	// Construct a frustum culled render queue to render only visible primitives
-	Frustum view_frustum = Frustum::from_view_proj(scene_data.view_projection);
+	Frustum view_frustum = Frustum::from_view_proj(view_proj);
 	RenderQueue render_queue = graph->construct_render_queue(view_frustum);
 
 	// Multilevel sorting by used pipeline and z index
 	render_queue.sort();
+
+	// Scene data
+	{
+		scene_data.view_projection = view_proj;
+		scene_data.camera_position = glm::vec4(camera.transform.position, 0.0f);
+
+		// Global lightning info
+		std::vector<DirectionalLight> dir_light =
+				render_queue.get_light_sources<DirectionalLight>();
+		std::vector<PointLight> point_lights =
+				render_queue.get_light_sources<PointLight>();
+
+		scene_data.directional_light =
+				dir_light[0]; // this is guaranteed to exist
+
+		const size_t count = std::min<size_t>(16, point_lights.size());
+		std::copy_n(
+				point_lights.begin(), count, scene_data.point_lights.begin());
+		scene_data.num_point_lights = count;
+
+		// Reupload the scene buffer if it's updated
+		size_t hash = hash64(scene_data.view_projection);
+		hash_combine(hash, hash64(scene_data.camera_position));
+
+		hash_combine(hash, hash64(scene_data.directional_light.direction));
+		hash_combine(hash, hash64(scene_data.directional_light.color));
+
+		hash_combine(hash, hash64(scene_data.num_point_lights));
+		for (int i = 0; i < scene_data.num_point_lights; i++) {
+			PointLight pl = scene_data.point_lights[i];
+			hash_combine(hash, hash64(pl.position));
+			hash_combine(hash, hash64(pl.color));
+			hash_combine(hash, hash64(pl.linear));
+			hash_combine(hash, hash64(pl.quadratic));
+		}
+
+		if (scene_data_hash != hash) {
+			scene_data_sbo->upload(&scene_data);
+			scene_data_hash = hash;
+		}
+	}
 
 	p_renderer.begin_rendering(p_cmd,
 			p_renderer.get_render_image("geo_albedo").value(),
