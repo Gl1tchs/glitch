@@ -10,6 +10,7 @@
 
 ## Bugs
 
+- [ ] Swapchain resize gives descriptor set = 0 error
 - [ ] Can't close with Alt-F4 or by window when materials active
 - [ ] Vulkan resource deinitialization issua that i couldn't find where
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.

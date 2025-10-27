@@ -20,11 +20,12 @@ struct RenderStats {
 };
 
 struct FrameData {
-	CommandPool command_pool;
-	CommandBuffer command_buffer;
+	CommandPool command_pool = GL_NULL_HANDLE;
+	CommandBuffer command_buffer = GL_NULL_HANDLE;
 
-	Semaphore image_available_semaphore, render_finished_semaphore;
-	Fence render_fence;
+	Semaphore image_available_semaphore = GL_NULL_HANDLE,
+			  render_finished_semaphore = GL_NULL_HANDLE;
+	Fence render_fence = GL_NULL_HANDLE;
 
 	void init(CommandQueue p_queue);
 	void destroy();
@@ -32,6 +33,7 @@ struct FrameData {
 
 struct RendererSettings {
 	float resolution_scale = 1.0f;
+	bool vsync = false;
 };
 
 class GraphicsPass;
@@ -43,7 +45,7 @@ class GraphicsPass;
  */
 class GL_API Renderer {
 public:
-	Renderer(Ref<Window> p_window);
+	Renderer(Ref<Window> p_window, RendererSettings p_settings = {});
 	~Renderer();
 
 	/**
@@ -75,7 +77,7 @@ public:
 	// End drawing
 	void end_rendering(CommandBuffer p_cmd);
 
-	enum class ImageCreateError { None = 0, IdExists };
+	enum class ImageCreateError { NONE = 0, ID_EXISTS };
 
 	Result<Image, ImageCreateError> create_render_image(
 			const std::string& p_name, DataFormat p_format,
@@ -109,6 +111,9 @@ public:
 
 	float get_resolution_scale() const;
 	void set_resolution_scale(float p_scale);
+
+	bool get_vsync_enabled() const;
+	void set_vsync(bool p_vsync);
 
 	uint32_t get_msaa_samples() const;
 
@@ -152,10 +157,10 @@ private:
 private:
 	Ref<Window> window;
 
-	CommandQueue graphics_queue;
-	CommandQueue present_queue;
+	CommandQueue graphics_queue = GL_NULL_HANDLE;
+	CommandQueue present_queue = GL_NULL_HANDLE;
 
-	Swapchain swapchain;
+	Swapchain swapchain = GL_NULL_HANDLE;
 
 	uint32_t image_index = 0;
 	Image current_swapchain_image = nullptr;

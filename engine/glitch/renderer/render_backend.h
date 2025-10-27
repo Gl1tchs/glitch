@@ -12,6 +12,11 @@
 
 namespace gl {
 
+enum class SwapchainAcquireError {
+	OUT_OF_DATE, // resize needed
+	ERROR,
+};
+
 /**
  * Abstract class who is responsible of communicating with GPU
  */
@@ -100,7 +105,7 @@ public:
 	virtual Swapchain swapchain_create() = 0;
 
 	virtual void swapchain_resize(CommandQueue p_cmd_queue,
-			Swapchain p_swapchain, glm::uvec2 size) = 0;
+			Swapchain p_swapchain, glm::uvec2 size, bool p_vsync = false) = 0;
 
 	virtual size_t swapchain_get_image_count(Swapchain p_swapchain) = 0;
 
@@ -109,8 +114,9 @@ public:
 	/**
 	 * @returns `Image` if succeed `nullopt` if resize needed
 	 */
-	virtual Optional<Image> swapchain_acquire_image(Swapchain p_swapchain,
-			Semaphore p_semaphore, uint32_t* o_image_index = nullptr) = 0;
+	virtual Result<Image, SwapchainAcquireError> swapchain_acquire_image(
+			Swapchain p_swapchain, Semaphore p_semaphore,
+			uint32_t* o_image_index = nullptr) = 0;
 
 	virtual glm::uvec2 swapchain_get_extent(Swapchain p_swapchain) = 0;
 

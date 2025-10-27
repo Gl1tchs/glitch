@@ -44,4 +44,6 @@ private:
 
 	Ref<SceneNode> selected_node = nullptr;
 	DeletionQueue node_deletion_queue;
+
+	RendererSettings renderer_settings = {};
 };

@@ -15,7 +15,9 @@ template <class... Ts> struct overloaded : Ts... {
 };
 
 EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
-		Application(p_info) {}
+		Application(p_info) {
+	renderer_settings.vsync = true;
+}
 
 void EditorApplication::_on_start() {
 	SceneRendererSpecification specs = {};
@@ -64,7 +66,7 @@ void EditorApplication::_on_update(float p_dt) {
 	DrawingContext ctx;
 	ctx.scene_graph = &scene_graph;
 	ctx.camera = camera;
-	ctx.settings.resolution_scale = 1.0f;
+	ctx.settings = renderer_settings;
 
 	scene_renderer->submit(ctx);
 
@@ -240,13 +242,12 @@ void EditorApplication::_on_update(float p_dt) {
 				ImGui::DragFloat("Pitch", &camera.transform.rotation.x, 1.0f);
 				ImGui::DragFloat("Yaw", &camera.transform.rotation.y, 1.0f);
 
-				// TODO?
-				// ImGui::SeparatorText("Renderer");
-				// static float s_resolution_scale = 1.0f;
-				// if (ImGui::DragFloat("Resolution Scale", &s_resolution_scale,
-				// 			0.01f, 0.01f, 1.0f, "%.2f")) {
-				// 	get_renderer()->set_resolution_scale(s_resolution_scale);
-				// }
+				ImGui::SeparatorText("Renderer");
+
+				ImGui::DragFloat("Resolution Scale",
+						&renderer_settings.resolution_scale, 0.01f, 0.01f, 1.0f,
+						"%.2f");
+				ImGui::Checkbox("VSync", &renderer_settings.vsync);
 			}
 			ImGui::End();
 

@@ -48,6 +48,7 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 
 	renderer->set_render_present_mode(false);
 	renderer->set_resolution_scale(p_ctx.settings.resolution_scale);
+	renderer->set_vsync(p_ctx.settings.vsync);
 
 	CommandBuffer cmd = renderer->begin_render();
 	{

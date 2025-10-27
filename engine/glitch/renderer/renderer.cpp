@@ -34,7 +34,8 @@ void FrameData::destroy() {
 	backend->fence_free(render_fence);
 }
 
-Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
+Renderer::Renderer(Ref<Window> p_window, RendererSettings p_settings) :
+		window(p_window), settings(p_settings) {
 	GL_ASSERT(
 			s_instance == nullptr, "Only one instance of renderer can exists!");
 	s_instance = this;
@@ -51,7 +52,8 @@ Renderer::Renderer(Ref<Window> p_window) : window(p_window) {
 	// initialize swapchain
 	const glm::uvec2 window_px = window->get_size();
 	swapchain = s_backend->swapchain_create();
-	s_backend->swapchain_resize(graphics_queue, swapchain, window_px);
+	s_backend->swapchain_resize(
+			graphics_queue, swapchain, window_px, p_settings.vsync);
 
 	// initialize imgui
 	_imgui_init();
@@ -99,12 +101,19 @@ CommandBuffer Renderer::begin_render() {
 
 	s_backend->fence_wait(_get_current_frame().render_fence);
 
-	const Optional<Image> swapchain_image = s_backend->swapchain_acquire_image(
-			swapchain, _get_current_frame().image_available_semaphore,
-			&image_index);
+	const Result<Image, SwapchainAcquireError> swapchain_image =
+			s_backend->swapchain_acquire_image(swapchain,
+					_get_current_frame().image_available_semaphore,
+					&image_index);
 	if (!swapchain_image) {
-		_request_resize();
-		return nullptr;
+		switch (swapchain_image.get_error()) {
+			case SwapchainAcquireError::OUT_OF_DATE:
+				_request_resize();
+				return nullptr;
+			case SwapchainAcquireError::ERROR:
+				GL_LOG_FATAL("Failed to acquire swapchain image.");
+				return nullptr;
+		}
 	}
 
 	current_swapchain_image = *swapchain_image;
@@ -298,7 +307,7 @@ Result<Image, Renderer::ImageCreateError> Renderer::create_render_image(
 		const std::string& p_name, DataFormat p_format,
 		BitField<ImageUsageBits> p_usage) {
 	if (renderpass_images.find(p_name) != renderpass_images.end()) {
-		return make_err<Image>(ImageCreateError::IdExists);
+		return make_err<Image>(ImageCreateError::ID_EXISTS);
 	}
 
 	if (!p_usage.has_flag(IMAGE_USAGE_TRANSFER_SRC_BIT)) {
@@ -372,6 +381,17 @@ float Renderer::get_resolution_scale() const {
 void Renderer::set_resolution_scale(float p_scale) {
 	if (fabs(p_scale - settings.resolution_scale) > 0.001f) {
 		settings.resolution_scale = p_scale;
+
+		_request_resize();
+	}
+}
+
+bool Renderer::get_vsync_enabled() const { return settings.vsync; }
+
+void Renderer::set_vsync(bool p_vsync) {
+	// avoid unnecessary resize
+	if (settings.vsync != p_vsync) {
+		settings.vsync = p_vsync;
 
 		_request_resize();
 	}
@@ -466,7 +486,8 @@ void Renderer::_request_resize() {
 	GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
 
 	const glm::uvec2 window_px = window->get_size();
-	s_backend->swapchain_resize(graphics_queue, swapchain, window_px);
+	s_backend->swapchain_resize(
+			graphics_queue, swapchain, window_px, settings.vsync);
 
 	const glm::uvec2 new_size = get_resolution_extent();
 

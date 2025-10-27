@@ -141,19 +141,21 @@ public:
 		VkExtent2D extent;
 		std::vector<VulkanImage> images;
 		uint32_t image_index;
+		bool initialized;
 	};
 
 	Swapchain swapchain_create() override;
 
 	void swapchain_resize(CommandQueue p_cmd_queue, Swapchain p_swapchain,
-			glm::uvec2 size) override;
+			glm::uvec2 size, bool p_vsync = false) override;
 
 	size_t swapchain_get_image_count(Swapchain p_swapchain) override;
 
 	std::vector<Image> swapchain_get_images(Swapchain p_swapchain) override;
 
-	Optional<Image> swapchain_acquire_image(Swapchain p_swapchain,
-			Semaphore p_semaphore, uint32_t* o_image_index) override;
+	Result<Image, SwapchainAcquireError> swapchain_acquire_image(
+			Swapchain p_swapchain, Semaphore p_semaphore,
+			uint32_t* o_image_index) override;
 
 	glm::uvec2 swapchain_get_extent(Swapchain p_swapchain) override;
 

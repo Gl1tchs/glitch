@@ -22,36 +22,50 @@ Swapchain VulkanRenderBackend::swapchain_create() {
 	VulkanSwapchain* swapchain = new VulkanSwapchain();
 	swapchain->format = VK_FORMAT_R8G8B8A8_UNORM;
 	swapchain->color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	swapchain->initialized = false;
 
 	return Swapchain(swapchain);
 }
 
-void VulkanRenderBackend::swapchain_resize(
-		CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 p_size) {
+void VulkanRenderBackend::swapchain_resize(CommandQueue p_cmd_queue,
+		Swapchain p_swapchain, glm::uvec2 p_size, bool p_vsync) {
+	if (!p_swapchain) {
+		GL_LOG_ERROR("Unable to resize a swapchain that hasn't created!");
+		return;
+	}
+
 	VulkanQueue* vk_queue = (VulkanQueue*)p_cmd_queue;
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
-	// Wait for queue operations to finish
-	vkQueueWaitIdle(vk_queue->queue);
+	// Wait for device operations to finish
+	vkDeviceWaitIdle(device);
 
-	_swapchain_release(swapchain);
-
-	vkb::SwapchainBuilder swapchain_builder{ physical_device, device, surface };
-
-	vkb::Swapchain vkb_swapchain =
+	vkb::SwapchainBuilder swapchain_builder(physical_device, device, surface);
+	swapchain_builder =
 			swapchain_builder
 					.set_desired_format(VkSurfaceFormatKHR{
 							.format = swapchain->format,
 							.colorSpace = swapchain->color_space,
 					})
 					// TODO add setting
-					.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+					.set_desired_present_mode(
+							// TODO: i dont think this is the best way
+							// to do it
+							p_vsync ? VK_PRESENT_MODE_FIFO_KHR
+									: VK_PRESENT_MODE_MAILBOX_KHR)
 					.set_desired_min_image_count(
 							vkb::SwapchainBuilder::DOUBLE_BUFFERING)
 					.set_desired_extent(p_size.x, p_size.y)
-					.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-					.build()
-					.value();
+					.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+	if (swapchain->initialized) {
+		swapchain_builder.set_old_swapchain(swapchain->vk_swapchain);
+	}
+
+	vkb::Swapchain vkb_swapchain = swapchain_builder.build().value();
+
+	// Free the old swapchain
+	_swapchain_release(swapchain);
 
 	swapchain->vk_swapchain = vkb_swapchain.swapchain;
 	swapchain->format = vkb_swapchain.image_format;
@@ -75,6 +89,8 @@ void VulkanRenderBackend::swapchain_resize(
 
 		swapchain->images.push_back(image);
 	}
+
+	swapchain->initialized = true;
 }
 
 size_t VulkanRenderBackend::swapchain_get_image_count(Swapchain p_swapchain) {
@@ -94,16 +110,19 @@ std::vector<Image> VulkanRenderBackend::swapchain_get_images(
 	return images;
 }
 
-Optional<Image> VulkanRenderBackend::swapchain_acquire_image(
+Result<Image, SwapchainAcquireError>
+VulkanRenderBackend::swapchain_acquire_image(
 		Swapchain p_swapchain, Semaphore p_semaphore, uint32_t* o_image_index) {
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
-	VkResult res = vkAcquireNextImageKHR(device, swapchain->vk_swapchain,
+	const VkResult res = vkAcquireNextImageKHR(device, swapchain->vk_swapchain,
 			UINT64_MAX, (VkSemaphore)p_semaphore, VK_NULL_HANDLE,
 			&swapchain->image_index);
 
-	if (res != VK_SUCCESS) {
-		return {};
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
+		return make_err<Image>(SwapchainAcquireError::OUT_OF_DATE);
+	} else if (res != VK_SUCCESS) {
+		return make_err<Image>(SwapchainAcquireError::ERROR);
 	}
 
 	if (o_image_index) {
