@@ -7,6 +7,7 @@
 #include <glitch/scene_graph/gltf_loader.h>
 
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <tinyfiledialogs/tinyfiledialogs.h>
 
 EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
@@ -320,6 +321,9 @@ void EditorApplication::_render_hierarchy_context_menu(
 		const Ref<SceneNode>& p_node) {
 	if (ImGui::BeginPopupContextItem("HIERARCHY_ITEM_CONTEXT_MENU",
 				ImGuiPopupFlags_MouseButtonRight)) {
+		if (ImGui::MenuItem("Add Child")) {
+			p_node->add_child(create_ref<SceneNode>());
+		}
 		if (ImGui::MenuItem("Delete")) {
 			node_deletion_queue.push_function([&]() {
 				get_render_backend()->device_wait();
@@ -333,6 +337,8 @@ void EditorApplication::_render_hierarchy_context_menu(
 void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 	ImGui::Text(
 			"ID: %s", std::format("{}", selected_node->debug_id.value).c_str());
+
+	ImGui::InputText("Debug Name", &p_node->debug_name);
 
 	{
 		ImGui::SeparatorText("Transform");
@@ -376,5 +382,24 @@ void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 				0.0001f, 2.0f);
 
 		ImGui::PopID();
+	}
+
+	ImGui::SetCursorPosY(ImGui::GetCursorPos().y + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
+
+	if (ImGui::Button("Add Component", ImVec2(-1, 0))) {
+		ImGui::OpenPopup("NODE_ADD_COMPONENT");
+	}
+
+	if (ImGui::BeginPopup("NODE_ADD_COMPONENT")) {
+		if (!p_node->directional_light &&
+				ImGui::MenuItem("Directional Light")) {
+			p_node->directional_light = create_ref<DirectionalLight>();
+		}
+
+		if (!p_node->point_light && ImGui::MenuItem("Point Light")) {
+			p_node->point_light = create_ref<PointLight>();
+		}
+
+		ImGui::EndPopup();
 	}
 }
