@@ -18,7 +18,7 @@
                 "out/include/shader_bundle.gen.h",
                 "build/shaders",
                 "build/shaders/pipelines/unlit/mesh.frag.spv",
-                "build/shaders/pipelines/urp/mesh.frag.spv"
+                "build/shaders/pipelines/pbr/mesh.frag.spv"
             ],
             "cwd": "${workspaceFolder}"
         },

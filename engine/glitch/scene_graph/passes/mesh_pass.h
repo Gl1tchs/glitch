@@ -18,21 +18,21 @@ public:
 
 	struct alignas(16) SceneBuffer {
 		glm::mat4 view_projection;
-		glm::vec3 camera_position;
-		float _pad0;
+
+		glm::vec4 camera_position;
+
 		int num_point_lights;
-		int num_spotlights;
-		int _pad1[2];
+
+		float _pad0[3];
+
 		DirectionalLight directional_light;
 		std::array<PointLight, 16> point_lights;
-		std::array<Spotlight, 16> spotlights;
 	};
 
-	struct PushConstants {
+	struct alignas(16) PushConstants {
 		glm::mat4 transform;
 		BufferDeviceAddress vertex_buffer;
 		BufferDeviceAddress scene_buffer;
-		BufferDeviceAddress light_buffer;
 	};
 
 	virtual ~MeshPass() = default;

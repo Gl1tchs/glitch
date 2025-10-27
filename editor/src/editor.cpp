@@ -28,11 +28,27 @@ void EditorApplication::_on_start() {
 	grid_pass = create_ref<GridPass>();
 	get_renderer()->add_pass(grid_pass, -5);
 
-	auto dir_light = create_ref<SceneNode>();
-	dir_light->directional_light = create_ref<DirectionalLight>();
-	dir_light->directional_light->direction = { -1, -1, -1 };
-	dir_light->directional_light->color = { 1, 1, 1 };
-	scene_graph.get_root()->add_child(dir_light);
+	{
+		auto dir_light = create_ref<SceneNode>();
+		dir_light->debug_name = "Directional Light";
+		dir_light->directional_light = create_ref<DirectionalLight>();
+		dir_light->directional_light->direction = { -1, -1, -1, 0 };
+		dir_light->directional_light->color = COLOR_WHITE;
+		scene_graph.get_root()->add_child(dir_light);
+	}
+
+	{
+		auto point_light = create_ref<SceneNode>();
+		point_light->debug_name = std::format("Point Light");
+		point_light->transform.position = { 0, 3, 0 };
+
+		point_light->point_light = create_ref<PointLight>();
+		point_light->point_light->color = COLOR_RED;
+		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=-Point+Light+Attenuation
+		point_light->point_light->linear = 0.14;
+		point_light->point_light->quadratic = 0.07;
+		scene_graph.get_root()->add_child(point_light);
+	}
 }
 
 void EditorApplication::_on_update(float p_dt) {
@@ -318,17 +334,47 @@ void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 	ImGui::Text(
 			"ID: %s", std::format("{}", selected_node->debug_id.value).c_str());
 
-	ImGui::SeparatorText("Transform");
+	{
+		ImGui::SeparatorText("Transform");
+		ImGui::PushID("TRANSFORM_PROPS");
 
-	ImGui::DragFloat3("Position", &selected_node->transform.position.x, 0.1f);
-	ImGui::DragFloat3("Rotation", &selected_node->transform.rotation.x, 0.1f);
-	ImGui::DragFloat3("Scale", &selected_node->transform.scale.x, 0.1f);
+		ImGui::DragFloat3(
+				"Position", &selected_node->transform.position.x, 0.1f);
+		ImGui::DragFloat3(
+				"Rotation", &selected_node->transform.rotation.x, 0.1f);
+		ImGui::DragFloat3("Scale", &selected_node->transform.scale.x, 0.1f);
+
+		ImGui::PopID();
+	}
+
+	if (p_node->mesh) {
+		ImGui::SeparatorText("Mesh");
+		ImGui::PushID("MESH_PROPS");
+
+		ImGui::PopID();
+	}
 
 	if (p_node->directional_light) {
 		ImGui::SeparatorText("Directional Light");
+		ImGui::PushID("DIR_LIGHT_PROPS");
 
-		ImGui::DragFloat3(
-				"Direction", &p_node->directional_light->direction.x, 0.1f);
-		ImGui::ColorPicker4("Color", &p_node->directional_light->color.r);
+		ImGui::DragFloat3("Direction", &p_node->directional_light->direction.x,
+				0.01f, -1.0f, 1.0f);
+		ImGui::ColorEdit3("Color", &p_node->directional_light->color.r);
+
+		ImGui::PopID();
+	}
+
+	if (p_node->point_light) {
+		ImGui::SeparatorText("Point Light");
+		ImGui::PushID("POINT_LIGHT_PROPS");
+
+		ImGui::ColorEdit3("Color", &p_node->point_light->color.r);
+		ImGui::DragFloat(
+				"Linear", &p_node->point_light->linear, 0.01f, 0.0001f, 1.0f);
+		ImGui::DragFloat("Quadratic", &p_node->point_light->quadratic, 0.01f,
+				0.0001f, 2.0f);
+
+		ImGui::PopID();
 	}
 }

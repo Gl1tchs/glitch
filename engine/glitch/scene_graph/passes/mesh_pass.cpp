@@ -40,35 +40,37 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 	// Scene data
 	{
 		scene_data.view_projection = view_proj;
-		scene_data.camera_position = camera.transform.position;
+		scene_data.camera_position = glm::vec4(camera.transform.position, 0.0f);
 
 		// Global lightning info
 		std::vector<DirectionalLight> dir_light =
 				render_queue.get_light_sources<DirectionalLight>();
 		std::vector<PointLight> point_lights =
 				render_queue.get_light_sources<PointLight>();
-		std::vector<Spotlight> spotlights =
-				render_queue.get_light_sources<Spotlight>();
 
 		scene_data.directional_light =
 				dir_light[0]; // this is guaranteed to exist
 
-		size_t count = std::min<size_t>(16, point_lights.size());
+		const size_t count = std::min<size_t>(16, point_lights.size());
 		std::copy_n(
 				point_lights.begin(), count, scene_data.point_lights.begin());
 		scene_data.num_point_lights = count;
 
-		count = std::min<size_t>(16, spotlights.size());
-		std::copy_n(spotlights.begin(), count, scene_data.spotlights.begin());
-		scene_data.num_spotlights = count;
-
 		// Reupload the scene buffer if it's updated
 		size_t hash = hash64(scene_data.view_projection);
 		hash_combine(hash, hash64(scene_data.camera_position));
+
 		hash_combine(hash, hash64(scene_data.directional_light.direction));
 		hash_combine(hash, hash64(scene_data.directional_light.color));
+
 		hash_combine(hash, hash64(scene_data.num_point_lights));
-		hash_combine(hash, hash64(scene_data.num_spotlights));
+		for (int i = 0; i < scene_data.num_point_lights; i++) {
+			PointLight pl = scene_data.point_lights[i];
+			hash_combine(hash, hash64(pl.position));
+			hash_combine(hash, hash64(pl.color));
+			hash_combine(hash, hash64(pl.linear));
+			hash_combine(hash, hash64(pl.quadratic));
+		}
 
 		if (scene_data_hash != hash) {
 			scene_data_sbo->upload(&scene_data);

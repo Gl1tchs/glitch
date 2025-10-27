@@ -26,7 +26,6 @@ struct GL_API SceneNode {
 	Ref<Mesh> mesh = nullptr;
 	Ref<DirectionalLight> directional_light = nullptr;
 	Ref<PointLight> point_light = nullptr;
-	Ref<Spotlight> spotlight = nullptr;
 
 	void add_child(Ref<SceneNode> p_node);
 };

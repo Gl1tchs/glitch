@@ -19,7 +19,7 @@ enum GLTFParsingFlags : uint16_t {
 GLTFLoader::GLTFLoader() {
 	default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
 
-	default_material = MaterialSystem::create_instance("urp_standart");
+	default_material = MaterialSystem::create_instance("pbr_standard");
 	default_material->set_param("base_color", COLOR_WHITE);
 	default_material->set_param("metallic", 0.5f);
 	default_material->set_param("roughness", 0.5f);
@@ -360,7 +360,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(
 		const auto& base_color =
 				gltf_material.pbrMetallicRoughness.baseColorFactor;
 
-		material = MaterialSystem::create_instance("urp_standart");
+		material = MaterialSystem::create_instance("pbr_standard");
 
 		material->set_param("base_color",
 				Color(base_color[0], base_color[1], base_color[2],

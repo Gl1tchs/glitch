@@ -55,7 +55,6 @@ private:
 
 	DirectionalLight directional_light;
 	std::vector<PointLight> point_lights;
-	std::vector<Spotlight> spotlights;
 };
 
 template <>
@@ -91,23 +90,6 @@ template <> inline void RenderQueue::pop_light_source<PointLight>() {
 
 template <> inline void RenderQueue::clear_light_source<PointLight>() {
 	point_lights.clear();
-}
-
-template <>
-inline std::vector<Spotlight> RenderQueue::get_light_sources() const {
-	return spotlights;
-}
-
-template <> inline void RenderQueue::push_light_source(Spotlight p_light) {
-	spotlights.push_back(p_light);
-}
-
-template <> inline void RenderQueue::pop_light_source<Spotlight>() {
-	spotlights.pop_back();
-}
-
-template <> inline void RenderQueue::clear_light_source<Spotlight>() {
-	spotlights.clear();
 }
 
 } //namespace gl

@@ -8,34 +8,20 @@
 
 namespace gl {
 
-struct alignas(16) DirectionalLight {
-	glm::vec3 direction;
-	float _pad0;
-	glm::vec3 color;
-	float _pad1;
+struct DirectionalLight {
+	glm::vec4 direction;
+	Color color;
 };
 
-struct alignas(16) PointLight {
-	glm::vec3 position;
-	float _pad0;
-	glm::vec3 color;
-	float _pad1;
+struct PointLight {
+	glm::vec4 position;
+	Color color;
 	float linear;
 	float quadratic;
-	float _pad2[2];
-};
-
-struct alignas(16) Spotlight {
-	glm::vec3 position;
-	float _pad0;
-	glm::vec3 direction;
-	float _pad1;
-	glm::vec3 color;
-	float cut_off;
-	float _pad2[3];
+	float _pad[2];
 };
 
 template <typename T>
-concept LightSource = IsAnyOf<T, DirectionalLight, PointLight, Spotlight>;
+concept LightSource = IsAnyOf<T, DirectionalLight, PointLight>;
 
 } //namespace gl

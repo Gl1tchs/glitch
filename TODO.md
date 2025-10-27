@@ -1,13 +1,15 @@
 # TODO
 
-- [ ] Instanced rendering
-- [ ] Light sources
-- [ ] Parallax mapping
 - [ ] Shadow maps
+  - [ ] Light goes inside walls
+- [ ] Instanced rendering
+- [ ] Parallax mapping
 - [ ] Per Frame Allocators
+- [ ] Async GLTF model loading progress
 
 ## Bugs
 
+- [ ] Vulkan resource deinitialization issua that i couldn't find where
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 - [ ] Renderer::create_render_image expects same format as swapchain for color attachments
 
