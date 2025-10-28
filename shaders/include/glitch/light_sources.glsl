@@ -4,15 +4,15 @@
 #extension GL_EXT_buffer_reference : require
 
 struct DirectionalLight {
-	vec4 direction;
-	vec4 color;
+    vec4 direction;
+    vec4 color;
 };
 
 struct PointLight {
-	vec4 position;
-	vec4 color;
-	float linear;
-	float quadratic;
+    vec4 position;
+    vec4 color;
+    float linear;
+    float quadratic;
 };
 
 #endif // LIGHT_SOURCES_GLSL

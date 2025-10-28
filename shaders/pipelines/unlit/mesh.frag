@@ -9,5 +9,5 @@ layout(location = 2) in vec2 v_uv;
 layout(location = 0) out vec4 o_color;
 
 void main() {
-	o_color = texture(u_diffuse_texture, v_uv) * u_material_data.base_color;
+    o_color = texture(u_diffuse_texture, v_uv) * u_material_data.base_color;
 }
