@@ -49,4 +49,7 @@ private:
 	DeletionQueue node_deletion_queue;
 
 	RendererSettings renderer_settings = {};
+
+	// Scripting
+	bool is_running = false;
 };

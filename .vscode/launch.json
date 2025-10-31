@@ -4,14 +4,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "(LLDB) Launch Testbed",
-            "program": "${workspaceFolder}/bin/glitch-editor",
-            "args": [],
-            "cwd": "${workspaceFolder}/testbed"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "(LLDB) Launch Bundler",
             "program": "${workspaceFolder}/bin/gl-bundler",
             "args": [
@@ -23,7 +15,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "(Windows) Launch Testbed",
+            "name": "(Windows) Launch Editor",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/glitch-editor.exe",

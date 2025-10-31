@@ -7,13 +7,9 @@ namespace gl {
 static std::mutex s_scene_mutex;
 static Ref<Scene> s_scene = nullptr;
 
-Ref<Scene> ScriptSystem::get_scene() {
-	return s_scene;
-}
+Ref<Scene> ScriptSystem::get_scene() { return s_scene; }
 
-void ScriptSystem::set_scene(Ref<Scene> p_scene) {
-	s_scene = p_scene;
-}
+void ScriptSystem::set_scene(Ref<Scene> p_scene) { s_scene = p_scene; }
 
 void ScriptSystem::on_create() {
 	std::scoped_lock<std::mutex> lock(s_scene_mutex);
@@ -106,6 +102,7 @@ void ScriptSystem::on_destroy() {
 		// Unload and unlink the script
 		ScriptEngine::unload_script(sc->script);
 		sc->script = 0;
+		sc->initialized = false;
 	}
 }
 

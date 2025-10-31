@@ -25,6 +25,12 @@ void ScriptEngine::shutdown() { lua_close(s_lua); }
 
 Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(
 		const fs::path& p_path) {
+	// check the file
+	if (!fs::exists(p_path)) {
+		GL_LOG_ERROR("Script at path '{}' does not exists.", p_path.string());
+		return make_err<ScriptRef>(ScriptResult::INVALID_SCRIPT_FILE);
+	}
+
 	// load the script file
 	if (luaL_loadfile(s_lua, p_path.string().c_str()) != LUA_OK) {
 		GL_LOG_ERROR("[LUA] Error loading script {}: {}", p_path.string(),

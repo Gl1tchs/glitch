@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "glitch/scene/components.h"
+#include "glitch/scripting/script_system.h"
 
 #include <glitch/core/event/input.h>
 #include <glitch/renderer/pipeline_builder.h>
@@ -23,6 +24,8 @@ EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
 }
 
 void EditorApplication::_on_start() {
+	ScriptEngine::init();
+
 	SceneRendererSpecification specs = {};
 	specs.msaa = 4;
 
@@ -67,6 +70,10 @@ void EditorApplication::_on_start() {
 
 void EditorApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
+
+	if (is_running) {
+		ScriptSystem::on_update(p_dt);
+	}
 
 	const CameraComponent* cc = camera.get_component<CameraComponent>();
 	grid_pass->set_camera(cc->camera, camera.get_transform());
@@ -262,6 +269,23 @@ void EditorApplication::_on_update(float p_dt) {
 				_render_inspector(selected_entity);
 			}
 			ImGui::End();
+
+			ImGui::Begin("Script");
+
+			if (!is_running) {
+				if (ImGui::Button("Run Scripts")) {
+					ScriptSystem::set_scene(scene);
+					ScriptSystem::on_create();
+					is_running = true;
+				}
+			} else {
+				if (ImGui::Button("Stop Scripts")) {
+					ScriptSystem::on_destroy();
+					is_running = false;
+				}
+			}
+
+			ImGui::End();
 		}
 		ImGui::End();
 	}
@@ -272,7 +296,7 @@ void EditorApplication::_on_update(float p_dt) {
 	node_deletion_queue.flush();
 }
 
-void EditorApplication::_on_destroy() {}
+void EditorApplication::_on_destroy() { ScriptEngine::shutdown(); }
 
 void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 	const std::string label = p_entity.get_name().empty()
@@ -471,6 +495,17 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 		ImGui::PopID();
 	}
 
+	if (p_entity.has_component<ScriptComponent>()) {
+		ScriptComponent* sc = p_entity.get_component<ScriptComponent>();
+
+		ImGui::SeparatorText("Script");
+		ImGui::PushID("SCRIPT_PROPS");
+
+		ImGui::InputText("Path", &sc->script_path);
+
+		ImGui::PopID();
+	}
+
 	ImGui::SetCursorPosY(ImGui::GetCursorPos().y +
 			ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
 
@@ -487,6 +522,11 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 		if (!p_entity.has_component<PointLight>() &&
 				ImGui::MenuItem("Point Light")) {
 			p_entity.add_component<PointLight>();
+		}
+
+		if (!p_entity.has_component<ScriptComponent>() &&
+				ImGui::MenuItem("Script")) {
+			p_entity.add_component<ScriptComponent>();
 		}
 
 		ImGui::EndPopup();
