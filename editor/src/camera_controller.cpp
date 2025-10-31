@@ -6,16 +6,19 @@ CameraController::CameraController() :
 		last_mouse_pos(
 				Input::get_mouse_position().x, Input::get_mouse_position().y) {}
 
-void CameraController::set_camera(Camera* p_camera) {
-	if (!p_camera) {
+void CameraController::set_camera(Camera* p_camera, Transform* p_transform) {
+	if (!p_camera || !p_transform) {
 		return;
 	}
 
 	camera = p_camera;
+	transform = p_transform;
 }
 
 void CameraController::update(float p_dt) {
-	if (!camera) {
+	if (!camera && !transform) {
+		GL_LOG_ERROR("[CameraController::update] camera or transform are not "
+					 "set.");
 		return;
 	}
 
@@ -27,7 +30,7 @@ void CameraController::update(float p_dt) {
 	// Clamp pitch to avoid flipping
 	pitch = glm::clamp(pitch, -89.0f, 89.0f);
 
-	camera->transform.rotation = { pitch, yaw, 0.0f };
+	transform->local_rotation = { pitch, yaw, 0.0f };
 
 	// store last mouse pos to prevent instant rotations
 	last_mouse_pos = Input::get_mouse_position();
@@ -40,30 +43,26 @@ void CameraController::update(float p_dt) {
 
 	// forward / backward controls
 	if (Input::is_key_pressed(KEY_CODE_W)) {
-		camera->transform.position +=
-				camera->transform.get_forward() * speed * p_dt;
+		transform->local_position += transform->get_forward() * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_S)) {
-		camera->transform.position -=
-				camera->transform.get_forward() * speed * p_dt;
+		transform->local_position -= transform->get_forward() * speed * p_dt;
 	}
 
 	// right / left controls
 	if (Input::is_key_pressed(KEY_CODE_D)) {
-		camera->transform.position +=
-				camera->transform.get_right() * speed * p_dt;
+		transform->local_position += transform->get_right() * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_A)) {
-		camera->transform.position -=
-				camera->transform.get_right() * speed * p_dt;
+		transform->local_position -= transform->get_right() * speed * p_dt;
 	}
 
 	// up / down controls
 	if (Input::is_key_pressed(KEY_CODE_E)) {
-		camera->transform.position += WORLD_UP * speed * p_dt;
+		transform->local_position += WORLD_UP * speed * p_dt;
 	}
 	if (Input::is_key_pressed(KEY_CODE_Q)) {
-		camera->transform.position -= WORLD_UP * speed * p_dt;
+		transform->local_position -= WORLD_UP * speed * p_dt;
 	}
 }
 

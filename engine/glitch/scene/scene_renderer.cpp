@@ -1,4 +1,4 @@
-#include "glitch/scene_graph/scene_renderer.h"
+#include "glitch/scene/scene_renderer.h"
 
 #include "glitch/core/application.h"
 #include "glitch/renderer/material_definitions.h"
@@ -38,13 +38,12 @@ SceneRenderer::~SceneRenderer() { renderer->wait_for_device(); }
 void SceneRenderer::submit(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
 
-	if (!p_ctx.scene_graph) {
-		GL_LOG_WARNING("No SceneGraph assigned to render!");
+	if (!p_ctx.scene) {
+		GL_LOG_WARNING("No Scene assigned to render!");
 		return;
 	}
 
-	mesh_pass->set_camera(p_ctx.camera);
-	mesh_pass->set_scene_graph(p_ctx.scene_graph);
+	mesh_pass->set_scene(p_ctx.scene);
 
 	renderer->set_render_present_mode(false);
 	renderer->set_resolution_scale(p_ctx.settings.resolution_scale);
@@ -59,20 +58,6 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 
 void SceneRenderer::submit_func(RenderFunc&& p_func) {
 	render_funcs.push_back(p_func);
-}
-
-void SceneRenderer::_geometry_pass(
-		CommandBuffer p_cmd, const RenderQueue& p_render_queue) {
-	if (p_render_queue.empty()) {
-		return;
-	}
-
-	// TODO: this should probably has their own render pass and a priority
-	// parameter should be given
-	for (auto& render_func : render_funcs) {
-		render_func(p_cmd);
-	}
-	render_funcs.clear();
 }
 
 } //namespace gl

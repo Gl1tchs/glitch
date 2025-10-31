@@ -16,9 +16,15 @@ inline constexpr glm::vec3 VEC3_ONE(1.0f, 1.0f, 1.0f);
 inline constexpr glm::vec3 WORLD_UP = VEC3_UP;
 
 struct GL_API Transform {
-	glm::vec3 position = VEC3_ZERO;
-	glm::vec3 rotation = VEC3_ZERO;
-	glm::vec3 scale = VEC3_ONE;
+	const Transform* parent = nullptr;
+
+	glm::vec3 local_position = VEC3_ZERO;
+	glm::vec3 local_rotation = VEC3_ZERO;
+	glm::vec3 local_scale = VEC3_ONE;
+
+	glm::vec3 get_position() const;
+	glm::vec3 get_rotation() const;
+	glm::vec3 get_scale() const;
 
 	void translate(const glm::vec3& p_translation);
 

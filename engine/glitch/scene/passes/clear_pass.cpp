@@ -1,4 +1,4 @@
-#include "glitch/scene_graph/passes/clear_pass.h"
+#include "glitch/scene/passes/clear_pass.h"
 
 namespace gl {
 

@@ -4,19 +4,15 @@
 
 #pragma once
 
-#include "glitch/renderer/camera.h"
 #include "glitch/renderer/renderer.h"
-#include "glitch/scene_graph/passes/clear_pass.h"
-#include "glitch/scene_graph/passes/mesh_pass.h"
-#include "glitch/scene_graph/scene_graph.h"
+#include "glitch/scene/passes/clear_pass.h"
+#include "glitch/scene/passes/mesh_pass.h"
+#include "glitch/scene/scene.h"
 
 namespace gl {
 
 struct DrawingContext {
-	SceneGraph* scene_graph;
-
-	PerspectiveCamera camera;
-
+	Ref<Scene> scene;
 	RendererSettings settings = {};
 };
 
@@ -40,9 +36,6 @@ public:
 	 * Push a rendering function into stack using a render pass
 	 */
 	void submit_func(RenderFunc&& p_func);
-
-private:
-	void _geometry_pass(CommandBuffer p_cmd, const RenderQueue& p_render_queue);
 
 private:
 	Ref<Renderer> renderer;

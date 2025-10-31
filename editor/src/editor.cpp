@@ -1,10 +1,11 @@
 #include "editor.h"
+#include "glitch/scene/components.h"
 
 #include <glitch/core/event/input.h>
 #include <glitch/renderer/pipeline_builder.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/renderer/shader_library.h>
-#include <glitch/scene_graph/gltf_loader.h>
+#include <glitch/scene/gltf_loader.h>
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -17,6 +18,8 @@ template <class... Ts> struct overloaded : Ts... {
 EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
 		Application(p_info) {
 	renderer_settings.vsync = true;
+
+	scene = create_ref<Scene>();
 }
 
 void EditorApplication::_on_start() {
@@ -28,44 +31,48 @@ void EditorApplication::_on_start() {
 	// This must be created after scene renderer for it to initialize materials
 	gltf_loader = create_scope<GLTFLoader>();
 
-	camera.transform.position = { 0.0f, 0.5f, 3.0f };
-	camera.transform.rotation = { -5.0f, 0.0, 0.0f };
-	camera_controller.set_camera(&camera);
+	camera = scene->create("Camera");
+	camera.get_transform().local_position = { 0.0f, 0.5f, 3.0f };
+	camera.get_transform().local_rotation = { -5.0f, 0.0, 0.0f };
+
+	CameraComponent* cc = camera.add_component<CameraComponent>();
+	cc->enabled = true;
+
+	camera_controller.set_camera(&cc->camera, &camera.get_transform());
 
 	grid_pass = create_ref<GridPass>();
 	get_renderer()->add_pass(grid_pass, -5);
 
 	{
-		auto dir_light = create_ref<SceneNode>();
-		dir_light->debug_name = "Directional Light";
-		dir_light->directional_light = create_ref<DirectionalLight>();
-		dir_light->directional_light->direction = { -1, -1, -1, 0 };
-		dir_light->directional_light->color = COLOR_WHITE;
-		scene_graph.get_root()->add_child(dir_light);
+		auto entity = scene->create("Directional Light");
+
+		DirectionalLight* directional_light =
+				entity.add_component<DirectionalLight>();
+
+		directional_light->direction = { -1, -1, -1, 0 };
+		directional_light->color = COLOR_WHITE;
 	}
 
 	{
-		auto point_light = create_ref<SceneNode>();
-		point_light->debug_name = std::format("Point Light");
-		point_light->transform.position = { 0, 3, 0 };
+		auto entity = scene->create("Point Light");
+		entity.get_transform().local_position = { 0, 3, 0 };
 
-		point_light->point_light = create_ref<PointLight>();
-		point_light->point_light->color = COLOR_RED;
+		PointLight* point_light = entity.add_component<PointLight>();
+		point_light->color = COLOR_RED;
 		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=-Point+Light+Attenuation
-		point_light->point_light->linear = 0.14;
-		point_light->point_light->quadratic = 0.07;
-		scene_graph.get_root()->add_child(point_light);
+		point_light->linear = 0.14;
+		point_light->quadratic = 0.07;
 	}
 }
 
 void EditorApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
-	grid_pass->set_camera(camera);
+	const CameraComponent* cc = camera.get_component<CameraComponent>();
+	grid_pass->set_camera(cc->camera, camera.get_transform());
 
 	DrawingContext ctx;
-	ctx.scene_graph = &scene_graph;
-	ctx.camera = camera;
+	ctx.scene = scene;
 	ctx.settings = renderer_settings;
 
 	scene_renderer->submit(ctx);
@@ -120,12 +127,12 @@ void EditorApplication::_on_update(float p_dt) {
 										FILTER_PATERNS, "GLTF Files", 0);
 
 						if (path) {
-							if (auto scene = gltf_loader->load_gltf(path)) {
-								(*scene)->debug_name =
-										fs::path(path).filename().string();
-								scene_graph.get_root()->add_child(*scene);
+							if (auto model = gltf_loader->load_gltf(
+										path, scene)) {
+								(*model).set_name(
+										fs::path(path).filename().string());
 							} else {
-								GL_LOG_ERROR("{}", scene.get_error());
+								GL_LOG_ERROR("{}", model.get_error());
 							}
 						}
 					}
@@ -235,13 +242,6 @@ void EditorApplication::_on_update(float p_dt) {
 					grid_pass->set_active(s_render_grid);
 				}
 
-				ImGui::SeparatorText("Camera");
-
-				ImGui::DragFloat3(
-						"Position", &camera.transform.position.x, 0.1f);
-				ImGui::DragFloat("Pitch", &camera.transform.rotation.x, 1.0f);
-				ImGui::DragFloat("Yaw", &camera.transform.rotation.y, 1.0f);
-
 				ImGui::SeparatorText("Renderer");
 
 				ImGui::DragFloat("Resolution Scale",
@@ -253,13 +253,13 @@ void EditorApplication::_on_update(float p_dt) {
 
 			ImGui::Begin("Hierarchy");
 			{
-				_traverse_render_node_hierarchy(scene_graph.get_root());
+				_render_hierarchy();
 			}
 			ImGui::End();
 
 			ImGui::Begin("Inspector");
-			if (selected_node) {
-				_render_node_properties(selected_node);
+			if (selected_entity != INVALID_ENTITY) {
+				_render_inspector(selected_entity);
 			}
 			ImGui::End();
 		}
@@ -274,168 +274,201 @@ void EditorApplication::_on_update(float p_dt) {
 
 void EditorApplication::_on_destroy() {}
 
-void EditorApplication::_traverse_render_node_hierarchy(
-		const Ref<SceneNode>& p_node) {
-	if (!p_node) {
-		return;
-	}
+void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
+	const std::string label = p_entity.get_name().empty()
+			? std::format("Entity {}", p_entity.get_uid().value)
+			: p_entity.get_name();
 
-	ImGui::PushID(p_node->debug_id);
+	const bool is_selected = selected_entity != INVALID_ENTITY &&
+			p_entity.get_uid() == selected_entity.get_uid();
 
-	const std::string label = p_node->debug_name.empty()
-			? std::format("{}", p_node->debug_id.value)
-			: p_node->debug_name;
+	// Get children ahead of time to decide if this is a leaf or a branch
+	const auto& children = p_entity.get_children();
 
-	const bool is_selected =
-			selected_node && p_node->debug_id == selected_node->debug_id;
-
-	if (p_node->children.empty()) {
-		if (ImGui::Selectable(label.c_str(), is_selected)) {
-			selected_node = p_node;
-		}
-
-		_render_hierarchy_context_menu(p_node);
-	} else {
-		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-				ImGuiTreeNodeFlags_OpenOnDoubleClick;
-
+	// Leaf Node: The entity has no children.
+	if (children.empty()) {
+		ImGuiTreeNodeFlags flags =
+				ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 		if (is_selected) {
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
 
-		bool node_open = ImGui::TreeNodeEx(label.c_str(), flags);
-
+		ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s",
+				label.c_str());
 		if (ImGui::IsItemClicked()) {
-			selected_node = p_node;
+			selected_entity = p_entity;
 		}
 
-		_render_hierarchy_context_menu(p_node);
+		// Render the context menu for this entity
+		_render_hierarchy_context_menu(p_entity);
+	}
+	// Branch Node: The entity has children.
+	else {
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
+				ImGuiTreeNodeFlags_OpenOnDoubleClick;
+		if (is_selected) {
+			flags |= ImGuiTreeNodeFlags_Selected;
+		}
 
+		// Create a tree node that can be expanded
+		bool node_open = ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(),
+				flags, "%s", label.c_str());
+
+		if (ImGui::IsItemClicked()) {
+			selected_entity = p_entity;
+		}
+
+		// Render the context menu for this entity
+		_render_hierarchy_context_menu(p_entity);
+
+		// If the node is open, recursively render all children
 		if (node_open) {
-			for (const auto& child : p_node->children) {
-				_traverse_render_node_hierarchy(child);
+			for (const auto& child_id : children) {
+				Entity child_entity(child_id, scene.get());
+				_render_hierarchy_entry(child_entity); // <-- RECURSIVE CALL
 			}
 			ImGui::TreePop();
 		}
 	}
-
-	ImGui::PopID();
 }
 
-void EditorApplication::_render_hierarchy_context_menu(
-		const Ref<SceneNode>& p_node) {
+void EditorApplication::_render_hierarchy() {
+	for (EntityId entity_id : scene->view()) {
+		Entity entity(entity_id, scene.get());
+
+		// Only process top-level entities (those without a parent).
+		// The recursive function will handle the children.
+		if (entity.get_parent()) {
+			continue;
+		}
+
+		// Start the recursive rendering for each root entity
+		_render_hierarchy_entry(entity);
+	}
+}
+
+void EditorApplication::_render_hierarchy_context_menu(const Entity& p_entity) {
 	if (ImGui::BeginPopupContextItem("HIERARCHY_ITEM_CONTEXT_MENU",
 				ImGuiPopupFlags_MouseButtonRight)) {
 		if (ImGui::MenuItem("Add Child")) {
-			p_node->add_child(create_ref<SceneNode>());
+			static uint32_t s_entity_counter = 0;
+			scene->create(std::format("Entity {}", s_entity_counter++),
+					p_entity.get_uid());
 		}
 		if (ImGui::MenuItem("Delete")) {
 			node_deletion_queue.push_function([&]() {
 				get_render_backend()->device_wait();
-				scene_graph.remove_node(p_node->debug_id);
+				scene->destroy(p_entity);
 			});
 		}
 		ImGui::EndPopup();
 	}
 }
 
-void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
-	ImGui::Text(
-			"ID: %s", std::format("{}", selected_node->debug_id.value).c_str());
+void EditorApplication::_render_inspector(Entity& p_entity) {
+	IdComponent* idc = p_entity.get_component<IdComponent>();
 
-	ImGui::InputText("Debug Name", &p_node->debug_name);
+	ImGui::Text("ID: %s", std::format("{}", idc->id.value).c_str());
+	ImGui::InputText("Name", &idc->tag);
 
 	{
 		ImGui::SeparatorText("Transform");
 		ImGui::PushID("TRANSFORM_PROPS");
 
 		ImGui::DragFloat3(
-				"Position", &selected_node->transform.position.x, 0.1f);
+				"Position", &p_entity.get_transform().local_position.x, 0.1f);
 		ImGui::DragFloat3(
-				"Rotation", &selected_node->transform.rotation.x, 0.1f);
-		ImGui::DragFloat3("Scale", &selected_node->transform.scale.x, 0.1f);
+				"Rotation", &p_entity.get_transform().local_rotation.x, 0.1f);
+		ImGui::DragFloat3(
+				"Scale", &p_entity.get_transform().local_scale.x, 0.1f);
 
 		ImGui::PopID();
 	}
 
-	if (p_node->mesh) {
+	if (p_entity.has_component<MeshComponent>()) {
 		ImGui::SeparatorText("Mesh");
 		ImGui::PushID("MESH_PROPS");
 
-		ImGui::Text("Primitives: %zu", p_node->mesh->primitives.size());
+		MeshComponent* mc = p_entity.get_component<MeshComponent>();
+		Ref<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
+		if (mesh) {
+			ImGui::Text("Primitives: %zu", mesh->primitives.size());
 
-		ImGui::SeparatorText("Material");
+			ImGui::SeparatorText("Material");
 
-		const Ref<MeshPrimitive> prim = p_node->mesh->primitives.front();
-		const Ref<MaterialInstance> mat = prim->material;
+			const Ref<MeshPrimitive> prim = mesh->primitives.front();
+			const Ref<MaterialInstance> mat = prim->material;
 
-		for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
-			ShaderUniformVariable value = *mat->get_param(uniform.name);
-			std::visit(overloaded{ [&](int& arg) {
-									  if (ImGui::InputInt(
-												  uniform.name.c_str(), &arg)) {
-										  mat->set_param(uniform.name, arg);
-									  }
-								  },
-							   [&](float& arg) {
-								   if (ImGui::InputFloat(
-											   uniform.name.c_str(), &arg)) {
-									   mat->set_param(uniform.name, arg);
-								   }
-							   },
-							   [&](glm::vec2& arg) {
-								   if (ImGui::InputFloat2(
-											   uniform.name.c_str(), &arg.x)) {
-									   mat->set_param(uniform.name, arg);
-								   }
-							   },
-							   [&](glm::vec3& arg) {
-								   if (ImGui::InputFloat3(
-											   uniform.name.c_str(), &arg.x)) {
-									   mat->set_param(uniform.name, arg);
-								   }
-							   },
-							   [&](glm::vec4& arg) {
-								   if (ImGui::InputFloat3(
-											   uniform.name.c_str(), &arg.x)) {
-									   mat->set_param(uniform.name, arg);
-								   }
-							   },
-							   [&](Color& arg) {
-								   if (ImGui::ColorEdit4(
-											   uniform.name.c_str(), &arg.r)) {
-									   mat->set_param(uniform.name, arg);
-								   }
-							   },
-							   [](Ref<Texture>& arg) {
-								   // TODO
-							   } },
-					value);
+			for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
+				ShaderUniformVariable value = *mat->get_param(uniform.name);
+				std::visit(
+						overloaded{ [&](int& arg) {
+									   if (ImGui::InputInt(uniform.name.c_str(),
+												   &arg)) {
+										   mat->set_param(uniform.name, arg);
+									   }
+								   },
+								[&](float& arg) {
+									if (ImGui::InputFloat(
+												uniform.name.c_str(), &arg)) {
+										mat->set_param(uniform.name, arg);
+									}
+								},
+								[&](glm::vec2& arg) {
+									if (ImGui::InputFloat2(
+												uniform.name.c_str(), &arg.x)) {
+										mat->set_param(uniform.name, arg);
+									}
+								},
+								[&](glm::vec3& arg) {
+									if (ImGui::InputFloat3(
+												uniform.name.c_str(), &arg.x)) {
+										mat->set_param(uniform.name, arg);
+									}
+								},
+								[&](glm::vec4& arg) {
+									if (ImGui::InputFloat3(
+												uniform.name.c_str(), &arg.x)) {
+										mat->set_param(uniform.name, arg);
+									}
+								},
+								[&](Color& arg) {
+									if (ImGui::ColorEdit4(
+												uniform.name.c_str(), &arg.r)) {
+										mat->set_param(uniform.name, arg);
+									}
+								},
+								[](Ref<Texture>& arg) {
+									// TODO
+								} },
+						value);
+			}
 		}
 
 		ImGui::PopID();
 	}
 
-	if (p_node->directional_light) {
+	if (p_entity.has_component<DirectionalLight>()) {
+		DirectionalLight* dl = p_entity.get_component<DirectionalLight>();
+
 		ImGui::SeparatorText("Directional Light");
 		ImGui::PushID("DIR_LIGHT_PROPS");
 
-		ImGui::DragFloat3("Direction", &p_node->directional_light->direction.x,
-				0.01f, -1.0f, 1.0f);
-		ImGui::ColorEdit3("Color", &p_node->directional_light->color.r);
+		ImGui::DragFloat3("Direction", &dl->direction.x, 0.01f, -1.0f, 1.0f);
+		ImGui::ColorEdit3("Color", &dl->color.r);
 
 		ImGui::PopID();
 	}
 
-	if (p_node->point_light) {
+	if (p_entity.has_component<PointLight>()) {
+		PointLight* pl = p_entity.get_component<PointLight>();
+
 		ImGui::SeparatorText("Point Light");
 		ImGui::PushID("POINT_LIGHT_PROPS");
 
-		ImGui::ColorEdit3("Color", &p_node->point_light->color.r);
-		ImGui::DragFloat(
-				"Linear", &p_node->point_light->linear, 0.01f, 0.0001f, 1.0f);
-		ImGui::DragFloat("Quadratic", &p_node->point_light->quadratic, 0.01f,
-				0.0001f, 2.0f);
+		ImGui::ColorEdit3("Color", &pl->color.r);
+		ImGui::DragFloat("Linear", &pl->linear, 0.01f, 0.0001f, 1.0f);
+		ImGui::DragFloat("Quadratic", &pl->quadratic, 0.01f, 0.0001f, 2.0f);
 
 		ImGui::PopID();
 	}
@@ -448,13 +481,14 @@ void EditorApplication::_render_node_properties(Ref<SceneNode> p_node) {
 	}
 
 	if (ImGui::BeginPopup("NODE_ADD_COMPONENT")) {
-		if (!p_node->directional_light &&
+		if (!p_entity.has_component<DirectionalLight>() &&
 				ImGui::MenuItem("Directional Light")) {
-			p_node->directional_light = create_ref<DirectionalLight>();
+			p_entity.add_component<DirectionalLight>();
 		}
 
-		if (!p_node->point_light && ImGui::MenuItem("Point Light")) {
-			p_node->point_light = create_ref<PointLight>();
+		if (!p_entity.has_component<PointLight>() &&
+				ImGui::MenuItem("Point Light")) {
+			p_entity.add_component<PointLight>();
 		}
 
 		ImGui::EndPopup();

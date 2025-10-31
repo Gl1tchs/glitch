@@ -48,8 +48,8 @@ void GridPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 
 	PushConstants push_constants;
 	push_constants.view_proj =
-			camera.get_projection_matrix() * camera.get_view_matrix();
-	push_constants.camera_pos = camera.transform.position;
+			camera.get_projection_matrix() * camera.get_view_matrix(transform);
+	push_constants.camera_pos = transform.get_position();
 	push_constants.grid_size = 100.0f;
 
 	backend->command_push_constants(
@@ -60,6 +60,8 @@ void GridPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 	p_renderer.end_rendering(p_cmd);
 }
 
-void GridPass::set_camera(const PerspectiveCamera& p_camera) {
+void GridPass::set_camera(
+		const PerspectiveCamera& p_camera, const Transform& p_transform) {
 	camera = p_camera;
+	transform = p_transform;
 }

@@ -1,6 +1,7 @@
-#include "glitch/scene_graph/gltf_loader.h"
+#include "glitch/scene/gltf_loader.h"
 
 #include "glitch/core/application.h"
+#include "glitch/scene/components.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -78,12 +79,12 @@ static size_t _hash_gltf_model(const tinygltf::Model& p_model) {
 	return seed;
 }
 
-Result<Ref<SceneNode>, std::string> GLTFLoader::load_gltf(
-		const fs::path& p_path, Ref<MaterialInstance> p_overload_material) {
+Result<Entity, std::string> GLTFLoader::load_gltf(const fs::path& p_path,
+		Ref<Scene> p_scene, Ref<MaterialInstance> p_overload_material) {
 	// TODO: better validation
 	if (!p_path.has_extension() ||
 			!(p_path.extension() == ".glb" || p_path.extension() == ".gltf")) {
-		return make_err<Ref<SceneNode>>(
+		return make_err<Entity>(
 				std::string("Unable to parse non gltf formats."));
 	}
 
@@ -99,45 +100,37 @@ Result<Ref<SceneNode>, std::string> GLTFLoader::load_gltf(
 	}
 
 	if (!ret) {
-		return make_err<Ref<SceneNode>>(err);
+		return make_err<Entity>(err);
 	}
 
-	Ref<SceneNode> base_node = create_ref<SceneNode>();
+	Entity base_entity = p_scene->create(p_path.filename().string());
 
 	const size_t model_hash = _hash_gltf_model(model);
 	const fs::path base_path = p_path.parent_path();
 
 	const tinygltf::Scene& scene = model.scenes[model.defaultScene];
 	for (int node_index : scene.nodes) {
-		_parse_node(node_index, &model, model_hash, base_path,
-				p_overload_material, base_node);
+		_parse_node(p_scene, node_index, &model, model_hash, base_path,
+				p_overload_material, base_entity.get_uid());
 	}
 
-	return base_node;
+	return base_entity;
 }
 
-Future<Result<Ref<SceneNode>, std::string>> GLTFLoader::load_gltf_async(
-		const fs::path& p_path, Ref<MaterialInstance> p_overload_material) {
-	return Future<Result<Ref<SceneNode>, std::string>>::async(
-			[this, p_path, p_overload_material]() {
-				return load_gltf(p_path, p_overload_material);
-			});
-}
-
-void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
-		const size_t p_model_hash, const fs::path& p_base_path,
-		Ref<MaterialInstance> p_overload_material,
-		Ref<SceneNode> p_parent_node) {
-	Ref<SceneNode> node = create_ref<SceneNode>();
-	if (p_parent_node) {
-		p_parent_node->add_child(node);
-	}
+void GLTFLoader::_parse_node(Ref<Scene> p_scene, int p_node_idx,
+		const tinygltf::Model* p_model, const size_t p_model_hash,
+		const fs::path& p_base_path, Ref<MaterialInstance> p_overload_material,
+		UID p_parent_id) {
+	Entity entity = p_scene->create("", p_parent_id);
 
 	// Create and load mesh primitive if exists
 	const tinygltf::Node& gltf_node = p_model->nodes[p_node_idx];
 	if (gltf_node.mesh >= 0) {
-		node->mesh = _load_mesh(&gltf_node, p_model, p_model_hash, p_base_path,
-				p_overload_material);
+		const Ref<Mesh> mesh = _load_mesh(&gltf_node, p_model, p_model_hash,
+				p_base_path, p_overload_material);
+
+		MeshComponent* mc = entity.add_component<MeshComponent>();
+		mc->mesh = MeshSystem::register_mesh(mesh);
 	}
 
 	// Parse translation
@@ -149,34 +142,35 @@ void GLTFLoader::_parse_node(int p_node_idx, const tinygltf::Model* p_model,
 		glm::vec4 perspective;
 		glm::fquat rotation_quat;
 
-		glm::decompose(mat, node->transform.scale, rotation_quat,
-				node->transform.position, skew, perspective);
+		glm::decompose(mat, entity.get_transform().local_scale, rotation_quat,
+				entity.get_transform().local_position, skew, perspective);
 
-		node->transform.rotation =
+		entity.get_transform().get_rotation() =
 				glm::degrees(glm::eulerAngles(rotation_quat));
 	} else {
 		// Use TRS
-
 		if (gltf_node.translation.size() == 3) {
-			node->transform.position = glm::vec3(gltf_node.translation[0],
-					gltf_node.translation[1], gltf_node.translation[2]);
+			entity.get_transform().local_position =
+					glm::vec3(gltf_node.translation[0],
+							gltf_node.translation[1], gltf_node.translation[2]);
 		}
 
 		if (gltf_node.rotation.size() == 4) {
-			node->transform.rotation = glm::degrees(glm::eulerAngles(
-					glm::fquat(gltf_node.rotation[3], gltf_node.rotation[0],
+			entity.get_transform().local_rotation =
+					glm::degrees(glm::eulerAngles(glm::fquat(
+							gltf_node.rotation[3], gltf_node.rotation[0],
 							gltf_node.rotation[1], gltf_node.rotation[2])));
 		}
 
 		if (gltf_node.scale.size() == 3) {
-			node->transform.scale = glm::vec3(
+			entity.get_transform().local_scale = glm::vec3(
 					gltf_node.scale[0], gltf_node.scale[1], gltf_node.scale[2]);
 		}
 	}
 
 	for (int child_node_idx : gltf_node.children) {
-		_parse_node(child_node_idx, p_model, -p_model_hash, p_base_path,
-				p_overload_material, node);
+		_parse_node(p_scene, child_node_idx, p_model, -p_model_hash,
+				p_base_path, p_overload_material, entity.get_uid());
 	}
 }
 

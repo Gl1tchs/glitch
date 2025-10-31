@@ -7,8 +7,9 @@
 
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/graphics_pass.h"
+#include "glitch/renderer/light_sources.h"
 #include "glitch/renderer/storage_buffer.h"
-#include "glitch/scene_graph/scene_graph.h"
+#include "glitch/scene/scene.h"
 
 namespace gl {
 
@@ -40,18 +41,27 @@ public:
 	void setup(Renderer& p_renderer) override;
 	void execute(CommandBuffer p_cmd, Renderer& p_renderer) override;
 
-	void set_camera(const PerspectiveCamera& p_camera);
-	void set_scene_graph(SceneGraph* p_graph);
+	void set_scene(Ref<Scene> p_scene);
 
 private:
-	SceneGraph* graph;
+	enum class ScenePreprocessError {
+		None,
+		NoCamera,
+	};
 
-	PerspectiveCamera camera;
+	ScenePreprocessError _preprocess_scene();
+
+private:
+	Ref<Scene> scene;
+
+	Optional<PerspectiveCamera> camera;
 
 	PushConstants push_constants = {};
 	SceneBuffer scene_data;
 	size_t scene_data_hash;
 	Ref<StorageBuffer> scene_data_sbo;
 };
+
+size_t hash64(const MeshPass::SceneBuffer& p_buf);
 
 } //namespace gl

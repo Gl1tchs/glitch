@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include "glitch/core/future/future.h"
-#include "glitch/scene_graph/scene_graph.h"
+#include "glitch/renderer/material.h"
+#include "glitch/renderer/mesh.h"
+#include "glitch/scene/entity.h"
 
 namespace tinygltf {
 class Node;
@@ -22,18 +23,16 @@ public:
 	GLTFLoader();
 	~GLTFLoader();
 
-	Result<Ref<SceneNode>, std::string> load_gltf(const fs::path& p_path,
-			Ref<MaterialInstance> p_overload_material = nullptr);
-
-	Future<Result<Ref<SceneNode>, std::string>> load_gltf_async(
-			const fs::path& p_path,
+	Result<Entity, std::string> load_gltf(const fs::path& p_path,
+			Ref<Scene> p_scene,
 			Ref<MaterialInstance> p_overload_material = nullptr);
 
 private:
-	void _parse_node(int p_node_idx, const tinygltf::Model* p_model,
-			const size_t p_model_hash, const fs::path& p_base_path,
+	void _parse_node(Ref<Scene> p_scene, int p_node_idx,
+			const tinygltf::Model* p_model, const size_t p_model_hash,
+			const fs::path& p_base_path,
 			Ref<MaterialInstance> p_overload_material,
-			Ref<SceneNode> p_parent_node = nullptr);
+			UID p_parent_id = INVALID_UID);
 
 	Ref<Mesh> _load_mesh(const tinygltf::Node* p_gltf_node,
 			const tinygltf::Model* p_model, const size_t p_model_hash,

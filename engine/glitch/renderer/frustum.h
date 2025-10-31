@@ -19,7 +19,7 @@ struct GL_API AABB {
 
 	bool is_inside_frustum(const Frustum& p_frustum) const;
 
-	AABB transform(const glm::mat4& p_transform);
+	AABB transform(const glm::mat4& p_transform) const;
 };
 
 } //namespace gl

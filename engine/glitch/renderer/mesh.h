@@ -40,4 +40,22 @@ struct Mesh {
 	std::vector<Ref<MeshPrimitive>> primitives;
 };
 
+class GL_API MeshSystem {
+public:
+	static void free_all();
+
+	static MeshHandle register_mesh(Ref<Mesh> p_mesh);
+	
+	/**
+	 * @returns Ref<Mesh> if found `nullptr` otherwise 
+	 */
+	static Ref<Mesh> get_mesh(MeshHandle p_handle);
+	
+	/**
+	 * @param p_handle handle to find and delete
+	 * @returns `true` if deletion successfull `false` if mesh do not exists 
+	 */
+	static bool free_mesh(MeshHandle p_handle);
+};
+
 } //namespace gl

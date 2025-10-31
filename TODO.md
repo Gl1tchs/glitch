@@ -1,5 +1,10 @@
 # TODO
 
+- [ ] Serialization for specifications like MSAA
+- [ ] ECS
+  - [ ] Do not let users create entities other than by scene
+- [ ] Material component
+
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL

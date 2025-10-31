@@ -25,12 +25,14 @@ public:
 	void setup(Renderer& p_renderer) override;
 	void execute(CommandBuffer p_cmd, Renderer& p_renderer) override;
 
-	void set_camera(const PerspectiveCamera& p_camera);
+	void set_camera(
+			const PerspectiveCamera& p_camera, const Transform& p_transform);
 
 private:
 	Shader grid_shader;
 	Pipeline grid_pipeline;
 
 	PerspectiveCamera camera;
+	Transform transform;
 	PushConstants push_constants = {};
 };
