@@ -45,8 +45,8 @@ public:
 
 private:
 	enum class ScenePreprocessError {
-		None,
-		NoCamera,
+		NONE,
+		NO_CAMERA,
 	};
 
 	ScenePreprocessError _preprocess_scene();

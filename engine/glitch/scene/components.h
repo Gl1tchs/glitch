@@ -6,6 +6,7 @@
 
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/mesh.h"
+#include "glitch/scripting/script_engine.h"
 
 namespace gl {
 
@@ -17,6 +18,12 @@ struct MeshComponent {
 struct CameraComponent {
 	PerspectiveCamera camera;
 	bool enabled = true;
+};
+
+struct ScriptComponent {
+	std::string script_path;
+	ScriptRef script;
+	bool initialized = false;
 };
 
 } //namespace gl

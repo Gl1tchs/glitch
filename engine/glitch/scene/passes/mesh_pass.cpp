@@ -24,10 +24,10 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 	// Set camera, light sources and do frustum culling
 	ScenePreprocessError err = _preprocess_scene();
 
-	if (err != ScenePreprocessError::None) {
+	if (err != ScenePreprocessError::NONE) {
 		// If there was more error codes a switch statements would be a better
 		// idea but for now this has less instructions and no compiler warning
-		if (err == ScenePreprocessError::NoCamera) {
+		if (err == ScenePreprocessError::NO_CAMERA) {
 			GL_LOG_ERROR("[MeshPass::execute] No camera found in the registry "
 						 "to render!");
 		}
@@ -110,7 +110,7 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	}
 
 	if (!camera) {
-		return ScenePreprocessError::NoCamera;
+		return ScenePreprocessError::NO_CAMERA;
 	}
 
 	camera.value().aspect_ratio =
@@ -187,7 +187,7 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 		}
 	}
 
-	return ScenePreprocessError::None;
+	return ScenePreprocessError::NONE;
 }
 
 size_t hash64(const MeshPass::SceneBuffer& p_buf) {
