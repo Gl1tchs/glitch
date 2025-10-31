@@ -1,5 +1,7 @@
 #include "glitch/scene/entity.h"
 
+#include "glitch/scene/scene.h"
+
 namespace gl {
 
 RelationComponent& Entity::get_relation() {

@@ -129,8 +129,8 @@ void GLTFLoader::_parse_node(Ref<Scene> p_scene, int p_node_idx,
 		const Ref<Mesh> mesh = _load_mesh(&gltf_node, p_model, p_model_hash,
 				p_base_path, p_overload_material);
 
-		MeshComponent* mc = entity.add_component<MeshComponent>();
-		mc->mesh = MeshSystem::register_mesh(mesh);
+		MeshComponent& mc = entity.add_component<MeshComponent>();
+		mc.mesh = MeshSystem::register_mesh(mesh);
 	}
 
 	// Parse translation

@@ -41,9 +41,7 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			p_renderer.get_render_image("geo_depth").value());
 
 	Pipeline bound_pipeline = GL_NULL_HANDLE;
-	for (EntityId entity_id : scene->view<MeshComponent>()) {
-		Entity entity(entity_id, scene.get());
-
+	for (Entity entity : scene->view<MeshComponent>()) {
 		const MeshComponent* mc = entity.get_component<MeshComponent>();
 		if (!mc->visible) {
 			// probably culled or mesh doesn't exist
@@ -101,9 +99,7 @@ void MeshPass::set_scene(Ref<Scene> p_scene) { scene = p_scene; }
 
 MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	Optional<Transform> camera_transform = std::nullopt;
-	for (EntityId entity_id : scene->view<CameraComponent>()) {
-		Entity entity(entity_id, scene.get());
-
+	for (Entity entity : scene->view<CameraComponent>()) {
 		CameraComponent* cc = entity.get_component<CameraComponent>();
 		if (cc->enabled) {
 			camera_transform = entity.get_transform();
@@ -121,17 +117,13 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 			Application::get_instance()->get_window()->get_aspect_ratio();
 
 	Optional<DirectionalLight> directional_light;
-	for (EntityId entity_id : scene->view<DirectionalLight>()) {
-		Entity entity(entity_id, scene.get());
-
+	for (Entity entity : scene->view<DirectionalLight>()) {
 		const DirectionalLight* dl = entity.get_component<DirectionalLight>();
 		directional_light = *dl;
 	}
 
 	std::vector<PointLight> point_lights;
-	for (EntityId entity_id : scene->view<PointLight>()) {
-		Entity entity(entity_id, scene.get());
-
+	for (Entity entity : scene->view<PointLight>()) {
 		PointLight* pl = entity.get_component<PointLight>();
 		pl->position = glm::vec4(entity.get_transform().get_position(), 0.0f);
 
@@ -166,10 +158,8 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	// Construct a frustum culled render queue to render only visible primitives
 	Frustum view_frustum = Frustum::from_view_proj(scene_data.view_projection);
 
-	// Basic frustum culling
-	for (EntityId entity_id : scene->view<MeshComponent>()) {
-		Entity entity(entity_id, scene.get());
-
+	// Basic frustum culling and material updating
+	for (Entity entity : scene->view<MeshComponent>()) {
 		MeshComponent* mc = entity.get_component<MeshComponent>();
 
 		Ref<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
@@ -183,8 +173,11 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 			const AABB aabb =
 					prim->aabb.transform(entity.get_transform().to_mat4());
 			if (!aabb.is_inside_frustum(view_frustum)) {
+				mc->visible = false;
 				continue;
 			}
+
+			// TODO: if material component then set
 
 			if (prim->material->is_dirty()) {
 				prim->material->upload();

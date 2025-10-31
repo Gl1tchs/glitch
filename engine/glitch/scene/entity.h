@@ -7,9 +7,11 @@
 
 #include "glitch/core/transform.h"
 #include "glitch/core/uid.h"
-#include "glitch/scene/scene.h"
+#include "glitch/scene/component_lookup.h"
 
 namespace gl {
+
+class Scene;
 
 struct IdComponent {
 	UID id;
@@ -34,21 +36,15 @@ public:
 	Entity(const Entity& p_other) = default;
 
 	template <typename T, typename... Args>
-	auto* add_component(Args&&... p_args) {
-		return scene->assign<T>(handle, std::forward<Args>(p_args)...);
-	}
+	auto& add_component(Args&&... p_args);
 
-	template <typename T> T* get_component() { return scene->get<T>(handle); }
+	template <typename T> T* get_component();
 
-	template <typename T> const T* get_component() const {
-		return scene->get<T>(handle);
-	}
+	template <typename T> const T* get_component() const;
 
-	template <typename... Components> bool has_component() const {
-		return scene->has<Components...>(handle);
-	}
+	template <typename... Components> bool has_component() const;
 
-	template <typename T> void remove_component() { scene->remove<T>(handle); }
+	template <typename T> void remove_component();
 
 	RelationComponent& get_relation();
 	const RelationComponent& get_relation() const;

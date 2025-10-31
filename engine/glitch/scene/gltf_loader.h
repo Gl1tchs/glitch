@@ -7,7 +7,7 @@
 
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/mesh.h"
-#include "glitch/scene/entity.h"
+#include "glitch/scene/scene.h"
 
 namespace tinygltf {
 class Node;

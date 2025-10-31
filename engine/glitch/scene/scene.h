@@ -6,11 +6,12 @@
 #pragma once
 
 #include "glitch/core/uid.h"
+#include "glitch/scene/entity.h"
 #include "glitch/scene/registry.h"
 
 namespace gl {
 
-class Entity;
+template <typename... TComponents> class EntityView;
 
 /**
  * Registry wrapper using `Entity` type and relations.
@@ -31,8 +32,16 @@ public:
 	Entity find_by_id(UID p_uid);
 	Entity find_by_name(const std::string& p_name);
 
+	/**
+	 * Get entities with specified components,
+	 * returning an iterable view of `Entity` objects.
+	 */
+	template <typename... TComponents> EntityView<TComponents...> view();
+
 private:
 	std::unordered_map<UID, Entity> entity_map;
 };
 
 } //namespace gl
+
+#include "glitch/scene/scene_impl.inl"

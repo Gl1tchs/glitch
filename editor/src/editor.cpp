@@ -35,10 +35,10 @@ void EditorApplication::_on_start() {
 	camera.get_transform().local_position = { 0.0f, 0.5f, 3.0f };
 	camera.get_transform().local_rotation = { -5.0f, 0.0, 0.0f };
 
-	CameraComponent* cc = camera.add_component<CameraComponent>();
-	cc->enabled = true;
+	CameraComponent& cc = camera.add_component<CameraComponent>();
+	cc.enabled = true;
 
-	camera_controller.set_camera(&cc->camera, &camera.get_transform());
+	camera_controller.set_camera(&cc.camera, &camera.get_transform());
 
 	grid_pass = create_ref<GridPass>();
 	get_renderer()->add_pass(grid_pass, -5);
@@ -46,22 +46,22 @@ void EditorApplication::_on_start() {
 	{
 		auto entity = scene->create("Directional Light");
 
-		DirectionalLight* directional_light =
+		DirectionalLight& directional_light =
 				entity.add_component<DirectionalLight>();
 
-		directional_light->direction = { -1, -1, -1, 0 };
-		directional_light->color = COLOR_WHITE;
+		directional_light.direction = { -1, -1, -1, 0 };
+		directional_light.color = COLOR_WHITE;
 	}
 
 	{
 		auto entity = scene->create("Point Light");
 		entity.get_transform().local_position = { 0, 3, 0 };
 
-		PointLight* point_light = entity.add_component<PointLight>();
-		point_light->color = COLOR_RED;
+		PointLight& point_light = entity.add_component<PointLight>();
+		point_light.color = COLOR_RED;
 		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=-Point+Light+Attenuation
-		point_light->linear = 0.14;
-		point_light->quadratic = 0.07;
+		point_light.linear = 0.14;
+		point_light.quadratic = 0.07;
 	}
 }
 
@@ -333,9 +333,7 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 }
 
 void EditorApplication::_render_hierarchy() {
-	for (EntityId entity_id : scene->view()) {
-		Entity entity(entity_id, scene.get());
-
+	for (Entity entity : scene->view()) {
 		// Only process top-level entities (those without a parent).
 		// The recursive function will handle the children.
 		if (entity.get_parent()) {

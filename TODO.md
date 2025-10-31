@@ -2,8 +2,8 @@
 
 - [ ] Serialization for specifications like MSAA
 - [ ] ECS
-  - [ ] Do not let users create entities other than by scene
-- [ ] Material component
+  - [ ] Script component
+  - [ ] Material component
 
 - [ ] Shadow maps
   - [ ] Light goes inside walls
