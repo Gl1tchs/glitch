@@ -2,7 +2,6 @@
 
 - [ ] Serialization for specifications like MSAA
 - [ ] ECS
-  - [ ] Script component
   - [ ] Material component
 
 - [ ] Shadow maps
@@ -12,6 +11,12 @@
 - [ ] Parallax mapping
 - [ ] Per Frame Allocators
 - [ ] Async GLTF model loading progress
+
+## Scripting
+
+- [ ] Proper script execution system
+- [ ] Maybe all scripts need to be loaded before starting to run more efficiently
+- [ ] LuaJIT linux build
 
 ## Bugs
 

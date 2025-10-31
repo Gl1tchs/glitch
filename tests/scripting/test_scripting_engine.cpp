@@ -3,6 +3,7 @@
 #include "glitch/scene/components.h"
 #include "glitch/scene/scene.h"
 #include "glitch/scripting/script_engine.h"
+#include "glitch/scripting/script_system.h"
 
 using namespace gl;
 
@@ -10,14 +11,14 @@ TEST_CASE("Script loading") {
 	ScriptEngine::init();
 
 	const char* SYNTAX_ERROR = R"(
-local Player = {}
+		local Player = {}
 
-function Player:on_create( -- no parantheses
-    print("Player script created")
-end
+		function Player:on_create( -- no parantheses
+			print("Player script created")
+		end
 
-return Player
-)";
+		return Player
+	)";
 
 	Result<ScriptRef, ScriptResult> res =
 			ScriptEngine::load_script(SYNTAX_ERROR);
@@ -26,14 +27,14 @@ return Player
 	CHECK(res.get_error() == ScriptResult::LOAD_ERROR);
 
 	const char* TABLE_ERROR = R"(
-local Player = {}
+		local Player = {}
 
-function Player:on_create()
-    print("Player script created")
-end
+		function Player:on_create()
+			print("Player script created")
+		end
 
--- do not return anything
-)";
+		-- do not return anything
+	)";
 
 	res = ScriptEngine::load_script(TABLE_ERROR);
 
@@ -41,14 +42,14 @@ end
 	CHECK(res.get_error() == ScriptResult::INVALID_TABLE);
 
 	const char* VALID_SCRIPT = R"(
-local Player = {}
+		local Player = {}
 
-function Player:on_create()
-    print("Player script created")
-end
+		function Player:on_create()
+			print("Player script created")
+		end
 
-return Player
-)";
+		return Player
+	)";
 
 	res = ScriptEngine::load_script(VALID_SCRIPT);
 
@@ -66,11 +67,18 @@ return Player
 TEST_CASE("Calling engine code") {
 	ScriptEngine::init();
 
-	Scene scene;
+	Ref<Scene> scene = create_ref<Scene>();
 
-	auto e = scene.create("Entity");
+	Entity e = scene->create("Entity");
 
 	ScriptComponent& sc = e.add_component<ScriptComponent>();
+	sc.script_path = "../tests/scripting/test_basic.lua";
+
+	ScriptSystem::set_scene(scene);
+
+	ScriptSystem::on_create();
+	ScriptSystem::on_update(0.0);
+	ScriptSystem::on_destroy();
 
 	ScriptEngine::shutdown();
 }

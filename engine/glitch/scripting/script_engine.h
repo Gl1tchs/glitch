@@ -15,6 +15,7 @@ enum class ScriptResult {
 	INVALID_TABLE, // the table format did not match with the engine format
 	INVALID_SCRIPT_FILE, // script file could't be found
 	FUNCTION_NOT_FOUND, // function could not be found
+	INVALID_SCRIPT_REF,
 };
 
 class ScriptEngine {
@@ -48,9 +49,13 @@ public:
 	template <typename... Args>
 	static ScriptResult exec_function(
 			ScriptRef p_table_ref, const char* p_func_name, Args... p_args) {
+		if (p_table_ref == 0) {
+			return ScriptResult::INVALID_SCRIPT_REF;
+		}
+
 		ScriptResult result = ScriptResult::SUCCESS;
 
-		get_script_by_ref(p_table_ref); // push the table
+		push_script(p_table_ref); // push the table
 
 		if (push_function(p_func_name)) {
 			// push the 'self' argument
@@ -80,27 +85,30 @@ public:
 	 * Gets the object (table) associated with the reference.
 	 * Pushes it onto the Lua stack.
 	 */
-	static void get_script_by_ref(ScriptRef p_ref);
+	static void push_script(ScriptRef p_ref);
 
 	/**
 	 * Releases the script reference from the registry.
 	 */
 	static void unload_script(ScriptRef p_ref);
 
+	static bool has_function(const char* p_func_name);
+
 	static bool push_function(const char* p_func_name);
 
 	static void push_value(int p_idx);
 
 	static void push_arg(int p_value);
+	static void push_arg(uint32_t p_value);
 	static void push_arg(float p_value);
 	static void push_arg(double p_value);
 	static void push_arg(bool p_value);
 	static void push_arg(const char* p_value);
 
 	/**
-	 * Pops the stack pointer
+	 * Pops `p_n` elements from the stack pointer
 	 */
-	static void pop_stack(int p_idx);
+	static void pop_stack(int p_n);
 
 	/**
 	 * Call the function pushed to the stack
@@ -108,6 +116,13 @@ public:
 	 * @param p_nargs Number of arguments
 	 */
 	static bool call_function(int p_nargs);
+
+#ifdef GL_DEBUG_BUILD
+	/**
+	 * @brief Dumps and logs the stack to the stdout
+	 */
+	static void stack_dump();
+#endif
 };
 
 } //namespace gl

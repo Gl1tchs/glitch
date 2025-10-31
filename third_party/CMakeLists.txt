@@ -127,7 +127,23 @@ add_subdirectory(tinyfiledialogs)
 set(TINYFD_LIBS tinyfiledialogs CACHE INTERNAL "")
 
 # ------------------- lua -------------------
-add_subdirectory(lua-5.4.8)
+set(LUAJIT_PATH ${VENDOR_DIR}/luajit/build)
 
-set(LUA_INCLUDES ${VENDOR_DIR}/lua-5.4.8/src CACHE INTERNAL "")
-set(LUA_LIBS lua CACHE INTERNAL "")
+find_path(LUAJIT_INCLUDE_DIR luajit.h
+    PATHS ${LUAJIT_PATH}
+)
+
+find_library(LUAJIT_LIBRARY lua51.lib
+    PATHS ${LUAJIT_PATH}
+    PATH_SUFFIXES lib
+)
+
+if(NOT LUAJIT_INCLUDE_DIR OR NOT LUAJIT_LIBRARY)
+    message(FATAL_ERROR "Failed to find LuaJIT headers or library at ${LUAJIT_PATH}")
+endif()
+
+message(STATUS "Found LuaJIT headers: ${LUAJIT_INCLUDE_DIR}")
+message(STATUS "Found LuaJIT library: ${LUAJIT_LIBRARY}")
+
+set(LUA_INCLUDES ${LUAJIT_INCLUDE_DIR} ${VENDOR_DIR}/luajit/src ${luajit_SOURCE_DIR} CACHE INTERNAL "")
+set(LUA_LIBS ${LUAJIT_LIBRARY} CACHE INTERNAL "")

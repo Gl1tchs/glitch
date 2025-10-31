@@ -6,10 +6,19 @@ namespace gl {
 
 static lua_State* s_lua = nullptr;
 
+/**
+ * Register engine functionality into lua
+ *
+ */
+extern void _register_bindings(lua_State* L);
+
 void ScriptEngine::init() {
 	s_lua = luaL_newstate();
 
 	luaL_openlibs(s_lua);
+
+	// Expose engine functions
+	_register_bindings(s_lua);
 }
 
 void ScriptEngine::shutdown() { lua_close(s_lua); }
@@ -67,7 +76,7 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script(
 	return luaL_ref(s_lua, LUA_REGISTRYINDEX);
 }
 
-void ScriptEngine::get_script_by_ref(ScriptRef p_ref) {
+void ScriptEngine::push_script(ScriptRef p_ref) {
 	lua_rawgeti(s_lua, LUA_REGISTRYINDEX, p_ref);
 }
 
@@ -75,6 +84,12 @@ void ScriptEngine::unload_script(ScriptRef p_ref) {
 	if (p_ref != LUA_NOREF) {
 		luaL_unref(s_lua, LUA_REGISTRYINDEX, p_ref);
 	}
+}
+
+bool ScriptEngine::has_function(const char* p_func_name) {
+	const bool res = push_function(p_func_name);
+	pop_stack(1);
+	return res;
 }
 
 bool ScriptEngine::push_function(const char* p_func_name) {
@@ -89,6 +104,10 @@ void ScriptEngine::push_value(int p_idx) { lua_pushvalue(s_lua, p_idx); }
 
 void ScriptEngine::push_arg(int p_value) { lua_pushinteger(s_lua, p_value); }
 
+void ScriptEngine::push_arg(uint32_t p_value) {
+	lua_pushinteger(s_lua, p_value);
+}
+
 void ScriptEngine::push_arg(float p_value) { lua_pushnumber(s_lua, p_value); }
 
 void ScriptEngine::push_arg(double p_value) { lua_pushnumber(s_lua, p_value); }
@@ -99,7 +118,7 @@ void ScriptEngine::push_arg(const char* p_value) {
 	lua_pushstring(s_lua, p_value);
 }
 
-void ScriptEngine::pop_stack(int p_idx) { lua_pop(s_lua, p_idx); }
+void ScriptEngine::pop_stack(int p_n) { lua_pop(s_lua, p_n); }
 
 bool ScriptEngine::call_function(int p_nargs) {
 	return lua_pcall(s_lua, p_nargs, 0, 0) == LUA_OK;
@@ -110,5 +129,31 @@ std::string ScriptEngine::get_error() {
 	lua_pop(s_lua, 1); // pop error
 	return err;
 }
+
+#ifdef GL_DEBUG_BUILD
+void ScriptEngine::stack_dump() {
+	const int top = lua_gettop(s_lua);
+	for (int i = 1; i <= top; i++) {
+		// repeat for each level
+		int t = lua_type(s_lua, i);
+		switch (t) {
+			case LUA_TSTRING:
+				printf("`%s'", lua_tostring(s_lua, i));
+				break;
+			case LUA_TBOOLEAN:
+				printf(lua_toboolean(s_lua, i) ? "true" : "false");
+				break;
+			case LUA_TNUMBER:
+				printf("%g", lua_tonumber(s_lua, i));
+				break;
+			default:
+				printf("%s", lua_typename(s_lua, t));
+				break;
+		}
+		printf("  "); // put a separator
+	}
+	printf("\n"); // end the listing
+}
+#endif
 
 } //namespace gl
