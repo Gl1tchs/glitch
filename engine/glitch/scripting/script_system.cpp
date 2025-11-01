@@ -22,36 +22,26 @@ void ScriptSystem::on_create() {
 	for (Entity entity : s_scene->view<ScriptComponent>()) {
 		ScriptComponent* sc = entity.get_component<ScriptComponent>();
 
-		if (!sc->initialized) {
-			const Result<ScriptRef, ScriptResult> res =
-					ScriptEngine::load_script_file(sc->script_path);
-			if (res.has_error()) {
-				switch (res.get_error()) {
-					case ScriptResult::LOAD_ERROR:
-					case ScriptResult::INVALID_SCRIPT_FILE:
-						GL_LOG_ERROR(
-								"Unable to load script file for Entity: {}",
-								entity.get_uid().value);
-						break;
-					case ScriptResult::INVALID_TABLE:
-						GL_LOG_ERROR(
-								"Script does not return a table in Entity: {}",
-								entity.get_uid().value);
-						break;
-					default:
-						break;
-				}
-
-				continue;
+		if (!sc->is_loaded) {
+			switch (sc->load()) {
+				case ScriptResult::LOAD_ERROR:
+				case ScriptResult::INVALID_SCRIPT_FILE:
+					GL_LOG_ERROR("Unable to load script file for Entity: {}",
+							entity.get_uid().value);
+					break;
+				case ScriptResult::INVALID_TABLE:
+					GL_LOG_ERROR("Script does not return a table in Entity: {}",
+							entity.get_uid().value);
+					break;
+				default:
+					break;
 			}
 
-			sc->script = res.get_value();
-			sc->initialized = true;
+			continue;
 		}
 
 		const ScriptResult result = ScriptEngine::exec_function(
 				sc->script, "on_create", entity.get_uid().value);
-
 		if (result == ScriptResult::FUNCTION_NOT_FOUND) {
 			GL_LOG_WARNING("Script for entity {} has no 'on_create' function.",
 					entity.get_uid().value);
@@ -99,10 +89,8 @@ void ScriptSystem::on_destroy() {
 					entity.get_uid().value);
 		}
 
-		// Unload and unlink the script
-		ScriptEngine::unload_script(sc->script);
-		sc->script = 0;
-		sc->initialized = false;
+		// Reset script metadata
+		sc->reset();
 	}
 }
 

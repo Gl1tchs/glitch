@@ -72,13 +72,75 @@ TEST_CASE("Calling engine code") {
 	Entity e = scene->create("Entity");
 
 	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "../tests/scripting/test_basic.lua";
+	sc.script_path = "../tests/scripting/lua/test_basic.lua";
 
 	ScriptSystem::set_scene(scene);
 
 	ScriptSystem::on_create();
 	ScriptSystem::on_update(0.0);
 	ScriptSystem::on_destroy();
+
+	ScriptEngine::shutdown();
+}
+
+TEST_CASE("Script fields") {
+	ScriptEngine::init();
+
+	Ref<Scene> scene = create_ref<Scene>();
+
+	Entity e = scene->create("Entity");
+
+	ScriptComponent& sc = e.add_component<ScriptComponent>();
+	sc.script_path = "../tests/scripting/lua/test_fields.lua";
+
+	CHECK(sc.load() == ScriptResult::SUCCESS);
+
+	ScriptMetadata metadata = ScriptEngine::get_metadata(sc.script);
+	CHECK(metadata.fields.size() == 3);
+
+	CHECK(metadata.fields.find("name") != metadata.fields.end());
+	CHECK(metadata.fields.find("health") != metadata.fields.end());
+	CHECK(metadata.fields.find("alive") != metadata.fields.end());
+
+	CHECK(std::holds_alternative<std::string>(metadata.fields["name"]));
+	CHECK(std::holds_alternative<double>(metadata.fields["health"]));
+	CHECK(std::holds_alternative<bool>(metadata.fields["alive"]));
+
+	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
+	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
+	CHECK(false == std::get<bool>(metadata.fields["alive"]));
+
+	ScriptSystem::set_scene(scene);
+
+	ScriptSystem::on_create();
+
+	metadata = ScriptEngine::get_metadata(sc.script);
+
+	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
+	CHECK(100.0 == std::get<double>(metadata.fields["health"]));
+	CHECK(true == std::get<bool>(metadata.fields["alive"]));
+
+	ScriptSystem::on_update(0.0);
+
+	metadata = ScriptEngine::get_metadata(sc.script);
+
+	CHECK("Player1" == std::get<std::string>(metadata.fields["name"]));
+	CHECK(80.0 == std::get<double>(metadata.fields["health"]));
+	CHECK(true == std::get<bool>(metadata.fields["alive"]));
+
+	// Destroys and resets the data
+	ScriptSystem::on_destroy();
+
+	metadata = ScriptEngine::get_metadata(sc.script);
+
+	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
+	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
+	CHECK(false == std::get<bool>(metadata.fields["alive"]));
+
+	sc.unload();
+
+	CHECK(!sc.is_loaded);
+	CHECK(sc.script == 0);
 
 	ScriptEngine::shutdown();
 }

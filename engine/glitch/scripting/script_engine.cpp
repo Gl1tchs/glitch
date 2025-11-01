@@ -4,6 +4,10 @@
 
 namespace gl {
 
+template <class... Ts> struct overloaded : Ts... {
+	using Ts::operator()...;
+};
+
 static lua_State* s_lua = nullptr;
 
 /**
@@ -128,6 +132,211 @@ void ScriptEngine::pop_stack(int p_n) { lua_pop(s_lua, p_n); }
 
 bool ScriptEngine::call_function(int p_nargs) {
 	return lua_pcall(s_lua, p_nargs, 0, 0) == LUA_OK;
+}
+
+ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
+	if (p_ref == 0) {
+		return {};
+	}
+
+	push_script(p_ref); // Stack: [table]
+
+	if (!lua_istable(s_lua, -1)) {
+		GL_LOG_ERROR("[LUA] Reference is not a table.");
+		pop_stack(1);
+		return {};
+	}
+
+	// Push nil onto the stack. lua_next expects a key below the table.
+	lua_pushnil(s_lua); // Stack: [table, nil]
+
+	ScriptMetadata metadata = {};
+
+	while (lua_next(s_lua, -2) != 0) { // -2 is the table index
+		// Stack: [table, key, value]
+
+		// Key is at index -2)
+		std::string key_name = "";
+		int key_type = lua_type(s_lua, -2);
+
+		if (key_type == LUA_TSTRING) {
+			key_name = lua_tostring(s_lua, -2);
+		} else {
+			// Handle non-string keys
+			// TODO?
+			key_name = lua_typename(s_lua, key_type);
+		}
+
+		// Value is at index -1
+		const int value_type = lua_type(s_lua, -1);
+		switch (value_type) {
+			case LUA_TNUMBER:
+				metadata.fields[key_name] = (double)lua_tonumber(s_lua, -1);
+				break;
+			case LUA_TSTRING:
+				metadata.fields[key_name] =
+						std::string(lua_tostring(s_lua, -1));
+				break;
+			case LUA_TBOOLEAN:
+				metadata.fields[key_name] = (bool)lua_toboolean(s_lua, -1);
+				break;
+			case LUA_TFUNCTION:
+				metadata.methods.push_back(key_name);
+				break;
+			default:
+				GL_LOG_ERROR("[LUA] Unsupported key of type: {}",
+						lua_typename(s_lua, value_type));
+				break;
+		}
+
+		// Pop the value, but leave the key for the next iteration.
+		// The key must be at the top of the stack for the next lua_next call.
+		pop_stack(1); // Stack: [table, key]
+	}
+
+	pop_stack(1); // Stack: []
+
+	return metadata;
+}
+
+Optional<double> ScriptEngine::get_number_field(
+		ScriptRef p_ref, const char* p_field_name) {
+	if (p_ref == 0) {
+		return {};
+	}
+
+	push_script(p_ref);
+
+	lua_getfield(s_lua, -1, p_field_name);
+
+	if (lua_isnumber(s_lua, -1)) {
+		const float value = (float)lua_tonumber(s_lua, -1);
+		pop_stack(2); // Pop the value, then pop the table
+		return value;
+	}
+
+	pop_stack(2); // Pop the value (nil), then pop the table
+
+	return {};
+}
+
+Optional<std::string> ScriptEngine::get_string_field(
+		ScriptRef p_ref, const char* p_field_name) {
+	if (p_ref == 0) {
+		return {};
+	}
+
+	push_script(p_ref);
+
+	lua_getfield(s_lua, -1, p_field_name);
+
+	if (lua_isstring(s_lua, -1)) {
+		std::string value = lua_tostring(s_lua, -1);
+		pop_stack(2); // Pop the value, then pop the table
+		return value;
+	}
+
+	pop_stack(2); // Pop the value (nil), then pop the table
+
+	return {};
+}
+
+Optional<bool> ScriptEngine::get_bool_field(
+		ScriptRef p_ref, const char* p_field_name) {
+	if (p_ref == 0) {
+		return {};
+	}
+
+	push_script(p_ref);
+
+	lua_getfield(s_lua, -1, p_field_name);
+
+	if (lua_isboolean(s_lua, -1)) {
+		const bool value = (bool)lua_toboolean(s_lua, -1);
+		pop_stack(2); // Pop the value, then pop the table
+		return value;
+	}
+
+	pop_stack(2); // Pop the value (nil), then pop the table
+
+	return {};
+}
+
+bool ScriptEngine::set_field(
+		ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value) {
+	bool result;
+	std::visit(overloaded{ [&](double& arg) {
+							  result = ScriptEngine::set_field(
+									  p_ref, p_field_name, arg);
+						  },
+					   [&](std::string& arg) {
+						   result = ScriptEngine::set_field(
+								   p_ref, p_field_name, arg);
+					   },
+					   [&](bool& arg) {
+						   result = ScriptEngine::set_field(
+								   p_ref, p_field_name, arg);
+					   } },
+			p_value);
+
+	return result;
+}
+
+bool ScriptEngine::set_field(
+		ScriptRef p_ref, const char* p_field_name, double p_value) {
+	if (p_ref == 0) {
+		return false;
+	}
+
+	push_script(p_ref); // Push the script table (index -1)
+
+	lua_pushnumber(s_lua, p_value); // Push the new value (index -1)
+
+	// Set the field: table[field_name] = value
+	// This pops the value but leaves the table.
+	lua_setfield(s_lua, -2, p_field_name);
+
+	pop_stack(1); // pop the table
+
+	return true;
+}
+
+bool ScriptEngine::set_field(
+		ScriptRef p_ref, const char* p_field_name, const std::string& p_value) {
+	if (p_ref == 0) {
+		return false;
+	}
+
+	push_script(p_ref); // Push the script table (index -1)
+
+	lua_pushstring(s_lua, p_value.c_str()); // Push the new value (index -1)
+
+	// Set the field: table[field_name] = value
+	// This pops the value but leaves the table.
+	lua_setfield(s_lua, -2, p_field_name);
+
+	pop_stack(1); // pop the table
+
+	return true;
+}
+
+bool ScriptEngine::set_field(
+		ScriptRef p_ref, const char* p_field_name, bool p_value) {
+	if (p_ref == 0) {
+		return false;
+	}
+
+	push_script(p_ref); // Push the script table (index -1)
+
+	lua_pushboolean(s_lua, p_value); // Push the new value (index -1)
+
+	// Set the field: table[field_name] = value
+	// This pops the value but leaves the table.
+	lua_setfield(s_lua, -2, p_field_name);
+
+	pop_stack(1); // pop the table
+
+	return true;
 }
 
 std::string ScriptEngine::get_error() {

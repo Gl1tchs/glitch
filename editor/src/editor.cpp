@@ -21,6 +21,7 @@ EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
 	renderer_settings.vsync = true;
 
 	scene = create_ref<Scene>();
+	runtime_scene = create_ref<Scene>();
 }
 
 void EditorApplication::_on_start() {
@@ -34,7 +35,8 @@ void EditorApplication::_on_start() {
 	// This must be created after scene renderer for it to initialize materials
 	gltf_loader = create_scope<GLTFLoader>();
 
-	camera = scene->create("Camera");
+	Entity camera = scene->create("Camera");
+	camera_uid = camera.get_uid();
 	camera.get_transform().local_position = { 0.0f, 0.5f, 3.0f };
 	camera.get_transform().local_rotation = { -5.0f, 0.0, 0.0f };
 
@@ -75,11 +77,12 @@ void EditorApplication::_on_update(float p_dt) {
 		ScriptSystem::on_update(p_dt);
 	}
 
-	const CameraComponent* cc = camera.get_component<CameraComponent>();
-	grid_pass->set_camera(cc->camera, camera.get_transform());
+	Entity camera = _get_scene()->find_by_id(camera_uid);
+	grid_pass->set_camera(camera.get_component<CameraComponent>()->camera,
+			camera.get_transform());
 
 	DrawingContext ctx;
-	ctx.scene = scene;
+	ctx.scene = _get_scene();
 	ctx.settings = renderer_settings;
 
 	scene_renderer->submit(ctx);
@@ -265,7 +268,7 @@ void EditorApplication::_on_update(float p_dt) {
 			ImGui::End();
 
 			ImGui::Begin("Inspector");
-			if (selected_entity != INVALID_ENTITY) {
+			if (selected_entity.is_valid()) {
 				_render_inspector(selected_entity);
 			}
 			ImGui::End();
@@ -274,14 +277,34 @@ void EditorApplication::_on_update(float p_dt) {
 
 			if (!is_running) {
 				if (ImGui::Button("Run Scripts")) {
-					ScriptSystem::set_scene(scene);
+					// Copy the scene
+					scene->copy_to(*runtime_scene);
+
+					selected_entity = Entity(
+							(EntityId)selected_entity, runtime_scene.get());
+
+					ScriptSystem::set_scene(runtime_scene);
 					ScriptSystem::on_create();
 					is_running = true;
+
+					Entity camera = _get_scene()->find_by_id(camera_uid);
+					camera_controller.set_camera(
+							&camera.get_component<CameraComponent>()->camera,
+							&camera.get_transform());
 				}
 			} else {
 				if (ImGui::Button("Stop Scripts")) {
 					ScriptSystem::on_destroy();
+
 					is_running = false;
+
+					selected_entity =
+							Entity((EntityId)selected_entity, scene.get());
+
+					Entity camera = _get_scene()->find_by_id(camera_uid);
+					camera_controller.set_camera(
+							&camera.get_component<CameraComponent>()->camera,
+							&camera.get_transform());
 				}
 			}
 
@@ -303,7 +326,7 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 			? std::format("Entity {}", p_entity.get_uid().value)
 			: p_entity.get_name();
 
-	const bool is_selected = selected_entity != INVALID_ENTITY &&
+	const bool is_selected = selected_entity.is_valid() &&
 			p_entity.get_uid() == selected_entity.get_uid();
 
 	// Get children ahead of time to decide if this is a leaf or a branch
@@ -347,9 +370,8 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 
 		// If the node is open, recursively render all children
 		if (node_open) {
-			for (const auto& child_id : children) {
-				Entity child_entity(child_id, scene.get());
-				_render_hierarchy_entry(child_entity); // <-- RECURSIVE CALL
+			for (const Entity& child : children) {
+				_render_hierarchy_entry(child);
 			}
 			ImGui::TreePop();
 		}
@@ -357,7 +379,7 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 }
 
 void EditorApplication::_render_hierarchy() {
-	for (Entity entity : scene->view()) {
+	for (Entity entity : _get_scene()->view()) {
 		// Only process top-level entities (those without a parent).
 		// The recursive function will handle the children.
 		if (entity.get_parent()) {
@@ -374,13 +396,13 @@ void EditorApplication::_render_hierarchy_context_menu(const Entity& p_entity) {
 				ImGuiPopupFlags_MouseButtonRight)) {
 		if (ImGui::MenuItem("Add Child")) {
 			static uint32_t s_entity_counter = 0;
-			scene->create(std::format("Entity {}", s_entity_counter++),
+			_get_scene()->create(std::format("Entity {}", s_entity_counter++),
 					p_entity.get_uid());
 		}
 		if (ImGui::MenuItem("Delete")) {
 			node_deletion_queue.push_function([&]() {
 				get_render_backend()->device_wait();
-				scene->destroy(p_entity);
+				_get_scene()->destroy(p_entity);
 			});
 		}
 		ImGui::EndPopup();
@@ -503,6 +525,60 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 
 		ImGui::InputText("Path", &sc->script_path);
 
+		// Unload the script if path changed
+		// TODO: more elegant solution
+		if (sc->is_loaded) {
+			const std::ifstream ifs(sc->script_path);
+			if (!ifs.good()) {
+				sc->unload();
+			}
+		}
+
+		// Load the script if it hasn't already
+		if (!sc->is_loaded && !sc->script_path.empty()) {
+			const std::ifstream ifs(sc->script_path);
+			if (ifs.good() && sc->load() != ScriptResult::SUCCESS) {
+				sc->script_path = "";
+			}
+		}
+
+		if (sc->is_loaded) {
+			ScriptMetadata metadata = ScriptEngine::get_metadata(sc->script);
+			// Only update the metadata if scripts are not running
+			if (!is_running) {
+				sc->metadata = metadata;
+			}
+
+			for (auto& [name, value] : metadata.fields) {
+				// skip fields starting with '__'
+				if (std::string(name).starts_with("__")) {
+					continue;
+				}
+
+				std::visit(
+						overloaded{ [&](double& arg) {
+									   if (ImGui::InputDouble(
+												   name.c_str(), &arg)) {
+										   ScriptEngine::set_field(sc->script,
+												   name.c_str(), arg);
+									   }
+								   },
+								[&](std::string& arg) {
+									if (ImGui::InputText(name.c_str(), &arg)) {
+										ScriptEngine::set_field(
+												sc->script, name.c_str(), arg);
+									}
+								},
+								[&](bool& arg) {
+									if (ImGui::Checkbox(name.c_str(), &arg)) {
+										ScriptEngine::set_field(
+												sc->script, name.c_str(), arg);
+									}
+								} },
+						value);
+			}
+		}
+
 		ImGui::PopID();
 	}
 
@@ -531,4 +607,8 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 
 		ImGui::EndPopup();
 	}
+}
+
+Ref<Scene> EditorApplication::_get_scene() {
+	return is_running ? runtime_scene : scene;
 }

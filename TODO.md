@@ -14,8 +14,7 @@
 
 ## Scripting
 
-- [ ] Editor parameters
-- [ ] Proper script execution system
+- [ ] Proper script execution system inside of the scene
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
 - [ ] LuaJIT linux build
 

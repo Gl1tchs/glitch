@@ -18,6 +18,13 @@ enum class ScriptResult {
 	INVALID_SCRIPT_REF,
 };
 
+typedef std::variant<double, std::string, bool> ScriptValueType;
+
+struct ScriptMetadata {
+	std::unordered_map<std::string, ScriptValueType> fields;
+	std::vector<std::string> methods;
+};
+
 class ScriptEngine {
 public:
 	static void init();
@@ -116,6 +123,27 @@ public:
 	 * @param p_nargs Number of arguments
 	 */
 	static bool call_function(int p_nargs);
+
+	static ScriptMetadata get_metadata(ScriptRef p_ref);
+
+	static Optional<double> get_number_field(
+			ScriptRef p_ref, const char* p_field_name);
+
+	static Optional<std::string> get_string_field(
+			ScriptRef p_ref, const char* p_field_name);
+
+	static Optional<bool> get_bool_field(
+			ScriptRef p_ref, const char* p_field_name);
+
+	static bool set_field(
+			ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value);
+
+	static bool set_field(
+			ScriptRef p_ref, const char* p_field_name, double p_value);
+	static bool set_field(ScriptRef p_ref, const char* p_field_name,
+			const std::string& p_value);
+	static bool set_field(
+			ScriptRef p_ref, const char* p_field_name, bool p_value);
 
 #ifdef GL_DEBUG_BUILD
 	/**

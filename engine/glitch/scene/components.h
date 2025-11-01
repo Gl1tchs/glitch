@@ -22,8 +22,18 @@ struct CameraComponent {
 
 struct ScriptComponent {
 	std::string script_path;
-	ScriptRef script;
-	bool initialized = false;
+
+	ScriptRef script = 0;
+	bool is_loaded = false;
+
+	// metadata cache for reloading
+	Optional<ScriptMetadata> metadata = std::nullopt;
+
+	ScriptResult load();
+
+	void unload();
+
+	void reset();
 };
 
 } //namespace gl

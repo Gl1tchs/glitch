@@ -70,6 +70,8 @@ public:
 	Transform& get_transform();
 	const Transform& get_transform() const;
 
+	bool is_valid() const;
+
 	operator bool() const;
 
 	operator EntityId() const;

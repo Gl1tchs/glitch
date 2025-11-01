@@ -6,6 +6,18 @@ namespace gl {
 
 Scene::Scene() {}
 
+void Scene::copy_to(Scene& p_dest) {
+	Registry::copy_to(p_dest);
+
+	p_dest.entity_map.clear();
+	p_dest.entity_map.reserve(this->entity_map.size());
+
+	// Copy entities
+	for (const auto& [uid, entity] : this->entity_map) {
+		p_dest.entity_map[uid] = Entity((EntityId)entity, &p_dest);
+	}
+}
+
 Entity Scene::create(const std::string& p_name, UID p_parent_id) {
 	return create(UID(), p_name, p_parent_id);
 }
@@ -30,6 +42,10 @@ Entity Scene::create(UID p_uid, const std::string& p_name, UID p_parent_id) {
 }
 
 void Scene::destroy(Entity p_entity) {
+	if (!p_entity.is_valid()) {
+		return;
+	}
+
 	for (auto child : p_entity.get_children()) {
 		destroy(child);
 	}

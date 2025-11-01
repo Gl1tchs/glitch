@@ -16,6 +16,10 @@ class GL_API Registry {
 public:
 	~Registry();
 
+	void clear();
+
+	void copy_to(Registry& p_dest);
+
 	/**
 	 * Create new entity instance on the scene
 	 */
@@ -45,9 +49,27 @@ public:
 
 		if (component_pools.size() <= component_id) {
 			component_pools.resize(component_id + 1, nullptr);
+			pool_helpers.resize(component_id + 1);
 		}
 		if (component_pools[component_id] == nullptr) {
 			component_pools[component_id] = new ComponentPool(sizeof(T));
+			pool_helpers[component_id] = PoolHelpers{
+				.element_size = sizeof(T),
+				// Copy function (uses placement new + copy constructor)
+				.copy_fn =
+						[](void* dest, const void* src) {
+							new (dest) T(*static_cast<const T*>(src));
+						},
+				// Destroy function (calls destructor)
+				.destroy_fn = [](void* data) { static_cast<T*>(data)->~T(); },
+			};
+		}
+
+		// Call destructor if component already exists
+		if (entities[get_entity_index(p_entity)].mask.test(component_id)) {
+			pool_helpers[component_id].destroy_fn(
+					component_pools[component_id]->get(
+							get_entity_index(p_entity)));
 		}
 
 		T* component = new (component_pools[component_id]->get(
@@ -80,7 +102,17 @@ public:
 		}
 
 		const uint32_t component_id = get_component_id<T>();
-		entities[get_entity_index(p_entity)].mask.reset(component_id);
+		const uint32_t entity_idx = get_entity_index(p_entity);
+
+		if (entities[entity_idx].mask.test(component_id)) {
+			// call component's destructor
+			if (pool_helpers.size() > component_id &&
+					pool_helpers[component_id].destroy_fn) {
+				pool_helpers[component_id].destroy_fn(
+						component_pools[component_id]->get(entity_idx));
+			}
+			entities[entity_idx].mask.reset(component_id);
+		}
 	}
 
 	/**
@@ -157,14 +189,18 @@ public:
 	}
 
 private:
+	struct PoolHelpers {
+		size_t element_size = 0;
+		void (*copy_fn)(void*, const void*) = nullptr;
+		void (*destroy_fn)(void*) = nullptr;
+	};
+
 	uint32_t entity_counter = 0;
-
 	EntityContainer entities;
-
-	// indices of the `entities` list which are available
 	std::queue<EntityId> free_indices;
-
 	std::vector<ComponentPool*> component_pools;
+	// parallel vector to component_pools for component destruction logic
+	std::vector<PoolHelpers> pool_helpers;
 };
 
 } //namespace gl

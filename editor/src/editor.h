@@ -9,6 +9,7 @@
 #include <glitch/scene/scene_renderer.h>
 
 #include "camera_controller.h"
+#include "glitch/scripting/script_engine.h"
 #include "grid_pass.h"
 
 using namespace gl;
@@ -34,6 +35,8 @@ private:
 
 	void _render_inspector(Entity& p_entity);
 
+	Ref<Scene> _get_scene();
+
 private:
 	Ref<SceneRenderer> scene_renderer;
 
@@ -41,7 +44,7 @@ private:
 	Scope<GLTFLoader> gltf_loader;
 
 	CameraController camera_controller;
-	Entity camera;
+	UID camera_uid;
 
 	Ref<GridPass> grid_pass;
 
@@ -52,4 +55,5 @@ private:
 
 	// Scripting
 	bool is_running = false;
+	Ref<Scene> runtime_scene;
 };

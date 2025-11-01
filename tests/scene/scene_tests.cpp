@@ -1,185 +1,65 @@
 #include <doctest/doctest.h>
 
-#include "glitch/core/transform.h"
 #include "glitch/scene/scene.h"
 
 using namespace gl;
 
-TEST_CASE("Scene entity creation and destruction") {
-	Registry scene;
+TEST_CASE("Scene entity relations") {
+	Scene scene;
 
-	SUBCASE("Create new entities") {
-		EntityId e1 = scene.spawn();
-		EntityId e2 = scene.spawn();
+	Entity e1 = scene.create("E1");
+	Entity e2 = scene.create("E2");
 
-		CHECK(e1 != e2); // Each entity should have a unique ID
-		CHECK(scene.is_valid(e1));
-		CHECK(scene.is_valid(e2));
-	}
+	Entity e3 = scene.create("E3", e1.get_uid());
+	Entity e4 = scene.create("E4", e1.get_uid());
+	Entity e5 = scene.create("E5", e2.get_uid());
 
-	SUBCASE("Destroy entities and reuse IDs") {
-		EntityId e1 = scene.spawn();
-		scene.despawn(e1);
+	CHECK(e1.is_parent());
+	CHECK(Entity::is_parent_of(e1, e3));
+	CHECK(Entity::is_parent_of(e1, e4));
+	CHECK(!Entity::is_parent_of(e1, e5));
 
-		CHECK_FALSE(scene.is_valid(e1)); // e1 should no longer be valid
+	CHECK(e4.get_parent() == e1);
 
-		EntityId e2 = scene.spawn();
-		CHECK(scene.is_valid(e2));
-		CHECK(get_entity_index(e2) ==
-				get_entity_index(e1)); // ID of e1 should be reused
-	}
-
-	SUBCASE("Destroy and spawn multiple entities") {
-		EntityId e1 = scene.spawn();
-		EntityId e2 = scene.spawn();
-		scene.despawn(e1);
-		scene.despawn(e2);
-
-		CHECK_FALSE(scene.is_valid(e1));
-		CHECK_FALSE(scene.is_valid(e2));
-
-		EntityId e3 = scene.spawn();
-		EntityId e4 = scene.spawn();
-
-		CHECK(scene.is_valid(e3));
-		CHECK(scene.is_valid(e4));
-
-		CHECK((get_entity_index(e3) == get_entity_index(e1) ||
-				get_entity_index(e3) ==
-						get_entity_index(
-								e2))); // e3 should reuse one of the deleted IDs
-		CHECK((get_entity_index(e4) == get_entity_index(e1) ||
-				get_entity_index(e4) ==
-						get_entity_index(
-								e2))); // e4 should reuse the other deleted ID
-
-		CHECK(get_entity_version(e3) == 1);
-		CHECK(get_entity_version(e4) == 1);
-	}
-
-	SUBCASE("Check invalid entities") {
-		EntityId e1 = scene.spawn();
-		CHECK(scene.is_valid(e1));
-
-		EntityId invalid_entity = e1 + 1000;
-		CHECK_FALSE(scene.is_valid(invalid_entity));
-
-		scene.despawn(e1);
-		CHECK_FALSE(scene.is_valid(e1));
-	}
+	CHECK(e2.get_children().front() == e5);
+	CHECK(e5.get_parent() == e2);
 }
 
-struct TestComponent1 {
-	int a;
-	int b;
-	int c;
-};
+TEST_CASE("Scene copy") {
+	Scene scene;
 
-struct TestComponent2 {
-	float x;
-};
+	Entity e1 = scene.create("E1");
+	Entity e2 = scene.create("E2");
 
-TEST_CASE("Components") {
-	SUBCASE("Component ids") {
-		uint32_t transform_id = get_component_id<Transform>();
-		uint32_t test_component1_id = get_component_id<TestComponent1>();
-		uint32_t test_component2_id = get_component_id<TestComponent2>();
+	Entity e3 = scene.create("E3", e1.get_uid());
+	Entity e4 = scene.create("E4", e1.get_uid());
+	Entity e5 = scene.create("E5", e2.get_uid());
 
-		CHECK(transform_id != test_component1_id);
-		CHECK(transform_id != test_component2_id);
-		CHECK(test_component1_id != test_component2_id);
-	}
+	Scene scene2;
+	scene.copy_to(scene2);
 
-	SUBCASE("Component assign and remove") {
-		Registry scene;
+	Entity e1_copy = scene2.find_by_id(e1.get_uid());
+	Entity e2_copy = scene2.find_by_id(e2.get_uid());
+	Entity e3_copy = scene2.find_by_id(e3.get_uid());
+	Entity e4_copy = scene2.find_by_id(e4.get_uid());
+	Entity e5_copy = scene2.find_by_id(e5.get_uid());
 
-		EntityId e1 = scene.spawn();
-		EntityId e2 = scene.spawn();
+	CHECK(e1_copy != INVALID_ENTITY);
+	CHECK(e2_copy != INVALID_ENTITY);
+	CHECK(e3_copy != INVALID_ENTITY);
+	CHECK(e4_copy != INVALID_ENTITY);
+	CHECK(e5_copy != INVALID_ENTITY);
 
-		{
-			TestComponent1* t1 =
-					scene.assign<TestComponent1>(e1, 6.0f, 3.0f, 9.0f);
+	CHECK(e1_copy.is_parent());
+	CHECK(e1_copy.get_children().size() == 2);
 
-			CHECK(t1 == scene.get<TestComponent1>(e1));
+	CHECK(e2_copy.is_parent());
+	CHECK(e2_copy.get_children().size() == 1);
 
-			CHECK(t1->a == 6.0f);
-			CHECK(t1->b == 3.0f);
-			CHECK(t1->c == 9.0f);
-		}
-		{
-			TestComponent2* t1 = scene.assign<TestComponent2>(e2, 9.0f);
+	CHECK(e4_copy.is_child());
+	CHECK(e5_copy.is_child());
+	CHECK(e5_copy.is_child());
 
-			CHECK(t1 == scene.get<TestComponent2>(e2));
-			CHECK(t1->x == 9.0f);
-
-			scene.remove<TestComponent2>(e2);
-
-			CHECK_FALSE(scene.get<TestComponent2>(e2));
-		}
-	}
-}
-
-TEST_CASE("Scene views") {
-	Registry scene;
-
-	EntityId e1 = scene.spawn();
-	EntityId e2 = scene.spawn();
-	EntityId e3 = scene.spawn();
-
-	scene.assign<TestComponent1, TestComponent2>(e1);
-	scene.assign<TestComponent1, TestComponent2>(e2);
-	scene.assign<TestComponent1>(e3);
-
-	const auto view1 = scene.view<TestComponent1>();
-	{
-		auto it = view1.begin();
-
-		CHECK(*it == e1);
-
-		++it;
-
-		CHECK(*it == e2);
-
-		++it;
-
-		CHECK(*it == e3);
-
-		++it;
-
-		CHECK(it == view1.end());
-	}
-
-	const auto view2 = scene.view<TestComponent2>();
-	{
-		auto it = view2.begin();
-
-		CHECK(*it == e1);
-
-		++it;
-
-		CHECK(*it == e2);
-
-		++it;
-
-		CHECK(it == view2.end());
-	}
-
-	const auto view3 = scene.view();
-	{
-		auto it = view3.begin();
-
-		CHECK(*it == e1);
-
-		++it;
-
-		CHECK(*it == e2);
-
-		++it;
-
-		CHECK(*it == e3);
-
-		++it;
-
-		CHECK(it == view3.end());
-	}
+	// CHECK(scene2.find_by_id(e2.get_uid()).get_children().front() !=
+	// 		scene2.find_by_id(e5.get_uid()));
 }

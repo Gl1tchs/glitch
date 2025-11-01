@@ -153,9 +153,11 @@ const Transform& Entity::get_transform() const {
 	return *get_component<Transform>();
 }
 
-Entity::operator bool() const {
+bool Entity::is_valid() const {
 	return handle != INVALID_ENTITY_ID && scene != nullptr;
 }
+
+Entity::operator bool() const { return is_valid(); }
 
 Entity::operator EntityId() const { return handle; }
 

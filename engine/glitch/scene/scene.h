@@ -20,6 +20,8 @@ class GL_API Scene : public Registry {
 public:
 	Scene();
 
+	void copy_to(Scene& p_dest);
+
 	Entity create(const std::string& p_name, UID p_parent_id = 0);
 	Entity create(UID p_uid, const std::string& p_name,
 			UID p_parent_id = INVALID_UID);
