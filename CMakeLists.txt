@@ -36,6 +36,22 @@ add_subdirectory(programs)
 add_subdirectory(shaders)
 add_subdirectory(third_party)
 
+# Configure lua bindings
+set(FFI_PATH "${CMAKE_CURRENT_SOURCE_DIR}/engine/glitch/scripting/ffi.lua")
+set(FFI_TEMPLATE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/misc/ffi_lua_resource.h.in")
+set(FFI_GENERATED_PATH "${GL_OUTPUT_DIR}/include/ffi_lua_resource.gen.h")
+
+add_custom_command(
+    OUTPUT ${FFI_GENERATED_PATH}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${GL_OUTPUT_DIR}/include
+    COMMAND ${CMAKE_COMMAND} -DFFI_LUA_FILE:STRING="${FFI_PATH}"
+                            -DINPUT_FILE:STRING="${FFI_TEMPLATE_PATH}"
+                            -DOUTPUT_FILE:STRING="${FFI_GENERATED_PATH}"
+                            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenFFI.cmake"
+    DEPENDS ${FFI_PATH} ${FFI_TEMPLATE_PATH}
+    COMMENT "Generating ${FFI_GENERATED_PATH} from ${FFI_PATH}"
+)
+
 file(GLOB_RECURSE SOURCES
 	"${CMAKE_CURRENT_LIST_DIR}/engine/*.h"
 	"${CMAKE_CURRENT_LIST_DIR}/engine/*.cpp"
@@ -49,6 +65,8 @@ if (GL_BUILD_DYNAMIC_LIBS)
 else()
 	add_library(glitch STATIC ${SOURCES})
 endif()
+
+target_sources(glitch PRIVATE ${FFI_GENERATED_PATH})
 
 target_include_directories(glitch
 	PUBLIC
