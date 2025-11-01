@@ -14,7 +14,6 @@
 
 ## Scripting
 
-- [ ] Proper script execution system inside of the scene
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
 - [ ] LuaJIT linux build
 
@@ -35,7 +34,6 @@
 - [ ] Asset system and serialization
 - [ ] GPU Particle system
 - [ ] Physics engine
-- [ ] Scripting
 
 ## Long Term
 

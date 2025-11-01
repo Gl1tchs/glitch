@@ -9,7 +9,6 @@
 #include <glitch/scene/scene_renderer.h>
 
 #include "camera_controller.h"
-#include "glitch/scripting/script_engine.h"
 #include "grid_pass.h"
 
 using namespace gl;
@@ -54,6 +53,6 @@ private:
 	RendererSettings renderer_settings = {};
 
 	// Scripting
-	bool is_running = false;
 	Ref<Scene> runtime_scene;
+	bool is_running = false;
 };

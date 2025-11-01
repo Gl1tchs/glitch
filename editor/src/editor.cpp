@@ -1,6 +1,5 @@
 #include "editor.h"
 #include "glitch/scene/components.h"
-#include "glitch/scripting/script_system.h"
 
 #include <glitch/core/event/input.h>
 #include <glitch/renderer/pipeline_builder.h>
@@ -74,7 +73,7 @@ void EditorApplication::_on_update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
 	if (is_running) {
-		ScriptSystem::on_update(p_dt);
+		runtime_scene->update(p_dt);
 	}
 
 	Entity camera = _get_scene()->find_by_id(camera_uid);
@@ -283,8 +282,7 @@ void EditorApplication::_on_update(float p_dt) {
 					selected_entity = Entity(
 							(EntityId)selected_entity, runtime_scene.get());
 
-					ScriptSystem::set_scene(runtime_scene);
-					ScriptSystem::on_create();
+					runtime_scene->start();
 					is_running = true;
 
 					Entity camera = _get_scene()->find_by_id(camera_uid);
@@ -294,7 +292,7 @@ void EditorApplication::_on_update(float p_dt) {
 				}
 			} else {
 				if (ImGui::Button("Stop Scripts")) {
-					ScriptSystem::on_destroy();
+					runtime_scene->stop();
 
 					is_running = false;
 

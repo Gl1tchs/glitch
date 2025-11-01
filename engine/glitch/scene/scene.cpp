@@ -1,10 +1,50 @@
 #include "glitch/scene/scene.h"
 
+#include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
+#include "glitch/scripting/script_system.h"
 
 namespace gl {
 
-Scene::Scene() {}
+void Scene::start() {
+	GL_PROFILE_SCOPE;
+
+	running = true;
+
+	ScriptSystem::on_runtime_start(this);
+
+	for (Entity entity : view<ScriptComponent>()) {
+		ScriptSystem::invoke_on_create();
+	}
+}
+
+void Scene::update(float p_dt) {
+	GL_PROFILE_SCOPE;
+
+	if (paused && step_frames-- <= 0) {
+		return;
+	}
+
+	ScriptSystem::invoke_on_update(p_dt);
+}
+
+void Scene::stop() {
+	GL_PROFILE_SCOPE;
+
+	running = false;
+
+	ScriptSystem::invoke_on_destroy();
+
+	ScriptSystem::on_runtime_stop();
+}
+
+void Scene::set_paused(bool p_paused) { paused = p_paused; }
+
+void Scene::step(uint32_t frames) { step_frames = frames; }
+
+bool Scene::is_running() const { return running; }
+
+bool Scene::is_paused() const { return paused; }
 
 void Scene::copy_to(Scene& p_dest) {
 	Registry::copy_to(p_dest);

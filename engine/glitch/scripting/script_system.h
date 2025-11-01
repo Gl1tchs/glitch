@@ -15,14 +15,18 @@ namespace gl {
  */
 class GL_API ScriptSystem {
 public:
-	static Ref<Scene> get_scene();
-	static void set_scene(Ref<Scene> p_scene);
+	static Scene* get_scene();
 
-	static void on_create();
+	static bool is_running();
 
-	static void on_update(float p_dt);
+	static void on_runtime_start(Scene* p_scene);
+	static void on_runtime_stop();
 
-	static void on_destroy();
+	static void invoke_on_create();
+
+	static void invoke_on_update(float p_dt);
+
+	static void invoke_on_destroy();
 };
 
 } //namespace gl

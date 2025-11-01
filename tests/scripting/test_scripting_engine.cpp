@@ -3,7 +3,6 @@
 #include "glitch/scene/components.h"
 #include "glitch/scene/scene.h"
 #include "glitch/scripting/script_engine.h"
-#include "glitch/scripting/script_system.h"
 
 using namespace gl;
 
@@ -74,11 +73,9 @@ TEST_CASE("Calling engine code") {
 	ScriptComponent& sc = e.add_component<ScriptComponent>();
 	sc.script_path = "../tests/scripting/lua/test_basic.lua";
 
-	ScriptSystem::set_scene(scene);
-
-	ScriptSystem::on_create();
-	ScriptSystem::on_update(0.0);
-	ScriptSystem::on_destroy();
+	scene->start();
+	scene->update(0.0f);
+	scene->stop();
 
 	ScriptEngine::shutdown();
 }
@@ -110,9 +107,7 @@ TEST_CASE("Script fields") {
 	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
 	CHECK(false == std::get<bool>(metadata.fields["alive"]));
 
-	ScriptSystem::set_scene(scene);
-
-	ScriptSystem::on_create();
+	scene->start();
 
 	metadata = ScriptEngine::get_metadata(sc.script);
 
@@ -120,7 +115,7 @@ TEST_CASE("Script fields") {
 	CHECK(100.0 == std::get<double>(metadata.fields["health"]));
 	CHECK(true == std::get<bool>(metadata.fields["alive"]));
 
-	ScriptSystem::on_update(0.0);
+	scene->update(0.0f);
 
 	metadata = ScriptEngine::get_metadata(sc.script);
 
@@ -129,7 +124,7 @@ TEST_CASE("Script fields") {
 	CHECK(true == std::get<bool>(metadata.fields["alive"]));
 
 	// Destroys and resets the data
-	ScriptSystem::on_destroy();
+	scene->stop();
 
 	metadata = ScriptEngine::get_metadata(sc.script);
 

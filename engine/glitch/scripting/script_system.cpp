@@ -5,13 +5,15 @@
 namespace gl {
 
 static std::mutex s_scene_mutex;
-static Ref<Scene> s_scene = nullptr;
+static Scene* s_scene = nullptr;
 
-Ref<Scene> ScriptSystem::get_scene() { return s_scene; }
+Scene* ScriptSystem::get_scene() { return s_scene; }
 
-void ScriptSystem::set_scene(Ref<Scene> p_scene) { s_scene = p_scene; }
+bool ScriptSystem::is_running() { return s_scene != nullptr; }
 
-void ScriptSystem::on_create() {
+void ScriptSystem::on_runtime_start(Scene* p_scene) { s_scene = p_scene; }
+
+void ScriptSystem::invoke_on_create() {
 	std::scoped_lock<std::mutex> lock(s_scene_mutex);
 
 	if (!s_scene) {
@@ -49,7 +51,7 @@ void ScriptSystem::on_create() {
 	}
 }
 
-void ScriptSystem::on_update(float p_dt) {
+void ScriptSystem::invoke_on_update(float p_dt) {
 	std::scoped_lock<std::mutex> lock(s_scene_mutex);
 
 	if (!s_scene) {
@@ -70,7 +72,7 @@ void ScriptSystem::on_update(float p_dt) {
 	}
 }
 
-void ScriptSystem::on_destroy() {
+void ScriptSystem::invoke_on_destroy() {
 	std::scoped_lock<std::mutex> lock(s_scene_mutex);
 
 	if (!s_scene) {
@@ -93,5 +95,7 @@ void ScriptSystem::on_destroy() {
 		sc->reset();
 	}
 }
+
+void ScriptSystem::on_runtime_stop() { s_scene = nullptr; }
 
 } //namespace gl
