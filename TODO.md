@@ -1,5 +1,9 @@
 # TODO
 
+- [ ] Serialization for specifications like MSAA
+- [ ] ECS
+  - [ ] Material component
+
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL
@@ -7,6 +11,11 @@
 - [ ] Parallax mapping
 - [ ] Per Frame Allocators
 - [ ] Async GLTF model loading progress
+
+## Scripting
+
+- [ ] Maybe all scripts need to be loaded before starting to run more efficiently
+- [ ] LuaJIT linux build
 
 ## Bugs
 
@@ -25,7 +34,6 @@
 - [ ] Asset system and serialization
 - [ ] GPU Particle system
 - [ ] Physics engine
-- [ ] Scripting
 
 ## Long Term
 

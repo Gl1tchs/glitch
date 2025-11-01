@@ -7,9 +7,9 @@ using namespace gl;
 TEST_CASE("Transform initialization") {
 	Transform t;
 
-	CHECK(t.position == VEC3_ZERO);
-	CHECK(t.scale == VEC3_ONE);
-	CHECK(t.rotation == VEC3_ZERO);
+	CHECK(t.local_position == VEC3_ZERO);
+	CHECK(t.local_scale == VEC3_ONE);
+	CHECK(t.local_rotation == VEC3_ZERO);
 }
 
 TEST_CASE("Translate transform") {
@@ -17,14 +17,14 @@ TEST_CASE("Translate transform") {
 	glm::vec3 translation(1.0f, 2.0f, 3.0f);
 	t.translate(translation);
 
-	CHECK(t.position == translation);
+	CHECK(t.local_position == translation);
 }
 
 TEST_CASE("Rotate transform") {
 	Transform t;
 	t.rotate(90.0f, VEC3_UP);
 
-	CHECK(t.rotation == glm::vec3{ 0.0f, 90.0f, 0.0f });
+	CHECK(t.local_rotation == glm::vec3{ 0.0f, 90.0f, 0.0f });
 }
 
 TEST_CASE("Transform directions") {

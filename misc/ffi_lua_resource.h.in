@@ -1,0 +1,8 @@
+#pragma once
+
+// The content of ffi.lua is embedded as a raw string literal
+namespace gl {
+namespace lua_bindings {
+static constexpr const char* ffi_source = R"lua(@FFI_LUA_CONTENT@)lua";
+} //namespace lua_bindings
+} //namespace gl

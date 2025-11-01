@@ -4,18 +4,10 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "(LLDB) Launch Testbed",
-            "program": "${workspaceFolder}/out/glitch-editor",
-            "args": [],
-            "cwd": "${workspaceFolder}/testbed"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "(LLDB) Launch Bundler",
-            "program": "${workspaceFolder}/out/gl-bundler",
+            "program": "${workspaceFolder}/bin/gl-bundler",
             "args": [
-                "out/include/shader_bundle.gen.h",
+                "bin/include/shader_bundle.gen.h",
                 "build/shaders",
                 "build/shaders/pipelines/unlit/mesh.frag.spv",
                 "build/shaders/pipelines/pbr/mesh.frag.spv"
@@ -23,13 +15,24 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "(Windows) Launch Testbed",
+            "name": "(Windows) Launch Editor",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/out/glitch-editor.exe",
+            "program": "${workspaceFolder}/bin/glitch-editor.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal"
+        },
+        {
+            "name": "(Windows) Launch Doctests",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/glitch-doctests.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin",
             "environment": [],
             "console": "externalTerminal"
         }

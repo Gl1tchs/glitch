@@ -50,7 +50,7 @@ bool AABB::is_inside_frustum(const Frustum& p_frustum) const {
 	return true;
 }
 
-AABB AABB::transform(const glm::mat4& p_transform) {
+AABB AABB::transform(const glm::mat4& p_transform) const {
 	// Transform 8 corners and re-construct AABB
 	glm::vec3 corners[8] = {
 		{ min.x, min.y, min.z },

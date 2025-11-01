@@ -5,6 +5,8 @@
 
 namespace gl {
 
+static std::unordered_map<MeshHandle, Ref<Mesh>> s_meshes;
+
 static AABB _get_aabb_from_vertices(const std::span<MeshVertex>& p_vertices) {
 	glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
 	glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
@@ -94,6 +96,33 @@ Ref<MeshPrimitive> MeshPrimitive::create(
 	primitive->aabb = _get_aabb_from_vertices(p_vertices);
 
 	return primitive;
+}
+
+void MeshSystem::free_all() {
+	Renderer::get_backend()->device_wait();
+
+	s_meshes.clear();
+}
+
+MeshHandle MeshSystem::register_mesh(Ref<Mesh> p_mesh) {
+	static MeshHandle s_counter = 0;
+	s_meshes[++s_counter] = p_mesh;
+	return s_counter;
+}
+
+Ref<Mesh> MeshSystem::get_mesh(MeshHandle p_handle) {
+	const auto it = s_meshes.find(p_handle);
+	if (it == s_meshes.end()) {
+		return nullptr;
+	}
+
+	return it->second;
+}
+
+bool MeshSystem::free_mesh(MeshHandle p_handle) {
+	Renderer::get_backend()->device_wait();
+
+	return s_meshes.erase(p_handle) != 0;
 }
 
 } //namespace gl

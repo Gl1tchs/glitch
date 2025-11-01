@@ -2,6 +2,7 @@
 
 #include "glitch/platform/vulkan/vk_backend.h"
 #include "glitch/renderer/graphics_pass.h"
+#include "glitch/renderer/mesh.h"
 #include "glitch/renderer/types.h"
 
 #include <imgui.h>
@@ -69,6 +70,9 @@ Renderer::Renderer(Ref<Window> p_window, RendererSettings p_settings) :
 
 Renderer::~Renderer() {
 	s_backend->device_wait();
+
+	// Free all meshes
+	MeshSystem::free_all();
 
 	// destroy image and renderpass resources
 	s_backend->image_free(final_image);

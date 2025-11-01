@@ -10,8 +10,9 @@ OrthographicCamera::OrthographicCamera() : Camera() {
 	far_clip = 1.0f;
 }
 
-glm::mat4 OrthographicCamera::get_view_matrix() const {
-	return glm::inverse(transform.to_mat4());
+glm::mat4 OrthographicCamera::get_view_matrix(
+		const Transform& p_transform) const {
+	return glm::inverse(p_transform.to_mat4());
 }
 
 glm::mat4 OrthographicCamera::get_projection_matrix() const {
@@ -24,9 +25,11 @@ PerspectiveCamera::PerspectiveCamera() : Camera() {
 	far_clip = 10000.0f;
 }
 
-glm::mat4 PerspectiveCamera::get_view_matrix() const {
-	return glm::lookAt(transform.position,
-			transform.position + transform.get_forward(), transform.get_up());
+glm::mat4 PerspectiveCamera::get_view_matrix(
+		const Transform& p_transform) const {
+	return glm::lookAt(p_transform.get_position(),
+			p_transform.get_position() + p_transform.get_forward(),
+			p_transform.get_up());
 }
 
 glm::mat4 PerspectiveCamera::get_projection_matrix() const {

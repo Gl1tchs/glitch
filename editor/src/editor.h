@@ -4,8 +4,9 @@
 #include <glitch/core/deletion_queue.h>
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
-#include <glitch/scene_graph/gltf_loader.h>
-#include <glitch/scene_graph/scene_renderer.h>
+#include <glitch/scene/entity.h>
+#include <glitch/scene/gltf_loader.h>
+#include <glitch/scene/scene_renderer.h>
 
 #include "camera_controller.h"
 #include "grid_pass.h"
@@ -25,25 +26,33 @@ protected:
 	void _on_destroy() override;
 
 private:
-	void _traverse_render_node_hierarchy(const Ref<SceneNode>& p_node);
+	void _render_hierarchy();
 
-	void _render_hierarchy_context_menu(const Ref<SceneNode>& p_node);
+	void _render_hierarchy_entry(Entity p_entity);
 
-	void _render_node_properties(Ref<SceneNode> p_node);
+	void _render_hierarchy_context_menu(const Entity& p_entity);
+
+	void _render_inspector(Entity& p_entity);
+
+	Ref<Scene> _get_scene();
 
 private:
 	Ref<SceneRenderer> scene_renderer;
 
-	SceneGraph scene_graph;
+	Ref<Scene> scene;
 	Scope<GLTFLoader> gltf_loader;
 
 	CameraController camera_controller;
-	PerspectiveCamera camera;
+	UID camera_uid;
 
 	Ref<GridPass> grid_pass;
 
-	Ref<SceneNode> selected_node = nullptr;
+	Entity selected_entity = INVALID_ENTITY;
 	DeletionQueue node_deletion_queue;
 
 	RendererSettings renderer_settings = {};
+
+	// Scripting
+	Ref<Scene> runtime_scene;
+	bool is_running = false;
 };
