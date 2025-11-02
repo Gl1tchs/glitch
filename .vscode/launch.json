@@ -5,7 +5,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "(LLDB) Launch Bundler",
-            "program": "${workspaceFolder}/bin/gl-bundler",
+            "program": "${workspaceFolder}/bin/debug/gl-bundler",
             "args": [
                 "bin/include/shader_bundle.gen.h",
                 "build/shaders",
@@ -18,7 +18,7 @@
             "name": "(Windows) Launch Editor",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/glitch-editor.exe",
+            "program": "${workspaceFolder}/bin/debug/glitch-editor.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -29,10 +29,10 @@
             "name": "(Windows) Launch Doctests",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/glitch-doctests.exe",
+            "program": "${workspaceFolder}/bin/debug/glitch-doctests.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/bin",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "console": "externalTerminal"
         }

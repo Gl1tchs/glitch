@@ -15,7 +15,7 @@ TEST_CASE("Test script bindings") {
 	Entity e = scene.create("Entity");
 
 	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "../tests/scripting/lua/test_bindings.lua";
+	sc.script_path = "tests/scripting/lua/test_bindings.lua";
 
 	CHECK(sc.load() == ScriptResult::SUCCESS);
 

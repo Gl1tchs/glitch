@@ -69,7 +69,7 @@ TEST_CASE("Calling engine code") {
 	Entity e = scene->create("Entity");
 
 	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "../tests/scripting/lua/test_basic.lua";
+	sc.script_path = "tests/scripting/lua/test_basic.lua";
 
 	scene->start();
 	scene->update(0.0f);
@@ -86,7 +86,7 @@ TEST_CASE("Script fields") {
 	Entity e = scene->create("Entity");
 
 	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "../tests/scripting/lua/test_fields.lua";
+	sc.script_path = "tests/scripting/lua/test_fields.lua";
 
 	CHECK(sc.load() == ScriptResult::SUCCESS);
 

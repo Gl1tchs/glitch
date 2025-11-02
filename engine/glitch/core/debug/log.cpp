@@ -11,8 +11,7 @@ const char* LOG_LEVEL_TO_STR[] = {
 };
 
 inline static std::string get_timestamp() {
-	const auto now = std::chrono::system_clock::to_time_t(
-			std::chrono::system_clock::now());
+	const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
 	std::tm tm_now{};
 	std::stringstream ss;
@@ -38,8 +37,8 @@ std::unordered_map<LogLevel, std::string> Logger::s_verbosity_colors = {
 void Logger::log(LogLevel p_level, const std::string& p_fmt) {
 	const std::string time_stamp = get_timestamp();
 
-	const std::string message = std::format(
-			"[{}] [{}]: {}", time_stamp, LOG_LEVEL_TO_STR[p_level], p_fmt);
+	const std::string message =
+			std::format("[{}] [{}] {}", time_stamp, LOG_LEVEL_TO_STR[p_level], p_fmt);
 
 	const std::string colored_messages = _get_colored_message(message, p_level);
 
@@ -47,8 +46,7 @@ void Logger::log(LogLevel p_level, const std::string& p_fmt) {
 	std::cout << colored_messages << "\x1B[0m\n";
 }
 
-std::string Logger::_get_colored_message(
-		const std::string& p_message, LogLevel p_level) {
+std::string Logger::_get_colored_message(const std::string& p_message, LogLevel p_level) {
 	const auto color_it = s_verbosity_colors.find(p_level);
 	if (color_it != s_verbosity_colors.end()) {
 		return color_it->second + p_message;

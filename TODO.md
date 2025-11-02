@@ -9,6 +9,11 @@
 - [ ] Per Frame Allocators
 - [ ] Async GLTF model loading progress
 
+## Linux
+
+- [ ] Compile and link to LuaJIT
+- [ ] Try out Fil-C and make it build 
+
 ## Scripting
 
 - [ ] Assert should only affect scripts
@@ -19,7 +24,6 @@
   - [ ] Mesh API
   - [ ] Compute API
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
-- [ ] LuaJIT linux build
 
 ## Bugs
 
