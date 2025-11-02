@@ -58,6 +58,9 @@ public:
 
 	std::vector<Entity> get_children() const;
 
+	Optional<Entity> find_child_by_id(UID p_uid) const;
+	Optional<Entity> find_child_by_name(const std::string& p_name) const;
+
 	bool remove_child(Entity p_child);
 
 	static bool is_parent_of(Entity p_parent, Entity p_child);

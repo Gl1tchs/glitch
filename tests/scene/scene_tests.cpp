@@ -38,11 +38,11 @@ TEST_CASE("Scene copy") {
 	Scene scene2;
 	scene.copy_to(scene2);
 
-	Entity e1_copy = scene2.find_by_id(e1.get_uid());
-	Entity e2_copy = scene2.find_by_id(e2.get_uid());
-	Entity e3_copy = scene2.find_by_id(e3.get_uid());
-	Entity e4_copy = scene2.find_by_id(e4.get_uid());
-	Entity e5_copy = scene2.find_by_id(e5.get_uid());
+	Entity e1_copy = scene2.find_by_id(e1.get_uid()).value_or(INVALID_ENTITY);
+	Entity e2_copy = scene2.find_by_id(e2.get_uid()).value_or(INVALID_ENTITY);
+	Entity e3_copy = scene2.find_by_id(e3.get_uid()).value_or(INVALID_ENTITY);
+	Entity e4_copy = scene2.find_by_id(e4.get_uid()).value_or(INVALID_ENTITY);
+	Entity e5_copy = scene2.find_by_id(e5.get_uid()).value_or(INVALID_ENTITY);
 
 	CHECK(e1_copy != INVALID_ENTITY);
 	CHECK(e2_copy != INVALID_ENTITY);

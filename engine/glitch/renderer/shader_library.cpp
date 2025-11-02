@@ -26,7 +26,7 @@ std::vector<uint32_t> ShaderLibrary::get_bundled_spirv(const char* p_path) {
 		return {};
 	}
 
-	uint32_t* bundle_data = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
+	const uint32_t* bundle_data = (uint32_t*)&BUNDLE_DATA[shader_data.start_idx];
 
 	return std::vector<uint32_t>(bundle_data, bundle_data + shader_data.size);
 }

@@ -76,7 +76,7 @@ void EditorApplication::_on_update(float p_dt) {
 		runtime_scene->update(p_dt);
 	}
 
-	Entity camera = _get_scene()->find_by_id(camera_uid);
+	Entity camera = _get_scene()->find_by_id(camera_uid).value();
 	grid_pass->set_camera(camera.get_component<CameraComponent>()->camera,
 			camera.get_transform());
 
@@ -285,7 +285,8 @@ void EditorApplication::_on_update(float p_dt) {
 					runtime_scene->start();
 					is_running = true;
 
-					Entity camera = _get_scene()->find_by_id(camera_uid);
+					Entity camera =
+							_get_scene()->find_by_id(camera_uid).value();
 					camera_controller.set_camera(
 							&camera.get_component<CameraComponent>()->camera,
 							&camera.get_transform());
@@ -299,7 +300,8 @@ void EditorApplication::_on_update(float p_dt) {
 					selected_entity =
 							Entity((EntityId)selected_entity, scene.get());
 
-					Entity camera = _get_scene()->find_by_id(camera_uid);
+					Entity camera =
+							_get_scene()->find_by_id(camera_uid).value();
 					camera_controller.set_camera(
 							&camera.get_component<CameraComponent>()->camera,
 							&camera.get_transform());

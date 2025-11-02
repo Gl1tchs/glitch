@@ -10,7 +10,7 @@ namespace gl {
 
 typedef GLFWwindow WindowHandle;
 
-enum WindowCursorMode {
+enum WindowCursorMode : int {
 	WINDOW_CURSOR_MODE_NORMAL = 0,
 	WINDOW_CURSOR_MODE_HIDDEN = 1,
 	WINDOW_CURSOR_MODE_DISABLED = 2,

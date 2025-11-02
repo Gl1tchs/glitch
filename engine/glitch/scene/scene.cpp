@@ -1,6 +1,5 @@
 #include "glitch/scene/scene.h"
 
-#include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
 #include "glitch/scripting/script_system.h"
 
@@ -13,9 +12,7 @@ void Scene::start() {
 
 	ScriptSystem::on_runtime_start(this);
 
-	for (Entity entity : view<ScriptComponent>()) {
-		ScriptSystem::invoke_on_create();
-	}
+	ScriptSystem::invoke_on_create();
 }
 
 void Scene::update(float p_dt) {
@@ -70,9 +67,9 @@ Entity Scene::create(UID p_uid, const std::string& p_name, UID p_parent_id) {
 	entity.add_component<RelationComponent>();
 
 	if (p_parent_id) {
-		Entity parent = find_by_id(p_parent_id);
+		Optional<Entity> parent = find_by_id(p_parent_id);
 		if (parent) {
-			entity.set_parent(parent);
+			entity.set_parent(*parent);
 		}
 	}
 
@@ -96,37 +93,35 @@ void Scene::destroy(Entity p_entity) {
 }
 
 void Scene::destroy(UID p_uid) {
-	Entity entity = find_by_id(p_uid);
+	Optional<Entity> entity = find_by_id(p_uid);
 	if (!entity) {
 		return;
 	}
 
-	despawn(entity);
+	despawn(*entity);
 }
 
 bool Scene::exists(UID p_uid) const {
 	return entity_map.find(p_uid) != entity_map.end();
 }
 
-Entity Scene::find_by_id(UID p_uid) {
-	if (entity_map.find(p_uid) != entity_map.end()) {
-		return { entity_map.at(p_uid), this };
+Optional<Entity> Scene::find_by_id(UID p_uid) {
+	if (const auto it = entity_map.find(p_uid); it != entity_map.end()) {
+		return it->second;
 	}
 	return {};
 }
 
-Entity Scene::find_by_name(const std::string& p_name) {
+Optional<Entity> Scene::find_by_name(const std::string& p_name) {
 	const auto view = this->view<IdComponent>();
-	const auto entity_it =
-			std::find_if(view.begin(), view.end(), [&](const auto& entity) {
-				return get<IdComponent>(entity)->tag == p_name;
-			});
+	const auto it = std::find_if(view.begin(), view.end(),
+			[&](const Entity& entity) { return entity.get_name() == p_name; });
 
-	if (entity_it != view.end()) {
-		return { *entity_it, this };
-	} else {
-		return {}; // Return an empty entity if not found
+	if (it != view.end()) {
+		return *it;
 	}
+
+	return {};
 }
 
 } //namespace gl

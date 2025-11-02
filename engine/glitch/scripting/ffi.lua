@@ -2,42 +2,219 @@ ffi = require('ffi')
 
 ffi.cdef [[
     /* ---------------- Math Types ---------------- */
-
     typedef struct { float x, y; } Vec2;
     typedef struct { float x, y, z; } Vec3;
     typedef struct { float x, y, z, w; } Vec4;
-    typedef struct { float r, g, b, a; } Color;
-    
-    /* ---------------- Utility Functions ---------------- */
 
-    void Log(const char* message);
+    /* ---------------- Core Types ---------------- */
 
-    /* ---------------- Components ---------------- */
     typedef struct Transform {
-        struct Transform* parent; 
+        struct Transform* parent;
         Vec3 position;
         Vec3 rotation;
         Vec3 scale;
     } Transform;
 
-    Transform* GetTransform(uint32_t entity_id);
+    /* ---------------- Global Engine Functions ---------------- */
+    void Log(const char* message);
+    void Assert(bool condition, const char* message);
 
-    /* ---------------- Input API ---------------- */
-    
-    bool GetKeyDown(int key_code);
-    bool GetKeyUp(int key_code);
-    
-    bool GetMouseDown(int mouse_code);
-    bool GetMouseUp(int mouse_code);
+    uint32_t FindEntityById(uint32_t p_id);
+    uint32_t FindEntityByName(const char* p_name);
+
+    Transform* GetTransform(uint32_t self);
+
+    int GetKeyDown(int key_code);
+    int GetKeyUp(int key_code);
+    int GetMouseDown(int mouse_code);
+    int GetMouseUp(int mouse_code);
+
+    /* ---------------- Method Implementations ---------------- */
+
+    /* Entity Methods */
+    uint32_t Entity_Create(const char* name);
+    void Entity_Destroy(uint32_t self);
+
+    int Entity_IsValid(uint32_t self);
+
+    const char* Entity_GetName(uint32_t self);
+    void Entity_SetName(uint32_t self, const char* name);
+
+    uint32_t Entity_GetParent(uint32_t self);
+    void Entity_SetParent(uint32_t self, uint32_t parent);
+
+    uint32_t Entity_FindChildById(uint32_t self, uint32_t id);
+    uint32_t Entity_FindChildByName(uint32_t self, const char* name);
+
+    /* Transform Methods */
+    void Transform_Rotate(Transform* transform, float angle, Vec3 axis);
+    Vec3 Transform_GetForward(Transform* transform);
+    Vec3 Transform_GetRight(Transform* transform);
+    Vec3 Transform_GetUp(Transform* transform);
+
+    /* Window Methods */
+    void Window_SetTitle(const char* title);
+    int Window_GetCursorMode();
+    void Window_SetCursorMode(int mode);
+    Vec2 Window_GetSize();
+
+    /* C System Functions */
+    void free(void* ptr);
 ]]
 
----------------- Global Engine Namespace ----------------
-
 Engine = {}
+Debug = {}
+Entity = {}
+Input = {}
+Window = {}
 
----------------- Input Types ----------------
+local C = {}
+Engine.C_Functions = C
 
-__internal_KeyCode = {
+-- Type wrappers
+
+Vec2 = function(x, y)
+    -- Creates a new Vec2 cdata object, fills with 0 if args are nil
+    return ffi.new("Vec2", x or 0, y or 0)
+end
+
+Vec3 = function(x, y, z)
+    -- Creates a new Vec3 cdata object, fills with 0 if args are nil
+    return ffi.new("Vec3", x or 0, y or 0, z or 0)
+end
+
+Vec4 = function(x, y, z, w)
+    -- Creates a new Vec4 cdata object, fills with 0 if args are nil
+    return ffi.new("Vec4", x or 0, y or 0, z or 0, w or 0)
+end
+
+-- Debug Utilities --
+
+Debug.Log = function(...)
+    C.Log(string.format(...))
+end
+Debug.Assert = function(condition, ...)
+    C.Assert(condition, string.format(...))
+end
+
+-- Entity Methods --
+
+Entity.FindById = function(id)
+    return C.FindEntityById(id)
+end
+Entity.FindByName = function(name)
+    return C.FindEntityByName(name)
+end
+Entity.GetTransform = function(entity_id)
+    return C.GetTransform(entity_id)
+end
+Entity.Create = function(name)
+    return C.Entity_Create(name)
+end
+Entity.Destroy = function(entity)
+    return C.Entity_Destroy(entity)
+end
+Entity.IsValid = function(entity)
+    return C.Entity_IsValid(entity) ~= 0
+end
+Entity.GetName = function(entity)
+    local c_ptr = C.Entity_GetName(entity)
+
+    if c_ptr == nil then
+        return ""
+    end
+
+    local name = ffi.string(c_ptr)
+
+    -- Tell the FFI garbage collector to call C.free(c_ptr)
+    -- when the 'c_ptr' object is no longer reachable.
+    ffi.gc(c_ptr, C.free)
+
+    return name
+end
+Entity.SetName = function(entity, name)
+    return C.Entity_SetName(entity, name)
+end
+Entity.GetParent = function(entity)
+    return C.Entity_GetParent(entity)
+end
+Entity.SetParent = function(entity, parent)
+    return C.Entity_SetParent(entity, parent)
+end
+Entity.FindChildById = function(entity, id)
+    return C.Entity_FindChildById(entity, id)
+end
+Entity.FindChildByName = function(entity, name)
+    return C.Entity_FindChildByName(entity, name)
+end
+
+-- Transform methods
+
+Transform = function()
+    -- Creates a new, zero-initialized Transform cdata object
+    -- (parent will be nil, vectors will be 0,0,0)
+    return ffi.new("Transform")
+end
+
+ffi.metatype("Transform", {
+    __index = {
+        Rotate = function(self, angle, axis)
+            C.Transform_Rotate(self, angle, axis)
+        end,
+        GetForward = function(self)
+            return C.Transform_GetForward(self)
+        end,
+        GetRight = function(self)
+            return C.Transform_GetRight(self)
+        end,
+        GetUp = function(self)
+            return C.Transform_GetUp(self)
+        end
+    }
+})
+
+-- Input API --
+
+Input.GetKeyDown = function(key)
+    return C.GetKeyDown(key) ~= 0
+end
+Input.GetKeyUp = function(key)
+    return C.GetKeyUp(key) ~= 0
+end
+Input.GetMouseDown = function(btn)
+    return C.GetMouseDown(btn) ~= 0
+end
+Input.GetMouseUp = function(btn)
+    return C.GetMouseUp(btn) ~= 0
+end
+
+-- Window Methods --
+
+Window.SetTitle = function(title)
+    return C.Window_SetTitle(title);
+end
+Window.GetCursorMode = function()
+    return C.Window_GetCursorMode();
+end
+Window.SetCursorMode = function(mode)
+    C.Window_SetCursorMode(mode);
+end
+Window.GetSize = function()
+    return C.Window_GetSize()
+end;
+
+local CursorMode = {
+    Normal = 0,
+    Hidden = 1,
+    Disabled = 2,
+    Captured = 3
+}
+
+Window.CursorMode = CursorMode
+
+-- ---- KeyCode and MouseCode enums ----
+
+local KeyCode = {
     Space = 32,
     Apostrophe = 39,
     Comma = 44,
@@ -160,12 +337,12 @@ __internal_KeyCode = {
     Menu = 348
 }
 
-Engine.KeyCode = __internal_KeyCode
+Input.KeyCode = KeyCode
 
-__internal_MouseCode = {
+local MouseCode = {
     Left = 0,
     Right = 1,
     Middle = 2
 }
 
-Engine.MouseCode = __internal_MouseCode
+Input.MouseCode = MouseCode

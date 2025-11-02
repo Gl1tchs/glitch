@@ -1,9 +1,6 @@
 # TODO
 
 - [ ] Serialization for specifications like MSAA
-- [ ] ECS
-  - [ ] Material component
-
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL
@@ -14,6 +11,13 @@
 
 ## Scripting
 
+- [ ] Assert should only affect scripts
+- [ ] Global error handling (errno like functionality)
+- [ ] Some more functions
+  - [ ] void Transform_LookAt(Transform* transform, Vec3 point)
+  - [ ] Timer type
+  - [ ] Mesh API
+  - [ ] Compute API
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
 - [ ] LuaJIT linux build
 
