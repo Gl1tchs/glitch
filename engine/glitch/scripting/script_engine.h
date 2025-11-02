@@ -75,6 +75,7 @@ public:
 			if (!call_function(1 + sizeof...(p_args))) {
 				GL_LOG_ERROR(
 						"[LUA] Error calling {}: {}", p_func_name, get_error());
+				// TODO: global error handling
 				result = ScriptResult::EXECUTION_ERROR;
 			}
 		} else {

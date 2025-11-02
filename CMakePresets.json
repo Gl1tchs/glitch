@@ -1,0 +1,54 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug Configuration",
+            "description": "Configure for Debug build with dynamic libs off.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/bin",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "GL_BUILD_DYNAMIC_LIBS": "0",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release Configuration",
+            "description": "Configure for Release build with dynamic libs off.",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/bin",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "GL_BUILD_DYNAMIC_LIBS": "0",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "build-debug",
+            "displayName": "Build (Debug)",
+            "description": "Build the project in Debug mode",
+            "configurePreset": "debug",
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "build-release",
+            "displayName": "Build (Release)",
+            "description": "Build the project in Release mode",
+            "configurePreset": "release",
+            "targets": [
+                "all"
+            ]
+        }
+    ]
+}

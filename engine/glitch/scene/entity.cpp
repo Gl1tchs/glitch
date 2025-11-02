@@ -91,6 +91,30 @@ std::vector<Entity> Entity::get_children() const {
 	return children;
 }
 
+Optional<Entity> Entity::find_child_by_id(UID p_uid) const {
+	const auto& children = get_relation().children_ids;
+	const auto it = std::find(children.begin(), children.end(), p_uid);
+	if (it == children.end()) {
+		return std::nullopt;
+	}
+
+	return scene->find_by_id(*it);
+}
+
+Optional<Entity> Entity::find_child_by_name(const std::string& p_name) const {
+	Optional<Entity> child_to_find = scene->find_by_name(p_name);
+	if (!child_to_find) {
+		return std::nullopt;
+	}
+
+	Optional<Entity> child_parent = child_to_find->get_parent();
+	if (!child_parent || (uint32_t)*child_parent != handle) {
+		return std::nullopt;
+	}
+
+	return *child_to_find;
+}
+
 bool Entity::remove_child(Entity child) {
 	auto& children_ids = get_relation().children_ids;
 
