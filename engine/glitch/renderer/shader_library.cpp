@@ -31,14 +31,13 @@ std::vector<uint32_t> ShaderLibrary::get_bundled_spirv(const char* p_path) {
 	return std::vector<uint32_t>(bundle_data, bundle_data + shader_data.size);
 }
 
-std::vector<uint32_t> ShaderLibrary::get_spirv_data(
-		const fs::path& p_filepath) {
+std::vector<uint32_t> ShaderLibrary::get_spirv_data(const fs::path& p_filepath) {
 	size_t file_size = fs::file_size(p_filepath);
 
 	std::ifstream file(p_filepath, std::ios::in | std::ios::binary);
 	if (!file.is_open()) {
-		GL_LOG_ERROR(
-				"Unable to open SPIRV file on path: {}.", p_filepath.string());
+		GL_LOG_ERROR("[ShaderLibrary::get_spirv_data] Unable to open SPIRV file at path: '{}'.",
+				p_filepath.string());
 		return {};
 	}
 

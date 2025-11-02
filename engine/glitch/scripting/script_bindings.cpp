@@ -18,50 +18,49 @@ extern "C" {
 
 // --- Global functions ---
 
-void Log(const char* message);
-void Assert(int condition, const char* message);
-
-EntityUID FindEntityById(EntityUID p_id);
-EntityUID FindEntityByName(const char* p_name);
+void debug_log(const char* message);
 
 // --- Entity Methods  ---
 
-Transform* GetTransform(EntityUID self);
+EntityUID entity_create(const char* name);
+void entity_destroy(EntityUID self);
 
-EntityUID Entity_Create(const char* name);
-void Entity_Destroy(EntityUID self);
+int entity_is_valid(EntityUID self);
 
-int Entity_IsValid(EntityUID self);
+EntityUID entity_find_by_id(EntityUID p_id);
+EntityUID entity_find_by_name(const char* p_name);
 
-const char* Entity_GetName(EntityUID self);
-void Entity_SetName(EntityUID self, const char* name);
+const char* entity_get_name(EntityUID self);
+void entity_set_name(EntityUID self, const char* name);
 
-EntityUID Entity_GetParent(EntityUID self);
-void Entity_SetParent(EntityUID self, EntityUID parent);
+EntityUID entity_get_parent(EntityUID self);
+void entity_set_parent(EntityUID self, EntityUID parent);
 
-EntityUID Entity_FindChildById(EntityUID self, EntityUID id);
-EntityUID Entity_FindChildByName(EntityUID self, const char* name);
+EntityUID entity_find_child_by_id(EntityUID self, EntityUID id);
+EntityUID entity_find_child_by_name(EntityUID self, const char* name);
+
+Transform* entity_get_transform(EntityUID self);
 
 // --- Transform Methods ---
 
-void Transform_Rotate(Transform* transform, float angle, glm::vec3 axis);
-glm::vec3 Transform_GetForward(Transform* transform);
-glm::vec3 Transform_GetRight(Transform* transform);
-glm::vec3 Transform_GetUp(Transform* transform);
+void transform_rotate(Transform* transform, float angle, glm::vec3 axis);
+glm::vec3 transform_get_forward(Transform* transform);
+glm::vec3 transform_get_right(Transform* transform);
+glm::vec3 transform_get_up(Transform* transform);
 
 // --- Input ---
 
-int GetKeyDown(int key_code);
-int GetKeyUp(int key_code);
-int GetMouseDown(int mouse_code);
-int GetMouseUp(int mouse_code);
+int input_get_key_down(int key_code);
+int input_get_key_up(int key_code);
+int input_get_mouse_down(int mouse_code);
+int input_get_mouse_up(int mouse_code);
 
 // --- Window Methods ---
 
-void Window_SetTitle(const char* title);
-int Window_GetCursorMode();
+void window_set_title(const char* title);
+int window_set_cursor_mode();
 void Window_SetCursorMode(int mode);
-glm::vec2 Window_GetSize();
+glm::vec2 window_set_size();
 
 } // extern "C"
 
@@ -73,100 +72,86 @@ static void _run_string(lua_State* L, const char* p_code) {
 	}
 }
 
-static void _run_string(lua_State* L, const std::string& p_code) {
-	_run_string(L, p_code.c_str());
-}
+static void _run_string(lua_State* L, const std::string& p_code) { _run_string(L, p_code.c_str()); }
 
-static void _bind_function(lua_State* L, const char* p_func_path,
-		const char* p_func_def, uintptr_t p_fnptr) {
-	_run_string(L,
-			std::format("{} = ffi.cast('{}', {}ULL)", p_func_path, p_func_def,
-					p_fnptr));
+static void _bind_function(
+		lua_State* L, const char* p_func_path, const char* p_func_def, uintptr_t p_fnptr) {
+	_run_string(L, std::format("{} = ffi.cast('{}', {}ULL)", p_func_path, p_func_def, p_fnptr));
 }
 
 void _register_bindings(lua_State* L) {
 	// Load and run the FFI script
 	_run_string(L, lua_bindings::ffi_source);
 
-	/* ---------------- Utility Functions ---------------- */
-	_bind_function(L, "Engine.C_Functions.Log", "void (*)(const char*)",
-			(uintptr_t)&Log);
-	_bind_function(L, "Engine.C_Functions.Assert", "void (*)(int, const char*)",
-			(uintptr_t)&Assert);
-
-	/* ---------------- Global Engine Functions ---------------- */
-	_bind_function(L, "Engine.C_Functions.FindEntityById",
-			"uint32_t (*)(uint32_t)", (uintptr_t)&FindEntityById);
-	_bind_function(L, "Engine.C_Functions.FindEntityByName",
-			"uint32_t (*)(const char*)", (uintptr_t)&FindEntityByName);
-
-	_bind_function(L, "Engine.C_Functions.GetTransform",
-			"Transform* (*)(uint32_t)", (uintptr_t)&GetTransform);
+	/* ---------------- Debug Namespace ---------------- */
+	_bind_function(
+			L, "Engine.C_Functions.debug_log", "void (*)(const char*)", (uintptr_t)&debug_log);
 
 	/* ---------------- Entity Methods ---------------- */
-	_bind_function(L, "Engine.C_Functions.Entity_Create",
-			"uint32_t (*)(const char*)", (uintptr_t)&Entity_Create);
-	_bind_function(L, "Engine.C_Functions.Entity_Destroy", "void (*)(uint32_t)",
-			(uintptr_t)&Entity_Destroy);
-	_bind_function(L, "Engine.C_Functions.Entity_IsValid", "int (*)(uint32_t)",
-			(uintptr_t)&Entity_IsValid);
-	_bind_function(L, "Engine.C_Functions.Entity_GetName",
-			"const char* (*)(uint32_t)", (uintptr_t)&Entity_GetName);
-	_bind_function(L, "Engine.C_Functions.Entity_SetName",
-			"void (*)(uint32_t, const char*)", (uintptr_t)&Entity_SetName);
-	_bind_function(L, "Engine.C_Functions.Entity_GetParent",
-			"uint32_t (*)(uint32_t)", (uintptr_t)&Entity_GetParent);
-	_bind_function(L, "Engine.C_Functions.Entity_SetParent",
-			"void (*)(uint32_t, uint32_t)", (uintptr_t)&Entity_SetParent);
-	_bind_function(L, "Engine.C_Functions.Entity_FindChildById",
-			"uint32_t (*)(uint32_t, uint32_t)",
-			(uintptr_t)&Entity_FindChildById);
-	_bind_function(L, "Engine.C_Functions.Entity_FindChildByName",
-			"uint32_t (*)(uint32_t, const char*)",
-			(uintptr_t)&Entity_FindChildByName);
+	_bind_function(L, "Engine.C_Functions.entity_create", "uint32_t (*)(const char*)",
+			(uintptr_t)&entity_create);
+	_bind_function(L, "Engine.C_Functions.entity_destroy", "void (*)(uint32_t)",
+			(uintptr_t)&entity_destroy);
+	_bind_function(L, "Engine.C_Functions.entity_is_valid", "int (*)(uint32_t)",
+			(uintptr_t)&entity_is_valid);
+	_bind_function(L, "Engine.C_Functions.entity_find_by_id", "uint32_t (*)(uint32_t)",
+			(uintptr_t)&entity_find_by_id);
+	_bind_function(L, "Engine.C_Functions.entity_find_by_name", "uint32_t (*)(const char*)",
+			(uintptr_t)&entity_find_by_name);
+	_bind_function(L, "Engine.C_Functions.entity_get_name", "const char* (*)(uint32_t)",
+			(uintptr_t)&entity_get_name);
+	_bind_function(L, "Engine.C_Functions.entity_set_name", "void (*)(uint32_t, const char*)",
+			(uintptr_t)&entity_set_name);
+	_bind_function(L, "Engine.C_Functions.entity_get_parent", "uint32_t (*)(uint32_t)",
+			(uintptr_t)&entity_get_parent);
+	_bind_function(L, "Engine.C_Functions.entity_set_parent", "void (*)(uint32_t, uint32_t)",
+			(uintptr_t)&entity_set_parent);
+	_bind_function(L, "Engine.C_Functions.entity_find_child_by_id",
+			"uint32_t (*)(uint32_t, uint32_t)", (uintptr_t)&entity_find_child_by_id);
+	_bind_function(L, "Engine.C_Functions.entity_find_child_by_name",
+			"uint32_t (*)(uint32_t, const char*)", (uintptr_t)&entity_find_child_by_name);
+	_bind_function(L, "Engine.C_Functions.entity_get_transform", "Transform* (*)(uint32_t)",
+			(uintptr_t)&entity_get_transform);
 
 	/* ---------------- Transform Methods ---------------- */
-	_bind_function(L, "Engine.C_Functions.Transform_Rotate",
-			"void (*)(Transform*, float, Vec3)", (uintptr_t)&Transform_Rotate);
-	_bind_function(L, "Engine.C_Functions.Transform_GetForward",
-			"Vec3 (*)(Transform*)", (uintptr_t)&Transform_GetForward);
-	_bind_function(L, "Engine.C_Functions.Transform_GetRight",
-			"Vec3 (*)(Transform*)", (uintptr_t)&Transform_GetRight);
-	_bind_function(L, "Engine.C_Functions.Transform_GetUp",
-			"Vec3 (*)(Transform*)", (uintptr_t)&Transform_GetUp);
+	_bind_function(L, "Engine.C_Functions.transform_rotate", "void (*)(Transform*, float, Vec3)",
+			(uintptr_t)&transform_rotate);
+	_bind_function(L, "Engine.C_Functions.transform_get_forward", "Vec3 (*)(Transform*)",
+			(uintptr_t)&transform_get_forward);
+	_bind_function(L, "Engine.C_Functions.transform_get_right", "Vec3 (*)(Transform*)",
+			(uintptr_t)&transform_get_right);
+	_bind_function(L, "Engine.C_Functions.transform_get_up", "Vec3 (*)(Transform*)",
+			(uintptr_t)&transform_get_up);
 
 	/* ---------------- Input API ---------------- */
-	_bind_function(L, "Engine.C_Functions.GetKeyDown", "int (*)(int)",
-			(uintptr_t)&GetKeyDown);
-	_bind_function(L, "Engine.C_Functions.GetKeyUp", "int (*)(int)",
-			(uintptr_t)&GetKeyUp);
-	_bind_function(L, "Engine.C_Functions.GetMouseDown", "int (*)(int)",
-			(uintptr_t)&GetMouseDown);
-	_bind_function(L, "Engine.C_Functions.GetMouseUp", "int (*)(int)",
-			(uintptr_t)&GetMouseUp);
+	_bind_function(L, "Engine.C_Functions.input_get_key_down", "int (*)(int)",
+			(uintptr_t)&input_get_key_down);
+	_bind_function(
+			L, "Engine.C_Functions.input_get_key_up", "int (*)(int)", (uintptr_t)&input_get_key_up);
+	_bind_function(L, "Engine.C_Functions.input_get_mouse_down", "int (*)(int)",
+			(uintptr_t)&input_get_mouse_down);
+	_bind_function(L, "Engine.C_Functions.input_get_mouse_up", "int (*)(int)",
+			(uintptr_t)&input_get_mouse_up);
 
 	/* ---------------- Window Methods ---------------- */
-	_bind_function(L, "Engine.C_Functions.Window_SetTitle",
-			"void (*)(const char*)", (uintptr_t)&Window_SetTitle);
-	_bind_function(L, "Engine.C_Functions.Window_GetCursorMode", "int (*)()",
-			(uintptr_t)&Window_GetCursorMode);
-	_bind_function(L, "Engine.C_Functions.Window_SetCursorMode",
-			"void (*)(int)", (uintptr_t)&Window_SetCursorMode);
-	_bind_function(L, "Engine.C_Functions.Window_GetSize", "Vec2 (*)()",
-			(uintptr_t)&Window_GetSize);
+	_bind_function(L, "Engine.C_Functions.window_set_title", "void (*)(const char*)",
+			(uintptr_t)&window_set_title);
+	_bind_function(L, "Engine.C_Functions.window_set_cursor_mode", "int (*)()",
+			(uintptr_t)&window_set_cursor_mode);
+	_bind_function(L, "Engine.C_Functions.Window_SetCursorMode", "void (*)(int)",
+			(uintptr_t)&Window_SetCursorMode);
+	_bind_function(
+			L, "Engine.C_Functions.window_set_size", "Vec2 (*)()", (uintptr_t)&window_set_size);
 }
 
 extern "C" {
 
-void Log(const char* message) { GL_LOG_INFO("[LUA] {}", message); }
+void debug_log(const char* message) { GL_LOG_INFO("[LUA] {}", message); }
 
-void Assert(int condition, const char* message) {
-	GL_ASSERT(condition, message);
-}
-
-EntityUID FindEntityById(EntityUID p_id) {
+EntityUID entity_find_by_id(EntityUID p_id) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_find_by_id] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
@@ -174,9 +159,10 @@ EntityUID FindEntityById(EntityUID p_id) {
 	return entity ? p_id : 0;
 }
 
-EntityUID FindEntityByName(const char* p_name) {
+EntityUID entity_find_by_name(const char* p_name) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_find_by_name] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
@@ -184,9 +170,10 @@ EntityUID FindEntityByName(const char* p_name) {
 	return entity ? (*entity).get_uid().value : 0;
 }
 
-Transform* GetTransform(EntityUID self) {
+Transform* entity_get_transform(EntityUID self) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running() || self == 0) {
+		GL_LOG_ERROR("[LUA] [entity_get_transform] No Scene bound to the ScriptSystem.");
 		return nullptr;
 	}
 
@@ -197,9 +184,10 @@ Transform* GetTransform(EntityUID self) {
 	return nullptr;
 }
 
-EntityUID Entity_Create(const char* name) {
+EntityUID entity_create(const char* name) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_create] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
@@ -207,25 +195,27 @@ EntityUID Entity_Create(const char* name) {
 	return entity.get_uid().value;
 }
 
-void Entity_Destroy(EntityUID self) {
+void entity_destroy(EntityUID self) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_destroy] No Scene bound to the ScriptSystem.");
 		return;
 	}
 
 	Scene* scene = ScriptSystem::get_scene();
 	Optional<Entity> entity = scene->find_by_id(self);
 	if (!entity) {
-		GL_LOG_ERROR("[SCRIPT] Unable to destroy entity.");
+		GL_LOG_ERROR("[LUA] [entity_destroy] Unable to destroy Entity of Id: {}", self);
 		return;
 	}
 
 	scene->destroy(*entity);
 }
 
-int Entity_IsValid(EntityUID self) {
+int entity_is_valid(EntityUID self) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_is_valid] No Scene bound to the ScriptSystem.");
 		return false;
 	}
 
@@ -233,42 +223,48 @@ int Entity_IsValid(EntityUID self) {
 	return entity && entity->is_valid();
 }
 
-const char* Entity_GetName(EntityUID self) {
+const char* entity_get_name(EntityUID self) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_get_name] No Scene bound to the ScriptSystem.");
 		return "";
 	}
 
 	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
+		GL_LOG_ERROR("[LUA] [entity_get_name] Entity of Id: {} not found.", self);
 		return "";
 	}
 
 	return entity->get_name().c_str();
 }
 
-void Entity_SetName(EntityUID self, const char* name) {
+void entity_set_name(EntityUID self, const char* name) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_set_name] No Scene bound to the ScriptSystem.");
 		return;
 	}
 
 	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
+		GL_LOG_ERROR("[LUA] [entity_set_name] Entity of Id: {} not found.", self);
 		return;
 	}
 
 	entity->set_name(name);
 }
 
-EntityUID Entity_GetParent(EntityUID self) {
+EntityUID entity_get_parent(EntityUID self) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_get_parent] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
 	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
+		GL_LOG_ERROR("[LUA] [entity_get_parent] Entity of Id: {} not found.", self);
 		return 0;
 	}
 
@@ -279,36 +275,38 @@ EntityUID Entity_GetParent(EntityUID self) {
 	return 0;
 }
 
-void Entity_SetParent(EntityUID self, EntityUID parent_id) {
+void entity_set_parent(EntityUID self, EntityUID parent_id) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_set_parent] No Scene bound to the ScriptSystem.");
 		return;
 	}
 
 	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
-		GL_LOG_ERROR("[SCRIPT] Entity of Id: {} not found.", self);
+		GL_LOG_ERROR("[LUA] [entity_set_parent] Entity of Id: {} not found.", self);
 		return;
 	}
 
 	Optional<Entity> parent = ScriptSystem::get_scene()->find_by_id(parent_id);
 	if (!parent) {
-		GL_LOG_ERROR("[SCRIPT] Parent of Id: {} not found.", self);
+		GL_LOG_ERROR("[LUA] [entity_set_parent] Parent of Id: {} not found.", self);
 		return;
 	}
 
 	entity->set_parent(*parent);
 }
 
-EntityUID Entity_FindChildById(EntityUID self, EntityUID id) {
+EntityUID entity_find_child_by_id(EntityUID self, EntityUID id) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_find_child_by_id] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
 	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
-		GL_LOG_ERROR("[SCRIPT] Entity of Id: {} not found.", self);
+		GL_LOG_ERROR("[LUA] [entity_find_child_by_id] Entity of Id: {} not found.", self);
 		return 0;
 	}
 
@@ -320,15 +318,16 @@ EntityUID Entity_FindChildById(EntityUID self, EntityUID id) {
 	return child->get_uid().value;
 }
 
-EntityUID Entity_FindChildByName(EntityUID self, const char* name) {
+EntityUID entity_find_child_by_name(EntityUID self, const char* name) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
+		GL_LOG_ERROR("[LUA] [entity_find_child_by_name] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
 	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
-		GL_LOG_ERROR("[SCRIPT] Entity of Id: {} not found.", self);
+		GL_LOG_ERROR("[LUA] [entity_find_child_by_name] Entity of Id: {} not found.", self);
 		return 0;
 	}
 
@@ -340,71 +339,70 @@ EntityUID Entity_FindChildByName(EntityUID self, const char* name) {
 	return child->get_uid().value;
 }
 
-void Transform_Rotate(Transform* transform, float angle, glm::vec3 axis) {
+void transform_rotate(Transform* transform, float angle, glm::vec3 axis) {
 	if (!transform) {
-		// TODO: proper error handling
+		GL_LOG_ERROR("[LUA] [transform_rotate]: Given transform instance is invalid.");
 		return;
 	}
 
 	transform->rotate(angle, glm::normalize(axis));
 }
 
-glm::vec3 Transform_GetForward(Transform* transform) {
+glm::vec3 transform_get_forward(Transform* transform) {
 	if (!transform) {
+		GL_LOG_ERROR("[LUA] [transform_get_forward]: Given transform instance is invalid.");
 		return VEC3_ZERO;
 	}
 
 	return transform->get_forward();
 }
 
-glm::vec3 Transform_GetRight(Transform* transform) {
+glm::vec3 transform_get_right(Transform* transform) {
 	if (!transform) {
+		GL_LOG_ERROR("[LUA] [transform_get_right]: Given transform instance is invalid.");
 		return VEC3_ZERO;
 	}
 
 	return transform->get_right();
 }
 
-glm::vec3 Transform_GetUp(Transform* transform) {
+glm::vec3 transform_get_up(Transform* transform) {
 	if (!transform) {
+		GL_LOG_ERROR("[LUA] [transform_get_up]: Given transform instance is invalid.");
 		return VEC3_ZERO;
 	}
 
 	return transform->get_up();
 }
 
-int GetKeyDown(int key_code) {
-	return Input::is_key_pressed((KeyCode)key_code);
-}
+int input_get_key_down(int key_code) { return Input::is_key_pressed((KeyCode)key_code); }
 
-int GetKeyUp(int key_code) { return Input::is_key_released((KeyCode)key_code); }
+int input_get_key_up(int key_code) { return Input::is_key_released((KeyCode)key_code); }
 
-int GetMouseDown(int mouse_code) {
+int input_get_mouse_down(int mouse_code) {
 	return Input::is_mouse_pressed((MouseButton)mouse_code);
 }
 
-int GetMouseUp(int mouse_code) {
-	return Input::is_mouse_released((MouseButton)mouse_code);
-}
+int input_get_mouse_up(int mouse_code) { return Input::is_mouse_released((MouseButton)mouse_code); }
 
-void Window_SetTitle(const char* title) {
+void window_set_title(const char* title) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
 	Application* app = Application::get_instance();
 	if (!app) {
-		// TODO: proper error handling
+		GL_LOG_ERROR("[LUA] [window_set_title]: No Application instance found.");
 		return;
 	}
 
 	app->get_window()->set_title(title);
 }
 
-int Window_GetCursorMode() {
+int window_set_cursor_mode() {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
 	Application* app = Application::get_instance();
 	if (!app) {
-		// TODO: proper error handling
+		GL_LOG_ERROR("[LUA] [Window_SetCursorMode]: No Application instance found.");
 		return WindowCursorMode::WINDOW_CURSOR_MODE_DISABLED;
 	}
 
@@ -416,19 +414,19 @@ void Window_SetCursorMode(int mode) {
 
 	Application* app = Application::get_instance();
 	if (!app) {
-		// TODO: proper error handling
+		GL_LOG_ERROR("[LUA] [Window_SetCursorMode]: No Application instance found.");
 		return;
 	}
 
 	app->get_window()->set_cursor_mode(static_cast<WindowCursorMode>(mode));
 }
 
-glm::vec2 Window_GetSize() {
+glm::vec2 window_set_size() {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
 	Application* app = Application::get_instance();
 	if (!app) {
-		// TODO: proper error handling
+		GL_LOG_ERROR("[LUA] [window_set_size]: No Application instance found.");
 		return { 0, 0 };
 	}
 

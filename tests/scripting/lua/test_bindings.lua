@@ -1,4 +1,4 @@
-local Player = {}
+local TestEntity = {}
 
 local function assert_vec3_approx(v, x, y, z)
     local epsilon = 1e-4
@@ -8,7 +8,7 @@ local function assert_vec3_approx(v, x, y, z)
     Debug.Log("Asserted vector: (%f, %f, %f) vs expected (%f, %f, %f)", v.x, v.y, v.z, x, y, z)
 end
 
-function Player:on_create(entity)
+function TestEntity:test_bindings(entity)
     Debug.Log("--- Starting LUA Entity & Transform Tests for entity %d ---", entity)
 
     -- Existing Entity Tests
@@ -68,10 +68,4 @@ function Player:on_create(entity)
 
 end
 
-function Player:on_update(entity, dt)
-end
-
-function Player:on_destroy(entity)
-end
-
-return Player
+return TestEntity

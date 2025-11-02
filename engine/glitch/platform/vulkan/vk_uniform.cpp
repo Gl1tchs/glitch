@@ -3,8 +3,7 @@
 namespace gl {
 
 UniformSet VulkanRenderBackend::uniform_set_create(
-		VectorView<ShaderUniform> p_uniforms, Shader p_shader,
-		uint32_t p_set_index) {
+		VectorView<ShaderUniform> p_uniforms, Shader p_shader, uint32_t p_set_index) {
 	DescriptorSetPoolKey pool_key;
 
 	std::vector<VkWriteDescriptorSet> vk_writes;
@@ -40,17 +39,14 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 			case UNIFORM_TYPE_SAMPLER_WITH_TEXTURE: {
 				num_descriptors = uniform.data.size() / 2;
 
-				vk_write.descriptorType =
-						VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
 				for (uint32_t j = 0; j < num_descriptors; j++) {
 					VkDescriptorImageInfo vk_img_info = {};
 					vk_img_info.sampler = (VkSampler)uniform.data[j * 2 + 0];
 					vk_img_info.imageView =
-							((const VulkanImage*)uniform.data[j * 2 + 1])
-									->vk_image_view;
-					vk_img_info.imageLayout =
-							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+							((const VulkanImage*)uniform.data[j * 2 + 1])->vk_image_view;
+					vk_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 					vk_image_infos[i].push_back(std::move(vk_img_info));
 				}
@@ -62,11 +58,8 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 
 				for (uint32_t j = 0; j < num_descriptors; j++) {
 					VkDescriptorImageInfo vk_img_info = {};
-					vk_img_info.imageView =
-							((const VulkanImage*)uniform.data[j])
-									->vk_image_view;
-					vk_img_info.imageLayout =
-							VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					vk_img_info.imageView = ((const VulkanImage*)uniform.data[j])->vk_image_view;
+					vk_img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 					vk_image_infos[i].push_back(std::move(vk_img_info));
 				}
@@ -78,16 +71,14 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 
 				for (uint32_t j = 0; j < num_descriptors; j++) {
 					VkDescriptorImageInfo vk_img_info = {};
-					vk_img_info.imageView =
-							((VulkanImage*)uniform.data[j])->vk_image_view;
+					vk_img_info.imageView = ((VulkanImage*)uniform.data[j])->vk_image_view;
 					vk_img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 					vk_image_infos[i].push_back(std::move(vk_img_info));
 				}
 			} break;
 			case UNIFORM_TYPE_UNIFORM_BUFFER: {
-				const VulkanBuffer* buf_info =
-						(const VulkanBuffer*)uniform.data[0];
+				const VulkanBuffer* buf_info = (const VulkanBuffer*)uniform.data[0];
 
 				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
@@ -98,8 +89,7 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 				vk_buffer_infos[i] = std::move(vk_buf_info);
 			} break;
 			case UNIFORM_TYPE_STORAGE_BUFFER: {
-				const VulkanBuffer* buf_info =
-						(const VulkanBuffer*)uniform.data[0];
+				const VulkanBuffer* buf_info = (const VulkanBuffer*)uniform.data[0];
 
 				vk_write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
@@ -119,7 +109,8 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 		vk_writes.push_back(std::move(vk_write));
 
 		if (pool_key.uniform_type[uniform.type] == MAX_UNIFORM_POOL_ELEMENT) {
-			GL_LOG_ERROR("Uniform set reached the limit of bindings for the "
+			GL_LOG_ERROR("[VULKAN] [VulkanRenderBackend::uniform_set_create] Uniform set reached "
+						 "the limit of bindings for the "
 						 "same type ({})",
 					static_cast<int>(MAX_UNIFORM_POOL_ELEMENT));
 
@@ -130,28 +121,27 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 
 	// Need a descriptor pool.
 	DescriptorSetPools::iterator pool_sets_it = {};
-	VkDescriptorPool vk_pool = (VkDescriptorPool)_uniform_pool_find_or_create(
-			pool_key, &pool_sets_it);
+	VkDescriptorPool vk_pool =
+			(VkDescriptorPool)_uniform_pool_find_or_create(pool_key, &pool_sets_it);
 	GL_ASSERT(vk_pool);
 	pool_sets_it->second[vk_pool]++;
 
 	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {};
-	descriptor_set_allocate_info.sType =
-			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptor_set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	descriptor_set_allocate_info.descriptorPool = vk_pool;
 	descriptor_set_allocate_info.descriptorSetCount = 1;
 
 	const VulkanShader* shader_info = (const VulkanShader*)p_shader;
-	descriptor_set_allocate_info.pSetLayouts =
-			&shader_info->descriptor_set_layouts[p_set_index];
+	descriptor_set_allocate_info.pSetLayouts = &shader_info->descriptor_set_layouts[p_set_index];
 
 	VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
-	VkResult res = vkAllocateDescriptorSets(
-			device, &descriptor_set_allocate_info, &vk_descriptor_set);
+	VkResult res =
+			vkAllocateDescriptorSets(device, &descriptor_set_allocate_info, &vk_descriptor_set);
 	if (res) {
 		_uniform_pool_unreference(pool_sets_it, vk_pool);
 
-		GL_LOG_ERROR("Cannot allocate descriptor sets, error {}.",
+		GL_LOG_ERROR("[VULKAN] [VulkanRenderBackend::uniform_set_create] Cannot allocate "
+					 "descriptor sets, error {}.",
 				static_cast<int>(res));
 
 		return UniformSet();
@@ -169,12 +159,10 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 		vk_writes[i].dstSet = vk_descriptor_set;
 	}
 
-	vkUpdateDescriptorSets(
-			device, p_uniforms.size(), vk_writes.data(), 0, nullptr);
+	vkUpdateDescriptorSets(device, p_uniforms.size(), vk_writes.data(), 0, nullptr);
 
 	// Bookkeep.
-	VulkanUniformSet* usi =
-			VersatileResource::allocate<VulkanUniformSet>(resources_allocator);
+	VulkanUniformSet* usi = VersatileResource::allocate<VulkanUniformSet>(resources_allocator);
 	usi->vk_descriptor_set = vk_descriptor_set;
 	usi->vk_descriptor_pool = vk_pool;
 	usi->pool_sets_it = pool_sets_it;
@@ -189,8 +177,7 @@ void VulkanRenderBackend::uniform_set_free(UniformSet p_uniform_set) {
 
 	VulkanUniformSet* usi = (VulkanUniformSet*)p_uniform_set;
 
-	vkFreeDescriptorSets(
-			device, usi->vk_descriptor_pool, 1, &usi->vk_descriptor_set);
+	vkFreeDescriptorSets(device, usi->vk_descriptor_pool, 1, &usi->vk_descriptor_set);
 
 	_uniform_pool_unreference(usi->pool_sets_it, usi->vk_descriptor_pool);
 
@@ -200,10 +187,8 @@ void VulkanRenderBackend::uniform_set_free(UniformSet p_uniform_set) {
 static const uint32_t MAX_DESCRIPTOR_SETS_PER_POOL = 10;
 
 VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
-		const DescriptorSetPoolKey& p_key,
-		DescriptorSetPools::iterator* r_pool_sets_it) {
-	DescriptorSetPools::iterator pool_sets_it =
-			descriptor_set_pools.find(p_key);
+		const DescriptorSetPoolKey& p_key, DescriptorSetPools::iterator* r_pool_sets_it) {
+	DescriptorSetPools::iterator pool_sets_it = descriptor_set_pools.find(p_key);
 
 	if (pool_sets_it != descriptor_set_pools.end()) {
 		for (auto& pair : pool_sets_it->second) {
@@ -225,16 +210,14 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 			reset_vk_size();
 			curr_vk_size.type = VK_DESCRIPTOR_TYPE_SAMPLER;
 			curr_vk_size.descriptorCount =
-					p_key.uniform_type[UNIFORM_TYPE_SAMPLER] *
-					MAX_DESCRIPTOR_SETS_PER_POOL;
+					p_key.uniform_type[UNIFORM_TYPE_SAMPLER] * MAX_DESCRIPTOR_SETS_PER_POOL;
 
 			vk_sizes.push_back(curr_vk_size);
 		}
 		if (p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE]) {
 			reset_vk_size();
 			curr_vk_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			curr_vk_size.descriptorCount =
-					p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE] *
+			curr_vk_size.descriptorCount = p_key.uniform_type[UNIFORM_TYPE_SAMPLER_WITH_TEXTURE] *
 					MAX_DESCRIPTOR_SETS_PER_POOL;
 
 			vk_sizes.push_back(curr_vk_size);
@@ -243,8 +226,7 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 			reset_vk_size();
 			curr_vk_size.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			curr_vk_size.descriptorCount =
-					p_key.uniform_type[UNIFORM_TYPE_TEXTURE] *
-					MAX_DESCRIPTOR_SETS_PER_POOL;
+					p_key.uniform_type[UNIFORM_TYPE_TEXTURE] * MAX_DESCRIPTOR_SETS_PER_POOL;
 
 			vk_sizes.push_back(curr_vk_size);
 		}
@@ -252,8 +234,7 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 			reset_vk_size();
 			curr_vk_size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 			curr_vk_size.descriptorCount =
-					p_key.uniform_type[UNIFORM_TYPE_IMAGE] *
-					MAX_DESCRIPTOR_SETS_PER_POOL;
+					p_key.uniform_type[UNIFORM_TYPE_IMAGE] * MAX_DESCRIPTOR_SETS_PER_POOL;
 
 			vk_sizes.push_back(curr_vk_size);
 		}
@@ -261,8 +242,7 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 			reset_vk_size();
 			curr_vk_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			curr_vk_size.descriptorCount =
-					p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER] *
-					MAX_DESCRIPTOR_SETS_PER_POOL;
+					p_key.uniform_type[UNIFORM_TYPE_UNIFORM_BUFFER] * MAX_DESCRIPTOR_SETS_PER_POOL;
 
 			vk_sizes.push_back(curr_vk_size);
 		}
@@ -270,8 +250,7 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 			reset_vk_size();
 			curr_vk_size.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			curr_vk_size.descriptorCount =
-					p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER] *
-					MAX_DESCRIPTOR_SETS_PER_POOL;
+					p_key.uniform_type[UNIFORM_TYPE_STORAGE_BUFFER] * MAX_DESCRIPTOR_SETS_PER_POOL;
 
 			vk_sizes.push_back(curr_vk_size);
 		}
@@ -280,30 +259,24 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 	}
 
 	VkDescriptorPoolCreateInfo descriptor_set_pool_create_info = {};
-	descriptor_set_pool_create_info.sType =
-			VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptor_set_pool_create_info.flags =
-			VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	descriptor_set_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptor_set_pool_create_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 	descriptor_set_pool_create_info.maxSets = MAX_DESCRIPTOR_SETS_PER_POOL;
 	descriptor_set_pool_create_info.poolSizeCount = (uint32_t)vk_sizes.size();
 	descriptor_set_pool_create_info.pPoolSizes = vk_sizes.data();
 
 	VkDescriptorPool vk_pool = VK_NULL_HANDLE;
-	VK_CHECK(vkCreateDescriptorPool(
-			device, &descriptor_set_pool_create_info, nullptr, &vk_pool));
+	VK_CHECK(vkCreateDescriptorPool(device, &descriptor_set_pool_create_info, nullptr, &vk_pool));
 
 	// Bookkeep.
 	if (pool_sets_it == descriptor_set_pools.end()) {
 		pool_sets_it = descriptor_set_pools
-							   .emplace(p_key,
-									   std::unordered_map<VkDescriptorPool,
-											   uint32_t>())
+							   .emplace(p_key, std::unordered_map<VkDescriptorPool, uint32_t>())
 							   .first;
 	}
 
-	std::unordered_map<VkDescriptorPool, uint32_t>& pool_rcs =
-			pool_sets_it->second;
+	std::unordered_map<VkDescriptorPool, uint32_t>& pool_rcs = pool_sets_it->second;
 	pool_rcs.emplace(vk_pool, 0);
 	*r_pool_sets_it = pool_sets_it;
 
@@ -311,8 +284,7 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 }
 
 void VulkanRenderBackend::_uniform_pool_unreference(
-		DescriptorSetPools::iterator p_pool_sets_it,
-		VkDescriptorPool p_vk_descriptor_pool) {
+		DescriptorSetPools::iterator p_pool_sets_it, VkDescriptorPool p_vk_descriptor_pool) {
 	std::unordered_map<VkDescriptorPool, uint32_t>::iterator pool_rcs_it =
 			p_pool_sets_it->second.find(p_vk_descriptor_pool);
 	pool_rcs_it->second--;

@@ -19,8 +19,7 @@ TEST_CASE("Script loading") {
 		return Player
 	)";
 
-	Result<ScriptRef, ScriptResult> res =
-			ScriptEngine::load_script(SYNTAX_ERROR);
+	Result<ScriptRef, ScriptResult> res = ScriptEngine::load_script(SYNTAX_ERROR);
 
 	CHECK(res.has_error());
 	CHECK(res.get_error() == ScriptResult::LOAD_ERROR);
@@ -55,8 +54,7 @@ TEST_CASE("Script loading") {
 	CHECK(res.has_value());
 	CHECK(res.get_value() != 0);
 
-	CHECK(ScriptEngine::exec_function(res.get_value(), "on_create") ==
-			ScriptResult::SUCCESS);
+	CHECK(ScriptEngine::exec_function(res.get_value(), "on_create") == ScriptResult::SUCCESS);
 	CHECK(ScriptEngine::exec_function(res.get_value(), "on_update") ==
 			ScriptResult::FUNCTION_NOT_FOUND);
 

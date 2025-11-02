@@ -101,9 +101,7 @@ void Scene::destroy(UID p_uid) {
 	despawn(*entity);
 }
 
-bool Scene::exists(UID p_uid) const {
-	return entity_map.find(p_uid) != entity_map.end();
-}
+bool Scene::exists(UID p_uid) const { return entity_map.find(p_uid) != entity_map.end(); }
 
 Optional<Entity> Scene::find_by_id(UID p_uid) {
 	if (const auto it = entity_map.find(p_uid); it != entity_map.end()) {

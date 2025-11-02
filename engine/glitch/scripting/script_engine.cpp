@@ -27,18 +27,19 @@ void ScriptEngine::init() {
 
 void ScriptEngine::shutdown() { lua_close(s_lua); }
 
-Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(
-		const fs::path& p_path) {
+Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(const fs::path& p_path) {
 	// check the file
 	if (!fs::exists(p_path)) {
-		GL_LOG_ERROR("Script at path '{}' does not exists.", p_path.string());
+		GL_LOG_ERROR(
+				"[LUA] [ScriptEngine::load_script_file] Script file at path '{}' does not exists.",
+				p_path.string());
 		return make_err<ScriptRef>(ScriptResult::INVALID_SCRIPT_FILE);
 	}
 
 	// load the script file
 	if (luaL_loadfile(s_lua, p_path.string().c_str()) != LUA_OK) {
-		GL_LOG_ERROR("[LUA] Error loading script {}: {}", p_path.string(),
-				lua_tostring(s_lua, -1));
+		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script_file] Error loading script {}: {}",
+				p_path.string(), lua_tostring(s_lua, -1));
 		lua_pop(s_lua, 1); // pop error message
 
 		return make_err<ScriptRef>(ScriptResult::LOAD_ERROR);
@@ -46,8 +47,8 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(
 
 	// now, execute the loaded chunk.
 	if (lua_pcall(s_lua, 0, 1, 0) != LUA_OK) {
-		GL_LOG_ERROR("[LUA] Error running script {}: {}", p_path.string(),
-				lua_tostring(s_lua, -1));
+		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script_file] Error running script {}: {}",
+				p_path.string(), lua_tostring(s_lua, -1));
 		lua_pop(s_lua, 1); // pop error message
 
 		return make_err<ScriptRef>(ScriptResult::EXECUTION_ERROR);
@@ -55,8 +56,9 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(
 
 	// the script should have returned a table.
 	if (!lua_istable(s_lua, -1)) {
-		GL_LOG_ERROR(
-				"[LUA] Script {} did not return a table.", p_path.string());
+		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script_file] Script at path '{}' did not return a "
+					 "table.",
+				p_path.string());
 
 		return make_err<ScriptRef>(ScriptResult::INVALID_TABLE);
 	}
@@ -65,11 +67,11 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(
 	return luaL_ref(s_lua, LUA_REGISTRYINDEX);
 }
 
-Result<ScriptRef, ScriptResult> ScriptEngine::load_script(
-		const std::string& p_script) {
+Result<ScriptRef, ScriptResult> ScriptEngine::load_script(const std::string& p_script) {
 	// load and run the script
 	if (luaL_dostring(s_lua, p_script.c_str()) != LUA_OK) {
-		GL_LOG_ERROR("[LUA] Error running string: {}", lua_tostring(s_lua, -1));
+		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script] Error running string: {}",
+				lua_tostring(s_lua, -1));
 		lua_pop(s_lua, 1); // pop error message
 
 		return make_err<ScriptRef>(ScriptResult::LOAD_ERROR);
@@ -77,7 +79,7 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script(
 
 	// The script should have returned a table.
 	if (!lua_istable(s_lua, -1)) {
-		GL_LOG_ERROR("[LUA] Script string did not return a table.");
+		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script] Script did not return a table.");
 
 		return make_err<ScriptRef>(ScriptResult::INVALID_TABLE);
 	}
@@ -86,9 +88,7 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script(
 	return luaL_ref(s_lua, LUA_REGISTRYINDEX);
 }
 
-void ScriptEngine::push_script(ScriptRef p_ref) {
-	lua_rawgeti(s_lua, LUA_REGISTRYINDEX, p_ref);
-}
+void ScriptEngine::push_script(ScriptRef p_ref) { lua_rawgeti(s_lua, LUA_REGISTRYINDEX, p_ref); }
 
 void ScriptEngine::unload_script(ScriptRef p_ref) {
 	if (p_ref != LUA_NOREF) {
@@ -114,9 +114,7 @@ void ScriptEngine::push_value(int p_idx) { lua_pushvalue(s_lua, p_idx); }
 
 void ScriptEngine::push_arg(int p_value) { lua_pushinteger(s_lua, p_value); }
 
-void ScriptEngine::push_arg(uint32_t p_value) {
-	lua_pushinteger(s_lua, p_value);
-}
+void ScriptEngine::push_arg(uint32_t p_value) { lua_pushinteger(s_lua, p_value); }
 
 void ScriptEngine::push_arg(float p_value) { lua_pushnumber(s_lua, p_value); }
 
@@ -124,15 +122,11 @@ void ScriptEngine::push_arg(double p_value) { lua_pushnumber(s_lua, p_value); }
 
 void ScriptEngine::push_arg(bool p_value) { lua_pushboolean(s_lua, p_value); }
 
-void ScriptEngine::push_arg(const char* p_value) {
-	lua_pushstring(s_lua, p_value);
-}
+void ScriptEngine::push_arg(const char* p_value) { lua_pushstring(s_lua, p_value); }
 
 void ScriptEngine::pop_stack(int p_n) { lua_pop(s_lua, p_n); }
 
-bool ScriptEngine::call_function(int p_nargs) {
-	return lua_pcall(s_lua, p_nargs, 0, 0) == LUA_OK;
-}
+bool ScriptEngine::call_function(int p_nargs) { return lua_pcall(s_lua, p_nargs, 0, 0) == LUA_OK; }
 
 ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 	if (p_ref == 0) {
@@ -142,7 +136,7 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 	push_script(p_ref); // Stack: [table]
 
 	if (!lua_istable(s_lua, -1)) {
-		GL_LOG_ERROR("[LUA] Reference is not a table.");
+		GL_LOG_ERROR("[LUA] [ScriptEngine::get_metadata] Reference is not a table.");
 		pop_stack(1);
 		return {};
 	}
@@ -174,8 +168,7 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 				metadata.fields[key_name] = (double)lua_tonumber(s_lua, -1);
 				break;
 			case LUA_TSTRING:
-				metadata.fields[key_name] =
-						std::string(lua_tostring(s_lua, -1));
+				metadata.fields[key_name] = std::string(lua_tostring(s_lua, -1));
 				break;
 			case LUA_TBOOLEAN:
 				metadata.fields[key_name] = (bool)lua_toboolean(s_lua, -1);
@@ -184,7 +177,7 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 				metadata.methods.push_back(key_name);
 				break;
 			default:
-				GL_LOG_ERROR("[LUA] Unsupported key of type: {}",
+				GL_LOG_ERROR("[LUA] [ScriptEngine::get_metadata] Unsupported key of type: {}",
 						lua_typename(s_lua, value_type));
 				break;
 		}
@@ -199,8 +192,7 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 	return metadata;
 }
 
-Optional<double> ScriptEngine::get_number_field(
-		ScriptRef p_ref, const char* p_field_name) {
+Optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -220,8 +212,7 @@ Optional<double> ScriptEngine::get_number_field(
 	return {};
 }
 
-Optional<std::string> ScriptEngine::get_string_field(
-		ScriptRef p_ref, const char* p_field_name) {
+Optional<std::string> ScriptEngine::get_string_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -241,8 +232,7 @@ Optional<std::string> ScriptEngine::get_string_field(
 	return {};
 }
 
-Optional<bool> ScriptEngine::get_bool_field(
-		ScriptRef p_ref, const char* p_field_name) {
+Optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -262,29 +252,25 @@ Optional<bool> ScriptEngine::get_bool_field(
 	return {};
 }
 
-bool ScriptEngine::set_field(
-		ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value) {
+bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value) {
 	bool result;
 	std::visit(overloaded{ [&](double& arg) {
-							  result = ScriptEngine::set_field(
-									  p_ref, p_field_name, arg);
+							  result = ScriptEngine::set_field(p_ref, p_field_name, arg);
 						  },
 					   [&](std::string& arg) {
-						   result = ScriptEngine::set_field(
-								   p_ref, p_field_name, arg);
+						   result = ScriptEngine::set_field(p_ref, p_field_name, arg);
 					   },
 					   [&](bool& arg) {
-						   result = ScriptEngine::set_field(
-								   p_ref, p_field_name, arg);
+						   result = ScriptEngine::set_field(p_ref, p_field_name, arg);
 					   } },
 			p_value);
 
 	return result;
 }
 
-bool ScriptEngine::set_field(
-		ScriptRef p_ref, const char* p_field_name, double p_value) {
+bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, double p_value) {
 	if (p_ref == 0) {
+		GL_LOG_ERROR("[LUA] [ScriptEngine::set_field] Script reference is not set.");
 		return false;
 	}
 
@@ -304,6 +290,7 @@ bool ScriptEngine::set_field(
 bool ScriptEngine::set_field(
 		ScriptRef p_ref, const char* p_field_name, const std::string& p_value) {
 	if (p_ref == 0) {
+		GL_LOG_ERROR("[LUA] [ScriptEngine::set_field] Script reference is not set.");
 		return false;
 	}
 
@@ -320,9 +307,9 @@ bool ScriptEngine::set_field(
 	return true;
 }
 
-bool ScriptEngine::set_field(
-		ScriptRef p_ref, const char* p_field_name, bool p_value) {
+bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, bool p_value) {
 	if (p_ref == 0) {
+		GL_LOG_ERROR("[LUA] [ScriptEngine::set_field] Script reference is not set.");
 		return false;
 	}
 

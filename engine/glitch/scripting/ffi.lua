@@ -16,47 +16,48 @@ ffi.cdef [[
     } Transform;
 
     /* ---------------- Global Engine Functions ---------------- */
-    void Log(const char* message);
-    void Assert(bool condition, const char* message);
-
-    uint32_t FindEntityById(uint32_t p_id);
-    uint32_t FindEntityByName(const char* p_name);
-
-    Transform* GetTransform(uint32_t self);
-
-    int GetKeyDown(int key_code);
-    int GetKeyUp(int key_code);
-    int GetMouseDown(int mouse_code);
-    int GetMouseUp(int mouse_code);
+    void debug_log(const char* message);
 
     /* ---------------- Method Implementations ---------------- */
 
     /* Entity Methods */
-    uint32_t Entity_Create(const char* name);
-    void Entity_Destroy(uint32_t self);
+    uint32_t entity_create(const char* name);
+    void entity_destroy(uint32_t self);
 
-    int Entity_IsValid(uint32_t self);
+    int entity_is_valid(uint32_t self);
 
-    const char* Entity_GetName(uint32_t self);
-    void Entity_SetName(uint32_t self, const char* name);
+    uint32_t entity_find_by_id(uint32_t p_id);
+    uint32_t entity_find_by_name(const char* p_name);
 
-    uint32_t Entity_GetParent(uint32_t self);
-    void Entity_SetParent(uint32_t self, uint32_t parent);
+    const char* entity_get_name(uint32_t self);
+    void entity_set_name(uint32_t self, const char* name);
 
-    uint32_t Entity_FindChildById(uint32_t self, uint32_t id);
-    uint32_t Entity_FindChildByName(uint32_t self, const char* name);
+    uint32_t entity_get_parent(uint32_t self);
+    void entity_set_parent(uint32_t self, uint32_t parent);
+
+    uint32_t entity_find_child_by_id(uint32_t self, uint32_t id);
+    uint32_t entity_find_child_by_name(uint32_t self, const char* name);
+
+    Transform* entity_get_transform(uint32_t self);
 
     /* Transform Methods */
-    void Transform_Rotate(Transform* transform, float angle, Vec3 axis);
-    Vec3 Transform_GetForward(Transform* transform);
-    Vec3 Transform_GetRight(Transform* transform);
-    Vec3 Transform_GetUp(Transform* transform);
+    void transform_rotate(Transform* transform, float angle, Vec3 axis);
+    Vec3 transform_get_forward(Transform* transform);
+    Vec3 transform_get_right(Transform* transform);
+    Vec3 transform_get_up(Transform* transform);
+
+    /* Input Methods */
+
+    int input_get_key_down(int key_code);
+    int input_get_key_up(int key_code);
+    int input_get_mouse_down(int mouse_code);
+    int input_get_mouse_up(int mouse_code);
 
     /* Window Methods */
-    void Window_SetTitle(const char* title);
-    int Window_GetCursorMode();
-    void Window_SetCursorMode(int mode);
-    Vec2 Window_GetSize();
+    void window_set_title(const char* title);
+    int window_set_cursor_mode();
+    void window_set_cursor_mode(int mode);
+    Vec2 window_set_size();
 
     /* C System Functions */
     void free(void* ptr);
@@ -91,34 +92,31 @@ end
 -- Debug Utilities --
 
 Debug.Log = function(...)
-    C.Log(string.format(...))
+    C.debug_log(string.format(...))
 end
 Debug.Assert = function(condition, ...)
-    C.Assert(condition, string.format(...))
+    assert(condition, string.format(...))
 end
 
 -- Entity Methods --
 
-Entity.FindById = function(id)
-    return C.FindEntityById(id)
-end
-Entity.FindByName = function(name)
-    return C.FindEntityByName(name)
-end
-Entity.GetTransform = function(entity_id)
-    return C.GetTransform(entity_id)
-end
 Entity.Create = function(name)
-    return C.Entity_Create(name)
+    return C.entity_create(name)
 end
 Entity.Destroy = function(entity)
-    return C.Entity_Destroy(entity)
+    return C.entity_destroy(entity)
 end
 Entity.IsValid = function(entity)
-    return C.Entity_IsValid(entity) ~= 0
+    return C.entity_is_valid(entity) ~= 0
+end
+Entity.FindById = function(id)
+    return C.entity_find_by_id(id)
+end
+Entity.FindByName = function(name)
+    return C.entity_find_by_name(name)
 end
 Entity.GetName = function(entity)
-    local c_ptr = C.Entity_GetName(entity)
+    local c_ptr = C.entity_get_name(entity)
 
     if c_ptr == nil then
         return ""
@@ -133,19 +131,22 @@ Entity.GetName = function(entity)
     return name
 end
 Entity.SetName = function(entity, name)
-    return C.Entity_SetName(entity, name)
+    return C.entity_set_name(entity, name)
 end
 Entity.GetParent = function(entity)
-    return C.Entity_GetParent(entity)
+    return C.entity_get_parent(entity)
 end
 Entity.SetParent = function(entity, parent)
-    return C.Entity_SetParent(entity, parent)
+    return C.entity_set_parent(entity, parent)
 end
 Entity.FindChildById = function(entity, id)
-    return C.Entity_FindChildById(entity, id)
+    return C.entity_find_child_by_id(entity, id)
 end
 Entity.FindChildByName = function(entity, name)
-    return C.Entity_FindChildByName(entity, name)
+    return C.entity_find_child_by_name(entity, name)
+end
+Entity.GetTransform = function(entity_id)
+    return C.entity_get_transform(entity_id)
 end
 
 -- Transform methods
@@ -159,16 +160,16 @@ end
 ffi.metatype("Transform", {
     __index = {
         Rotate = function(self, angle, axis)
-            C.Transform_Rotate(self, angle, axis)
+            C.transform_rotate(self, angle, axis)
         end,
         GetForward = function(self)
-            return C.Transform_GetForward(self)
+            return C.transform_get_forward(self)
         end,
         GetRight = function(self)
-            return C.Transform_GetRight(self)
+            return C.transform_get_right(self)
         end,
         GetUp = function(self)
-            return C.Transform_GetUp(self)
+            return C.transform_get_up(self)
         end
     }
 })
@@ -176,31 +177,31 @@ ffi.metatype("Transform", {
 -- Input API --
 
 Input.GetKeyDown = function(key)
-    return C.GetKeyDown(key) ~= 0
+    return C.input_get_key_down(key) ~= 0
 end
 Input.GetKeyUp = function(key)
-    return C.GetKeyUp(key) ~= 0
+    return C.input_get_key_up(key) ~= 0
 end
 Input.GetMouseDown = function(btn)
-    return C.GetMouseDown(btn) ~= 0
+    return C.input_get_mouse_down(btn) ~= 0
 end
 Input.GetMouseUp = function(btn)
-    return C.GetMouseUp(btn) ~= 0
+    return C.input_get_mouse_up(btn) ~= 0
 end
 
 -- Window Methods --
 
 Window.SetTitle = function(title)
-    return C.Window_SetTitle(title);
+    return C.window_set_title(title);
 end
 Window.GetCursorMode = function()
-    return C.Window_GetCursorMode();
+    return C.window_set_cursor_mode();
 end
 Window.SetCursorMode = function(mode)
     C.Window_SetCursorMode(mode);
 end
 Window.GetSize = function()
-    return C.Window_GetSize()
+    return C.window_set_size()
 end;
 
 local CursorMode = {

@@ -10,7 +10,7 @@
 namespace gl {
 
 static void _glfw_error_callback(int p_error, const char* p_description) {
-	GL_LOG_ERROR("GLFW error {}: {}.", p_error, p_description);
+	GL_LOG_ERROR("[GLFW] Code {}: {}.", p_error, p_description);
 }
 
 Window::Window(WindowCreateInfo p_info) {
@@ -24,8 +24,7 @@ Window::Window(WindowCreateInfo p_info) {
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
-	window = glfwCreateWindow(
-			p_info.w, p_info.h, p_info.title, nullptr, nullptr);
+	window = glfwCreateWindow(p_info.w, p_info.h, p_info.title, nullptr, nullptr);
 	GL_ASSERT(window);
 
 	// initialize event system
@@ -55,9 +54,7 @@ float Window::get_aspect_ratio() const {
 	return static_cast<float>(s.x) / static_cast<float>(s.y);
 }
 
-void Window::set_title(std::string_view p_title) {
-	glfwSetWindowTitle(window, p_title.data());
-}
+void Window::set_title(std::string_view p_title) { glfwSetWindowTitle(window, p_title.data()); }
 
 WindowCursorMode Window::get_cursor_mode() const { return cursor_mode; }
 
@@ -85,39 +82,36 @@ void Window::set_cursor_mode(WindowCursorMode p_mode) {
 GLFWwindow* Window::get_native_window() { return window; }
 
 void Window::_assign_event_delegates() {
-	glfwSetWindowSizeCallback(
-			window, [](GLFWwindow* window, int width, int height) {
-				WindowResizeEvent resize_event{};
-				resize_event.size = { width, height };
-				event::notify(resize_event);
-			});
+	glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height) {
+		WindowResizeEvent resize_event{};
+		resize_event.size = { width, height };
+		event::notify(resize_event);
+	});
 
 	glfwSetWindowCloseCallback(window, [](GLFWwindow* window) {
 		WindowCloseEvent close_event{};
 		event::notify<WindowCloseEvent>(close_event);
 	});
 
-	glfwSetKeyCallback(window,
-			[](GLFWwindow* window, int key, int scancode, int action,
-					int mods) {
-				switch (action) {
-					case GLFW_PRESS: {
-						KeyPressEvent key_event{};
-						key_event.key_code = static_cast<KeyCode>(key);
-						event::notify(key_event);
-						break;
-					}
-					case GLFW_RELEASE: {
-						KeyReleaseEvent key_event{};
-						key_event.key_code = static_cast<KeyCode>(key);
-						event::notify(key_event);
-						break;
-					}
-					default: {
-						break;
-					}
-				}
-			});
+	glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+		switch (action) {
+			case GLFW_PRESS: {
+				KeyPressEvent key_event{};
+				key_event.key_code = static_cast<KeyCode>(key);
+				event::notify(key_event);
+				break;
+			}
+			case GLFW_RELEASE: {
+				KeyReleaseEvent key_event{};
+				key_event.key_code = static_cast<KeyCode>(key);
+				event::notify(key_event);
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+	});
 
 	glfwSetCharCallback(window, [](GLFWwindow* window, unsigned int keycode) {
 		KeyTypeEvent type_event{};
@@ -125,40 +119,35 @@ void Window::_assign_event_delegates() {
 		event::notify(type_event);
 	});
 
-	glfwSetMouseButtonCallback(
-			window, [](GLFWwindow* window, int button, int action, int mods) {
-				switch (action) {
-					case GLFW_PRESS: {
-						MousePressEvent mouse_event{};
-						mouse_event.button_code =
-								static_cast<MouseButton>(button);
-						event::notify(mouse_event);
-						break;
-					}
-					case GLFW_RELEASE: {
-						MouseReleaseEvent mouse_event{};
-						mouse_event.button_code =
-								static_cast<MouseButton>(button);
-						event::notify(mouse_event);
-						break;
-					}
-					default: {
-						break;
-					}
-				}
-			});
+	glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods) {
+		switch (action) {
+			case GLFW_PRESS: {
+				MousePressEvent mouse_event{};
+				mouse_event.button_code = static_cast<MouseButton>(button);
+				event::notify(mouse_event);
+				break;
+			}
+			case GLFW_RELEASE: {
+				MouseReleaseEvent mouse_event{};
+				mouse_event.button_code = static_cast<MouseButton>(button);
+				event::notify(mouse_event);
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+	});
 
-	glfwSetCursorPosCallback(window,
-			[](GLFWwindow* window, const double x_pos, const double y_pos) {
+	glfwSetCursorPosCallback(
+			window, [](GLFWwindow* window, const double x_pos, const double y_pos) {
 				MouseMoveEvent move_event{};
-				move_event.position = { static_cast<float>(x_pos),
-					static_cast<float>(y_pos) };
+				move_event.position = { static_cast<float>(x_pos), static_cast<float>(y_pos) };
 				event::notify(move_event);
 			});
 
-	glfwSetScrollCallback(window,
-			[](GLFWwindow* window, const double x_offset,
-					const double y_offset) {
+	glfwSetScrollCallback(
+			window, [](GLFWwindow* window, const double x_offset, const double y_offset) {
 				MouseScrollEvent scroll_event{};
 				scroll_event.offset = { static_cast<float>(x_offset),
 					static_cast<float>(y_offset) };

@@ -3,8 +3,7 @@
 namespace gl {
 
 ScriptResult ScriptComponent::load() {
-	const Result<ScriptRef, ScriptResult> res =
-			ScriptEngine::load_script_file(script_path);
+	const Result<ScriptRef, ScriptResult> res = ScriptEngine::load_script_file(script_path);
 	if (res.has_error()) {
 		is_loaded = false;
 		return res.get_error();
@@ -33,8 +32,9 @@ void ScriptComponent::reset() {
 	if (metadata) {
 		for (const auto& [name, field] : metadata->fields) {
 			if (!ScriptEngine::set_field(script, name.c_str(), field)) {
-				GL_LOG_ERROR("Unable to set metadata field for script: {}\nKey "
-							 "{} do not exists.",
+				GL_LOG_ERROR(
+						"[ScriptComponent::reset] Unable to set metadata field for script: {}\nKey "
+						"{} do not exists.",
 						script_path, name);
 			}
 		}

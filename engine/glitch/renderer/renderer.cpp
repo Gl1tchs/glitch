@@ -37,8 +37,7 @@ void FrameData::destroy() {
 
 Renderer::Renderer(Ref<Window> p_window, RendererSettings p_settings) :
 		window(p_window), settings(p_settings) {
-	GL_ASSERT(
-			s_instance == nullptr, "Only one instance of renderer can exists!");
+	GL_ASSERT(s_instance == nullptr, "Only one instance of renderer can exists!");
 	s_instance = this;
 
 	// We do not support other render backends for now.
@@ -53,8 +52,7 @@ Renderer::Renderer(Ref<Window> p_window, RendererSettings p_settings) :
 	// initialize swapchain
 	const glm::uvec2 window_px = window->get_size();
 	swapchain = s_backend->swapchain_create();
-	s_backend->swapchain_resize(
-			graphics_queue, swapchain, window_px, p_settings.vsync);
+	s_backend->swapchain_resize(graphics_queue, swapchain, window_px, p_settings.vsync);
 
 	// initialize imgui
 	_imgui_init();
@@ -105,17 +103,15 @@ CommandBuffer Renderer::begin_render() {
 
 	s_backend->fence_wait(_get_current_frame().render_fence);
 
-	const Result<Image, SwapchainAcquireError> swapchain_image =
-			s_backend->swapchain_acquire_image(swapchain,
-					_get_current_frame().image_available_semaphore,
-					&image_index);
+	const Result<Image, SwapchainAcquireError> swapchain_image = s_backend->swapchain_acquire_image(
+			swapchain, _get_current_frame().image_available_semaphore, &image_index);
 	if (!swapchain_image) {
 		switch (swapchain_image.get_error()) {
 			case SwapchainAcquireError::OUT_OF_DATE:
 				_request_resize();
 				return nullptr;
 			case SwapchainAcquireError::ERROR:
-				GL_LOG_FATAL("Failed to acquire swapchain image.");
+				GL_LOG_FATAL("[Renderer::begin_render] Failed to acquire swapchain image.");
 				return nullptr;
 		}
 	}
@@ -124,8 +120,7 @@ CommandBuffer Renderer::begin_render() {
 
 	s_backend->fence_reset(_get_current_frame().render_fence);
 
-	const glm::uvec3 draw_image_extent =
-			glm::uvec3(get_resolution_extent(), 1.0);
+	const glm::uvec3 draw_image_extent = glm::uvec3(get_resolution_extent(), 1.0);
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
 
@@ -135,21 +130,19 @@ CommandBuffer Renderer::begin_render() {
 	// Transition renderpass attachments
 	for (const auto& [id, render_image] : renderpass_images) {
 		if (render_image.is_depth_attachment) {
-			s_backend->command_transition_image(cmd, render_image.image,
-					ImageLayout::UNDEFINED,
+			s_backend->command_transition_image(cmd, render_image.image, ImageLayout::UNDEFINED,
 					ImageLayout::DEPTH_ATTACHMENT_OPTIMAL);
 		} else {
-			s_backend->command_transition_image(cmd, render_image.image,
-					ImageLayout::UNDEFINED,
+			s_backend->command_transition_image(cmd, render_image.image, ImageLayout::UNDEFINED,
 					ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 		}
 	}
 
 	// Just so we can use msaa
-	s_backend->command_transition_image(cmd, current_swapchain_image,
-			ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
-	s_backend->command_transition_image(cmd, final_image,
-			ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	s_backend->command_transition_image(cmd, current_swapchain_image, ImageLayout::UNDEFINED,
+			ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+	s_backend->command_transition_image(
+			cmd, final_image, ImageLayout::UNDEFINED, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 
 	// dynamic state
 	s_backend->command_set_viewport(cmd, draw_image_extent);
@@ -162,7 +155,7 @@ void Renderer::end_render() {
 	GL_PROFILE_SCOPE;
 
 	if (should_present_to_swapchain && !current_swapchain_image) {
-		GL_LOG_FATAL("Renderer::end_render: There is no image to render to!");
+		GL_LOG_FATAL("[Renderer::end_render] There is no image to render to!");
 	}
 
 	CommandBuffer cmd = _get_current_frame().command_buffer;
@@ -180,8 +173,7 @@ void Renderer::end_render() {
 			final_color_attachment = render_image.image;
 		}
 	} else {
-		const auto final_color_attachment_it =
-				renderpass_images.find(swapchain_target_image_id);
+		const auto final_color_attachment_it = renderpass_images.find(swapchain_target_image_id);
 		if (final_color_attachment_it != renderpass_images.end()) {
 			final_color_attachment = final_color_attachment_it->second.image;
 		}
@@ -189,24 +181,20 @@ void Renderer::end_render() {
 
 	// TODO!
 	if (!final_color_attachment) {
-		GL_LOG_ERROR("Unable to find color attachment to render");
+		GL_LOG_ERROR("[Renderer::end_render] Unable to find color attachment to render");
 		return;
 	}
 
-	const Image render_target =
-			should_present_to_swapchain ? current_swapchain_image : final_image;
+	const Image render_target = should_present_to_swapchain ? current_swapchain_image : final_image;
 
 	// Copy color image to final image if there isn't got a resolver
 	if (!msaa_used) {
 		s_backend->command_transition_image(cmd, final_color_attachment,
-				ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-				ImageLayout::TRANSFER_SRC_OPTIMAL);
+				ImageLayout::COLOR_ATTACHMENT_OPTIMAL, ImageLayout::TRANSFER_SRC_OPTIMAL);
 		s_backend->command_transition_image(cmd, render_target,
-				ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-				ImageLayout::TRANSFER_DST_OPTIMAL);
+				ImageLayout::COLOR_ATTACHMENT_OPTIMAL, ImageLayout::TRANSFER_DST_OPTIMAL);
 
-		s_backend->command_copy_image_to_image(cmd, final_color_attachment,
-				render_target,
+		s_backend->command_copy_image_to_image(cmd, final_color_attachment, render_target,
 				s_backend->image_get_size(final_color_attachment),
 				s_backend->image_get_size(render_target));
 	}
@@ -224,8 +212,7 @@ void Renderer::end_render() {
 	if (imgui_being_used) {
 		if (should_present_to_swapchain && !msaa_used) {
 			s_backend->command_transition_image(cmd, current_swapchain_image,
-					ImageLayout::TRANSFER_DST_OPTIMAL,
-					ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+					ImageLayout::TRANSFER_DST_OPTIMAL, ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
 		}
 
 		_imgui_pass(cmd, current_swapchain_image);
@@ -239,13 +226,12 @@ void Renderer::end_render() {
 
 	s_backend->command_end(cmd);
 
-	s_backend->queue_submit(graphics_queue, cmd,
-			_get_current_frame().render_fence,
+	s_backend->queue_submit(graphics_queue, cmd, _get_current_frame().render_fence,
 			_get_current_frame().image_available_semaphore,
 			_get_current_frame().render_finished_semaphore);
 
-	if (!s_backend->queue_present(present_queue, swapchain,
-				_get_current_frame().render_finished_semaphore)) {
+	if (!s_backend->queue_present(
+				present_queue, swapchain, _get_current_frame().render_finished_semaphore)) {
 		_request_resize();
 	}
 
@@ -264,9 +250,7 @@ void Renderer::add_pass(Ref<GraphicsPass> p_pass, int p_priority) {
 void Renderer::execute(CommandBuffer p_cmd) {
 	// Sort based on priority
 	std::sort(graphics_passes.begin(), graphics_passes.end(),
-			[](const auto& lhs, const auto& rhs) -> bool {
-				return lhs.second < rhs.second;
-			});
+			[](const auto& lhs, const auto& rhs) -> bool { return lhs.second < rhs.second; });
 
 	for (const auto& [pass, _prior] : graphics_passes) {
 		if (!pass->is_active()) {
@@ -292,24 +276,19 @@ void Renderer::begin_rendering(CommandBuffer p_cmd, Image p_color_attachment,
 
 	if (msaa_samples != 1) {
 		color_attachment.resolve_mode = RESOLVE_MODE_AVERAGE_BIT;
-		color_attachment.resolve_image = should_present_to_swapchain
-				? current_swapchain_image
-				: final_image;
+		color_attachment.resolve_image =
+				should_present_to_swapchain ? current_swapchain_image : final_image;
 		color_attachment.resolve_layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
 	}
 
-	s_backend->command_begin_rendering(p_cmd,
-			s_backend->image_get_size(p_color_attachment), color_attachment,
-			p_depth_attachment);
+	s_backend->command_begin_rendering(p_cmd, s_backend->image_get_size(p_color_attachment),
+			color_attachment, p_depth_attachment);
 }
 
-void Renderer::end_rendering(CommandBuffer p_cmd) {
-	s_backend->command_end_rendering(p_cmd);
-}
+void Renderer::end_rendering(CommandBuffer p_cmd) { s_backend->command_end_rendering(p_cmd); }
 
 Result<Image, Renderer::ImageCreateError> Renderer::create_render_image(
-		const std::string& p_name, DataFormat p_format,
-		BitField<ImageUsageBits> p_usage) {
+		const std::string& p_name, DataFormat p_format, BitField<ImageUsageBits> p_usage) {
 	if (renderpass_images.find(p_name) != renderpass_images.end()) {
 		return make_err<Image>(ImageCreateError::ID_EXISTS);
 	}
@@ -323,12 +302,11 @@ Result<Image, Renderer::ImageCreateError> Renderer::create_render_image(
 
 	const bool is_depth_format = p_format == DataFormat::D16_UNORM ||
 			p_format == DataFormat::D16_UNORM_S8_UINT ||
-			p_format == DataFormat::D24_UNORM_S8_UINT ||
-			p_format == DataFormat::D32_SFLOAT;
+			p_format == DataFormat::D24_UNORM_S8_UINT || p_format == DataFormat::D32_SFLOAT;
 
 	RenderImage render_image;
-	render_image.image = s_backend->image_create(p_format,
-			get_resolution_extent(), nullptr, p_usage, false, msaa_samples);
+	render_image.image = s_backend->image_create(
+			p_format, get_resolution_extent(), nullptr, p_usage, false, msaa_samples);
 	render_image.format = p_format;
 	render_image.usage = p_usage;
 	render_image.is_depth_attachment = is_depth_format;
@@ -378,9 +356,7 @@ void Renderer::set_render_present_mode(bool p_present_to_swapchain) {
 	should_present_to_swapchain = p_present_to_swapchain;
 }
 
-float Renderer::get_resolution_scale() const {
-	return settings.resolution_scale;
-}
+float Renderer::get_resolution_scale() const { return settings.resolution_scale; }
 
 void Renderer::set_resolution_scale(float p_scale) {
 	if (fabs(p_scale - settings.resolution_scale) > 0.001f) {
@@ -406,9 +382,8 @@ uint32_t Renderer::get_msaa_samples() const { return msaa_samples; }
 void Renderer::set_msaa_samples(uint32_t p_samples) {
 	const uint32_t max_sample_count = s_backend->get_max_msaa_samples();
 
-	if ((p_samples != 1 && p_samples % 2 != 0) ||
-			p_samples > max_sample_count) {
-		GL_LOG_ERROR("Invalid MSAA sample count: {}. Must be 1 or "
+	if ((p_samples != 1 && p_samples % 2 != 0) || p_samples > max_sample_count) {
+		GL_LOG_ERROR("[Renderer::set_msaa_samples] Invalid MSAA sample count: {}. Must be 1 or "
 					 "power-of-two, and ≤ {}",
 				p_samples, max_sample_count);
 		msaa_samples = 1;
@@ -425,21 +400,16 @@ void Renderer::set_msaa_samples(uint32_t p_samples) {
 Swapchain Renderer::get_swapchain() { return swapchain; }
 
 glm::uvec2 Renderer::get_resolution_extent() const {
-	const glm::uvec2 swapchain_size =
-			s_backend->swapchain_get_extent(swapchain);
+	const glm::uvec2 swapchain_size = s_backend->swapchain_get_extent(swapchain);
 	return {
 		std::max(1u, uint32_t(swapchain_size.x * settings.resolution_scale)),
 		std::max(1u, uint32_t(swapchain_size.y * settings.resolution_scale)),
 	};
 }
 
-void* Renderer::get_final_image_descriptor() const {
-	return final_image_descriptor;
-}
+void* Renderer::get_final_image_descriptor() const { return final_image_descriptor; }
 
-glm::uvec2 Renderer::get_final_image_size() const {
-	return s_backend->image_get_size(final_image);
-}
+glm::uvec2 Renderer::get_final_image_size() const { return s_backend->image_get_size(final_image); }
 
 RenderStats& Renderer::get_stats() { return stats; }
 
@@ -466,14 +436,13 @@ void Renderer::_imgui_init() {
 	ImGuiIO& io = ImGui::GetIO();
 	(void)io;
 
-	io.ConfigFlags |=
-			ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
 	io.IniFilename = ".glitch/imgui.ini";
 
 	io.Fonts->Clear();
 
-	s_backend->imgui_init_for_platform(window->get_native_window(),
-			s_backend->swapchain_get_format(swapchain));
+	s_backend->imgui_init_for_platform(
+			window->get_native_window(), s_backend->swapchain_get_format(swapchain));
 
 	// ImGui style changes
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -490,8 +459,7 @@ void Renderer::_request_resize() {
 	GL_PROFILE_SCOPE_N("Renderer::Swapchain Resize");
 
 	const glm::uvec2 window_px = window->get_size();
-	s_backend->swapchain_resize(
-			graphics_queue, swapchain, window_px, settings.vsync);
+	s_backend->swapchain_resize(graphics_queue, swapchain, window_px, settings.vsync);
 
 	const glm::uvec2 new_size = get_resolution_extent();
 
@@ -499,16 +467,15 @@ void Renderer::_request_resize() {
 	if (final_image) {
 		s_backend->image_free(final_image);
 	}
-	final_image = s_backend->image_create(
-			s_backend->swapchain_get_format(swapchain), new_size, nullptr,
-			IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT |
-					IMAGE_USAGE_TRANSFER_DST_BIT);
+	final_image =
+			s_backend->image_create(s_backend->swapchain_get_format(swapchain), new_size, nullptr,
+					IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT |
+							IMAGE_USAGE_TRANSFER_DST_BIT);
 
 	if (final_image_descriptor) {
 		s_backend->imgui_image_free(final_image_descriptor);
 	}
-	final_image_descriptor =
-			s_backend->imgui_image_upload(final_image, default_sampler);
+	final_image_descriptor = s_backend->imgui_image_upload(final_image, default_sampler);
 
 	// Recreate renderpass attachments
 	for (auto& [id, render_image] : renderpass_images) {
@@ -516,8 +483,8 @@ void Renderer::_request_resize() {
 			s_backend->image_free(render_image.image);
 		}
 
-		render_image.image = s_backend->image_create(render_image.format,
-				new_size, nullptr, render_image.usage, false, msaa_samples);
+		render_image.image = s_backend->image_create(
+				render_image.format, new_size, nullptr, render_image.usage, false, msaa_samples);
 	}
 }
 

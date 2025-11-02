@@ -23,18 +23,15 @@ namespace gl {
 inline static VKAPI_ATTR VkBool32 VKAPI_CALL _vk_debug_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		VkDebugUtilsMessageTypeFlagsEXT message_type,
-		const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
-		void* user_data) {
+		const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {
 	if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-		GL_LOG_ERROR("{}", callback_data->pMessage);
-	} else if (message_severity &
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-		GL_LOG_WARNING("{}", callback_data->pMessage);
-	} else if (message_severity &
-			VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-		GL_LOG_INFO("{}", callback_data->pMessage);
+		GL_LOG_ERROR("[VULKAN] {}", callback_data->pMessage);
+	} else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+		GL_LOG_WARNING("[VULKAN] {}", callback_data->pMessage);
+	} else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+		GL_LOG_INFO("[VULKAN] {}", callback_data->pMessage);
 	} else {
-		GL_LOG_TRACE("{}", callback_data->pMessage);
+		GL_LOG_TRACE("[VULKAN] {}", callback_data->pMessage);
 	}
 
 	return VK_FALSE;
@@ -47,15 +44,14 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 	s_instance = this;
 
 	vkb::InstanceBuilder vkb_builder;
-	const auto vkb_instance_result =
-			vkb_builder
-					.set_app_name("glitch")
+	const auto vkb_instance_result = vkb_builder
+											 .set_app_name("glitch")
 #ifdef GL_DEBUG_BUILD
-					.enable_validation_layers()
-					.set_debug_callback(_vk_debug_callback)
+											 .enable_validation_layers()
+											 .set_debug_callback(_vk_debug_callback)
 #endif
-					.require_api_version(1, 3, 0)
-					.build();
+											 .require_api_version(1, 3, 0)
+											 .build();
 
 	if (!vkb_instance_result.has_value()) {
 		GL_ASSERT(false, "Unable to create Vulkan instance of version 1.3.0!");
@@ -67,8 +63,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 	instance = vkb_instance.instance;
 	debug_messenger = vkb_instance.debug_messenger;
 
-	glfwCreateWindowSurface(instance, (GLFWwindow*)window->get_native_window(),
-			nullptr, &surface);
+	glfwCreateWindowSurface(instance, (GLFWwindow*)window->get_native_window(), nullptr, &surface);
 
 	VkPhysicalDeviceVulkan13Features features13 = {
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
@@ -88,17 +83,16 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 	};
 
 	vkb::PhysicalDeviceSelector vkb_device_selector{ vkb_instance };
-	vkb::PhysicalDevice vkb_physical_device =
-			vkb_device_selector.set_minimum_version(1, 3)
-					.set_required_features_13(features13)
-					.set_required_features_12(features12)
-					.set_required_features(features)
-					.add_required_extensions({
-							"VK_KHR_dynamic_rendering",
-					})
-					.set_surface(surface)
-					.select()
-					.value();
+	vkb::PhysicalDevice vkb_physical_device = vkb_device_selector.set_minimum_version(1, 3)
+													  .set_required_features_13(features13)
+													  .set_required_features_12(features12)
+													  .set_required_features(features)
+													  .add_required_extensions({
+															  "VK_KHR_dynamic_rendering",
+													  })
+													  .set_surface(surface)
+													  .select()
+													  .value();
 
 	// create the final vulkan device
 	vkb::DeviceBuilder vkb_device_builder{ vkb_physical_device };
@@ -111,15 +105,12 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 
 	device = vkb_device.device;
 
-	graphics_queue.queue =
-			vkb_device.get_queue(vkb::QueueType::graphics).value();
-	graphics_queue.queue_family =
-			vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+	graphics_queue.queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
+	graphics_queue.queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
 
 	if (auto vkb_queue = vkb_device.get_queue(vkb::QueueType::present)) {
 		present_queue.queue = vkb_queue.value();
-		present_queue.queue_family =
-				vkb_device.get_queue_index(vkb::QueueType::present).value();
+		present_queue.queue_family = vkb_device.get_queue_index(vkb::QueueType::present).value();
 	} else {
 		present_queue.queue = graphics_queue.queue;
 		present_queue.queue_family = graphics_queue.queue_family;
@@ -127,8 +118,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 
 	if (auto vkb_queue = vkb_device.get_queue(vkb::QueueType::transfer)) {
 		transfer_queue.queue = vkb_queue.value();
-		transfer_queue.queue_family =
-				vkb_device.get_queue_index(vkb::QueueType::transfer).value();
+		transfer_queue.queue_family = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
 	} else {
 		transfer_queue.queue = graphics_queue.queue;
 		transfer_queue.queue_family = graphics_queue.queue_family;
@@ -152,8 +142,7 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 
 	deletion_queue.push_function([this]() {
 		while (small_allocs_pools.size()) {
-			std::unordered_map<uint32_t, VmaPool>::iterator e =
-					small_allocs_pools.begin();
+			std::unordered_map<uint32_t, VmaPool>::iterator e = small_allocs_pools.begin();
 			vmaDestroyPool(allocator, e->second);
 			small_allocs_pools.erase(e);
 		}
@@ -162,25 +151,20 @@ void VulkanRenderBackend::init(Ref<Window> window) {
 
 #ifndef GL_DIST_BUILD
 	// inform user about the chosen device
-	GL_LOG_INFO("Vulkan Initialized:");
-	GL_LOG_INFO("Device: {}", physical_device_properties.deviceName);
-	GL_LOG_INFO("API: {}.{}.{}",
-			VK_VERSION_MAJOR(physical_device_properties.apiVersion),
+	GL_LOG_INFO("[VULKAN] Vulkan Initialized:");
+	GL_LOG_INFO("[VULKAN] Device: {}", physical_device_properties.deviceName);
+	GL_LOG_INFO("[VULKAN] API: {}.{}.{}", VK_VERSION_MAJOR(physical_device_properties.apiVersion),
 			VK_VERSION_MINOR(physical_device_properties.apiVersion),
 			VK_VERSION_PATCH(physical_device_properties.apiVersion));
 #endif
 
 	imm_transfer.fence = fence_create();
-	imm_transfer.command_pool =
-			command_pool_create((CommandQueue)&transfer_queue);
-	imm_transfer.command_buffer =
-			command_pool_allocate(imm_transfer.command_pool);
+	imm_transfer.command_pool = command_pool_create((CommandQueue)&transfer_queue);
+	imm_transfer.command_buffer = command_pool_allocate(imm_transfer.command_pool);
 
 	imm_graphics.fence = fence_create();
-	imm_graphics.command_pool =
-			command_pool_create((CommandQueue)&graphics_queue);
-	imm_graphics.command_buffer =
-			command_pool_allocate(imm_graphics.command_pool);
+	imm_graphics.command_pool = command_pool_create((CommandQueue)&graphics_queue);
+	imm_graphics.command_buffer = command_pool_allocate(imm_graphics.command_pool);
 
 	deletion_queue.push_function([this]() {
 		fence_free(imm_transfer.fence);
@@ -229,12 +213,10 @@ void VulkanRenderBackend::imgui_init_for_platform(
 		GLFWwindow* p_glfw_window, DataFormat p_color_format) {
 	VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 }, { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 }, { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
 		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
 		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
 		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
@@ -264,12 +246,11 @@ void VulkanRenderBackend::imgui_init_for_platform(
 	init_info.PipelineInfoMain.PipelineRenderingCreateInfo = {};
 	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.sType =
 			VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-	init_info.PipelineInfoMain.PipelineRenderingCreateInfo
-			.colorAttachmentCount = 1;
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
 
 	static VkFormat color_attachment = static_cast<VkFormat>(p_color_format);
-	init_info.PipelineInfoMain.PipelineRenderingCreateInfo
-			.pColorAttachmentFormats = &color_attachment;
+	init_info.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats =
+			&color_attachment;
 
 	ImGui_ImplGlfw_InitForVulkan(p_glfw_window, true);
 	ImGui_ImplVulkan_Init(&init_info);
@@ -284,8 +265,7 @@ void VulkanRenderBackend::imgui_init_for_platform(
 }
 
 void VulkanRenderBackend::imgui_render_for_platform(CommandBuffer p_cmd) {
-	ImGui_ImplVulkan_RenderDrawData(
-			ImGui::GetDrawData(), (VkCommandBuffer)p_cmd);
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), (VkCommandBuffer)p_cmd);
 }
 
 void VulkanRenderBackend::imgui_new_frame_for_platform() {
@@ -293,11 +273,10 @@ void VulkanRenderBackend::imgui_new_frame_for_platform() {
 	ImGui_ImplVulkan_NewFrame();
 }
 
-void* VulkanRenderBackend::imgui_image_upload(
-		Image p_image, Sampler p_sampler) {
+void* VulkanRenderBackend::imgui_image_upload(Image p_image, Sampler p_sampler) {
 	VulkanImage* image = (VulkanImage*)p_image;
-	return (void*)ImGui_ImplVulkan_AddTexture((VkSampler)p_sampler,
-			image->vk_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	return (void*)ImGui_ImplVulkan_AddTexture(
+			(VkSampler)p_sampler, image->vk_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void VulkanRenderBackend::imgui_image_free(void* p_set) {

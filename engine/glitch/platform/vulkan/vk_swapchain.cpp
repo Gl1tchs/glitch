@@ -8,8 +8,7 @@ namespace gl {
 void VulkanRenderBackend::_swapchain_release(VulkanSwapchain* p_swapchain) {
 	// destroy swapchain resources
 	for (int i = 0; i < p_swapchain->images.size(); i++) {
-		vkDestroyImageView(
-				device, p_swapchain->images[i].vk_image_view, nullptr);
+		vkDestroyImageView(device, p_swapchain->images[i].vk_image_view, nullptr);
 	}
 
 	p_swapchain->image_index = UINT32_MAX;
@@ -27,10 +26,11 @@ Swapchain VulkanRenderBackend::swapchain_create() {
 	return Swapchain(swapchain);
 }
 
-void VulkanRenderBackend::swapchain_resize(CommandQueue p_cmd_queue,
-		Swapchain p_swapchain, glm::uvec2 p_size, bool p_vsync) {
+void VulkanRenderBackend::swapchain_resize(
+		CommandQueue p_cmd_queue, Swapchain p_swapchain, glm::uvec2 p_size, bool p_vsync) {
 	if (!p_swapchain) {
-		GL_LOG_ERROR("Unable to resize a swapchain that hasn't created!");
+		GL_LOG_ERROR("[VULKAN] [VulkanRenderBackend::swapchain_resize] Unable to resize a "
+					 "swapchain that hasn't created!");
 		return;
 	}
 
@@ -51,10 +51,8 @@ void VulkanRenderBackend::swapchain_resize(CommandQueue p_cmd_queue,
 					.set_desired_present_mode(
 							// TODO: i dont think this is the best way
 							// to do it
-							p_vsync ? VK_PRESENT_MODE_FIFO_KHR
-									: VK_PRESENT_MODE_MAILBOX_KHR)
-					.set_desired_min_image_count(
-							vkb::SwapchainBuilder::DOUBLE_BUFFERING)
+							p_vsync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_MAILBOX_KHR)
+					.set_desired_min_image_count(vkb::SwapchainBuilder::DOUBLE_BUFFERING)
 					.set_desired_extent(p_size.x, p_size.y)
 					.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
@@ -73,8 +71,7 @@ void VulkanRenderBackend::swapchain_resize(CommandQueue p_cmd_queue,
 	swapchain->extent = vkb_swapchain.extent;
 
 	std::vector<VkImage> swapchain_images = vkb_swapchain.get_images().value();
-	std::vector<VkImageView> swapchain_image_views =
-			vkb_swapchain.get_image_views().value();
+	std::vector<VkImageView> swapchain_image_views = vkb_swapchain.get_image_views().value();
 
 	for (size_t i = 0; i < swapchain_images.size(); i++) {
 		VulkanImage image = {};
@@ -98,8 +95,7 @@ size_t VulkanRenderBackend::swapchain_get_image_count(Swapchain p_swapchain) {
 	return swapchain->images.size();
 }
 
-std::vector<Image> VulkanRenderBackend::swapchain_get_images(
-		Swapchain p_swapchain) {
+std::vector<Image> VulkanRenderBackend::swapchain_get_images(Swapchain p_swapchain) {
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
 	std::vector<Image> images(swapchain->images.size());
@@ -110,14 +106,12 @@ std::vector<Image> VulkanRenderBackend::swapchain_get_images(
 	return images;
 }
 
-Result<Image, SwapchainAcquireError>
-VulkanRenderBackend::swapchain_acquire_image(
+Result<Image, SwapchainAcquireError> VulkanRenderBackend::swapchain_acquire_image(
 		Swapchain p_swapchain, Semaphore p_semaphore, uint32_t* o_image_index) {
 	VulkanSwapchain* swapchain = (VulkanSwapchain*)p_swapchain;
 
-	const VkResult res = vkAcquireNextImageKHR(device, swapchain->vk_swapchain,
-			UINT64_MAX, (VkSemaphore)p_semaphore, VK_NULL_HANDLE,
-			&swapchain->image_index);
+	const VkResult res = vkAcquireNextImageKHR(device, swapchain->vk_swapchain, UINT64_MAX,
+			(VkSemaphore)p_semaphore, VK_NULL_HANDLE, &swapchain->image_index);
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR) {
 		return make_err<Image>(SwapchainAcquireError::OUT_OF_DATE);

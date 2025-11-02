@@ -37,16 +37,14 @@ public:
 	 * @return ScriptRef reference key to the table in
 	 * LUA_REGISTRYINDEX.
 	 */
-	static Result<ScriptRef, ScriptResult> load_script_file(
-			const fs::path& p_path);
+	static Result<ScriptRef, ScriptResult> load_script_file(const fs::path& p_path);
 
 	/**
 	 * Executes the script, and stores the returned
 	 * object (should be a table) in the Lua registry.
 	 * @return ScriptRef reference key to the table in LUA_REGISTRYINDEX.
 	 */
-	static Result<ScriptRef, ScriptResult> load_script(
-			const std::string& p_script);
+	static Result<ScriptRef, ScriptResult> load_script(const std::string& p_script);
 
 	/**
 	 * Gets the error message and pops the error stack if a call failed
@@ -73,8 +71,7 @@ public:
 
 			// call the function (num_args = 1 (self) + sizeof...(args))
 			if (!call_function(1 + sizeof...(p_args))) {
-				GL_LOG_ERROR(
-						"[LUA] Error calling {}: {}", p_func_name, get_error());
+				GL_LOG_ERROR("[LUA] Error calling {}: {}", p_func_name, get_error());
 				// TODO: global error handling
 				result = ScriptResult::EXECUTION_ERROR;
 			}
@@ -127,24 +124,17 @@ public:
 
 	static ScriptMetadata get_metadata(ScriptRef p_ref);
 
-	static Optional<double> get_number_field(
-			ScriptRef p_ref, const char* p_field_name);
+	static Optional<double> get_number_field(ScriptRef p_ref, const char* p_field_name);
 
-	static Optional<std::string> get_string_field(
-			ScriptRef p_ref, const char* p_field_name);
+	static Optional<std::string> get_string_field(ScriptRef p_ref, const char* p_field_name);
 
-	static Optional<bool> get_bool_field(
-			ScriptRef p_ref, const char* p_field_name);
+	static Optional<bool> get_bool_field(ScriptRef p_ref, const char* p_field_name);
 
-	static bool set_field(
-			ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value);
+	static bool set_field(ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value);
 
-	static bool set_field(
-			ScriptRef p_ref, const char* p_field_name, double p_value);
-	static bool set_field(ScriptRef p_ref, const char* p_field_name,
-			const std::string& p_value);
-	static bool set_field(
-			ScriptRef p_ref, const char* p_field_name, bool p_value);
+	static bool set_field(ScriptRef p_ref, const char* p_field_name, double p_value);
+	static bool set_field(ScriptRef p_ref, const char* p_field_name, const std::string& p_value);
+	static bool set_field(ScriptRef p_ref, const char* p_field_name, bool p_value);
 
 #ifdef GL_DEBUG_BUILD
 	/**

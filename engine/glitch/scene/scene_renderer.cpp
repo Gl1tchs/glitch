@@ -7,8 +7,7 @@
 namespace gl {
 
 SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
-		renderer(Application::get_instance()->get_renderer()),
-		backend(renderer->get_backend()) {
+		renderer(Application::get_instance()->get_renderer()), backend(renderer->get_backend()) {
 	renderer->set_msaa_samples(p_specs.msaa);
 
 	// Create and initialize graphics passes
@@ -18,19 +17,19 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 	mesh_pass = create_ref<MeshPass>();
 	renderer->add_pass(mesh_pass);
 
-	DataFormat color_attachment_format = backend->image_get_format(
-			renderer->get_render_image("geo_albedo").value());
-	DataFormat depth_attachment_format = backend->image_get_format(
-			renderer->get_render_image("geo_depth").value());
+	DataFormat color_attachment_format =
+			backend->image_get_format(renderer->get_render_image("geo_albedo").value());
+	DataFormat depth_attachment_format =
+			backend->image_get_format(renderer->get_render_image("geo_depth").value());
 
 	// Register material definitions
 	MaterialSystem::init();
 	MaterialSystem::register_definition("unlit_standard",
-			get_unlit_standard_definition(renderer->get_msaa_samples(),
-					color_attachment_format, depth_attachment_format));
+			get_unlit_standard_definition(renderer->get_msaa_samples(), color_attachment_format,
+					depth_attachment_format));
 	MaterialSystem::register_definition("pbr_standard",
-			get_pbr_standard_definition(renderer->get_msaa_samples(),
-					color_attachment_format, depth_attachment_format));
+			get_pbr_standard_definition(renderer->get_msaa_samples(), color_attachment_format,
+					depth_attachment_format));
 }
 
 SceneRenderer::~SceneRenderer() { renderer->wait_for_device(); }
@@ -39,7 +38,7 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 	GL_PROFILE_SCOPE;
 
 	if (!p_ctx.scene) {
-		GL_LOG_WARNING("No Scene assigned to render!");
+		GL_LOG_WARNING("[SceneRenderer::submit] No Scene assigned to render!");
 		return;
 	}
 
@@ -56,8 +55,6 @@ void SceneRenderer::submit(const DrawingContext& p_ctx) {
 	renderer->end_render();
 }
 
-void SceneRenderer::submit_func(RenderFunc&& p_func) {
-	render_funcs.push_back(p_func);
-}
+void SceneRenderer::submit_func(RenderFunc&& p_func) { render_funcs.push_back(p_func); }
 
 } //namespace gl

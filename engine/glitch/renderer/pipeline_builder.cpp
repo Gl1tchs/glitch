@@ -20,8 +20,7 @@ PipelineBuilder& PipelineBuilder::add_color_attachment(DataFormat p_format) {
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::set_depth_attachment(
-		Optional<DataFormat> p_format) {
+PipelineBuilder& PipelineBuilder::set_depth_attachment(Optional<DataFormat> p_format) {
 	if (p_format) {
 		rendering_state.depth_attachment = *p_format;
 	}
@@ -39,8 +38,7 @@ PipelineBuilder& PipelineBuilder::add_shader_stage(
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::with_depth_test(
-		CompareOperator p_op, bool p_depth_write) {
+PipelineBuilder& PipelineBuilder::with_depth_test(CompareOperator p_op, bool p_depth_write) {
 	depth_stencil_state.depth_compare_operator = CompareOperator::LESS;
 	depth_stencil_state.enable_depth_test = true;
 	depth_stencil_state.enable_depth_write = p_depth_write;
@@ -57,13 +55,12 @@ PipelineBuilder& PipelineBuilder::with_blend() {
 
 PipelineBuilder& PipelineBuilder::with_multisample(
 		uint32_t p_samples, bool p_enable_sample_shading) {
-	const uint32_t max_sample_count =
-			Renderer::get_backend()->get_max_msaa_samples();
+	const uint32_t max_sample_count = Renderer::get_backend()->get_max_msaa_samples();
 
-	if ((p_samples != 1 && p_samples % 2 != 0) ||
-			p_samples > max_sample_count) {
-		GL_LOG_ERROR("Invalid MSAA sample count: {}. Must be 1 or "
-					 "power-of-two, and ≤ {}",
+	if ((p_samples != 1 && p_samples % 2 != 0) || p_samples > max_sample_count) {
+		GL_LOG_ERROR(
+				"[PipelineBuilder::with_multisample] Invalid MSAA sample count: {}. Must be 1 or "
+				"power-of-two, and ≤ {}",
 				p_samples, max_sample_count);
 		return *this;
 	}
@@ -90,9 +87,8 @@ std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 
 	// If any render pass provided use it to build the pipeline otherwise get
 	// the default render pass from rendering device1
-	Pipeline pipeline = backend->render_pipeline_create(shader, primitive_type,
-			vertex_input, rasterization, multisample, depth_stencil_state,
-			color_blend_state, 0, rendering_state);
+	Pipeline pipeline = backend->render_pipeline_create(shader, primitive_type, vertex_input,
+			rasterization, multisample, depth_stencil_state, color_blend_state, 0, rendering_state);
 
 	return std::make_pair(shader, pipeline);
 }

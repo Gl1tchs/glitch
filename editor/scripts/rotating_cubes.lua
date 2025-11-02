@@ -9,11 +9,6 @@ function RotatingCubes:on_create(entity)
 
     local position = Vec3(0.0, 5.0, 0.0)
     position.x = 5.0
-
-    local transform = Entity.GetTransform(entity)
-    if transform ~= nil then
-        transform:SetPosition(position)
-    end
 end
 
 function RotatingCubes:on_update(entity, dt)
