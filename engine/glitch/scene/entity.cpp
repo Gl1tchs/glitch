@@ -75,10 +75,11 @@ std::vector<Entity> Entity::get_children() const {
 	const std::vector<UID>& children_ids = get_relation().children_ids;
 
 	std::vector<Entity> children;
+	children.reserve(children_ids.size());
 
 	std::transform(children_ids.begin(), children_ids.end(),
 			std::back_inserter(children), [&](const auto& child_id) {
-				Entity entity = scene->find_by_id(child_id);
+				Entity entity = scene->find_by_id(child_id).value();
 				return entity;
 			});
 

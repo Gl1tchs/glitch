@@ -50,8 +50,8 @@ public:
 
 	bool exists(UID p_uid) const;
 
-	Entity find_by_id(UID p_uid);
-	Entity find_by_name(const std::string& p_name);
+	Optional<Entity> find_by_id(UID p_uid);
+	Optional<Entity> find_by_name(const std::string& p_name);
 
 	/**
 	 * Get entities with specified components,

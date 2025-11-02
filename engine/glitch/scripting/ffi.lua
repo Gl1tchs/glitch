@@ -2,17 +2,10 @@ ffi = require('ffi')
 
 ffi.cdef [[
     /* ---------------- Math Types ---------------- */
-
-    typedef struct { float x, y; } Vec2;
     typedef struct { float x, y, z; } Vec3;
-    typedef struct { float x, y, z, w; } Vec4;
-    typedef struct { float r, g, b, a; } Color;
     
-    /* ---------------- Utility Functions ---------------- */
-
-    void Log(const char* message);
-
-    /* ---------------- Components ---------------- */
+    /* ---------------- Core Types ---------------- */
+    
     typedef struct Transform {
         struct Transform* parent; 
         Vec3 position;
@@ -20,22 +13,94 @@ ffi.cdef [[
         Vec3 scale;
     } Transform;
 
-    Transform* GetTransform(uint32_t entity_id);
+    /* ---------------- Global Engine Functions ---------------- */
+    void Log(const char* message);
+    uint32_t FindEntityById(uint32_t p_id);
+    uint32_t FindEntityByName(const char* p_name);
 
-    /* ---------------- Input API ---------------- */
+    Transform* GetTransform(uint32_t self);
     
-    bool GetKeyDown(int key_code);
-    bool GetKeyUp(int key_code);
+    int GetKeyDown(int key_code);
+    int GetKeyUp(int key_code);
+    int GetMouseDown(int mouse_code);
+    int GetMouseUp(int mouse_code);
+
+    /* ---------------- Method Implementations ---------------- */
     
-    bool GetMouseDown(int mouse_code);
-    bool GetMouseUp(int mouse_code);
+    /* Entity Methods */
+    /* uint32_t Entity_GetParent(uint32_t self); */
+    /* void Entity_SetParent(uint32_t self, uint32_t parent); */
+
+    /* Transform Methods */
+    void Transform_SetPosition(Transform* self, Vec3 new_pos);
+    Vec3 Transform_GetPosition(Transform* self);
 ]]
-
----------------- Global Engine Namespace ----------------
 
 Engine = {}
 
----------------- Input Types ----------------
+local C = {}
+Engine.C_Functions = C
+
+-- Type wrappers
+
+Engine.Vec3 = function(x, y, z)
+    -- Creates a new Vec3 cdata object, fills with 0 if args are nil
+    return ffi.new("Vec3", x or 0, y or 0, z or 0)
+end
+
+Engine.Transform = function()
+    -- Creates a new, zero-initialized Transform cdata object
+    -- (parent will be nil, vectors will be 0,0,0)
+    return ffi.new("Transform")
+end
+
+local Transform_ctype = ffi.typeof("Transform")
+ffi.metatype(Transform_ctype, {
+    __index = {
+        SetPosition = function(self, new_pos)
+            return C.Transform_SetPosition(self, new_pos)
+        end,
+        GetPosition = function(self)
+            return C.Transform_GetPosition(self)
+        end
+    }
+})
+
+-- Function wrappers, because C++ is going to bind them later
+
+Engine.Log = function(...)
+    C.Log(string.format(...))
+end
+
+Engine.FindEntityById = function(id)
+    return C.FindEntityById(id)
+end
+
+Engine.FindEntityByName = function(name)
+    return C.FindEntityByName(name)
+end
+
+Engine.GetTransform = function(entity_id)
+    return C.GetTransform(entity_id)
+end
+
+Engine.GetKeyDown = function(key)
+    return C.GetKeyDown(key) ~= 0
+end
+
+Engine.GetKeyUp = function(key)
+    return C.GetKeyUp(key) ~= 0
+end
+
+Engine.GetMouseDown = function(btn)
+    return C.GetMouseDown(btn) ~= 0
+end
+
+Engine.GetMouseUp = function(btn)
+    return C.GetMouseUp(btn) ~= 0
+end
+
+-- ---- KeyCode and MouseCode enums ----
 
 __internal_KeyCode = {
     Space = 32,

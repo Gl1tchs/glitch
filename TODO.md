@@ -1,9 +1,6 @@
 # TODO
 
 - [ ] Serialization for specifications like MSAA
-- [ ] ECS
-  - [ ] Material component
-
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL
@@ -14,6 +11,27 @@
 
 ## Scripting
 
+- [ ] Some more functions
+  - [ ] const char* Entity_GetName(uint32_t entity)
+  - [ ] uint32_t Entity_GetParent(uint32_t entity)
+  - [ ] void Entity_SetParent(uint32_t entity, uint32_t parent)
+  - [ ] void Entity_FindChildById(uint32_t entity, uint32_t id)
+  - [ ] void Entity_FindChildByName(uint32_t entity, const char* name)
+  - [ ] void Entity_Destroy(uint32_t entity)
+  - [ ] uint32_t Entity_Create()
+  - [ ] uint32_t Entity_CreateNamed(const char* name)
+  - [ ] bool Entity_IsValid(uint32_t entity)
+  - [ ] bool Transform_Rotate(Transform* transform, Vec3 rotation)
+  - [ ] Vec3 Transform_GetForward(Transform* transform)
+  - [ ] Vec3 Transform_GetRight(Transform* transform)
+  - [ ] Vec3 Transform_GetUp(Transform* transform)
+  - [ ] void Transform_LookAt(Transform* transform, Vec3 point)
+  - [ ] void Window_SetTitle(const char* title)
+  - [ ] void Window_SetCursorMode(WindwoCursorMode mode)
+  - [ ] Vec2 Window_GetSize()
+  - [ ] void Window_SetSize(Vec2 size)
+  - [ ] Timer type
+  - [ ] Mesh API
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
 - [ ] LuaJIT linux build
 
