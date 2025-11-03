@@ -79,7 +79,7 @@ target_include_directories(glitch
 	PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/engine
 	${GLM_INCLUDES}
-	PRIVATE
+  PRIVATE
 	${VENDOR_DIR}/include # header only libraries
 	${GL_OUTPUT_DIR}/include
 	${GLFW_INCLUDES}

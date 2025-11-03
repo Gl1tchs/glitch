@@ -1,8 +1,6 @@
 # TODO
 
 - [ ] Headless build creation.
-
-- [ ] Serialization for specifications like MSAA
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL
@@ -10,6 +8,18 @@
 - [ ] Parallax mapping
 - [ ] Per Frame Allocators
 - [ ] Async GLTF model loading progress
+
+## Serialization
+
+- [ ] Custom INI parser for configuration files.
+  - [ ] Array support
+- [ ] Custom scene description language
+- [ ] Implementing an asset system.
+
+## Asset System
+
+- [ ] Asset loading and asset handles
+- [ ] Custom asset to engine type conversion and asset caching
 
 ## Linux
 
