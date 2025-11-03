@@ -14,6 +14,7 @@ end
 function RotatingCubes:on_update(entity, dt)
     local transform = Entity.GetTransform(entity)
     if transform == nil then
+        Debug.Assert(false)
         return
     end
 

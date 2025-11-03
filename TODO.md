@@ -11,8 +11,11 @@
 
 ## Linux
 
-- [ ] Compile and link to LuaJIT
 - [ ] Try out Fil-C and make it build 
+
+## Editor
+
+- [ ] Changing transform while scripts are running are not working for meshes (or parents).
 
 ## Scripting
 
