@@ -66,8 +66,8 @@ protected:
 private:
 	bool running = true;
 
-	Ref<Window> window;
-	Ref<Renderer> renderer;
+	Ref<Window> window = nullptr;
+	Ref<Renderer> renderer = nullptr;
 
 	std::vector<MainThreadFunc> main_thread_queue;
 	std::mutex main_thread_queue_mutex;

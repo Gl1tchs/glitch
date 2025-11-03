@@ -14,7 +14,7 @@ static lua_State* s_lua = nullptr;
  * Register engine functionality into lua
  *
  */
-extern void _register_bindings(lua_State* L);
+extern void register_ffi_bindings(lua_State* L);
 
 void ScriptEngine::init() {
 	s_lua = luaL_newstate();
@@ -22,7 +22,7 @@ void ScriptEngine::init() {
 	luaL_openlibs(s_lua);
 
 	// Expose engine functions
-	_register_bindings(s_lua);
+	register_ffi_bindings(s_lua);
 }
 
 void ScriptEngine::shutdown() { lua_close(s_lua); }

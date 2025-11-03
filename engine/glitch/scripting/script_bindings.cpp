@@ -12,59 +12,53 @@ namespace gl {
 
 std::mutex g_script_mutex;
 
-typedef uint32_t EntityUID;
-
 extern "C" {
+
+typedef uint32_t EntityUID;
 
 // --- Global functions ---
 
-void debug_log(const char* message);
+static void debug_log(const char* message);
 
-// --- Entity Methods  ---
+// --- Entity API  ---
 
-EntityUID entity_create(const char* name);
-void entity_destroy(EntityUID self);
+static EntityUID entity_create(const char* name);
+static void entity_destroy(EntityUID self);
+static int entity_is_valid(EntityUID self);
+static EntityUID entity_find_by_id(EntityUID p_id);
+static EntityUID entity_find_by_name(const char* p_name);
+static const char* entity_get_name(EntityUID self);
+static void entity_set_name(EntityUID self, const char* name);
+static EntityUID entity_get_parent(EntityUID self);
+static void entity_set_parent(EntityUID self, EntityUID parent);
+static EntityUID entity_find_child_by_id(EntityUID self, EntityUID id);
+static EntityUID entity_find_child_by_name(EntityUID self, const char* name);
+static Transform* entity_get_transform(EntityUID self);
 
-int entity_is_valid(EntityUID self);
+// --- Transform API ---
 
-EntityUID entity_find_by_id(EntityUID p_id);
-EntityUID entity_find_by_name(const char* p_name);
+static void transform_rotate(Transform* transform, float angle, glm::vec3 axis);
+static glm::vec3 transform_get_forward(Transform* transform);
+static glm::vec3 transform_get_right(Transform* transform);
+static glm::vec3 transform_get_up(Transform* transform);
 
-const char* entity_get_name(EntityUID self);
-void entity_set_name(EntityUID self, const char* name);
+// --- Input API ---
 
-EntityUID entity_get_parent(EntityUID self);
-void entity_set_parent(EntityUID self, EntityUID parent);
+static int input_get_key_down(int key_code);
+static int input_get_key_up(int key_code);
+static int input_get_mouse_down(int mouse_code);
+static int input_get_mouse_up(int mouse_code);
 
-EntityUID entity_find_child_by_id(EntityUID self, EntityUID id);
-EntityUID entity_find_child_by_name(EntityUID self, const char* name);
+// --- Window API ---
 
-Transform* entity_get_transform(EntityUID self);
-
-// --- Transform Methods ---
-
-void transform_rotate(Transform* transform, float angle, glm::vec3 axis);
-glm::vec3 transform_get_forward(Transform* transform);
-glm::vec3 transform_get_right(Transform* transform);
-glm::vec3 transform_get_up(Transform* transform);
-
-// --- Input ---
-
-int input_get_key_down(int key_code);
-int input_get_key_up(int key_code);
-int input_get_mouse_down(int mouse_code);
-int input_get_mouse_up(int mouse_code);
-
-// --- Window Methods ---
-
-void window_set_title(const char* title);
-int window_set_cursor_mode();
-void Window_SetCursorMode(int mode);
-glm::vec2 window_set_size();
+static void window_set_title(const char* title);
+static int window_set_cursor_mode();
+static void Window_SetCursorMode(int mode);
+static glm::vec2 window_set_size();
 
 } // extern "C"
 
-static void _run_string(lua_State* L, const char* p_code) {
+static void run_string(lua_State* L, const char* p_code) {
 	if (luaL_dostring(L, p_code) != LUA_OK) {
 		GL_LOG_ERROR("[LUA] FFI Bind Error: {}", lua_tostring(L, -1));
 		lua_pop(L, 1);
@@ -72,75 +66,75 @@ static void _run_string(lua_State* L, const char* p_code) {
 	}
 }
 
-static void _run_string(lua_State* L, const std::string& p_code) { _run_string(L, p_code.c_str()); }
+static void run_string(lua_State* L, const std::string& p_code) { run_string(L, p_code.c_str()); }
 
-static void _bind_function(
+static void bind_function(
 		lua_State* L, const char* p_func_path, const char* p_func_def, uintptr_t p_fnptr) {
-	_run_string(L, std::format("{} = ffi.cast('{}', {}ULL)", p_func_path, p_func_def, p_fnptr));
+	run_string(L, std::format("{} = ffi.cast('{}', {}ULL)", p_func_path, p_func_def, p_fnptr));
 }
 
-void _register_bindings(lua_State* L) {
+void register_ffi_bindings(lua_State* L) {
 	// Load and run the FFI script
-	_run_string(L, lua_bindings::ffi_source);
+	run_string(L, lua_bindings::ffi_source);
 
 	/* ---------------- Debug Namespace ---------------- */
-	_bind_function(
+	bind_function(
 			L, "Engine.C_Functions.debug_log", "void (*)(const char*)", (uintptr_t)&debug_log);
 
-	/* ---------------- Entity Methods ---------------- */
-	_bind_function(L, "Engine.C_Functions.entity_create", "uint32_t (*)(const char*)",
+	/* ---------------- Entity API ---------------- */
+	bind_function(L, "Engine.C_Functions.entity_create", "uint32_t (*)(const char*)",
 			(uintptr_t)&entity_create);
-	_bind_function(L, "Engine.C_Functions.entity_destroy", "void (*)(uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_destroy", "void (*)(uint32_t)",
 			(uintptr_t)&entity_destroy);
-	_bind_function(L, "Engine.C_Functions.entity_is_valid", "int (*)(uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_is_valid", "int (*)(uint32_t)",
 			(uintptr_t)&entity_is_valid);
-	_bind_function(L, "Engine.C_Functions.entity_find_by_id", "uint32_t (*)(uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_find_by_id", "uint32_t (*)(uint32_t)",
 			(uintptr_t)&entity_find_by_id);
-	_bind_function(L, "Engine.C_Functions.entity_find_by_name", "uint32_t (*)(const char*)",
+	bind_function(L, "Engine.C_Functions.entity_find_by_name", "uint32_t (*)(const char*)",
 			(uintptr_t)&entity_find_by_name);
-	_bind_function(L, "Engine.C_Functions.entity_get_name", "const char* (*)(uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_get_name", "const char* (*)(uint32_t)",
 			(uintptr_t)&entity_get_name);
-	_bind_function(L, "Engine.C_Functions.entity_set_name", "void (*)(uint32_t, const char*)",
+	bind_function(L, "Engine.C_Functions.entity_set_name", "void (*)(uint32_t, const char*)",
 			(uintptr_t)&entity_set_name);
-	_bind_function(L, "Engine.C_Functions.entity_get_parent", "uint32_t (*)(uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_get_parent", "uint32_t (*)(uint32_t)",
 			(uintptr_t)&entity_get_parent);
-	_bind_function(L, "Engine.C_Functions.entity_set_parent", "void (*)(uint32_t, uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_set_parent", "void (*)(uint32_t, uint32_t)",
 			(uintptr_t)&entity_set_parent);
-	_bind_function(L, "Engine.C_Functions.entity_find_child_by_id",
+	bind_function(L, "Engine.C_Functions.entity_find_child_by_id",
 			"uint32_t (*)(uint32_t, uint32_t)", (uintptr_t)&entity_find_child_by_id);
-	_bind_function(L, "Engine.C_Functions.entity_find_child_by_name",
+	bind_function(L, "Engine.C_Functions.entity_find_child_by_name",
 			"uint32_t (*)(uint32_t, const char*)", (uintptr_t)&entity_find_child_by_name);
-	_bind_function(L, "Engine.C_Functions.entity_get_transform", "Transform* (*)(uint32_t)",
+	bind_function(L, "Engine.C_Functions.entity_get_transform", "Transform* (*)(uint32_t)",
 			(uintptr_t)&entity_get_transform);
 
-	/* ---------------- Transform Methods ---------------- */
-	_bind_function(L, "Engine.C_Functions.transform_rotate", "void (*)(Transform*, float, Vec3)",
+	/* ---------------- Transform API ---------------- */
+	bind_function(L, "Engine.C_Functions.transform_rotate", "void (*)(Transform*, float, Vec3)",
 			(uintptr_t)&transform_rotate);
-	_bind_function(L, "Engine.C_Functions.transform_get_forward", "Vec3 (*)(Transform*)",
+	bind_function(L, "Engine.C_Functions.transform_get_forward", "Vec3 (*)(Transform*)",
 			(uintptr_t)&transform_get_forward);
-	_bind_function(L, "Engine.C_Functions.transform_get_right", "Vec3 (*)(Transform*)",
+	bind_function(L, "Engine.C_Functions.transform_get_right", "Vec3 (*)(Transform*)",
 			(uintptr_t)&transform_get_right);
-	_bind_function(L, "Engine.C_Functions.transform_get_up", "Vec3 (*)(Transform*)",
+	bind_function(L, "Engine.C_Functions.transform_get_up", "Vec3 (*)(Transform*)",
 			(uintptr_t)&transform_get_up);
 
 	/* ---------------- Input API ---------------- */
-	_bind_function(L, "Engine.C_Functions.input_get_key_down", "int (*)(int)",
+	bind_function(L, "Engine.C_Functions.input_get_key_down", "int (*)(int)",
 			(uintptr_t)&input_get_key_down);
-	_bind_function(
+	bind_function(
 			L, "Engine.C_Functions.input_get_key_up", "int (*)(int)", (uintptr_t)&input_get_key_up);
-	_bind_function(L, "Engine.C_Functions.input_get_mouse_down", "int (*)(int)",
+	bind_function(L, "Engine.C_Functions.input_get_mouse_down", "int (*)(int)",
 			(uintptr_t)&input_get_mouse_down);
-	_bind_function(L, "Engine.C_Functions.input_get_mouse_up", "int (*)(int)",
+	bind_function(L, "Engine.C_Functions.input_get_mouse_up", "int (*)(int)",
 			(uintptr_t)&input_get_mouse_up);
 
-	/* ---------------- Window Methods ---------------- */
-	_bind_function(L, "Engine.C_Functions.window_set_title", "void (*)(const char*)",
+	/* ---------------- Window API ---------------- */
+	bind_function(L, "Engine.C_Functions.window_set_title", "void (*)(const char*)",
 			(uintptr_t)&window_set_title);
-	_bind_function(L, "Engine.C_Functions.window_set_cursor_mode", "int (*)()",
+	bind_function(L, "Engine.C_Functions.window_set_cursor_mode", "int (*)()",
 			(uintptr_t)&window_set_cursor_mode);
-	_bind_function(L, "Engine.C_Functions.Window_SetCursorMode", "void (*)(int)",
+	bind_function(L, "Engine.C_Functions.Window_SetCursorMode", "void (*)(int)",
 			(uintptr_t)&Window_SetCursorMode);
-	_bind_function(
+	bind_function(
 			L, "Engine.C_Functions.window_set_size", "Vec2 (*)()", (uintptr_t)&window_set_size);
 }
 

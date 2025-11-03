@@ -1,5 +1,7 @@
 # TODO
 
+- [ ] Headless build creation.
+
 - [ ] Serialization for specifications like MSAA
 - [ ] Shadow maps
   - [ ] Light goes inside walls
