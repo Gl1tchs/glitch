@@ -52,6 +52,12 @@ void Scene::copy_to(Scene& p_dest) {
 	// Copy entities
 	for (const auto& [uid, entity] : this->entity_map) {
 		p_dest.entity_map[uid] = Entity((EntityId)entity, &p_dest);
+
+		// Update entity transforms
+		if (p_dest.entity_map[uid].is_child()) {
+			Entity parent = *p_dest.entity_map[uid].get_parent();
+			p_dest.entity_map[uid].get_transform().parent = &parent.get_transform();
+		}
 	}
 }
 
@@ -83,8 +89,16 @@ void Scene::destroy(Entity p_entity) {
 		return;
 	}
 
+	// Destroy the children if any
 	for (auto child : p_entity.get_children()) {
 		destroy(child);
+	}
+
+	// If `p_entity` is a child of some other entity then reset relation
+	if (Optional<Entity> parent = p_entity.get_parent()) {
+		std::vector<UID>& parent_children = parent->get_relation().children_ids;
+		parent_children.erase(
+				std::find(parent_children.begin(), parent_children.end(), p_entity.get_uid()));
 	}
 
 	entity_map.erase(p_entity.get_uid());

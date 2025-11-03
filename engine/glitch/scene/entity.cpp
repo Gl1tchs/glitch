@@ -4,9 +4,7 @@
 
 namespace gl {
 
-RelationComponent& Entity::get_relation() {
-	return *get_component<RelationComponent>();
-}
+RelationComponent& Entity::get_relation() { return *get_component<RelationComponent>(); }
 
 const RelationComponent& Entity::get_relation() const {
 	return *get_component<RelationComponent>();
@@ -49,23 +47,16 @@ void Entity::set_parent(Entity parent) {
 	Transform& transform = get_transform();
 	Transform& parent_transform = parent.get_transform();
 
-	transform.local_position =
-			transform.get_position() - parent_transform.get_position();
-	transform.local_rotation =
-			transform.get_rotation() - parent_transform.get_rotation();
-	transform.local_scale =
-			transform.get_scale() / parent_transform.get_scale();
+	transform.local_position = transform.get_position() - parent_transform.get_position();
+	transform.local_rotation = transform.get_rotation() - parent_transform.get_rotation();
+	transform.local_scale = transform.get_scale() / parent_transform.get_scale();
 
 	transform.parent = &parent_transform;
 }
 
-bool Entity::is_parent() const {
-	return get_relation().children_ids.size() > 0;
-}
+bool Entity::is_parent() const { return get_relation().children_ids.size() > 0; }
 
-bool Entity::is_child() const {
-	return get_relation().parent_id != INVALID_UID;
-}
+bool Entity::is_child() const { return get_relation().parent_id != INVALID_UID; }
 
 std::vector<Entity> Entity::get_children() const {
 	if (!has_component<RelationComponent>()) {
@@ -77,8 +68,8 @@ std::vector<Entity> Entity::get_children() const {
 	std::vector<Entity> children;
 	children.reserve(children_ids.size());
 
-	std::transform(children_ids.begin(), children_ids.end(),
-			std::back_inserter(children), [&](const auto& child_id) {
+	std::transform(children_ids.begin(), children_ids.end(), std::back_inserter(children),
+			[&](const auto& child_id) {
 				Entity entity = scene->find_by_id(child_id).value();
 				return entity;
 			});
@@ -118,8 +109,7 @@ Optional<Entity> Entity::find_child_by_name(const std::string& p_name) const {
 bool Entity::remove_child(Entity child) {
 	auto& children_ids = get_relation().children_ids;
 
-	const auto it = std::find(
-			children_ids.begin(), children_ids.end(), child.get_uid());
+	const auto it = std::find(children_ids.begin(), children_ids.end(), child.get_uid());
 
 	if (it != children_ids.end()) {
 		// Set local positions as the world position
@@ -164,23 +154,15 @@ bool Entity::is_parent_of(Entity parent, Entity child) {
 
 const UID& Entity::get_uid() const { return get_component<IdComponent>()->id; }
 
-const std::string& Entity::get_name() const {
-	return get_component<IdComponent>()->tag;
-}
+const std::string& Entity::get_name() const { return get_component<IdComponent>()->tag; }
 
-void Entity::set_name(const std::string& p_name) {
-	get_component<IdComponent>()->tag = p_name;
-}
+void Entity::set_name(const std::string& p_name) { get_component<IdComponent>()->tag = p_name; }
 
 Transform& Entity::get_transform() { return *get_component<Transform>(); }
 
-const Transform& Entity::get_transform() const {
-	return *get_component<Transform>();
-}
+const Transform& Entity::get_transform() const { return *get_component<Transform>(); }
 
-bool Entity::is_valid() const {
-	return handle != INVALID_ENTITY_ID && scene != nullptr;
-}
+bool Entity::is_valid() const { return is_entity_valid(handle) && scene != nullptr; }
 
 Entity::operator bool() const { return is_valid(); }
 

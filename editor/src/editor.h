@@ -30,7 +30,7 @@ private:
 
 	void _render_hierarchy_entry(Entity p_entity);
 
-	void _render_hierarchy_context_menu(const Entity& p_entity);
+	void _render_hierarchy_context_menu(Entity p_entity);
 
 	void _render_inspector(Entity& p_entity);
 

@@ -15,8 +15,7 @@ template <class... Ts> struct overloaded : Ts... {
 	using Ts::operator()...;
 };
 
-EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) :
-		Application(p_info) {
+EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) : Application(p_info) {
 	renderer_settings.vsync = true;
 
 	scene = create_ref<Scene>();
@@ -50,8 +49,7 @@ void EditorApplication::_on_start() {
 	{
 		auto entity = scene->create("Directional Light");
 
-		DirectionalLight& directional_light =
-				entity.add_component<DirectionalLight>();
+		DirectionalLight& directional_light = entity.add_component<DirectionalLight>();
 
 		directional_light.direction = { -1, -1, -1, 0 };
 		directional_light.color = COLOR_WHITE;
@@ -77,8 +75,7 @@ void EditorApplication::_on_update(float p_dt) {
 	}
 
 	Entity camera = _get_scene()->find_by_id(camera_uid).value();
-	grid_pass->set_camera(camera.get_component<CameraComponent>()->camera,
-			camera.get_transform());
+	grid_pass->set_camera(camera.get_component<CameraComponent>()->camera, camera.get_transform());
 
 	DrawingContext ctx;
 	ctx.scene = _get_scene();
@@ -98,11 +95,9 @@ void EditorApplication::_on_update(float p_dt) {
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		window_flags |= ImGuiWindowFlags_NoTitleBar |
-				ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-				ImGuiWindowFlags_NoMove;
-		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus |
-				ImGuiWindowFlags_NoNavFocus;
+		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
 		if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode) {
 			window_flags |= ImGuiWindowFlags_NoBackground;
@@ -127,19 +122,14 @@ void EditorApplication::_on_update(float p_dt) {
 			if (ImGui::BeginMainMenuBar()) {
 				if (ImGui::BeginMenu("File")) {
 					if (ImGui::MenuItem("Load GLTF Model")) {
-						constexpr const char* FILTER_PATERNS[2] = { "*.glb",
-							"*.gltf" };
-						const char* path =
-								tinyfd_openFileDialog("Load Model", "",
-										sizeof(FILTER_PATERNS) /
-												sizeof(FILTER_PATERNS[0]),
-										FILTER_PATERNS, "GLTF Files", 0);
+						constexpr const char* FILTER_PATERNS[2] = { "*.glb", "*.gltf" };
+						const char* path = tinyfd_openFileDialog("Load Model", "",
+								sizeof(FILTER_PATERNS) / sizeof(FILTER_PATERNS[0]), FILTER_PATERNS,
+								"GLTF Files", 0);
 
 						if (path) {
-							if (auto model = gltf_loader->load_gltf(
-										path, scene)) {
-								(*model).set_name(
-										fs::path(path).filename().string());
+							if (auto model = gltf_loader->load_gltf(path, scene)) {
+								(*model).set_name(fs::path(path).filename().string());
 							} else {
 								GL_LOG_ERROR("{}", model.get_error());
 							}
@@ -159,34 +149,30 @@ void EditorApplication::_on_update(float p_dt) {
 			}
 
 			ImGui::Begin("Viewport", nullptr,
-					ImGuiWindowFlags_NoScrollbar |
-							ImGuiWindowFlags_NoScrollWithMouse);
+					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
 			// Remove default padding
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 
 			// Get final rendered image size (actual texture size)
-			const glm::uvec2 image_size =
-					get_renderer()->get_final_image_size();
-			ImTextureID tex_id = reinterpret_cast<ImTextureID>(
-					get_renderer()->get_final_image_descriptor());
+			const glm::uvec2 image_size = get_renderer()->get_final_image_size();
+			ImTextureID tex_id =
+					reinterpret_cast<ImTextureID>(get_renderer()->get_final_image_descriptor());
 
 			// Get the available region inside the window (without scrollbars or
 			// padding)
 			ImVec2 avail = ImGui::GetContentRegionAvail();
 
 			// Calculate scale to fit (keep aspect ratio)
-			float scale = std::min(avail.x / (float)image_size.x,
-					avail.y / (float)image_size.y);
+			float scale = std::min(avail.x / (float)image_size.x, avail.y / (float)image_size.y);
 
 			// Final size after scaling
 			ImVec2 final_size = { image_size.x * scale, image_size.y * scale };
 
 			// Center it by adjusting the cursor
 			ImVec2 cursor_pos = ImGui::GetCursorPos();
-			ImGui::SetCursorPos(
-					{ cursor_pos.x + (avail.x - final_size.x) * 0.5f,
-							cursor_pos.y + (avail.y - final_size.y) * 0.5f });
+			ImGui::SetCursorPos({ cursor_pos.x + (avail.x - final_size.x) * 0.5f,
+					cursor_pos.y + (avail.y - final_size.y) * 0.5f });
 
 			// Draw the image
 			ImGui::Image(tex_id, final_size);
@@ -195,23 +181,19 @@ void EditorApplication::_on_update(float p_dt) {
 				static bool mouse_disabled = false;
 				if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
 					if (!mouse_disabled) {
-						get_window()->set_cursor_mode(
-								WINDOW_CURSOR_MODE_DISABLED);
+						get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_DISABLED);
 						mouse_disabled = true;
 					}
 
 					camera_controller.update(p_dt);
 				} else {
-					camera_controller.last_mouse_pos.x =
-							Input::get_mouse_position().x;
-					camera_controller.last_mouse_pos.y =
-							Input::get_mouse_position().y;
+					camera_controller.last_mouse_pos.x = Input::get_mouse_position().x;
+					camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
 				}
 
 				if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
 					if (mouse_disabled) {
-						get_window()->set_cursor_mode(
-								WINDOW_CURSOR_MODE_NORMAL);
+						get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
 						mouse_disabled = false;
 					}
 				}
@@ -222,22 +204,18 @@ void EditorApplication::_on_update(float p_dt) {
 
 			ImGui::Begin("Stats");
 			{
-				const ApplicationPerfStats& stats =
-						Application::get_instance()->get_perf_stats();
+				const ApplicationPerfStats& stats = Application::get_instance()->get_perf_stats();
 
 				ImGui::SeparatorText("Application");
 				{
-					ImGui::Text("Event Loop: %.3f (FPS: %.2f)",
-							stats.delta_time,
+					ImGui::Text("Event Loop: %.3f (FPS: %.2f)", stats.delta_time,
 							1.0f / std::max(stats.delta_time, 1e-6f));
 				}
 
 				ImGui::SeparatorText("Renderer");
 				{
-					ImGui::Text(
-							"Draw Calls: %d", stats.renderer_stats.draw_calls);
-					ImGui::Text("Index Count: %d",
-							stats.renderer_stats.index_count);
+					ImGui::Text("Draw Calls: %d", stats.renderer_stats.draw_calls);
+					ImGui::Text("Index Count: %d", stats.renderer_stats.index_count);
 				}
 			}
 			ImGui::End();
@@ -253,9 +231,8 @@ void EditorApplication::_on_update(float p_dt) {
 
 				ImGui::SeparatorText("Renderer");
 
-				ImGui::DragFloat("Resolution Scale",
-						&renderer_settings.resolution_scale, 0.01f, 0.01f, 1.0f,
-						"%.2f");
+				ImGui::DragFloat("Resolution Scale", &renderer_settings.resolution_scale, 0.01f,
+						0.01f, 1.0f, "%.2f");
 				ImGui::Checkbox("VSync", &renderer_settings.vsync);
 			}
 			ImGui::End();
@@ -279,16 +256,13 @@ void EditorApplication::_on_update(float p_dt) {
 					// Copy the scene
 					scene->copy_to(*runtime_scene);
 
-					selected_entity = Entity(
-							(EntityId)selected_entity, runtime_scene.get());
+					selected_entity = Entity((EntityId)selected_entity, runtime_scene.get());
 
 					runtime_scene->start();
 					is_running = true;
 
-					Entity camera =
-							_get_scene()->find_by_id(camera_uid).value();
-					camera_controller.set_camera(
-							&camera.get_component<CameraComponent>()->camera,
+					Entity camera = _get_scene()->find_by_id(camera_uid).value();
+					camera_controller.set_camera(&camera.get_component<CameraComponent>()->camera,
 							&camera.get_transform());
 				}
 			} else {
@@ -297,13 +271,10 @@ void EditorApplication::_on_update(float p_dt) {
 
 					is_running = false;
 
-					selected_entity =
-							Entity((EntityId)selected_entity, scene.get());
+					selected_entity = Entity((EntityId)selected_entity, scene.get());
 
-					Entity camera =
-							_get_scene()->find_by_id(camera_uid).value();
-					camera_controller.set_camera(
-							&camera.get_component<CameraComponent>()->camera,
+					Entity camera = _get_scene()->find_by_id(camera_uid).value();
+					camera_controller.set_camera(&camera.get_component<CameraComponent>()->camera,
 							&camera.get_transform());
 				}
 			}
@@ -326,22 +297,20 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 			? std::format("Entity {}", p_entity.get_uid().value)
 			: p_entity.get_name();
 
-	const bool is_selected = selected_entity.is_valid() &&
-			p_entity.get_uid() == selected_entity.get_uid();
+	const bool is_selected =
+			selected_entity.is_valid() && p_entity.get_uid() == selected_entity.get_uid();
 
 	// Get children ahead of time to decide if this is a leaf or a branch
 	const auto& children = p_entity.get_children();
 
 	// Leaf Node: The entity has no children.
 	if (children.empty()) {
-		ImGuiTreeNodeFlags flags =
-				ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 		if (is_selected) {
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
 
-		ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s",
-				label.c_str());
+		ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s", label.c_str());
 		if (ImGui::IsItemClicked()) {
 			selected_entity = p_entity;
 		}
@@ -351,15 +320,15 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 	}
 	// Branch Node: The entity has children.
 	else {
-		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
-				ImGuiTreeNodeFlags_OpenOnDoubleClick;
+		ImGuiTreeNodeFlags flags =
+				ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 		if (is_selected) {
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
 
 		// Create a tree node that can be expanded
-		bool node_open = ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(),
-				flags, "%s", label.c_str());
+		bool node_open =
+				ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s", label.c_str());
 
 		if (ImGui::IsItemClicked()) {
 			selected_entity = p_entity;
@@ -371,7 +340,11 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 		// If the node is open, recursively render all children
 		if (node_open) {
 			for (const Entity& child : children) {
+				ImGui::PushID(child.get_uid().value);
+
 				_render_hierarchy_entry(child);
+
+				ImGui::PopID();
 			}
 			ImGui::TreePop();
 		}
@@ -386,22 +359,31 @@ void EditorApplication::_render_hierarchy() {
 			continue;
 		}
 
+		ImGui::PushID(entity.get_uid().value);
+
 		// Start the recursive rendering for each root entity
 		_render_hierarchy_entry(entity);
+
+		ImGui::PopID();
 	}
 }
 
-void EditorApplication::_render_hierarchy_context_menu(const Entity& p_entity) {
-	if (ImGui::BeginPopupContextItem("HIERARCHY_ITEM_CONTEXT_MENU",
-				ImGuiPopupFlags_MouseButtonRight)) {
+void EditorApplication::_render_hierarchy_context_menu(Entity p_entity) {
+	if (ImGui::BeginPopupContextItem(
+				"HIERARCHY_ITEM_CONTEXT_MENU", ImGuiPopupFlags_MouseButtonRight)) {
 		if (ImGui::MenuItem("Add Child")) {
 			static uint32_t s_entity_counter = 0;
-			_get_scene()->create(std::format("Entity {}", s_entity_counter++),
-					p_entity.get_uid());
+			_get_scene()->create(std::format("Entity {}", s_entity_counter++), p_entity.get_uid());
 		}
 		if (ImGui::MenuItem("Delete")) {
-			node_deletion_queue.push_function([&]() {
+			node_deletion_queue.push_function([this, p_entity]() {
 				get_render_backend()->device_wait();
+
+				// Unselect the entity
+				if (selected_entity && selected_entity.get_uid() == p_entity.get_uid()) {
+					selected_entity = INVALID_ENTITY;
+				}
+
 				_get_scene()->destroy(p_entity);
 			});
 		}
@@ -419,12 +401,9 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 		ImGui::SeparatorText("Transform");
 		ImGui::PushID("TRANSFORM_PROPS");
 
-		ImGui::DragFloat3(
-				"Position", &p_entity.get_transform().local_position.x, 0.1f);
-		ImGui::DragFloat3(
-				"Rotation", &p_entity.get_transform().local_rotation.x, 0.1f);
-		ImGui::DragFloat3(
-				"Scale", &p_entity.get_transform().local_scale.x, 0.1f);
+		ImGui::DragFloat3("Position", &p_entity.get_transform().local_position.x, 0.1f);
+		ImGui::DragFloat3("Rotation", &p_entity.get_transform().local_rotation.x, 0.1f);
+		ImGui::DragFloat3("Scale", &p_entity.get_transform().local_scale.x, 0.1f);
 
 		ImGui::PopID();
 	}
@@ -445,46 +424,39 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 
 			for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
 				ShaderUniformVariable value = *mat->get_param(uniform.name);
-				std::visit(
-						overloaded{ [&](int& arg) {
-									   if (ImGui::InputInt(uniform.name.c_str(),
-												   &arg)) {
+				std::visit(overloaded{ [&](int& arg) {
+										  if (ImGui::InputInt(uniform.name.c_str(), &arg)) {
+											  mat->set_param(uniform.name, arg);
+										  }
+									  },
+								   [&](float& arg) {
+									   if (ImGui::InputFloat(uniform.name.c_str(), &arg)) {
 										   mat->set_param(uniform.name, arg);
 									   }
 								   },
-								[&](float& arg) {
-									if (ImGui::InputFloat(
-												uniform.name.c_str(), &arg)) {
-										mat->set_param(uniform.name, arg);
-									}
-								},
-								[&](glm::vec2& arg) {
-									if (ImGui::InputFloat2(
-												uniform.name.c_str(), &arg.x)) {
-										mat->set_param(uniform.name, arg);
-									}
-								},
-								[&](glm::vec3& arg) {
-									if (ImGui::InputFloat3(
-												uniform.name.c_str(), &arg.x)) {
-										mat->set_param(uniform.name, arg);
-									}
-								},
-								[&](glm::vec4& arg) {
-									if (ImGui::InputFloat3(
-												uniform.name.c_str(), &arg.x)) {
-										mat->set_param(uniform.name, arg);
-									}
-								},
-								[&](Color& arg) {
-									if (ImGui::ColorEdit4(
-												uniform.name.c_str(), &arg.r)) {
-										mat->set_param(uniform.name, arg);
-									}
-								},
-								[](Ref<Texture>& arg) {
-									// TODO
-								} },
+								   [&](glm::vec2& arg) {
+									   if (ImGui::InputFloat2(uniform.name.c_str(), &arg.x)) {
+										   mat->set_param(uniform.name, arg);
+									   }
+								   },
+								   [&](glm::vec3& arg) {
+									   if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
+										   mat->set_param(uniform.name, arg);
+									   }
+								   },
+								   [&](glm::vec4& arg) {
+									   if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
+										   mat->set_param(uniform.name, arg);
+									   }
+								   },
+								   [&](Color& arg) {
+									   if (ImGui::ColorEdit4(uniform.name.c_str(), &arg.r)) {
+										   mat->set_param(uniform.name, arg);
+									   }
+								   },
+								   [](Ref<Texture>& arg) {
+									   // TODO
+								   } },
 						value);
 			}
 		}
@@ -555,26 +527,22 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 					continue;
 				}
 
-				std::visit(
-						overloaded{ [&](double& arg) {
-									   if (ImGui::InputDouble(
-												   name.c_str(), &arg)) {
-										   ScriptEngine::set_field(sc->script,
-												   name.c_str(), arg);
+				std::visit(overloaded{ [&](double& arg) {
+										  if (ImGui::InputDouble(name.c_str(), &arg)) {
+											  ScriptEngine::set_field(
+													  sc->script, name.c_str(), arg);
+										  }
+									  },
+								   [&](std::string& arg) {
+									   if (ImGui::InputText(name.c_str(), &arg)) {
+										   ScriptEngine::set_field(sc->script, name.c_str(), arg);
 									   }
 								   },
-								[&](std::string& arg) {
-									if (ImGui::InputText(name.c_str(), &arg)) {
-										ScriptEngine::set_field(
-												sc->script, name.c_str(), arg);
-									}
-								},
-								[&](bool& arg) {
-									if (ImGui::Checkbox(name.c_str(), &arg)) {
-										ScriptEngine::set_field(
-												sc->script, name.c_str(), arg);
-									}
-								} },
+								   [&](bool& arg) {
+									   if (ImGui::Checkbox(name.c_str(), &arg)) {
+										   ScriptEngine::set_field(sc->script, name.c_str(), arg);
+									   }
+								   } },
 						value);
 			}
 		}
@@ -582,26 +550,23 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 		ImGui::PopID();
 	}
 
-	ImGui::SetCursorPosY(ImGui::GetCursorPos().y +
-			ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
+	ImGui::SetCursorPosY(
+			ImGui::GetCursorPos().y + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
 
 	if (ImGui::Button("Add Component", ImVec2(-1, 0))) {
 		ImGui::OpenPopup("NODE_ADD_COMPONENT");
 	}
 
 	if (ImGui::BeginPopup("NODE_ADD_COMPONENT")) {
-		if (!p_entity.has_component<DirectionalLight>() &&
-				ImGui::MenuItem("Directional Light")) {
+		if (!p_entity.has_component<DirectionalLight>() && ImGui::MenuItem("Directional Light")) {
 			p_entity.add_component<DirectionalLight>();
 		}
 
-		if (!p_entity.has_component<PointLight>() &&
-				ImGui::MenuItem("Point Light")) {
+		if (!p_entity.has_component<PointLight>() && ImGui::MenuItem("Point Light")) {
 			p_entity.add_component<PointLight>();
 		}
 
-		if (!p_entity.has_component<ScriptComponent>() &&
-				ImGui::MenuItem("Script")) {
+		if (!p_entity.has_component<ScriptComponent>() && ImGui::MenuItem("Script")) {
 			p_entity.add_component<ScriptComponent>();
 		}
 
@@ -609,6 +574,4 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 	}
 }
 
-Ref<Scene> EditorApplication::_get_scene() {
-	return is_running ? runtime_scene : scene;
-}
+Ref<Scene> EditorApplication::_get_scene() { return is_running ? runtime_scene : scene; }

@@ -20,23 +20,18 @@ struct EntityDescriptor {
 };
 typedef std::vector<EntityDescriptor> EntityContainer;
 
-constexpr inline EntityId create_entity_id(
-		uint32_t p_index, uint32_t p_version) {
+constexpr inline EntityId create_entity_id(uint32_t p_index, uint32_t p_version) {
 	return ((EntityId)p_index << 32) | p_version;
 }
 
-constexpr inline uint32_t get_entity_index(EntityId p_entity) {
-	return p_entity >> 32;
-}
+constexpr inline uint32_t get_entity_index(EntityId p_entity) { return p_entity >> 32; }
 
 constexpr inline uint32_t get_entity_version(EntityId p_entity) {
 	// this conversation will loose the top 32 bits
 	return (uint32_t)p_entity;
 }
 
-constexpr inline bool is_entity_valid(EntityId p_entity) {
-	return (p_entity >> 32) != -1;
-}
+constexpr inline bool is_entity_valid(EntityId p_entity) { return (p_entity >> 32) != UINT32_MAX; }
 
 inline constexpr EntityId INVALID_ENTITY_ID = create_entity_id(UINT32_MAX, 0);
 

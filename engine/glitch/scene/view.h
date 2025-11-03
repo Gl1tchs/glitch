@@ -18,9 +18,7 @@ public:
 			all = true;
 		} else {
 			// unpack the parameter list and set the component mask accordingly
-			const uint32_t component_ids[] = {
-				get_component_id<TComponents>()...
-			};
+			const uint32_t component_ids[] = { get_component_id<TComponents>()... };
 			for (int i = 0; i < sizeof...(TComponents); i++) {
 				component_mask.set(component_ids[i]);
 			}
@@ -29,12 +27,8 @@ public:
 
 	class Iterator {
 	public:
-		Iterator(EntityContainer* p_entities, uint32_t p_index,
-				ComponentMask p_mask, bool p_all) :
-				entities(p_entities),
-				index(p_index),
-				mask(p_mask),
-				all(p_all) {}
+		Iterator(EntityContainer* p_entities, uint32_t p_index, ComponentMask p_mask, bool p_all) :
+				entities(p_entities), index(p_index), mask(p_mask), all(p_all) {}
 
 		EntityId operator*() const { return entities->at(index).id; }
 
@@ -42,9 +36,7 @@ public:
 			return index == p_other.index || index == entities->size();
 		}
 
-		bool operator!=(const Iterator& p_other) const {
-			return !(*this == p_other);
-		}
+		bool operator!=(const Iterator& p_other) const { return !(*this == p_other); }
 
 		Iterator operator++() {
 			do {
@@ -75,9 +67,7 @@ public:
 	const Iterator begin() const {
 		uint32_t first_index = 0;
 		while (first_index < entities->size() &&
-				(component_mask !=
-								(component_mask &
-										entities->at(first_index).mask) ||
+				(component_mask != (component_mask & entities->at(first_index).mask) ||
 						!is_entity_valid(entities->at(first_index).id))) {
 			first_index++;
 		}
@@ -85,9 +75,7 @@ public:
 		return Iterator(entities, first_index, component_mask, all);
 	}
 
-	const Iterator end() const {
-		return Iterator(entities, entities->size(), component_mask, all);
-	}
+	const Iterator end() const { return Iterator(entities, entities->size(), component_mask, all); }
 
 private:
 	EntityContainer* entities = nullptr;
