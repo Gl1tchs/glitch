@@ -127,16 +127,27 @@ add_subdirectory(tinyfiledialogs)
 set(TINYFD_LIBS tinyfiledialogs CACHE INTERNAL "")
 
 # ------------------- lua -------------------
-set(LUAJIT_PATH ${VENDOR_DIR}/luajit/build)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	set(LUAJIT_PATH ${VENDOR_DIR}/luajit/build/linux-x86_64)
+	
+	find_library(LUAJIT_LIBRARY luajit
+		PATHS ${LUAJIT_PATH}
+		PATH_SUFFIXES lib
+	)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	message(FATAL_ERROR "Darwin systems are not supported!")
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(LUAJIT_PATH ${VENDOR_DIR}/luajit/build/win32)
 
-find_path(LUAJIT_INCLUDE_DIR luajit.h
-    PATHS ${LUAJIT_PATH}
-)
+	find_library(LUAJIT_LIBRARY lua51.lib
+		PATHS ${LUAJIT_PATH}
+		PATH_SUFFIXES lib
+	)
+endif()
 
-find_library(LUAJIT_LIBRARY lua51.lib
-    PATHS ${LUAJIT_PATH}
-    PATH_SUFFIXES lib
-)
+find_path(LUAJIT_INCLUDE_DIR luajit.h PATHS ${LUAJIT_PATH})
 
 if(NOT LUAJIT_INCLUDE_DIR OR NOT LUAJIT_LIBRARY)
     message(FATAL_ERROR "Failed to find LuaJIT headers or library at ${LUAJIT_PATH}")

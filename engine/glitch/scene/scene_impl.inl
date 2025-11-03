@@ -11,18 +11,13 @@ public:
 
 	class Iterator {
 	public:
-		Iterator(typename SceneView<TComponents...>::Iterator id_iter,
-				Scene* p_scene) :
+		Iterator(typename SceneView<TComponents...>::Iterator id_iter, Scene* p_scene) :
 				id_iter(id_iter), scene(p_scene) {}
 
 		Entity operator*() const { return Entity(*id_iter, scene); }
 
-		bool operator!=(const Iterator& other) const {
-			return id_iter != other.id_iter;
-		}
-		bool operator==(const Iterator& other) const {
-			return id_iter == other.id_iter;
-		}
+		bool operator!=(const Iterator& other) const { return id_iter != other.id_iter; }
+		bool operator==(const Iterator& other) const { return id_iter == other.id_iter; }
 
 		Iterator& operator++() {
 			++id_iter;
@@ -49,14 +44,11 @@ template <typename... TComponents> EntityView<TComponents...> Scene::view() {
 	return EntityView<TComponents...>(id_view, this);
 }
 
-template <typename T, typename... Args>
-inline auto& Entity::add_component(Args&&... p_args) {
+template <typename T, typename... Args> inline auto& Entity::add_component(Args&&... p_args) {
 	return *scene->assign<T>(handle, std::forward<Args>(p_args)...);
 }
 
-template <typename T> inline T* Entity::get_component() {
-	return scene->get<T>(handle);
-}
+template <typename T> inline T* Entity::get_component() { return scene->get<T>(handle); }
 
 template <typename T> inline const T* Entity::get_component() const {
 	return scene->get<T>(handle);
@@ -66,8 +58,6 @@ template <typename... Components> inline bool Entity::has_component() const {
 	return scene->has<Components...>(handle);
 }
 
-template <typename T> inline void Entity::remove_component() {
-	scene->remove<T>(handle);
-}
+template <typename T> inline void Entity::remove_component() { scene->remove<T>(handle); }
 
 } //namespace gl
