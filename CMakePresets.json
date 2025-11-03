@@ -11,7 +11,7 @@
             "displayName": "Debug Configuration",
             "description": "Configure for Debug build with dynamic libs off.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/debug",
+            "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "GL_BUILD_DYNAMIC_LIBS": "0",
@@ -23,7 +23,7 @@
             "displayName": "Release Configuration",
             "description": "Configure for Release build with dynamic libs off.",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/release",
+            "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "GL_BUILD_DYNAMIC_LIBS": "0",

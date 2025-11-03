@@ -57,6 +57,6 @@ Testing/
 !bin/tracy-v0.12.2
 !bin/tracy-v0.12.2/*.exe
 
-!bin/lua51.dll
 !third_party/luajit/build
-!third_party/luajit/build/*
+!third_party/luajit/build/linux-x86_64/*
+!third_party/luajit/build/win32/*

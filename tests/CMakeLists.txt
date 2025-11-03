@@ -14,7 +14,6 @@ target_include_directories(glitch-doctests
 target_link_libraries(glitch-doctests
 	PRIVATE
 	glitch
-	${LUA_LIBS}
 	${DOCTEST_LIBS}
 )
 

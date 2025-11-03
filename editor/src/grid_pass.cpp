@@ -18,26 +18,16 @@ void GridPass::setup(Renderer& p_renderer) {
 	DataFormat depth_attachment_format =
 			backend->image_get_format(p_renderer.get_render_image("geo_depth").value());
 
-#if defined(GL_DEBUG_BUILD) && defined(GL_RELEASE_BUILD)
-	const fs::path shader_base_path = "build/relwithdebinfo/editor/shaders";
-#elif defined(GL_DEBUG_BUILD)
-	const fs::path shader_base_path = "build/debug/editor/shaders";
-#elif defined(GL_RELEASE_BUILD)
-	const fs::path shader_base_path = "build/debug/release/shaders";
-#elif defined(GL_DIST_BUILD)
-	const fs::path shader_base_path = "build/debug/dist/shaders";
-#endif
-
 	std::tie(grid_shader, grid_pipeline) =
 			PipelineBuilder()
 					.add_color_attachment(color_attachment_format)
 					.set_depth_attachment(depth_attachment_format)
 					.add_shader_stage(ShaderStage::VERTEX,
 							ShaderLibrary::get_spirv_data(
-									shader_base_path / "infinite_grid.vert.spv"))
+									"build/editor/shaders/infinite_grid.vert.spv"))
 					.add_shader_stage(ShaderStage::FRAGMENT,
 							ShaderLibrary::get_spirv_data(
-									shader_base_path / "infinite_grid.frag.spv"))
+									"build/editor/shaders/infinite_grid.frag.spv"))
 					.with_depth_test(CompareOperator::LESS, false) // without depth write
 					.with_blend()
 					.with_multisample(p_renderer.get_msaa_samples(), true)

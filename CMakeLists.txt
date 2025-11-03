@@ -32,6 +32,13 @@ set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR}/third_party)
 
 find_package(Vulkan REQUIRED)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	find_package(X11 REQUIRED)
+else()
+	set(X11_LIBRARIES)
+endif()
+
+
 add_subdirectory(programs)
 add_subdirectory(shaders)
 add_subdirectory(third_party)
@@ -83,12 +90,14 @@ target_include_directories(glitch
 	${Vulkan_INCLUDE_DIRS}
 )
 
+
 target_link_libraries(glitch
 	PUBLIC
 	${GLFW_LIBS}
 	${VK_BOOTSTRAP_LIBS}
 	${LUA_LIBS}
 	${Vulkan_LIBRARIES}
+	${X11_LIBRARIES} # Required for GLFW on linux platform
 )
 
 target_precompile_headers(glitch PUBLIC
