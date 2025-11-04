@@ -10,19 +10,19 @@
 namespace gl {
 
 Texture::~Texture() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	backend->image_free(image);
 	backend->sampler_free(sampler);
 }
 
-Ref<Texture> Texture::create(
+std::shared_ptr<Texture> Texture::create(
 		const Color& p_color, const glm::uvec2& p_size, TextureSamplerOptions p_sampler) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	const uint32_t color_data = p_color.as_uint();
 
-	Ref<Texture> tx = create_ref<Texture>();
+	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = DataFormat::R8G8B8A8_UNORM;
 	tx->image = backend->image_create(
 			DataFormat::R8G8B8A8_UNORM, p_size, &color_data, IMAGE_USAGE_SAMPLED_BIT, true);
@@ -33,11 +33,11 @@ Ref<Texture> Texture::create(
 	return tx;
 }
 
-Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size, const void* p_data,
-		TextureSamplerOptions p_sampler) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+std::shared_ptr<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
+		const void* p_data, TextureSamplerOptions p_sampler) {
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
-	Ref<Texture> tx = create_ref<Texture>();
+	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = p_format;
 	tx->image = backend->image_create(p_format, p_size, p_data, IMAGE_USAGE_SAMPLED_BIT, true);
 	tx->sampler =
@@ -47,13 +47,14 @@ Ref<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size, cons
 	return tx;
 }
 
-Ref<Texture> Texture::load_from_path(const fs::path& p_path, TextureSamplerOptions p_sampler) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+std::shared_ptr<Texture> Texture::load_from_path(
+		const fs::path& p_path, TextureSamplerOptions p_sampler) {
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	int w, h;
 	stbi_uc* data = stbi_load(p_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
 
-	Ref<Texture> tx = create_ref<Texture>();
+	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = DataFormat::R8G8B8A8_UNORM;
 	tx->image =
 			backend->image_create(DataFormat::R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);

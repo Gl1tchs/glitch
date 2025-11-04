@@ -16,8 +16,7 @@ class GL_API StorageBuffer {
 public:
 	~StorageBuffer();
 
-	static Ref<StorageBuffer> create(
-			size_t p_size, const void* p_data = nullptr);
+	static std::shared_ptr<StorageBuffer> create(size_t p_size, const void* p_data = nullptr);
 
 	void upload(const void* p_data);
 

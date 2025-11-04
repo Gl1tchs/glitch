@@ -1,4 +1,5 @@
 #include "editor.h"
+#include "glitch/core/application.h"
 #include "glitch/scene/components.h"
 
 #include <glitch/core/event/input.h>
@@ -15,23 +16,21 @@ template <class... Ts> struct overloaded : Ts... {
 	using Ts::operator()...;
 };
 
-EditorApplication::EditorApplication(const ApplicationCreateInfo& p_info) : Application(p_info) {
+void EditorLayer::start() {
 	renderer_settings.vsync = true;
 
-	scene = create_ref<Scene>();
-	runtime_scene = create_ref<Scene>();
-}
+	scene = std::make_shared<Scene>();
+	runtime_scene = std::make_shared<Scene>();
 
-void EditorApplication::_on_start() {
 	ScriptEngine::init();
 
 	SceneRendererSpecification specs = {};
 	specs.msaa = 4;
 
-	scene_renderer = create_ref<SceneRenderer>(specs);
+	scene_renderer = std::make_shared<SceneRenderer>(specs);
 
 	// This must be created after scene renderer for it to initialize materials
-	gltf_loader = create_scope<GLTFLoader>();
+	gltf_loader = std::make_unique<GLTFLoader>();
 
 	Entity camera = scene->create("Camera");
 	camera_uid = camera.get_uid();
@@ -43,8 +42,8 @@ void EditorApplication::_on_start() {
 
 	camera_controller.set_camera(&cc.camera, &camera.get_transform());
 
-	grid_pass = create_ref<GridPass>();
-	get_renderer()->add_pass(grid_pass, -5);
+	grid_pass = std::make_shared<GridPass>();
+	Application::get_instance()->get_renderer()->add_pass(grid_pass, -5);
 
 	{
 		auto entity = scene->create("Directional Light");
@@ -67,7 +66,7 @@ void EditorApplication::_on_start() {
 	}
 }
 
-void EditorApplication::_on_update(float p_dt) {
+void EditorLayer::update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
 	if (is_running) {
@@ -83,7 +82,7 @@ void EditorApplication::_on_update(float p_dt) {
 
 	scene_renderer->submit(ctx);
 
-	get_renderer()->imgui_begin();
+	Application::get_instance()->get_renderer()->imgui_begin();
 	{
 		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 		static ImGuiWindowFlags window_flags =
@@ -139,7 +138,7 @@ void EditorApplication::_on_update(float p_dt) {
 					ImGui::Separator();
 
 					if (ImGui::MenuItem("Exit")) {
-						Application::quit();
+						Application::get_instance()->quit();
 					}
 
 					ImGui::EndMenu();
@@ -155,9 +154,10 @@ void EditorApplication::_on_update(float p_dt) {
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
 
 			// Get final rendered image size (actual texture size)
-			const glm::uvec2 image_size = get_renderer()->get_final_image_size();
-			ImTextureID tex_id =
-					reinterpret_cast<ImTextureID>(get_renderer()->get_final_image_descriptor());
+			const glm::uvec2 image_size =
+					Application::get_instance()->get_renderer()->get_final_image_size();
+			ImTextureID tex_id = reinterpret_cast<ImTextureID>(
+					Application::get_instance()->get_renderer()->get_final_image_descriptor());
 
 			// Get the available region inside the window (without scrollbars or
 			// padding)
@@ -181,7 +181,8 @@ void EditorApplication::_on_update(float p_dt) {
 				static bool mouse_disabled = false;
 				if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
 					if (!mouse_disabled) {
-						get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_DISABLED);
+						Application::get_instance()->get_window()->set_cursor_mode(
+								WINDOW_CURSOR_MODE_DISABLED);
 						mouse_disabled = true;
 					}
 
@@ -193,7 +194,8 @@ void EditorApplication::_on_update(float p_dt) {
 
 				if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
 					if (mouse_disabled) {
-						get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
+						Application::get_instance()->get_window()->set_cursor_mode(
+								WINDOW_CURSOR_MODE_NORMAL);
 						mouse_disabled = false;
 					}
 				}
@@ -284,15 +286,15 @@ void EditorApplication::_on_update(float p_dt) {
 		ImGui::End();
 	}
 
-	get_renderer()->imgui_end();
+	Application::get_instance()->get_renderer()->imgui_end();
 
 	// Delete nodes if any requested
 	node_deletion_queue.flush();
 }
 
-void EditorApplication::_on_destroy() { ScriptEngine::shutdown(); }
+void EditorLayer::destroy() { ScriptEngine::shutdown(); }
 
-void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
+void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
 	const std::string label = p_entity.get_name().empty()
 			? std::format("Entity {}", p_entity.get_uid().value)
 			: p_entity.get_name();
@@ -351,7 +353,7 @@ void EditorApplication::_render_hierarchy_entry(Entity p_entity) {
 	}
 }
 
-void EditorApplication::_render_hierarchy() {
+void EditorLayer::_render_hierarchy() {
 	for (Entity entity : _get_scene()->view()) {
 		// Only process top-level entities (those without a parent).
 		// The recursive function will handle the children.
@@ -368,7 +370,7 @@ void EditorApplication::_render_hierarchy() {
 	}
 }
 
-void EditorApplication::_render_hierarchy_context_menu(Entity p_entity) {
+void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 	if (ImGui::BeginPopupContextItem(
 				"HIERARCHY_ITEM_CONTEXT_MENU", ImGuiPopupFlags_MouseButtonRight)) {
 		if (ImGui::MenuItem("Add Child")) {
@@ -377,7 +379,7 @@ void EditorApplication::_render_hierarchy_context_menu(Entity p_entity) {
 		}
 		if (ImGui::MenuItem("Delete")) {
 			node_deletion_queue.push_function([this, p_entity]() {
-				get_render_backend()->device_wait();
+				Renderer::get_backend()->device_wait();
 
 				// Unselect the entity
 				if (selected_entity && selected_entity.get_uid() == p_entity.get_uid()) {
@@ -391,7 +393,7 @@ void EditorApplication::_render_hierarchy_context_menu(Entity p_entity) {
 	}
 }
 
-void EditorApplication::_render_inspector(Entity& p_entity) {
+void EditorLayer::_render_inspector(Entity& p_entity) {
 	IdComponent* idc = p_entity.get_component<IdComponent>();
 
 	ImGui::Text("ID: %s", std::format("{}", idc->id.value).c_str());
@@ -413,14 +415,14 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 		ImGui::PushID("MESH_PROPS");
 
 		MeshComponent* mc = p_entity.get_component<MeshComponent>();
-		Ref<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
+		std::shared_ptr<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
 		if (mesh) {
 			ImGui::Text("Primitives: %zu", mesh->primitives.size());
 
 			ImGui::SeparatorText("Material");
 
-			const Ref<MeshPrimitive> prim = mesh->primitives.front();
-			const Ref<MaterialInstance> mat = prim->material;
+			const std::shared_ptr<MeshPrimitive> prim = mesh->primitives.front();
+			const std::shared_ptr<MaterialInstance> mat = prim->material;
 
 			for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
 				ShaderUniformVariable value = *mat->get_param(uniform.name);
@@ -454,7 +456,7 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 										   mat->set_param(uniform.name, arg);
 									   }
 								   },
-								   [](Ref<Texture>& arg) {
+								   [](std::shared_ptr<Texture>& arg) {
 									   // TODO
 								   } },
 						value);
@@ -574,4 +576,4 @@ void EditorApplication::_render_inspector(Entity& p_entity) {
 	}
 }
 
-Ref<Scene> EditorApplication::_get_scene() { return is_running ? runtime_scene : scene; }
+std::shared_ptr<Scene> EditorLayer::_get_scene() { return is_running ? runtime_scene : scene; }

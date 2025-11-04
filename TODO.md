@@ -1,13 +1,11 @@
 # TODO
 
-- [ ] Headless build creation.
-- [ ] Shadow maps
-  - [ ] Light goes inside walls
-- [ ] Cubemaps and IBL
-- [ ] Instanced rendering
-- [ ] Parallax mapping
+## Core
+
+- [ ] Proper systems and init/destroy logic (script system, physics system...)
+- [ ] Event System use std::move_only_function
 - [ ] Per Frame Allocators
-- [ ] Async GLTF model loading progress
+- [ ] Headless build creation.
 
 ## Serialization
 
@@ -20,6 +18,7 @@
 
 - [ ] Asset loading and asset handles
 - [ ] Custom asset to engine type conversion and asset caching
+- [ ] Async GLTF model loading progress
 
 ## Linux
 
@@ -39,6 +38,14 @@
   - [ ] Mesh API
   - [ ] Compute API
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
+
+## Renderer
+
+- [ ] Shadow maps
+  - [ ] Light goes inside walls
+- [ ] Cubemaps and IBL
+- [ ] Instanced rendering
+- [ ] Parallax mapping
 
 ## Bugs
 

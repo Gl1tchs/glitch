@@ -26,34 +26,34 @@ struct GL_API MeshPrimitive {
 	BufferDeviceAddress vertex_buffer_address;
 	uint32_t index_count;
 
-	Ref<MaterialInstance> material;
+	std::shared_ptr<MaterialInstance> material;
 
 	AABB aabb;
 
 	~MeshPrimitive();
 
-	static Ref<MeshPrimitive> create(const std::span<MeshVertex>& p_vertices,
-			const std::span<uint32_t>& p_indices);
+	static std::shared_ptr<MeshPrimitive> create(
+			const std::span<MeshVertex>& p_vertices, const std::span<uint32_t>& p_indices);
 };
 
 struct Mesh {
-	std::vector<Ref<MeshPrimitive>> primitives;
+	std::vector<std::shared_ptr<MeshPrimitive>> primitives;
 };
 
 class GL_API MeshSystem {
 public:
 	static void free_all();
 
-	static MeshHandle register_mesh(Ref<Mesh> p_mesh);
-	
+	static MeshHandle register_mesh(std::shared_ptr<Mesh> p_mesh);
+
 	/**
-	 * @returns Ref<Mesh> if found `nullptr` otherwise 
+	 * @returns std::shared_ptr<Mesh> if found `nullptr` otherwise
 	 */
-	static Ref<Mesh> get_mesh(MeshHandle p_handle);
-	
+	static std::shared_ptr<Mesh> get_mesh(MeshHandle p_handle);
+
 	/**
 	 * @param p_handle handle to find and delete
-	 * @returns `true` if deletion successfull `false` if mesh do not exists 
+	 * @returns `true` if deletion successfull `false` if mesh do not exists
 	 */
 	static bool free_mesh(MeshHandle p_handle);
 };

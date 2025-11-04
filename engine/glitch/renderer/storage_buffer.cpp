@@ -5,20 +5,19 @@
 namespace gl {
 
 StorageBuffer::~StorageBuffer() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	backend->buffer_free(buffer);
 }
 
-Ref<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+std::shared_ptr<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	Buffer buffer = backend->buffer_create(p_size,
-			BUFFER_USAGE_STORAGE_BUFFER_BIT |
-					BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+			BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 					BUFFER_USAGE_TRANSFER_DST_BIT,
 			MemoryAllocationType::GPU);
 
-	Ref<StorageBuffer> sbo = create_ref<StorageBuffer>();
+	std::shared_ptr<StorageBuffer> sbo = std::make_shared<StorageBuffer>();
 	sbo->buffer = buffer;
 	sbo->size = p_size;
 	sbo->gpu_addr = backend->buffer_get_device_address(buffer);
@@ -33,10 +32,10 @@ Ref<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
 void StorageBuffer::upload(const void* p_data) {
 	GL_ASSERT(p_data != nullptr);
 
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
-	Buffer staging_buffer = backend->buffer_create(
-			size, BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
+	Buffer staging_buffer =
+			backend->buffer_create(size, BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
 
 	void* staging_data = backend->buffer_map(staging_buffer);
 	memcpy(staging_data, p_data, size);
@@ -55,8 +54,6 @@ void StorageBuffer::upload(const void* p_data) {
 	backend->buffer_free(staging_buffer);
 }
 
-BufferDeviceAddress StorageBuffer::get_device_address() const {
-	return gpu_addr;
-}
+BufferDeviceAddress StorageBuffer::get_device_address() const { return gpu_addr; }
 
 } //namespace gl

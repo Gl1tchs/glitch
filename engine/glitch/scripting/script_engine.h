@@ -124,11 +124,11 @@ public:
 
 	static ScriptMetadata get_metadata(ScriptRef p_ref);
 
-	static Optional<double> get_number_field(ScriptRef p_ref, const char* p_field_name);
+	static std::optional<double> get_number_field(ScriptRef p_ref, const char* p_field_name);
 
-	static Optional<std::string> get_string_field(ScriptRef p_ref, const char* p_field_name);
+	static std::optional<std::string> get_string_field(ScriptRef p_ref, const char* p_field_name);
 
-	static Optional<bool> get_bool_field(ScriptRef p_ref, const char* p_field_name);
+	static std::optional<bool> get_bool_field(ScriptRef p_ref, const char* p_field_name);
 
 	static bool set_field(ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value);
 

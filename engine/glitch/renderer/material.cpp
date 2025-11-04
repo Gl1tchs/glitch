@@ -5,7 +5,7 @@
 
 namespace gl {
 
-static std::unordered_map<std::string, Ref<MaterialDefinition>> s_definitions = {};
+static std::unordered_map<std::string, std::shared_ptr<MaterialDefinition>> s_definitions = {};
 
 size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 	switch (p_type) {
@@ -24,11 +24,11 @@ size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 	}
 }
 
-MaterialInstance::MaterialInstance(Ref<MaterialDefinition> p_definition) :
+MaterialInstance::MaterialInstance(std::shared_ptr<MaterialDefinition> p_definition) :
 		definition(p_definition) {}
 
 MaterialInstance::~MaterialInstance() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	backend->device_wait();
 
@@ -36,7 +36,7 @@ MaterialInstance::~MaterialInstance() {
 	backend->buffer_free(material_data_buffer);
 }
 
-Ref<MaterialDefinition> MaterialInstance::get_definition() const { return definition; }
+std::shared_ptr<MaterialDefinition> MaterialInstance::get_definition() const { return definition; }
 
 Pipeline MaterialInstance::get_pipeline() const { return definition->pipeline; }
 
@@ -44,7 +44,7 @@ Shader MaterialInstance::get_shader() const { return definition->shader; }
 
 UniformSet MaterialInstance::get_set() const { return material_set; }
 
-Optional<ShaderUniformVariable> MaterialInstance::get_param(const std::string& p_name) {
+std::optional<ShaderUniformVariable> MaterialInstance::get_param(const std::string& p_name) {
 	const auto it = params.find(p_name);
 	if (it == params.end()) {
 		return {};
@@ -67,7 +67,7 @@ bool MaterialInstance::is_dirty() const { return dirty; }
 void MaterialInstance::upload() {
 	GL_PROFILE_SCOPE;
 
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	if (!definition) {
 		GL_LOG_ERROR("[MaterialInstance::upload] Definition must not be null "
@@ -76,7 +76,7 @@ void MaterialInstance::upload() {
 	}
 
 	// Texture, binding
-	std::vector<std::pair<Ref<Texture>, int>> textures;
+	std::vector<std::pair<std::shared_ptr<Texture>, int>> textures;
 
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
 	write_order.reserve(params.size());
@@ -96,7 +96,7 @@ void MaterialInstance::upload() {
 			std::visit(
 					[&textures, &meta](const auto& arg) {
 						using T = std::decay_t<decltype(arg)>;
-						if constexpr (std::is_same_v<T, Ref<Texture>>) {
+						if constexpr (std::is_same_v<T, std::shared_ptr<Texture>>) {
 							textures.push_back(std::make_pair(arg, meta->binding));
 						}
 					},
@@ -172,14 +172,14 @@ void MaterialInstance::upload() {
 }
 
 void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	backend->command_bind_uniform_sets(p_cmd, definition->shader, 0, material_set);
 }
 
 void MaterialSystem::init() { s_definitions.clear(); }
 
 void MaterialSystem::destroy() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	for (auto& [name, definition] : s_definitions) {
 		backend->pipeline_free(definition->pipeline);
 		backend->shader_free(definition->shader);
@@ -190,16 +190,16 @@ void MaterialSystem::register_definition(const std::string& p_name, MaterialDefi
 	GL_ASSERT(s_definitions.find(p_name) == s_definitions.end(), "Definition already registered!");
 
 	p_def.name = p_name;
-	s_definitions[p_name] = create_ref<MaterialDefinition>(p_def);
+	s_definitions[p_name] = std::make_shared<MaterialDefinition>(p_def);
 }
 
-Ref<MaterialInstance> MaterialSystem::create_instance(const std::string& p_def_name) {
+std::shared_ptr<MaterialInstance> MaterialSystem::create_instance(const std::string& p_def_name) {
 	const auto it = s_definitions.find(p_def_name);
 	if (it == s_definitions.end()) {
 		return nullptr;
 	}
 
-	return create_ref<MaterialInstance>(it->second);
+	return std::make_shared<MaterialInstance>(it->second);
 }
 
 } //namespace gl

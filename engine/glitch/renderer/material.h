@@ -10,8 +10,8 @@
 
 namespace gl {
 
-using ShaderUniformVariable = std::variant<int, float, glm::vec2, glm::vec3,
-		glm::vec4, Color, Ref<Texture>>;
+using ShaderUniformVariable =
+		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color, std::shared_ptr<Texture>>;
 
 enum class ShaderUniformVariableType : int {
 	INT,
@@ -41,10 +41,10 @@ struct MaterialDefinition {
 
 class GL_API MaterialInstance {
 public:
-	MaterialInstance(Ref<MaterialDefinition> p_definition);
+	MaterialInstance(std::shared_ptr<MaterialDefinition> p_definition);
 	~MaterialInstance();
 
-	Ref<MaterialDefinition> get_definition() const;
+	std::shared_ptr<MaterialDefinition> get_definition() const;
 	Pipeline get_pipeline() const;
 	Shader get_shader() const;
 
@@ -52,7 +52,7 @@ public:
 
 	const std::vector<ShaderUniformMetadata>& get_uniforms() const;
 
-	Optional<ShaderUniformVariable> get_param(const std::string& p_name);
+	std::optional<ShaderUniformVariable> get_param(const std::string& p_name);
 	void set_param(const std::string& p_name, ShaderUniformVariable p_value);
 
 	bool is_dirty() const;
@@ -63,7 +63,7 @@ public:
 	void bind_uniform_set(CommandBuffer p_cmd);
 
 private:
-	Ref<MaterialDefinition> definition;
+	std::shared_ptr<MaterialDefinition> definition;
 
 	Buffer material_data_buffer = GL_NULL_HANDLE;
 	UniformSet material_set = GL_NULL_HANDLE;
@@ -79,10 +79,9 @@ public:
 	static void init();
 	static void destroy();
 
-	static void register_definition(
-			const std::string& p_name, MaterialDefinition p_def);
+	static void register_definition(const std::string& p_name, MaterialDefinition p_def);
 
-	static Ref<MaterialInstance> create_instance(const std::string& p_def_name);
+	static std::shared_ptr<MaterialInstance> create_instance(const std::string& p_def_name);
 };
 
 } //namespace gl

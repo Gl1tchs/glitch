@@ -192,7 +192,7 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 	return metadata;
 }
 
-Optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_field_name) {
+std::optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -212,7 +212,8 @@ Optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_f
 	return {};
 }
 
-Optional<std::string> ScriptEngine::get_string_field(ScriptRef p_ref, const char* p_field_name) {
+std::optional<std::string> ScriptEngine::get_string_field(
+		ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -232,7 +233,7 @@ Optional<std::string> ScriptEngine::get_string_field(ScriptRef p_ref, const char
 	return {};
 }
 
-Optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field_name) {
+std::optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}

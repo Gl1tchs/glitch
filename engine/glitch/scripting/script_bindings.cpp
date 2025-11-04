@@ -149,7 +149,7 @@ EntityUID entity_find_by_id(EntityUID p_id) {
 		return 0;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(p_id);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(p_id);
 	return entity ? p_id : 0;
 }
 
@@ -160,7 +160,7 @@ EntityUID entity_find_by_name(const char* p_name) {
 		return 0;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_name(p_name);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_name(p_name);
 	return entity ? (*entity).get_uid().value : 0;
 }
 
@@ -171,7 +171,7 @@ Transform* entity_get_transform(EntityUID self) {
 		return nullptr;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (entity) {
 		return &(*entity).get_transform();
 	}
@@ -197,7 +197,7 @@ void entity_destroy(EntityUID self) {
 	}
 
 	Scene* scene = ScriptSystem::get_scene();
-	Optional<Entity> entity = scene->find_by_id(self);
+	std::optional<Entity> entity = scene->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_destroy] Unable to destroy Entity of Id: {}", self);
 		return;
@@ -213,7 +213,7 @@ int entity_is_valid(EntityUID self) {
 		return false;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	return entity && entity->is_valid();
 }
 
@@ -224,7 +224,7 @@ const char* entity_get_name(EntityUID self) {
 		return "";
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_get_name] Entity of Id: {} not found.", self);
 		return "";
@@ -240,7 +240,7 @@ void entity_set_name(EntityUID self, const char* name) {
 		return;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_set_name] Entity of Id: {} not found.", self);
 		return;
@@ -256,13 +256,13 @@ EntityUID entity_get_parent(EntityUID self) {
 		return 0;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_get_parent] Entity of Id: {} not found.", self);
 		return 0;
 	}
 
-	if (Optional<Entity> parent = entity->get_parent()) {
+	if (std::optional<Entity> parent = entity->get_parent()) {
 		return parent->get_uid().value;
 	}
 
@@ -276,13 +276,13 @@ void entity_set_parent(EntityUID self, EntityUID parent_id) {
 		return;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_set_parent] Entity of Id: {} not found.", self);
 		return;
 	}
 
-	Optional<Entity> parent = ScriptSystem::get_scene()->find_by_id(parent_id);
+	std::optional<Entity> parent = ScriptSystem::get_scene()->find_by_id(parent_id);
 	if (!parent) {
 		GL_LOG_ERROR("[LUA] [entity_set_parent] Parent of Id: {} not found.", self);
 		return;
@@ -298,13 +298,13 @@ EntityUID entity_find_child_by_id(EntityUID self, EntityUID id) {
 		return 0;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_find_child_by_id] Entity of Id: {} not found.", self);
 		return 0;
 	}
 
-	Optional<Entity> child = entity->find_child_by_id(id);
+	std::optional<Entity> child = entity->find_child_by_id(id);
 	if (!child) {
 		return 0;
 	}
@@ -319,13 +319,13 @@ EntityUID entity_find_child_by_name(EntityUID self, const char* name) {
 		return 0;
 	}
 
-	Optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(self);
 	if (!entity) {
 		GL_LOG_ERROR("[LUA] [entity_find_child_by_name] Entity of Id: {} not found.", self);
 		return 0;
 	}
 
-	Optional<Entity> child = entity->find_child_by_name(name);
+	std::optional<Entity> child = entity->find_child_by_name(name);
 	if (!child) {
 		return 0;
 	}

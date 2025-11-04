@@ -64,7 +64,7 @@ TEST_CASE("Script loading") {
 TEST_CASE("Calling engine code") {
 	ScriptEngine::init();
 
-	Ref<Scene> scene = create_ref<Scene>();
+	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
 	Entity e = scene->create("Entity");
 
@@ -81,7 +81,7 @@ TEST_CASE("Calling engine code") {
 TEST_CASE("Script fields") {
 	ScriptEngine::init();
 
-	Ref<Scene> scene = create_ref<Scene>();
+	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
 	Entity e = scene->create("Entity");
 

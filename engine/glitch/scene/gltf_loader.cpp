@@ -74,8 +74,8 @@ static size_t _hash_gltf_model(const tinygltf::Model& p_model) {
 	return seed;
 }
 
-Result<Entity, std::string> GLTFLoader::load_gltf(
-		const fs::path& p_path, Ref<Scene> p_scene, Ref<MaterialInstance> p_overload_material) {
+Result<Entity, std::string> GLTFLoader::load_gltf(const fs::path& p_path,
+		std::shared_ptr<Scene> p_scene, std::shared_ptr<MaterialInstance> p_overload_material) {
 	// TODO: better validation
 	if (!p_path.has_extension() ||
 			!(p_path.extension() == ".glb" || p_path.extension() == ".gltf")) {
@@ -115,15 +115,15 @@ Result<Entity, std::string> GLTFLoader::load_gltf(
 	return base_entity;
 }
 
-void GLTFLoader::_parse_node(Ref<Scene> p_scene, int p_node_idx, const tinygltf::Model* p_model,
-		const size_t p_model_hash, const fs::path& p_base_path,
-		Ref<MaterialInstance> p_overload_material, UID p_parent_id) {
+void GLTFLoader::_parse_node(std::shared_ptr<Scene> p_scene, int p_node_idx,
+		const tinygltf::Model* p_model, const size_t p_model_hash, const fs::path& p_base_path,
+		std::shared_ptr<MaterialInstance> p_overload_material, UID p_parent_id) {
 	Entity entity = p_scene->create("", p_parent_id);
 
 	// Create and load mesh primitive if exists
 	const tinygltf::Node& gltf_node = p_model->nodes[p_node_idx];
 	if (gltf_node.mesh >= 0) {
-		const Ref<Mesh> mesh =
+		const std::shared_ptr<Mesh> mesh =
 				_load_mesh(&gltf_node, p_model, p_model_hash, p_base_path, p_overload_material);
 
 		MeshComponent& mc = entity.add_component<MeshComponent>();
@@ -168,10 +168,10 @@ void GLTFLoader::_parse_node(Ref<Scene> p_scene, int p_node_idx, const tinygltf:
 	}
 }
 
-Ref<Mesh> GLTFLoader::_load_mesh(const tinygltf::Node* p_gltf_node, const tinygltf::Model* p_model,
-		const size_t p_model_hash, const fs::path& p_base_path,
-		Ref<MaterialInstance> p_overload_material) {
-	Ref<Mesh> mesh = create_ref<Mesh>();
+std::shared_ptr<Mesh> GLTFLoader::_load_mesh(const tinygltf::Node* p_gltf_node,
+		const tinygltf::Model* p_model, const size_t p_model_hash, const fs::path& p_base_path,
+		std::shared_ptr<MaterialInstance> p_overload_material) {
+	std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
 
 	const tinygltf::Mesh& gltf_mesh = p_model->meshes[p_gltf_node->mesh];
 	for (const auto& primitive : gltf_mesh.primitives) {
@@ -224,9 +224,9 @@ static int _get_extension_texture_index(
 	return -1;
 }
 
-Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_primitive,
+std::shared_ptr<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_primitive,
 		const tinygltf::Model* p_model, const size_t p_model_hash, const tinygltf::Mesh* p_mesh,
-		const fs::path& p_base_path, Ref<MaterialInstance> p_overload_material) {
+		const fs::path& p_base_path, std::shared_ptr<MaterialInstance> p_overload_material) {
 	uint16_t parsing_flags = 0;
 
 	const auto& pos_accessor = p_model->accessors[p_primitive->attributes.at("POSITION")];
@@ -324,7 +324,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 	}
 
 	// Material
-	Ref<MaterialInstance> material = default_material;
+	std::shared_ptr<MaterialInstance> material = default_material;
 
 	// Create material instance if no material for overload provided
 	if (!p_overload_material && p_primitive->material >= 0 &&
@@ -361,7 +361,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 
 			// Load diffuseTexture → u_diffuse_texture
 			int diffuse_texture_index = _get_extension_texture_index(specGloss, "diffuseTexture");
-			Ref<Texture> diffuse_texture = (diffuse_texture_index >= 0)
+			std::shared_ptr<Texture> diffuse_texture = (diffuse_texture_index >= 0)
 					? _load_texture(diffuse_texture_index, p_model, p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param("u_diffuse_texture", diffuse_texture);
@@ -369,7 +369,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 			// Load specularGlossinessTexture → u_specular_texture
 			int specular_texture_index =
 					_get_extension_texture_index(specGloss, "specularGlossinessTexture");
-			Ref<Texture> specular_texture = (specular_texture_index >= 0)
+			std::shared_ptr<Texture> specular_texture = (specular_texture_index >= 0)
 					? _load_texture(specular_texture_index, p_model, p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param("u_metallic_roughness_texture", specular_texture);
@@ -390,7 +390,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 
 			// Load baseColorTexture → u_diffuse_texture
 			int albedo_texture_index = gltf_material.pbrMetallicRoughness.baseColorTexture.index;
-			Ref<Texture> albedo_texture = (albedo_texture_index >= 0)
+			std::shared_ptr<Texture> albedo_texture = (albedo_texture_index >= 0)
 					? _load_texture(albedo_texture_index, p_model, p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param("u_diffuse_texture", albedo_texture);
@@ -398,7 +398,8 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 			// Load metallic-roughness texture
 			int metallic_roughness_texture_index =
 					gltf_material.pbrMetallicRoughness.metallicRoughnessTexture.index;
-			Ref<Texture> metallic_roughness_texture = (metallic_roughness_texture_index >= 0)
+			std::shared_ptr<Texture> metallic_roughness_texture =
+					(metallic_roughness_texture_index >= 0)
 					? _load_texture(
 							  metallic_roughness_texture_index, p_model, p_model_hash, p_base_path)
 					: default_texture;
@@ -407,7 +408,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 
 		{
 			const int normal_texture_index = gltf_material.normalTexture.index;
-			Ref<Texture> normal_texture = (normal_texture_index > 0)
+			std::shared_ptr<Texture> normal_texture = (normal_texture_index > 0)
 					? _load_texture(normal_texture_index, p_model, p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param("u_normal_texture", normal_texture);
@@ -415,7 +416,7 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 
 		{
 			const int occlusion_texture_index = gltf_material.occlusionTexture.index;
-			Ref<Texture> occlusion_texture = (occlusion_texture_index > 0)
+			std::shared_ptr<Texture> occlusion_texture = (occlusion_texture_index > 0)
 					? _load_texture(occlusion_texture_index, p_model, p_model_hash, p_base_path)
 					: default_texture;
 			material->set_param("u_ambient_occlusion_texture", occlusion_texture);
@@ -424,14 +425,14 @@ Ref<MeshPrimitive> GLTFLoader::_load_primitive(const tinygltf::Primitive* p_prim
 		material->upload();
 	}
 
-	Ref<MeshPrimitive> prim = MeshPrimitive::create(prim_vertices, prim_indices);
+	std::shared_ptr<MeshPrimitive> prim = MeshPrimitive::create(prim_vertices, prim_indices);
 	prim->material = !p_overload_material ? material : p_overload_material;
 
 	return prim;
 }
 
-Ref<Texture> GLTFLoader::_load_texture(int texture_index, const tinygltf::Model* p_model,
-		const size_t p_model_hash, const fs::path& p_base_path) {
+std::shared_ptr<Texture> GLTFLoader::_load_texture(int texture_index,
+		const tinygltf::Model* p_model, const size_t p_model_hash, const fs::path& p_base_path) {
 	size_t hash = 0;
 	hash_combine(hash, texture_index);
 	hash_combine(hash, p_model_hash);
@@ -459,7 +460,7 @@ Ref<Texture> GLTFLoader::_load_texture(int texture_index, const tinygltf::Model*
 		sampler_options.wrap_v = _gltf_to_image_wrapping(sampler.wrapT);
 	}
 
-	Ref<Texture> texture;
+	std::shared_ptr<Texture> texture;
 	if (gltf_image.uri.empty()) {
 		// Embedded — create directly from buffer
 

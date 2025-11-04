@@ -4,14 +4,14 @@
 #include "glitch/renderer/shader_library.h"
 
 GridPass::~GridPass() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	backend->pipeline_free(grid_pipeline);
 	backend->shader_free(grid_shader);
 }
 
 void GridPass::setup(Renderer& p_renderer) {
-	Ref<RenderBackend> backend = p_renderer.get_backend();
+	std::shared_ptr<RenderBackend> backend = p_renderer.get_backend();
 
 	DataFormat color_attachment_format =
 			backend->image_get_format(p_renderer.get_render_image("geo_albedo").value());
@@ -35,7 +35,7 @@ void GridPass::setup(Renderer& p_renderer) {
 }
 
 void GridPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
-	Ref<RenderBackend> backend = p_renderer.get_backend();
+	std::shared_ptr<RenderBackend> backend = p_renderer.get_backend();
 
 	p_renderer.begin_rendering(p_cmd, p_renderer.get_render_image("geo_albedo").value(),
 			p_renderer.get_render_image("geo_depth").value());

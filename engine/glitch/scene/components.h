@@ -27,7 +27,7 @@ struct ScriptComponent {
 	bool is_loaded = false;
 
 	// metadata cache for reloading
-	Optional<ScriptMetadata> metadata = std::nullopt;
+	std::optional<ScriptMetadata> metadata = std::nullopt;
 
 	ScriptResult load();
 

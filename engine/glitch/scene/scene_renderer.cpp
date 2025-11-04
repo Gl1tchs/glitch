@@ -11,10 +11,10 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 	renderer->set_msaa_samples(p_specs.msaa);
 
 	// Create and initialize graphics passes
-	clear_pass = create_ref<ClearPass>();
+	clear_pass = std::make_shared<ClearPass>();
 	renderer->add_pass(clear_pass, -10);
 
-	mesh_pass = create_ref<MeshPass>();
+	mesh_pass = std::make_shared<MeshPass>();
 	renderer->add_pass(mesh_pass);
 
 	DataFormat color_attachment_format =

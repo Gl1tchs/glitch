@@ -45,7 +45,7 @@ class GraphicsPass;
  */
 class GL_API Renderer {
 public:
-	Renderer(Ref<Window> p_window, RendererSettings p_settings = {});
+	Renderer(std::shared_ptr<Window> p_window, RendererSettings p_settings = {});
 	~Renderer();
 
 	/**
@@ -64,15 +64,14 @@ public:
 	 * @param priority Sets priority of the pass execute order. Higher
 	 * priority will put other passes behind.
 	 */
-	void add_pass(Ref<GraphicsPass> p_pass, int p_priority = 0);
+	void add_pass(std::shared_ptr<GraphicsPass> p_pass, int p_priority = 0);
 
 	// Execute render passes
 	void execute(CommandBuffer p_cmd);
 
 	// Start drawing
-	void begin_rendering(CommandBuffer p_cmd, Image p_color_attachment,
-			Image p_depth_attachment,
-			Optional<Color> p_clear_color = std::nullopt);
+	void begin_rendering(CommandBuffer p_cmd, Image p_color_attachment, Image p_depth_attachment,
+			std::optional<Color> p_clear_color = std::nullopt);
 
 	// End drawing
 	void end_rendering(CommandBuffer p_cmd);
@@ -80,10 +79,9 @@ public:
 	enum class ImageCreateError { NONE = 0, ID_EXISTS };
 
 	Result<Image, ImageCreateError> create_render_image(
-			const std::string& p_name, DataFormat p_format,
-			BitField<ImageUsageBits> p_usage);
+			const std::string& p_name, DataFormat p_format, BitField<ImageUsageBits> p_usage);
 
-	Optional<Image> get_render_image(const std::string& p_name);
+	std::optional<Image> get_render_image(const std::string& p_name);
 
 	/**
 	 * Set the swapchain target image to get blittet into.
@@ -138,7 +136,7 @@ public:
 
 	static DataFormat get_depth_attachment_format();
 
-	static Ref<RenderBackend> get_backend();
+	static std::shared_ptr<RenderBackend> get_backend();
 
 private:
 	void _imgui_pass(CommandBuffer p_cmd, Image p_target_image);
@@ -150,12 +148,10 @@ private:
 
 	void _reset_stats();
 
-	inline FrameData& _get_current_frame() {
-		return frames[frame_number % SWAPCHAIN_BUFFER_SIZE];
-	};
+	inline FrameData& _get_current_frame() { return frames[frame_number % SWAPCHAIN_BUFFER_SIZE]; };
 
 private:
-	Ref<Window> window;
+	std::shared_ptr<Window> window;
 
 	CommandQueue graphics_queue = GL_NULL_HANDLE;
 	CommandQueue present_queue = GL_NULL_HANDLE;
@@ -182,7 +178,7 @@ private:
 	std::unordered_map<std::string, RenderImage> renderpass_images;
 	std::string swapchain_target_image_id = "";
 
-	std::vector<std::pair<Ref<GraphicsPass>, int>> graphics_passes;
+	std::vector<std::pair<std::shared_ptr<GraphicsPass>, int>> graphics_passes;
 
 	// Settings
 	bool should_present_to_swapchain = true;

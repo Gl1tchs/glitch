@@ -10,10 +10,10 @@
 namespace gl {
 
 static Renderer* s_instance = nullptr;
-static Ref<RenderBackend> s_backend = nullptr;
+static std::shared_ptr<RenderBackend> s_backend = nullptr;
 
 void FrameData::init(CommandQueue p_queue) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	command_pool = backend->command_pool_create(p_queue);
 	command_buffer = backend->command_pool_allocate(command_pool);
@@ -25,7 +25,7 @@ void FrameData::init(CommandQueue p_queue) {
 }
 
 void FrameData::destroy() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	backend->command_pool_free(command_pool);
 
@@ -35,13 +35,13 @@ void FrameData::destroy() {
 	backend->fence_free(render_fence);
 }
 
-Renderer::Renderer(Ref<Window> p_window, RendererSettings p_settings) :
+Renderer::Renderer(std::shared_ptr<Window> p_window, RendererSettings p_settings) :
 		window(p_window), settings(p_settings) {
 	GL_ASSERT(s_instance == nullptr, "Only one instance of renderer can exists!");
 	s_instance = this;
 
 	// We do not support other render backends for now.
-	s_backend = create_ref<VulkanRenderBackend>();
+	s_backend = std::make_shared<VulkanRenderBackend>();
 	s_backend->init(window);
 
 	default_sampler = s_backend->sampler_create();
@@ -241,7 +241,7 @@ void Renderer::end_render() {
 	frame_number++;
 }
 
-void Renderer::add_pass(Ref<GraphicsPass> p_pass, int p_priority) {
+void Renderer::add_pass(std::shared_ptr<GraphicsPass> p_pass, int p_priority) {
 	p_pass->setup(*this);
 
 	graphics_passes.push_back(std::make_pair(p_pass, p_priority));
@@ -262,7 +262,7 @@ void Renderer::execute(CommandBuffer p_cmd) {
 }
 
 void Renderer::begin_rendering(CommandBuffer p_cmd, Image p_color_attachment,
-		Image p_depth_attachment, Optional<Color> p_clear_color) {
+		Image p_depth_attachment, std::optional<Color> p_clear_color) {
 	RenderingAttachment color_attachment = {};
 	color_attachment.image = p_color_attachment;
 	color_attachment.layout = ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
@@ -317,7 +317,7 @@ Result<Image, Renderer::ImageCreateError> Renderer::create_render_image(
 	return render_image.image;
 }
 
-Optional<Image> Renderer::get_render_image(const std::string& p_name) {
+std::optional<Image> Renderer::get_render_image(const std::string& p_name) {
 	const auto it = renderpass_images.find(p_name);
 	if (it == renderpass_images.end()) {
 		return {};
@@ -413,7 +413,7 @@ glm::uvec2 Renderer::get_final_image_size() const { return s_backend->image_get_
 
 RenderStats& Renderer::get_stats() { return stats; }
 
-Ref<RenderBackend> Renderer::get_backend() { return s_backend; }
+std::shared_ptr<RenderBackend> Renderer::get_backend() { return s_backend; }
 
 void Renderer::_imgui_pass(CommandBuffer p_cmd, Image p_target_image) {
 	GL_PROFILE_SCOPE;

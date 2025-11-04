@@ -14,12 +14,12 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 
 	WindowCreateInfo window_info = {};
 	window_info.title = p_info.name;
-	window = create_ref<Window>(window_info);
+	window = std::make_shared<Window>(window_info);
 
 	event::subscribe<WindowCloseEvent>([this](const auto& _event) { running = false; });
 
 	// initialize render backend
-	renderer = create_ref<Renderer>(window);
+	renderer = std::make_shared<Renderer>(window);
 }
 
 Application::~Application() {
@@ -30,8 +30,6 @@ Application::~Application() {
 }
 
 void Application::run() {
-	_on_start();
-
 	Timer timer;
 	while (running) {
 		const float dt = timer.get_delta_time();
@@ -42,7 +40,8 @@ void Application::run() {
 		_event_loop(dt);
 	}
 
-	_on_destroy();
+	// Clear and destroy the layers
+	layer_stack.clear();
 }
 
 void Application::quit() { running = false; }
@@ -57,13 +56,13 @@ void Application::enqueue_main_thread(MainThreadFunc p_function) {
 	app->main_thread_queue.push_back(p_function);
 }
 
-Ref<Window> Application::get_window() { return window; }
+std::shared_ptr<Window> Application::get_window() { return window; }
 
-Ref<Renderer> Application::get_renderer() { return renderer; }
+std::shared_ptr<Renderer> Application::get_renderer() { return renderer; }
 
 ApplicationPerfStats& Application::get_perf_stats() { return perf_stats; }
 
-Ref<RenderBackend> Application::get_render_backend() { return Renderer::get_backend(); }
+std::shared_ptr<RenderBackend> Application::get_render_backend() { return Renderer::get_backend(); }
 
 Application* Application::get_instance() { return s_instance; }
 
@@ -77,7 +76,9 @@ void Application::_event_loop(float p_dt) {
 	{
 		GL_PROFILE_SCOPE_N("Application::_on_update");
 
-		_on_update(p_dt);
+		for (const auto& layer : layer_stack) {
+			layer->update(p_dt);
+		}
 	}
 }
 

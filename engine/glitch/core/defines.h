@@ -22,9 +22,7 @@
 #define GL_API
 #endif // GL_EXPORT
 
-#define GL_BIND_FUNC(fn)                                                       \
-	[this](auto&&... args) -> decltype(auto) {                                 \
-		return this->fn(std::forward<decltype(args)>(args)...);                \
+#define GL_BIND_FUNC(fn)                                                                           \
+	[this](auto&&... args) -> decltype(auto) {                                                     \
+		return this->fn(std::forward<decltype(args)>(args)...);                                    \
 	}
-
-template <typename T> using Optional = std::optional<T>;

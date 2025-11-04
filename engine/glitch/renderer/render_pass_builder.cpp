@@ -7,15 +7,13 @@ namespace gl {
 
 RenderPassBuilder::RenderPassBuilder() {}
 
-RenderPassBuilder& RenderPassBuilder::add_attachment(
-		RenderPassAttachment p_attachment) {
+RenderPassBuilder& RenderPassBuilder::add_attachment(RenderPassAttachment p_attachment) {
 	attachments.push_back(p_attachment);
 
 	return *this;
 }
 
-RenderPassBuilder& RenderPassBuilder::add_color_attachment(
-		DataFormat p_attachment) {
+RenderPassBuilder& RenderPassBuilder::add_color_attachment(DataFormat p_attachment) {
 	attachments.push_back({
 			.format = p_attachment,
 			.load_op = AttachmentLoadOp::CLEAR,
@@ -25,8 +23,7 @@ RenderPassBuilder& RenderPassBuilder::add_color_attachment(
 	return *this;
 }
 
-RenderPassBuilder& RenderPassBuilder::add_depth_attachment(
-		DataFormat p_attachment) {
+RenderPassBuilder& RenderPassBuilder::add_depth_attachment(DataFormat p_attachment) {
 	attachments.push_back({
 			.format = p_attachment,
 			.load_op = AttachmentLoadOp::CLEAR,
@@ -37,15 +34,14 @@ RenderPassBuilder& RenderPassBuilder::add_depth_attachment(
 	return *this;
 }
 
-RenderPassBuilder& RenderPassBuilder::add_subpass(
-		const SubpassInfo& p_attachments) {
+RenderPassBuilder& RenderPassBuilder::add_subpass(const SubpassInfo& p_attachments) {
 	subpasses.push_back(p_attachments);
 
 	return *this;
 }
 
 RenderPass RenderPassBuilder::build() {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	return backend->render_pass_create(attachments, subpasses);
 }
 

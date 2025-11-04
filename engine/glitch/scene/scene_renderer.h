@@ -12,7 +12,7 @@
 namespace gl {
 
 struct DrawingContext {
-	Ref<Scene> scene;
+	std::shared_ptr<Scene> scene;
 	RendererSettings settings = {};
 };
 
@@ -38,11 +38,11 @@ public:
 	void submit_func(RenderFunc&& p_func);
 
 private:
-	Ref<Renderer> renderer;
-	Ref<RenderBackend> backend;
+	std::shared_ptr<Renderer> renderer;
+	std::shared_ptr<RenderBackend> backend;
 
-	Ref<ClearPass> clear_pass;
-	Ref<MeshPass> mesh_pass;
+	std::shared_ptr<ClearPass> clear_pass;
+	std::shared_ptr<MeshPass> mesh_pass;
 
 	std::vector<RenderFunc> render_funcs;
 };
