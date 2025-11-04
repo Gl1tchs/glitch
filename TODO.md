@@ -2,7 +2,6 @@
 
 ## Core
 
-- [ ] Proper systems and init/destroy logic (script system, physics system...)
 - [ ] Event System use std::move_only_function
 - [ ] Per Frame Allocators
 - [ ] Headless build creation.

@@ -55,9 +55,7 @@ public:
 	// TODO: maybe this shouldn't be mutable
 	ApplicationPerfStats& get_perf_stats();
 
-	static std::shared_ptr<RenderBackend> get_render_backend();
-
-	static Application* get_instance();
+	static Application* get();
 
 private:
 	void _event_loop(float p_dt);

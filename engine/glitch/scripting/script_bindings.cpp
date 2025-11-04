@@ -382,7 +382,7 @@ int input_get_mouse_up(int mouse_code) { return Input::is_mouse_released((MouseB
 void window_set_title(const char* title) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
-	Application* app = Application::get_instance();
+	Application* app = Application::get();
 	if (!app) {
 		GL_LOG_ERROR("[LUA] [window_set_title]: No Application instance found.");
 		return;
@@ -394,7 +394,7 @@ void window_set_title(const char* title) {
 int window_set_cursor_mode() {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
-	Application* app = Application::get_instance();
+	Application* app = Application::get();
 	if (!app) {
 		GL_LOG_ERROR("[LUA] [Window_SetCursorMode]: No Application instance found.");
 		return WindowCursorMode::WINDOW_CURSOR_MODE_DISABLED;
@@ -406,7 +406,7 @@ int window_set_cursor_mode() {
 void Window_SetCursorMode(int mode) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
-	Application* app = Application::get_instance();
+	Application* app = Application::get();
 	if (!app) {
 		GL_LOG_ERROR("[LUA] [Window_SetCursorMode]: No Application instance found.");
 		return;
@@ -418,7 +418,7 @@ void Window_SetCursorMode(int mode) {
 glm::vec2 window_set_size() {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
-	Application* app = Application::get_instance();
+	Application* app = Application::get();
 	if (!app) {
 		GL_LOG_ERROR("[LUA] [window_set_size]: No Application instance found.");
 		return { 0, 0 };

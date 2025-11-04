@@ -22,8 +22,6 @@ void EditorLayer::start() {
 	scene = std::make_shared<Scene>();
 	runtime_scene = std::make_shared<Scene>();
 
-	ScriptEngine::init();
-
 	SceneRendererSpecification specs = {};
 	specs.msaa = 4;
 
@@ -43,7 +41,7 @@ void EditorLayer::start() {
 	camera_controller.set_camera(&cc.camera, &camera.get_transform());
 
 	grid_pass = std::make_shared<GridPass>();
-	Application::get_instance()->get_renderer()->add_pass(grid_pass, -5);
+	Application::get()->get_renderer()->add_pass(grid_pass, -5);
 
 	{
 		auto entity = scene->create("Directional Light");
@@ -82,7 +80,7 @@ void EditorLayer::update(float p_dt) {
 
 	scene_renderer->submit(ctx);
 
-	Application::get_instance()->get_renderer()->imgui_begin();
+	Application::get()->get_renderer()->imgui_begin();
 	{
 		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 		static ImGuiWindowFlags window_flags =
@@ -138,7 +136,7 @@ void EditorLayer::update(float p_dt) {
 					ImGui::Separator();
 
 					if (ImGui::MenuItem("Exit")) {
-						Application::get_instance()->quit();
+						Application::get()->quit();
 					}
 
 					ImGui::EndMenu();
@@ -155,9 +153,9 @@ void EditorLayer::update(float p_dt) {
 
 			// Get final rendered image size (actual texture size)
 			const glm::uvec2 image_size =
-					Application::get_instance()->get_renderer()->get_final_image_size();
+					Application::get()->get_renderer()->get_final_image_size();
 			ImTextureID tex_id = reinterpret_cast<ImTextureID>(
-					Application::get_instance()->get_renderer()->get_final_image_descriptor());
+					Application::get()->get_renderer()->get_final_image_descriptor());
 
 			// Get the available region inside the window (without scrollbars or
 			// padding)
@@ -181,7 +179,7 @@ void EditorLayer::update(float p_dt) {
 				static bool mouse_disabled = false;
 				if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
 					if (!mouse_disabled) {
-						Application::get_instance()->get_window()->set_cursor_mode(
+						Application::get()->get_window()->set_cursor_mode(
 								WINDOW_CURSOR_MODE_DISABLED);
 						mouse_disabled = true;
 					}
@@ -194,7 +192,7 @@ void EditorLayer::update(float p_dt) {
 
 				if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
 					if (mouse_disabled) {
-						Application::get_instance()->get_window()->set_cursor_mode(
+						Application::get()->get_window()->set_cursor_mode(
 								WINDOW_CURSOR_MODE_NORMAL);
 						mouse_disabled = false;
 					}
@@ -206,7 +204,7 @@ void EditorLayer::update(float p_dt) {
 
 			ImGui::Begin("Stats");
 			{
-				const ApplicationPerfStats& stats = Application::get_instance()->get_perf_stats();
+				const ApplicationPerfStats& stats = Application::get()->get_perf_stats();
 
 				ImGui::SeparatorText("Application");
 				{
@@ -286,13 +284,13 @@ void EditorLayer::update(float p_dt) {
 		ImGui::End();
 	}
 
-	Application::get_instance()->get_renderer()->imgui_end();
+	Application::get()->get_renderer()->imgui_end();
 
 	// Delete nodes if any requested
 	node_deletion_queue.flush();
 }
 
-void EditorLayer::destroy() { ScriptEngine::shutdown(); }
+void EditorLayer::destroy() {}
 
 void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
 	const std::string label = p_entity.get_name().empty()

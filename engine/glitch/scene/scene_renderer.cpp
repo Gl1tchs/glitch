@@ -7,7 +7,7 @@
 namespace gl {
 
 SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
-		renderer(Application::get_instance()->get_renderer()), backend(renderer->get_backend()) {
+		renderer(Application::get()->get_renderer()), backend(renderer->get_backend()) {
 	renderer->set_msaa_samples(p_specs.msaa);
 
 	// Create and initialize graphics passes
@@ -23,7 +23,6 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 			backend->image_get_format(renderer->get_render_image("geo_depth").value());
 
 	// Register material definitions
-	MaterialSystem::init();
 	MaterialSystem::register_definition("unlit_standard",
 			get_unlit_standard_definition(renderer->get_msaa_samples(), color_attachment_format,
 					depth_attachment_format));

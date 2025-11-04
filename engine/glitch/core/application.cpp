@@ -3,6 +3,7 @@
 #include "glitch/core/event/event_system.h"
 #include "glitch/core/timer.h"
 #include "glitch/renderer/material.h"
+#include "glitch/scripting/script_engine.h"
 
 namespace gl {
 
@@ -12,21 +13,31 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 	GL_ASSERT(!s_instance, "Only one instance can exists at a time!");
 	s_instance = this;
 
+	// Initialize core systems (window / events)
+
 	WindowCreateInfo window_info = {};
 	window_info.title = p_info.name;
 	window = std::make_shared<Window>(window_info);
 
 	event::subscribe<WindowCloseEvent>([this](const auto& _event) { running = false; });
 
-	// initialize render backend
+	// Initialize the renderer
+
 	renderer = std::make_shared<Renderer>(window);
+
+	// System initialization
+
+	ScriptEngine::init();
+	MaterialSystem::init();
 }
 
 Application::~Application() {
 	renderer->wait_for_device();
 
-	// Destroy material system
+	// Destroy systems
+
 	MaterialSystem::destroy();
+	ScriptEngine::shutdown();
 }
 
 void Application::run() {
@@ -47,7 +58,7 @@ void Application::run() {
 void Application::quit() { running = false; }
 
 void Application::enqueue_main_thread(MainThreadFunc p_function) {
-	Application* app = get_instance();
+	Application* app = Application::get();
 	if (!app) {
 		return;
 	}
@@ -62,9 +73,7 @@ std::shared_ptr<Renderer> Application::get_renderer() { return renderer; }
 
 ApplicationPerfStats& Application::get_perf_stats() { return perf_stats; }
 
-std::shared_ptr<RenderBackend> Application::get_render_backend() { return Renderer::get_backend(); }
-
-Application* Application::get_instance() { return s_instance; }
+Application* Application::get() { return s_instance; }
 
 void Application::_event_loop(float p_dt) {
 	GL_PROFILE_SCOPE;

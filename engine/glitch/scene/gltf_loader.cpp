@@ -1,6 +1,6 @@
 #include "glitch/scene/gltf_loader.h"
 
-#include "glitch/core/application.h"
+#include "glitch/renderer/renderer.h"
 #include "glitch/scene/components.h"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -33,7 +33,7 @@ GLTFLoader::GLTFLoader() {
 
 GLTFLoader::~GLTFLoader() {
 	// Wait for device to finish operations before destructing materials
-	Application::get_render_backend()->device_wait();
+	Renderer::get_backend()->device_wait();
 
 	loaded_textures.clear();
 }

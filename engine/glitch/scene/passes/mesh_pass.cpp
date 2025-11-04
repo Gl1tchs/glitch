@@ -81,7 +81,7 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			backend->command_draw_indexed(p_cmd, primitive->index_count);
 
 			{
-				ApplicationPerfStats& stats = Application::get_instance()->get_perf_stats();
+				ApplicationPerfStats& stats = Application::get()->get_perf_stats();
 
 				stats.renderer_stats.draw_calls++;
 				stats.renderer_stats.index_count += primitive->index_count;
@@ -110,7 +110,7 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 		return ScenePreprocessError::NO_CAMERA;
 	}
 
-	camera.value().aspect_ratio = Application::get_instance()->get_window()->get_aspect_ratio();
+	camera.value().aspect_ratio = Application::get()->get_window()->get_aspect_ratio();
 
 	std::optional<DirectionalLight> directional_light;
 	for (Entity entity : scene->view<DirectionalLight>()) {
