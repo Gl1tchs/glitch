@@ -69,9 +69,6 @@ Renderer::Renderer(std::shared_ptr<Window> p_window, RendererSettings p_settings
 Renderer::~Renderer() {
 	s_backend->device_wait();
 
-	// Free all meshes
-	MeshSystem::free_all();
-
 	// destroy image and renderpass resources
 	s_backend->image_free(final_image);
 	for (auto& [name, render_image] : renderpass_images) {

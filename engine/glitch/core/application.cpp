@@ -3,6 +3,7 @@
 #include "glitch/core/event/event_system.h"
 #include "glitch/core/timer.h"
 #include "glitch/renderer/material.h"
+#include "glitch/renderer/mesh.h"
 #include "glitch/scripting/script_engine.h"
 
 namespace gl {
@@ -35,6 +36,9 @@ Application::~Application() {
 	renderer->wait_for_device();
 
 	// Destroy systems
+
+	// TODO: put this in asset system
+	MeshSystem::free_all();
 
 	MaterialSystem::destroy();
 	ScriptEngine::shutdown();
