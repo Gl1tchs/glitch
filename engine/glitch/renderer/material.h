@@ -77,7 +77,7 @@ public:
 	MaterialSystem() = delete;
 
 	static void init();
-	static void destroy();
+	static void shutdown();
 
 	static void register_definition(const std::string& p_name, MaterialDefinition p_def);
 

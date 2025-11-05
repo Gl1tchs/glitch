@@ -1,5 +1,6 @@
 #include "glitch/core/application.h"
 
+#include "glitch/asset/asset_system.h"
 #include "glitch/core/event/event_system.h"
 #include "glitch/core/timer.h"
 #include "glitch/renderer/material.h"
@@ -28,6 +29,7 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 
 	// System initialization
 
+	AssetSystem::init();
 	ScriptEngine::init();
 	MaterialSystem::init();
 }
@@ -40,7 +42,8 @@ Application::~Application() {
 	// TODO: put this in asset system
 	MeshSystem::free_all();
 
-	MaterialSystem::destroy();
+	AssetSystem::shutdown();
+	MaterialSystem::shutdown();
 	ScriptEngine::shutdown();
 }
 

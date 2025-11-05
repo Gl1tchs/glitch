@@ -10,7 +10,7 @@
 namespace gl {
 
 Texture::~Texture() {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+	auto backend = Renderer::get_backend();
 
 	backend->image_free(image);
 	backend->sampler_free(sampler);
@@ -18,7 +18,7 @@ Texture::~Texture() {
 
 std::shared_ptr<Texture> Texture::create(
 		const Color& p_color, const glm::uvec2& p_size, TextureSamplerOptions p_sampler) {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+	auto backend = Renderer::get_backend();
 
 	const uint32_t color_data = p_color.as_uint();
 
@@ -35,7 +35,7 @@ std::shared_ptr<Texture> Texture::create(
 
 std::shared_ptr<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
 		const void* p_data, TextureSamplerOptions p_sampler) {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+	auto backend = Renderer::get_backend();
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = p_format;
@@ -47,9 +47,13 @@ std::shared_ptr<Texture> Texture::create(DataFormat p_format, const glm::uvec2& 
 	return tx;
 }
 
-std::shared_ptr<Texture> Texture::load_from_path(
+std::optional<std::shared_ptr<Texture>> Texture::load(
 		const fs::path& p_path, TextureSamplerOptions p_sampler) {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+	if (!fs::exists(p_path)) {
+		return std::nullopt;
+	}
+
+	auto backend = Renderer::get_backend();
 
 	int w, h;
 	stbi_uc* data = stbi_load(p_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);

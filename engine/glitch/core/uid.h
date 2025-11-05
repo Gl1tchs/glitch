@@ -1,3 +1,8 @@
+/**
+ * @file uid.h
+ *
+ */
+
 #pragma once
 
 namespace gl {

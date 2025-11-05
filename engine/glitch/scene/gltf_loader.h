@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "glitch/asset/asset_system.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/mesh.h"
 #include "glitch/scene/scene.h"
@@ -47,7 +48,7 @@ private:
 	std::shared_ptr<MaterialInstance> default_material;
 
 	// model + texture_index hash = texture
-	std::unordered_map<size_t, std::shared_ptr<Texture>> loaded_textures;
+	std::unordered_map<size_t, AssetHandle> loaded_textures;
 };
 
 } //namespace gl

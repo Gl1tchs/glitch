@@ -14,6 +14,9 @@
 
 ## Asset System
 
+- [ ] Make AssetSystem thread safe
+- [ ] More asset definitions
+- [ ] Execute AssetSystem::collect_garbage in a good place in the engine
 - [ ] Asset loading and asset handles
 - [ ] Custom asset to engine type conversion and asset caching
 - [ ] Async GLTF model loading progress
@@ -50,6 +53,10 @@
 ## Physics
 
 - [ ] Physics engine
+
+## Linux
+
+- [ ] Test test platform utilities
 
 ## Bugs
 

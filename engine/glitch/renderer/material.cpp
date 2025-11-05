@@ -178,7 +178,7 @@ void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
 
 void MaterialSystem::init() { s_definitions.clear(); }
 
-void MaterialSystem::destroy() {
+void MaterialSystem::shutdown() {
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	for (auto& [name, definition] : s_definitions) {
 		backend->pipeline_free(definition->pipeline);

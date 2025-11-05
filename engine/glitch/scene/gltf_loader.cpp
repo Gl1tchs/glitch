@@ -34,8 +34,6 @@ GLTFLoader::GLTFLoader() {
 GLTFLoader::~GLTFLoader() {
 	// Wait for device to finish operations before destructing materials
 	Renderer::get_backend()->device_wait();
-
-	loaded_textures.clear();
 }
 
 static size_t _hash_gltf_model(const tinygltf::Model& p_model) {
@@ -437,9 +435,9 @@ std::shared_ptr<Texture> GLTFLoader::_load_texture(int texture_index,
 	hash_combine(hash, texture_index);
 	hash_combine(hash, p_model_hash);
 
-	if (loaded_textures.find(hash) != loaded_textures.end()) {
+	if (auto it = loaded_textures.find(hash); it != loaded_textures.end()) {
 		// Texture already loaded
-		return loaded_textures.at(hash);
+		return AssetSystem::get<Texture>(it->second).value();
 	}
 
 	// Texture not loaded
@@ -460,7 +458,7 @@ std::shared_ptr<Texture> GLTFLoader::_load_texture(int texture_index,
 		sampler_options.wrap_v = _gltf_to_image_wrapping(sampler.wrapT);
 	}
 
-	std::shared_ptr<Texture> texture;
+	AssetHandle texture;
 	if (gltf_image.uri.empty()) {
 		// Embedded — create directly from buffer
 
@@ -484,16 +482,25 @@ std::shared_ptr<Texture> GLTFLoader::_load_texture(int texture_index,
 						"count");
 		}
 
-		texture = Texture::create(format, glm::uvec2(gltf_image.width, gltf_image.height),
-				gltf_image.image.data(), sampler_options);
+		texture = AssetSystem::register_asset(
+				Texture::create(format, glm::uvec2(gltf_image.width, gltf_image.height),
+						gltf_image.image.data(), sampler_options));
 	} else {
 		// External file — use loader
-		texture = Texture::load_from_path(p_base_path / gltf_image.uri, sampler_options);
+		const fs::path texture_path = p_base_path / gltf_image.uri;
+		auto texture_opt = AssetSystem::load<Texture>(texture_path.string(), sampler_options);
+		if (!texture_opt) {
+			GL_LOG_ERROR("[GLTFLoader::_load_texture] Unable to load GLTF texture from path '{}'",
+					texture_path.string());
+			return default_texture;
+		}
+
+		texture = *texture_opt;
 	}
 
 	loaded_textures[hash] = texture;
 
-	return texture;
+	return AssetSystem::get<Texture>(texture).value();
 }
 
 } //namespace gl

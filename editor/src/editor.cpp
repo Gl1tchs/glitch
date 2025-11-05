@@ -385,6 +385,8 @@ void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 				}
 
 				_get_scene()->destroy(p_entity);
+
+				AssetSystem::collect_garbage();
 			});
 		}
 		ImGui::EndPopup();
