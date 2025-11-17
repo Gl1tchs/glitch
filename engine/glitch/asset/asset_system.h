@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include "glitch/asset/asset.h"
 #include "glitch/core/uid.h"
 
 namespace gl {
@@ -26,7 +25,24 @@ using AssetHandle = UID;
 template <typename T> struct AssetRegistry {
 private:
 	inline static std::unordered_map<AssetHandle, std::shared_ptr<T>> s_map;
+	inline static bool s_is_registered = false;
 	friend class AssetSystem;
+};
+
+/**
+ * Enforces that T has a static load() method accepting a path and other args.
+ */
+template <typename T, typename... Args>
+concept IsLoadableAsset = requires(const fs::path& p_path) {
+	{ T::load(p_path, std::declval<Args>()...) } -> std::same_as<std::shared_ptr<T>>;
+};
+
+/**
+ * Enforces that T has a static create() method accepting arguments.
+ */
+template <typename T, typename... Args>
+concept IsCreatableAsset = requires {
+	{ T::create(std::declval<Args>()...) } -> std::same_as<std::shared_ptr<T>>;
 };
 
 /**
@@ -53,7 +69,8 @@ public:
 	 * Loads and registers the asset to the compatible asset registry.
 	 *
 	 */
-	template <IsLoadableAsset T, typename... Args>
+	template <typename T, typename... Args>
+		requires IsLoadableAsset<T, Args...>
 	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path, Args&&... p_args) {
 		const auto absolute_path = get_absolute_path(p_path);
 		if (absolute_path.has_error()) {
@@ -72,7 +89,8 @@ public:
 	 * Creates and registers the asset to the compatible registry
 	 *
 	 */
-	template <IsCreatableAsset T, typename... Args>
+	template <typename T, typename... Args>
+		requires IsCreatableAsset<T, Args...>
 	static std::optional<AssetHandle> create(Args&&... p_args) {
 		const std::shared_ptr<T> asset = T::create(std::forward<Args>(p_args)...);
 		if (!asset) {
@@ -122,26 +140,23 @@ public:
 
 	template <typename T>
 	static std::unordered_map<AssetHandle, std::shared_ptr<T>>& get_registry() {
-		struct Registrar {
-			Registrar() {
-				AssetSystem::_get_cleanup_registry().push_back(
-						[]() { AssetRegistry<T>::s_map.clear(); });
+		if (!AssetRegistry<T>::s_is_registered) {
+			s_cleanup_registry.push_back([]() { AssetRegistry<T>::s_map.clear(); });
 
-				AssetSystem::_get_gc_registry().push_back([]() {
-					auto& map = AssetRegistry<T>::s_map;
-					// Remove the elements, which has a use_count of 1
-					// (only held and owned by the map)
-					std::erase_if(map, [](const auto& item) {
-						const auto& [handle, ptr] = item;
-						return ptr.use_count() == 1;
-					});
+			s_gc_registry.push_back([]() {
+				auto& map = AssetRegistry<T>::s_map;
+				// Remove the elements, which has a use_count of 1
+				// (only held and owned by the map)
+				std::erase_if(map, [](const auto& item) {
+					const auto& [handle, ptr] = item;
+					return ptr.use_count() == 1;
 				});
-			}
-		};
+			});
 
-		// type `Registrar` will only be initialized once, thus we can ensure the deletion of map
-		// AssetRegistry<T>::s_map will only happen once.
-		static Registrar s_registrar;
+			s_resetter_registry.push_back([]() { AssetRegistry<T>::s_is_registered = false; });
+
+			AssetRegistry<T>::s_is_registered = true;
+		}
 
 		return AssetRegistry<T>::s_map;
 	}
@@ -153,8 +168,9 @@ public:
 	static Result<fs::path, PathProcessError> get_absolute_path(std::string_view p_path);
 
 private:
-	static std::vector<AssetDeletionFn>& _get_cleanup_registry();
-	static std::vector<AssetDeletionFn>& _get_gc_registry();
+	static std::vector<AssetDeletionFn> s_cleanup_registry;
+	static std::vector<AssetDeletionFn> s_gc_registry;
+	static std::vector<AssetDeletionFn> s_resetter_registry;
 };
 
 } // namespace gl

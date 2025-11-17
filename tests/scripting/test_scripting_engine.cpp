@@ -19,6 +19,7 @@ TEST_CASE("Script loading") {
 		return Player
 	)";
 
+	GL_LOG_INFO("Error is expected:");
 	Result<ScriptRef, ScriptResult> res = ScriptEngine::load_script(SYNTAX_ERROR);
 
 	CHECK(res.has_error());
@@ -34,6 +35,7 @@ TEST_CASE("Script loading") {
 		-- do not return anything
 	)";
 
+	GL_LOG_INFO("Error is expected:");
 	res = ScriptEngine::load_script(TABLE_ERROR);
 
 	CHECK(res.has_error());

@@ -14,6 +14,7 @@
 
 ## Asset System
 
+- [ ] Asset Metadata and serialization
 - [ ] Make AssetSystem thread safe
 - [ ] More asset definitions
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine

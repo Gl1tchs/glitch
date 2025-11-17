@@ -4,8 +4,9 @@
 
 namespace gl {
 
-static std::vector<AssetSystem::AssetDeletionFn> s_cleanup_registry;
-static std::vector<AssetSystem::AssetDeletionFn> s_gc_registry;
+std::vector<AssetSystem::AssetDeletionFn> AssetSystem::s_cleanup_registry;
+std::vector<AssetSystem::AssetDeletionFn> AssetSystem::s_gc_registry;
+std::vector<AssetSystem::AssetDeletionFn> AssetSystem::s_resetter_registry;
 
 void AssetSystem::init() { shutdown(); }
 
@@ -14,7 +15,14 @@ void AssetSystem::shutdown() {
 		fn();
 	}
 	s_cleanup_registry.clear();
+
 	s_gc_registry.clear();
+
+	// Reset internal asset registry state
+	for (auto& fn : s_resetter_registry) {
+		fn();
+	}
+	s_resetter_registry.clear();
 }
 
 void AssetSystem::collect_garbage() {
@@ -54,11 +62,5 @@ Result<fs::path, PathProcessError> AssetSystem::get_absolute_path(std::string_vi
 
 	return absolute_path;
 }
-
-std::vector<AssetSystem::AssetDeletionFn>& AssetSystem::_get_cleanup_registry() {
-	return s_cleanup_registry;
-}
-
-std::vector<AssetSystem::AssetDeletionFn>& AssetSystem::_get_gc_registry() { return s_gc_registry; }
 
 } //namespace gl
