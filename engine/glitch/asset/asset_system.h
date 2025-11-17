@@ -23,7 +23,7 @@ enum class AssetLoadingError {
 
 using AssetHandle = UID;
 
-template <AssetType T> struct AssetRegistry {
+template <typename T> struct AssetRegistry {
 private:
 	inline static std::unordered_map<AssetHandle, std::shared_ptr<T>> s_map;
 	friend class AssetSystem;
@@ -53,31 +53,45 @@ public:
 	 * Loads and registers the asset to the compatible asset registry.
 	 *
 	 */
-	template <AssetType T, typename... Args>
+	template <IsLoadableAsset T, typename... Args>
 	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path, Args&&... p_args) {
 		const auto absolute_path = get_absolute_path(p_path);
 		if (absolute_path.has_error()) {
 			return make_err<AssetHandle>(AssetLoadingError::FILE_ERROR);
 		}
 
-		const auto asset = T::load(*absolute_path, std::forward<Args>(p_args)...);
+		const std::shared_ptr<T> asset = T::load(*absolute_path, std::forward<Args>(p_args)...);
 		if (!asset) {
 			return make_err<AssetHandle>(AssetLoadingError::PARSING_ERROR);
 		}
 
-		return register_asset(*asset);
+		return register_asset(asset);
+	}
+
+	/**
+	 * Creates and registers the asset to the compatible registry
+	 *
+	 */
+	template <IsCreatableAsset T, typename... Args>
+	static std::optional<AssetHandle> create(Args&&... p_args) {
+		const std::shared_ptr<T> asset = T::create(std::forward<Args>(p_args)...);
+		if (!asset) {
+			return std::nullopt;
+		}
+
+		return register_asset(asset);
 	}
 
 	/**
 	 * Retrieve asset from registry
 	 *
 	 */
-	template <AssetType T> static std::optional<std::shared_ptr<T>> get(AssetHandle p_handle) {
+	template <typename T> static std::shared_ptr<T> get(AssetHandle p_handle) {
 		auto& registry = get_registry<T>();
 
 		const auto it = registry.find(p_handle);
 		if (it == registry.end()) {
-			return std::nullopt;
+			return nullptr;
 		}
 
 		return it->second;
@@ -94,16 +108,19 @@ public:
 		return num_removed > 0;
 	}
 
-	template <AssetType T> static AssetHandle register_asset(std::shared_ptr<T> p_asset) {
-		AssetHandle handle;
-
+	/**
+	 * Registers given asset to the registry, so that it would automatically deleted
+	 * if no other reference is pointing to it.
+	 *
+	 */
+	template <typename T> static AssetHandle register_asset(std::shared_ptr<T> p_asset) {
+		AssetHandle handle; // new random uid
 		// Push the asset to the register
 		get_registry<T>().insert_or_assign(handle, p_asset);
-
 		return handle;
 	}
 
-	template <AssetType T>
+	template <typename T>
 	static std::unordered_map<AssetHandle, std::shared_ptr<T>>& get_registry() {
 		struct Registrar {
 			Registrar() {

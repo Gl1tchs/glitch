@@ -34,7 +34,7 @@ public:
 
 	Entity(const Entity& p_other) = default;
 
-	template <typename T, typename... Args> auto& add_component(Args&&... p_args);
+	template <typename T, typename... Args> T* add_component(Args&&... p_args);
 
 	template <typename T> T* get_component();
 

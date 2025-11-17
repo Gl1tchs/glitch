@@ -68,8 +68,8 @@ TEST_CASE("Calling engine code") {
 
 	Entity e = scene->create("Entity");
 
-	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "tests/scripting/lua/test_basic.lua";
+	ScriptComponent* sc = e.add_component<ScriptComponent>();
+	sc->script_path = "tests/scripting/lua/test_basic.lua";
 
 	scene->start();
 	scene->update(0.0f);
@@ -85,12 +85,12 @@ TEST_CASE("Script fields") {
 
 	Entity e = scene->create("Entity");
 
-	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "tests/scripting/lua/test_fields.lua";
+	ScriptComponent* sc = e.add_component<ScriptComponent>();
+	sc->script_path = "tests/scripting/lua/test_fields.lua";
 
-	CHECK(sc.load() == ScriptResult::SUCCESS);
+	CHECK(sc->load() == ScriptResult::SUCCESS);
 
-	ScriptMetadata metadata = ScriptEngine::get_metadata(sc.script);
+	ScriptMetadata metadata = ScriptEngine::get_metadata(sc->script);
 	CHECK(metadata.fields.size() == 3);
 
 	CHECK(metadata.fields.find("name") != metadata.fields.end());
@@ -107,7 +107,7 @@ TEST_CASE("Script fields") {
 
 	scene->start();
 
-	metadata = ScriptEngine::get_metadata(sc.script);
+	metadata = ScriptEngine::get_metadata(sc->script);
 
 	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
 	CHECK(100.0 == std::get<double>(metadata.fields["health"]));
@@ -115,7 +115,7 @@ TEST_CASE("Script fields") {
 
 	scene->update(0.0f);
 
-	metadata = ScriptEngine::get_metadata(sc.script);
+	metadata = ScriptEngine::get_metadata(sc->script);
 
 	CHECK("Player1" == std::get<std::string>(metadata.fields["name"]));
 	CHECK(80.0 == std::get<double>(metadata.fields["health"]));
@@ -124,16 +124,16 @@ TEST_CASE("Script fields") {
 	// Destroys and resets the data
 	scene->stop();
 
-	metadata = ScriptEngine::get_metadata(sc.script);
+	metadata = ScriptEngine::get_metadata(sc->script);
 
 	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
 	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
 	CHECK(false == std::get<bool>(metadata.fields["alive"]));
 
-	sc.unload();
+	sc->unload();
 
-	CHECK(!sc.is_loaded);
-	CHECK(sc.script == 0);
+	CHECK(!sc->is_loaded);
+	CHECK(sc->script == 0);
 
 	ScriptEngine::shutdown();
 }

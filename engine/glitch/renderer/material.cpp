@@ -76,7 +76,7 @@ void MaterialInstance::upload() {
 	}
 
 	// Texture, binding
-	std::vector<std::pair<std::shared_ptr<Texture>, int>> textures;
+	std::vector<std::pair<std::weak_ptr<Texture>, int>> textures;
 
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
 	write_order.reserve(params.size());
@@ -96,7 +96,7 @@ void MaterialInstance::upload() {
 			std::visit(
 					[&textures, &meta](const auto& arg) {
 						using T = std::decay_t<decltype(arg)>;
-						if constexpr (std::is_same_v<T, std::shared_ptr<Texture>>) {
+						if constexpr (std::is_same_v<T, std::weak_ptr<Texture>>) {
 							textures.push_back(std::make_pair(arg, meta->binding));
 						}
 					},
@@ -155,9 +155,11 @@ void MaterialInstance::upload() {
 	uniforms.push_back(material_data_uniform);
 
 	// Upload textures
-	for (const auto& [texture, binding] : textures) {
-		ShaderUniform uniform = texture->get_uniform(binding);
-		uniforms.push_back(uniform);
+	for (const auto& [texture_weak, binding] : textures) {
+		if (const std::shared_ptr<Texture> texture = texture_weak.lock()) {
+			ShaderUniform uniform = texture->get_uniform(binding);
+			uniforms.push_back(uniform);
+		}
 	}
 
 	// free the previous uniform set if already exists
@@ -174,6 +176,10 @@ void MaterialInstance::upload() {
 void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	backend->command_bind_uniform_sets(p_cmd, definition->shader, 0, material_set);
+}
+
+std::shared_ptr<MaterialInstance> MaterialInstance::create(const std::string& p_def_name) {
+	return MaterialSystem::create_instance(p_def_name);
 }
 
 void MaterialSystem::init() { s_definitions.clear(); }

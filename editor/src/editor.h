@@ -5,7 +5,6 @@
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/scene/entity.h>
-#include <glitch/scene/gltf_loader.h>
 #include <glitch/scene/scene_renderer.h>
 
 #include "camera_controller.h"
@@ -38,7 +37,6 @@ private:
 	std::shared_ptr<SceneRenderer> scene_renderer;
 
 	std::shared_ptr<Scene> scene;
-	std::unique_ptr<GLTFLoader> gltf_loader;
 
 	CameraController camera_controller;
 	UID camera_uid;

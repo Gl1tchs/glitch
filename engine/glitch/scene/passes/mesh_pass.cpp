@@ -1,6 +1,7 @@
 #include "glitch/scene/passes/mesh_pass.h"
 
 #include "glitch/core/application.h"
+#include "glitch/renderer/mesh.h"
 #include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
 
@@ -47,12 +48,12 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			continue;
 		}
 
-		std::shared_ptr<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
-		if (!mesh) {
+		std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
+		if (!smesh) {
 			continue;
 		}
 
-		for (std::shared_ptr<MeshPrimitive> primitive : mesh->primitives) {
+		for (std::shared_ptr<MeshPrimitive> primitive : smesh->primitives) {
 			// Bind the pipeline if not already bound
 			Pipeline pipeline = primitive->material->get_pipeline();
 			if (pipeline != bound_pipeline) {
@@ -155,13 +156,13 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	for (Entity entity : scene->view<MeshComponent>()) {
 		MeshComponent* mc = entity.get_component<MeshComponent>();
 
-		std::shared_ptr<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
-		if (!mesh) {
+		std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
+		if (!smesh) {
 			mc->visible = false;
 			continue;
 		}
 
-		for (const auto& prim : mesh->primitives) {
+		for (const std::shared_ptr<MeshPrimitive>& prim : smesh->primitives) {
 			// If objects is not inside of the view frustum, discard it.
 			const AABB aabb = prim->aabb.transform(entity.get_transform().to_mat4());
 			if (!aabb.is_inside_frustum(view_frustum)) {

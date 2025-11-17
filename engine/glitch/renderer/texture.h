@@ -25,14 +25,15 @@ class Texture {
 public:
 	~Texture();
 
+	// AssetType method overrides
+
 	static std::shared_ptr<Texture> create(const Color& p_color,
 			const glm::uvec2& p_size = { 1, 1 }, TextureSamplerOptions p_sampler = {});
 
 	static std::shared_ptr<Texture> create(DataFormat p_format, const glm::uvec2& p_size,
 			const void* p_data = nullptr, TextureSamplerOptions p_sampler = {});
 
-	// Function describing Texture as an AssetType
-	static std::optional<std::shared_ptr<Texture>> load(
+	static std::shared_ptr<Texture> load(
 			const fs::path& p_path, TextureSamplerOptions p_sampler = {});
 
 	ShaderUniform get_uniform(uint32_t p_binding) const;

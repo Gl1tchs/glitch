@@ -44,8 +44,8 @@ template <typename... TComponents> EntityView<TComponents...> Scene::view() {
 	return EntityView<TComponents...>(id_view, this);
 }
 
-template <typename T, typename... Args> inline auto& Entity::add_component(Args&&... p_args) {
-	return *scene->assign<T>(handle, std::forward<Args>(p_args)...);
+template <typename T, typename... Args> inline T* Entity::add_component(Args&&... p_args) {
+	return scene->assign<T>(handle, std::forward<Args>(p_args)...);
 }
 
 template <typename T> inline T* Entity::get_component() { return scene->get<T>(handle); }

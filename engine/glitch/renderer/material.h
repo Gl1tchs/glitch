@@ -11,7 +11,7 @@
 namespace gl {
 
 using ShaderUniformVariable =
-		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color, std::shared_ptr<Texture>>;
+		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color, std::weak_ptr<Texture>>;
 
 enum class ShaderUniformVariableType : int {
 	INT,
@@ -61,6 +61,9 @@ public:
 
 	// Binds descriptors for set = 0 index = 0
 	void bind_uniform_set(CommandBuffer p_cmd);
+
+	// Asset type override
+	static std::shared_ptr<MaterialInstance> create(const std::string& p_def_name);
 
 private:
 	std::shared_ptr<MaterialDefinition> definition;

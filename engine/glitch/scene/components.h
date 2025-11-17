@@ -4,14 +4,14 @@
 
 #pragma once
 
+#include "glitch/asset/asset_system.h"
 #include "glitch/renderer/camera.h"
-#include "glitch/renderer/mesh.h"
 #include "glitch/scripting/script_engine.h"
 
 namespace gl {
 
 struct MeshComponent {
-	MeshHandle mesh;
+	AssetHandle mesh;
 	bool visible; // internal scene renderer functionality for frustum culling
 };
 

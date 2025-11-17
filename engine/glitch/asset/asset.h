@@ -6,15 +6,19 @@
 namespace gl {
 
 /**
- * Concept representing an asset type which has a static loader method
- * that returns the optional shared pointer type of the asset.
- *
+ * Enforces that T has a static load() method accepting a path.
  */
 template <typename T, typename... Args>
-concept AssetType = requires(const fs::path& p_path, Args&&... p_args) {
-	{
-		T::load(p_path, std::forward<Args>(p_args)...)
-	} -> std::same_as<std::optional<std::shared_ptr<T>>>;
+concept IsLoadableAsset = requires(const fs::path& p_path) {
+	{ T::load(p_path, std::declval<Args>()...) } -> std::same_as<std::shared_ptr<T>>;
+};
+
+/**
+ * Enforces that T has a static create() method accepting arguments.
+ */
+template <typename T, typename... Args>
+concept IsCreatableAsset = requires {
+	{ T::create(std::declval<Args>()...) } -> std::same_as<std::shared_ptr<T>>;
 };
 
 } //namespace gl

@@ -47,10 +47,9 @@ std::shared_ptr<Texture> Texture::create(DataFormat p_format, const glm::uvec2& 
 	return tx;
 }
 
-std::optional<std::shared_ptr<Texture>> Texture::load(
-		const fs::path& p_path, TextureSamplerOptions p_sampler) {
+std::shared_ptr<Texture> Texture::load(const fs::path& p_path, TextureSamplerOptions p_sampler) {
 	if (!fs::exists(p_path)) {
-		return std::nullopt;
+		return nullptr;
 	}
 
 	auto backend = Renderer::get_backend();

@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "glitch/core/application.h"
+#include "glitch/renderer/mesh.h"
 #include "glitch/scene/components.h"
 
 #include <glitch/core/event/input.h>
@@ -28,17 +29,15 @@ void EditorLayer::start() {
 	scene_renderer = std::make_shared<SceneRenderer>(specs);
 
 	// This must be created after scene renderer for it to initialize materials
-	gltf_loader = std::make_unique<GLTFLoader>();
-
 	Entity camera = scene->create("Camera");
 	camera_uid = camera.get_uid();
 	camera.get_transform().local_position = { 0.0f, 0.5f, 3.0f };
 	camera.get_transform().local_rotation = { -5.0f, 0.0, 0.0f };
 
-	CameraComponent& cc = camera.add_component<CameraComponent>();
-	cc.enabled = true;
+	CameraComponent* cc = camera.add_component<CameraComponent>();
+	cc->enabled = true;
 
-	camera_controller.set_camera(&cc.camera, &camera.get_transform());
+	camera_controller.set_camera(&cc->camera, &camera.get_transform());
 
 	grid_pass = std::make_shared<GridPass>();
 	Application::get()->get_renderer()->add_pass(grid_pass, -5);
@@ -46,21 +45,21 @@ void EditorLayer::start() {
 	{
 		auto entity = scene->create("Directional Light");
 
-		DirectionalLight& directional_light = entity.add_component<DirectionalLight>();
+		DirectionalLight* directional_light = entity.add_component<DirectionalLight>();
 
-		directional_light.direction = { -1, -1, -1, 0 };
-		directional_light.color = COLOR_WHITE;
+		directional_light->direction = { -1, -1, -1, 0 };
+		directional_light->color = COLOR_WHITE;
 	}
 
 	{
 		auto entity = scene->create("Point Light");
 		entity.get_transform().local_position = { 0, 3, 0 };
 
-		PointLight& point_light = entity.add_component<PointLight>();
-		point_light.color = COLOR_RED;
+		PointLight* point_light = entity.add_component<PointLight>();
+		point_light->color = COLOR_RED;
 		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=-Point+Light+Attenuation
-		point_light.linear = 0.14;
-		point_light.quadratic = 0.07;
+		point_light->linear = 0.14;
+		point_light->quadratic = 0.07;
 	}
 }
 
@@ -125,10 +124,12 @@ void EditorLayer::update(float p_dt) {
 								"GLTF Files", 0);
 
 						if (path) {
-							if (auto model = gltf_loader->load_gltf(path, scene)) {
-								(*model).set_name(fs::path(path).filename().string());
-							} else {
-								GL_LOG_ERROR("{}", model.get_error());
+							if (GLTFLoadError result = GLTFLoader::load(_get_scene(), path);
+									result != GLTFLoadError::NONE) {
+								// TODO: enum serialization
+								// GL_LOG_ERROR("{}", result.get_error());
+								GL_LOG_ERROR("[EDITOR] Unable to load GLTF Model from: %s",
+										fs::path(path).filename().string());
 							}
 						}
 					}
@@ -415,8 +416,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 		ImGui::PushID("MESH_PROPS");
 
 		MeshComponent* mc = p_entity.get_component<MeshComponent>();
-		std::shared_ptr<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
-		if (mesh) {
+		if (std::shared_ptr<StaticMesh> mesh = AssetSystem::get<StaticMesh>(mc->mesh)) {
 			ImGui::Text("Primitives: %zu", mesh->primitives.size());
 
 			ImGui::SeparatorText("Material");
@@ -456,7 +456,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 										   mat->set_param(uniform.name, arg);
 									   }
 								   },
-								   [](std::shared_ptr<Texture>& arg) {
+								   [](std::weak_ptr<Texture>& arg) {
 									   // TODO
 								   } },
 						value);
