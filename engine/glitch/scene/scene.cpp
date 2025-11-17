@@ -1,7 +1,10 @@
 #include "glitch/scene/scene.h"
 
+#include "glitch/asset/asset_system.h"
 #include "glitch/scene/entity.h"
 #include "glitch/scripting/script_system.h"
+
+#include <json/json.hpp>
 
 namespace gl {
 
@@ -42,6 +45,35 @@ void Scene::step(uint32_t frames) { step_frames = frames; }
 bool Scene::is_running() const { return running; }
 
 bool Scene::is_paused() const { return paused; }
+
+bool Scene::serialize(std::string_view p_path, const Scene& p_scene) {
+	const auto abs_path = AssetSystem::get_absolute_path(p_path);
+	if (!abs_path) {
+		GL_LOG_ERROR("Unable to serialize scene to path: {}", p_path);
+		return false;
+	}
+
+	GL_LOG_TRACE("Serializing scene to: {}", p_path);
+
+	nlohmann::json j;
+	j["entities"] = nlohmann::json::array();
+
+	std::ofstream file(abs_path.get_value());
+	if (!file.is_open()) {
+		GL_LOG_ERROR("Unable to open file at path '{}' for serialization",
+				abs_path.get_value().string());
+		return false;
+	}
+
+	// Write serialized json to the file.
+	file << j;
+
+	return true;
+}
+
+bool Scene::deserialize(std::string_view p_path, Scene& p_scene) {
+	// TODO!
+}
 
 void Scene::copy_to(Scene& p_dest) {
 	Registry::copy_to(p_dest);

@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 
+#include "glitch/asset/asset_system.h"
+#include "glitch/platform/os.h"
 #include "glitch/scene/scene.h"
 
 using namespace gl;
@@ -62,4 +64,22 @@ TEST_CASE("Scene copy") {
 
 	// CHECK(scene2.find_by_id(e2.get_uid()).get_children().front() !=
 	// 		scene2.find_by_id(e5.get_uid()));
+}
+
+TEST_CASE("Scene Serialization") {
+	os::setenv("GL_WORKING_DIR", fs::temp_directory_path().string().c_str());
+
+	Scene scene;
+	Scene::serialize("res://scene.glscene", scene);
+
+	auto scene_path = AssetSystem::get_absolute_path("res://scene.glscene");
+	REQUIRE(scene_path.has_value());
+
+	CHECK(fs::exists(scene_path.get_value()));
+
+	fs::remove(scene_path.get_value());
+
+	CHECK(!fs::exists(scene_path.get_value()));
+
+	os::setenv("GL_WORKING_DIR", "");
 }

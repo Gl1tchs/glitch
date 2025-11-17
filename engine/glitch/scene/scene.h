@@ -23,6 +23,9 @@ public:
 
 	void copy_to(Scene& p_dest);
 
+	static bool serialize(std::string_view p_path, const Scene& p_scene);
+	static bool deserialize(std::string_view p_path, Scene& p_scene);
+
 	// Scene logic
 
 	void start();

@@ -19,7 +19,7 @@ enum class GLTFLoadError {
  * GLTF loader, loads and registers GLTF models to the given scene from path.
  *
  */
-struct GLTFLoader {
+struct GL_API GLTFLoader {
 	static GLTFLoadError load(std::shared_ptr<Scene> p_scene, const fs::path& p_path);
 };
 
