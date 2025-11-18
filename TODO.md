@@ -35,6 +35,7 @@
 
 ## Renderer
 
+- [ ] I am not a big fan of the Material structure 
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL

@@ -10,7 +10,11 @@ namespace os {
 const char* getenv(const char* p_var) { return ::getenv(p_var); }
 
 bool setenv(const char* p_name, const char* p_value) {
-	return ::putenv(std::format("{}={}", p_name, p_value).c_str());
+	if (!p_value || strcmp(p_value, "") == 0) {
+		return ::unsetenv(p_name) == 0;
+	}
+
+	return ::setenv(p_name, p_value, 1) == 0;
 }
 
 } //namespace os
