@@ -107,7 +107,7 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 		}
 	}
 
-	if (!camera) {
+	if (!camera || !camera_transform) {
 		return ScenePreprocessError::NO_CAMERA;
 	}
 

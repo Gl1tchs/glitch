@@ -30,7 +30,6 @@ void EditorLayer::start() {
 
 	// This must be created after scene renderer for it to initialize materials
 	Entity camera = scene->create("Camera");
-	camera_uid = camera.get_uid();
 	camera.get_transform().local_position = { 0.0f, 0.5f, 3.0f };
 	camera.get_transform().local_rotation = { -5.0f, 0.0, 0.0f };
 
@@ -70,8 +69,13 @@ void EditorLayer::update(float p_dt) {
 		runtime_scene->update(p_dt);
 	}
 
-	Entity camera = _get_scene()->find_by_id(camera_uid).value();
-	grid_pass->set_camera(camera.get_component<CameraComponent>()->camera, camera.get_transform());
+	for (Entity camera : _get_scene()->view<CameraComponent>()) {
+		CameraComponent* cc = camera.get_component<CameraComponent>();
+		if (cc->enabled) {
+			grid_pass->set_camera(cc->camera, camera.get_transform());
+			camera_controller.set_camera(&cc->camera, &camera.get_transform());
+		}
+	}
 
 	DrawingContext ctx;
 	ctx.scene = _get_scene();
@@ -117,6 +121,45 @@ void EditorLayer::update(float p_dt) {
 		{
 			if (ImGui::BeginMainMenuBar()) {
 				if (ImGui::BeginMenu("File")) {
+					if (!is_running) {
+						if (ImGui::MenuItem("Save Scene")) {
+							if (scene_path && fs::exists(*scene_path)) {
+								if (!Scene::serialize(scene_path->string(), scene)) {
+									GL_LOG_ERROR("Unable to serialize scene to path: {}",
+											scene_path->string());
+								}
+							} else {
+								constexpr const char* FILTER_PATERNS[2] = { "*.json" };
+								const char* path = tinyfd_saveFileDialog(
+										"Save Scene", "", 1, FILTER_PATERNS, "JSON Files");
+
+								if (path) {
+									if (Scene::serialize(path, scene)) {
+										scene_path = fs::path(path);
+									} else {
+										scene_path = std::nullopt;
+									}
+								}
+							}
+						}
+
+						if (ImGui::MenuItem("Load Scene")) {
+							constexpr const char* FILTER_PATERNS[2] = { "*.json" };
+							const char* path = tinyfd_openFileDialog(
+									"Load Scene", "", 1, FILTER_PATERNS, "JSON Files", 0);
+
+							if (path) {
+								if (Scene::deserialize(path, scene)) {
+									scene_path = fs::path(path);
+								} else {
+									GL_LOG_ERROR(
+											"[EDITOR] Unable to deserialize scene from path '{}'",
+											path);
+								}
+							}
+						}
+					}
+
 					if (ImGui::MenuItem("Load GLTF Model")) {
 						constexpr const char* FILTER_PATERNS[2] = { "*.glb", "*.gltf" };
 						const char* path = tinyfd_openFileDialog("Load Model", "",
@@ -250,6 +293,12 @@ void EditorLayer::update(float p_dt) {
 			}
 			ImGui::End();
 
+			ImGui::Begin("Asset Registry");
+			{
+				_render_asset_registry();
+			}
+			ImGui::End();
+
 			ImGui::Begin("Script");
 
 			if (!is_running) {
@@ -261,10 +310,6 @@ void EditorLayer::update(float p_dt) {
 
 					runtime_scene->start();
 					is_running = true;
-
-					Entity camera = _get_scene()->find_by_id(camera_uid).value();
-					camera_controller.set_camera(&camera.get_component<CameraComponent>()->camera,
-							&camera.get_transform());
 				}
 			} else {
 				if (ImGui::Button("Stop Scripts")) {
@@ -273,10 +318,6 @@ void EditorLayer::update(float p_dt) {
 					is_running = false;
 
 					selected_entity = Entity((EntityId)selected_entity, scene.get());
-
-					Entity camera = _get_scene()->find_by_id(camera_uid).value();
-					camera_controller.set_camera(&camera.get_component<CameraComponent>()->camera,
-							&camera.get_transform());
 				}
 			}
 
@@ -293,6 +334,27 @@ void EditorLayer::update(float p_dt) {
 
 void EditorLayer::destroy() {}
 
+void EditorLayer::_render_hierarchy() {
+	for (Entity entity : _get_scene()->view()) {
+		if (!entity.is_valid()) {
+			continue;
+		}
+
+		// Only process top-level entities (those without a parent).
+		// The recursive function will handle the children.
+		if (entity.get_parent()) {
+			continue;
+		}
+
+		ImGui::PushID(entity.get_uid().value);
+
+		// Start the recursive rendering for each root entity
+		_render_hierarchy_entry(entity);
+
+		ImGui::PopID();
+	}
+}
+
 void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
 	const std::string label = p_entity.get_name().empty()
 			? std::format("Entity {}", p_entity.get_uid().value)
@@ -306,7 +368,8 @@ void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
 
 	// Leaf Node: The entity has no children.
 	if (children.empty()) {
-		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen |
+				ImGuiTreeNodeFlags_Bullet;
 		if (is_selected) {
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
@@ -352,23 +415,6 @@ void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
 	}
 }
 
-void EditorLayer::_render_hierarchy() {
-	for (Entity entity : _get_scene()->view()) {
-		// Only process top-level entities (those without a parent).
-		// The recursive function will handle the children.
-		if (entity.get_parent()) {
-			continue;
-		}
-
-		ImGui::PushID(entity.get_uid().value);
-
-		// Start the recursive rendering for each root entity
-		_render_hierarchy_entry(entity);
-
-		ImGui::PopID();
-	}
-}
-
 void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 	if (ImGui::BeginPopupContextItem(
 				"HIERARCHY_ITEM_CONTEXT_MENU", ImGuiPopupFlags_MouseButtonRight)) {
@@ -411,11 +457,45 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 		ImGui::PopID();
 	}
 
+	if (p_entity.has_component<GLTFSourceComponent>()) {
+		ImGui::SeparatorText("GLTF Source");
+
+		const GLTFSourceComponent* gltf_sc = p_entity.get_component<GLTFSourceComponent>();
+
+		ImGui::Text("ID: %u", gltf_sc->model_id.value);
+		ImGui::Text("Path: %s", gltf_sc->asset_path.c_str());
+	}
+
+	if (p_entity.has_component<GLTFInstanceComponent>()) {
+		ImGui::SeparatorText("GLTF Instance");
+
+		const GLTFInstanceComponent* gltf_ic = p_entity.get_component<GLTFInstanceComponent>();
+
+		ImGui::Text("Source ID: %u", gltf_ic->source_model_id.value);
+	}
+
+	if (p_entity.has_component<CameraComponent>()) {
+		ImGui::SeparatorText("Camera");
+		ImGui::PushID("CAMERA_PROPS");
+
+		CameraComponent* cc = p_entity.get_component<CameraComponent>();
+
+		ImGui::DragFloat("Near Clip", &cc->camera.near_clip);
+		ImGui::DragFloat("Far Clip", &cc->camera.far_clip);
+		ImGui::DragFloat("FOV", &cc->camera.fov);
+		ImGui::Checkbox("Enabled", &cc->enabled);
+
+		ImGui::PopID();
+	}
+
 	if (p_entity.has_component<MeshComponent>()) {
 		ImGui::SeparatorText("Mesh");
 		ImGui::PushID("MESH_PROPS");
 
 		MeshComponent* mc = p_entity.get_component<MeshComponent>();
+
+		ImGui::Text("Mesh ID: %u", mc->mesh.value);
+
 		if (std::shared_ptr<StaticMesh> mesh = AssetSystem::get<StaticMesh>(mc->mesh)) {
 			ImGui::Text("Primitives: %zu", mesh->primitives.size());
 
@@ -573,6 +653,15 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 		}
 
 		ImGui::EndPopup();
+	}
+}
+
+void EditorLayer::_render_asset_registry() {
+	for (const auto& [handle, metadata] : AssetSystem::get_asset_metadatas()) {
+		ImGui::Separator();
+		ImGui::Text("Handle: %u", handle.value);
+		ImGui::Text("Path: %s", metadata.path.c_str());
+		ImGui::Text("Type: %s", metadata.type_name);
 	}
 }
 

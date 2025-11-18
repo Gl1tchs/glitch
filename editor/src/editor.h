@@ -31,15 +31,17 @@ private:
 
 	void _render_inspector(Entity& p_entity);
 
+	void _render_asset_registry();
+
 	std::shared_ptr<Scene> _get_scene();
 
 private:
 	std::shared_ptr<SceneRenderer> scene_renderer;
 
 	std::shared_ptr<Scene> scene;
+	std::optional<fs::path> scene_path = std::nullopt;
 
 	CameraController camera_controller;
-	UID camera_uid;
 
 	std::shared_ptr<GridPass> grid_pass;
 

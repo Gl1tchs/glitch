@@ -15,8 +15,6 @@ struct MeshComponent {
 	bool visible; // internal scene renderer functionality for frustum culling
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(MeshComponent, mesh, visible);
-
 struct CameraComponent {
 	PerspectiveCamera camera;
 	bool enabled = true;

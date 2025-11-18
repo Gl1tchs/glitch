@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "glitch/asset/asset.h"
 namespace gl {
 
 inline constexpr glm::vec3 VEC3_UP(0.0f, 1.0f, 0.0f);
@@ -17,8 +16,6 @@ inline constexpr glm::vec3 VEC3_ONE(1.0f, 1.0f, 1.0f);
 inline constexpr glm::vec3 WORLD_UP = VEC3_UP;
 
 struct GL_API Transform {
-	GL_REFLECT_ASSET("Transform")
-
 	const Transform* parent = nullptr;
 
 	glm::vec3 local_position = VEC3_ZERO;

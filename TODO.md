@@ -1,5 +1,9 @@
 # TODO
 
+## Critical Bugs
+
+- [ ] ImGui Popups (AddComponent) are not working and cause VkDeviceDestroy problems during shut-down 
+
 ## Core
 
 - [ ] Event System use std::move_only_function
@@ -14,10 +18,10 @@
 
 ## Asset System
 
+- [ ] Proper project system for environment variables
 - [ ] Serialize script component metadata
-- [ ] Asset Metadata and serialization
+- [ ] Asset Metadata
 - [ ] Make AssetSystem thread safe
-- [ ] More asset definitions
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine
 - [ ] Async GLTF model loading progress
 

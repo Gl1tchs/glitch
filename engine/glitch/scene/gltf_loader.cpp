@@ -24,6 +24,7 @@ struct GLTFLoadContext {
 	const tinygltf::Model* model;
 	size_t model_hash;
 	fs::path base_path;
+	UID model_id;
 	std::unordered_map<size_t, AssetHandle> loaded_textures;
 	std::shared_ptr<Texture> default_texture;
 	std::shared_ptr<MaterialInstance> default_material;
@@ -31,21 +32,29 @@ struct GLTFLoadContext {
 
 static size_t _hash_gltf_model(const tinygltf::Model& p_model);
 
-static void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent);
+static void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent);
 
 static std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_primitive,
 		const tinygltf::Mesh* p_mesh, GLTFLoadContext& p_ctx);
 
-static std::shared_ptr<StaticMesh> _load_mesh(
+static std::shared_ptr<StaticMesh> _load_gltf_mesh(
 		const tinygltf::Node* p_gltf_node, GLTFLoadContext& p_ctx);
 
 static std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx);
 
-GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const fs::path& p_path) {
+GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string& p_path) {
+	const auto abs_path_result = AssetSystem::get_absolute_path(p_path);
+	if (!abs_path_result) {
+		GL_LOG_ERROR("[GLTFLoader::load] Unable to parse relative format.");
+		return GLTFLoadError::PATH_ERROR;
+	}
+
+	const fs::path abs_path = abs_path_result.get_value();
+
 	// TODO: better validation
-	if (!p_path.has_extension() ||
-			!(p_path.extension() == ".glb" || p_path.extension() == ".gltf")) {
-		GL_LOG_ERROR("[Mesh::load] Unable to parse non gltf formats.");
+	if (!abs_path.has_extension() ||
+			!(abs_path.extension() == ".glb" || abs_path.extension() == ".gltf")) {
+		GL_LOG_ERROR("[GLTFLoader::load] Unable to parse non gltf formats.");
 		return GLTFLoadError::INVALID_EXTENSION;
 	}
 
@@ -54,74 +63,92 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const fs::path& p
 	std::string err, warn;
 
 	bool ret;
-	if (p_path.extension() == ".glb") {
-		ret = loader.LoadBinaryFromFile(&model, &err, &warn, p_path.string());
+	if (abs_path.extension() == ".glb") {
+		ret = loader.LoadBinaryFromFile(&model, &err, &warn, abs_path.string());
 	} else {
-		ret = loader.LoadASCIIFromFile(&model, &err, &warn, p_path.string());
+		ret = loader.LoadASCIIFromFile(&model, &err, &warn, abs_path.string());
 	}
 
 	if (!ret) {
-		GL_LOG_ERROR("[Mesh::load] Unable to parse GLTF file.");
+		GL_LOG_ERROR("[GLTFLoader::load] Unable to parse GLTF file.");
 		if (!err.empty()) {
-			GL_LOG_ERROR("[Mesh::load] [GLTF]:\n%s", err);
+			GL_LOG_ERROR("[GLTFLoader::load] [GLTF]:\n%s", err);
 		}
 		return GLTFLoadError::PARSING_ERROR;
 	}
 
 #ifdef GL_DEBUG_BUILD
-	GL_LOG_TRACE("[GLTFLoader::load_gltf] Loading GLTF Model from path '{}'", p_path.string());
+	GL_LOG_TRACE("[GLTFLoader::load_gltf] Loading GLTF Model from path '{}'", abs_path.string());
 
 	if (!warn.empty()) {
-		GL_LOG_WARNING("[Mesh::load] [GLTF]:\n%s", warn);
+		GL_LOG_WARNING("[GLTFLoader::load] [GLTF]:\n%s", warn);
 	}
 
 	if (!err.empty()) {
-		GL_LOG_ERROR("[Mesh::load] [GLTF]:\n%s", err);
+		GL_LOG_ERROR("[GLTFLoader::load] [GLTF]:\n%s", err);
 	}
 #endif
+
+	Entity base_entity = p_scene->create(abs_path.filename().string());
+	// Add GLTFSourceComponent for scene (de)serialization
+	const GLTFSourceComponent* gltf_sc =
+			base_entity.add_component<GLTFSourceComponent>(UID(), p_path);
 
 	GLTFLoadContext ctx;
 	ctx.scene = p_scene;
 	ctx.model = &model;
 	ctx.model_hash = _hash_gltf_model(model);
-	ctx.base_path = p_path.parent_path();
-	ctx.default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
-	ctx.default_material = MaterialInstance::create("pbr_standard");
+	ctx.base_path = abs_path.parent_path();
+	ctx.model_id = gltf_sc->model_id;
 
-	ctx.default_material->set_param("base_color", COLOR_WHITE);
-	ctx.default_material->set_param("metallic", 0.5f);
-	ctx.default_material->set_param("roughness", 0.5f);
-	ctx.default_material->set_param("u_diffuse_texture", ctx.default_texture);
-	ctx.default_material->set_param("u_normal_texture", ctx.default_texture);
-	ctx.default_material->set_param("u_metallic_roughness_texture", ctx.default_texture);
-	ctx.default_material->set_param("u_ambient_occlusion_texture", ctx.default_texture);
-	ctx.default_material->upload();
+	// Lazy initialization of defaults
+	static AssetHandle default_texture = INVALID_UID;
+	if (!default_texture || !AssetSystem::get<Texture>(default_texture)) {
+		ctx.default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
+		default_texture = AssetSystem::register_asset(ctx.default_texture, "mem://texture/default");
+	} else {
+		ctx.default_texture = AssetSystem::get<Texture>(default_texture);
+	}
 
-	AssetSystem::register_asset(ctx.default_texture);
-	AssetSystem::register_asset(ctx.default_material);
+	static AssetHandle default_material = INVALID_UID;
+	if (!default_material || !AssetSystem::get<MaterialInstance>(default_material)) {
+		ctx.default_material = MaterialInstance::create("pbr_standard");
+		ctx.default_material->set_param("base_color", COLOR_WHITE);
+		ctx.default_material->set_param("metallic", 0.5f);
+		ctx.default_material->set_param("roughness", 0.5f);
+		ctx.default_material->set_param("u_diffuse_texture", ctx.default_texture);
+		ctx.default_material->set_param("u_normal_texture", ctx.default_texture);
+		ctx.default_material->set_param("u_metallic_roughness_texture", ctx.default_texture);
+		ctx.default_material->set_param("u_ambient_occlusion_texture", ctx.default_texture);
+		ctx.default_material->upload();
 
-	Entity base_entity = p_scene->create(p_path.filename().string());
-	const tinygltf::Scene& scene = model.scenes[model.defaultScene];
+		default_material =
+				AssetSystem::register_asset(ctx.default_material, "mem://material/default");
+	} else {
+		ctx.default_material = AssetSystem::get<MaterialInstance>(default_material);
+	}
 
-	for (int node_index : scene.nodes) {
-		_parse_static_mesh(ctx, node_index, base_entity);
+	for (int node_index : model.scenes[model.defaultScene].nodes) {
+		_parse_gltf_node(ctx, node_index, base_entity);
 	}
 
 	return GLTFLoadError::NONE;
 }
 
-void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
+void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
 	const tinygltf::Node& gltf_node = p_ctx.model->nodes[p_node_idx];
 	if (gltf_node.mesh < 0) {
 		return;
 	}
 
-	Entity entity = p_ctx.scene->create("", p_parent);
+	Entity entity = p_ctx.scene->create(gltf_node.name, p_parent);
+	entity.add_component<GLTFInstanceComponent>(p_ctx.model_id, gltf_node.mesh);
 	{
-		std::shared_ptr<StaticMesh> static_mesh = _load_mesh(&gltf_node, p_ctx);
+		std::shared_ptr<StaticMesh> static_mesh = _load_gltf_mesh(&gltf_node, p_ctx);
 
 		MeshComponent* mc = entity.add_component<MeshComponent>();
-		mc->mesh = AssetSystem::register_asset(static_mesh);
+		mc->mesh = AssetSystem::register_asset(
+				static_mesh, std::format("mem://gltf/mesh/?path=[{}]", p_ctx.base_path.string()));
 		mc->visible = true;
 	}
 
@@ -155,11 +182,12 @@ void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent)
 	}
 
 	for (int child_node_idx : gltf_node.children) {
-		_parse_static_mesh(p_ctx, child_node_idx, entity);
+		_parse_gltf_node(p_ctx, child_node_idx, entity);
 	}
 }
 
-std::shared_ptr<StaticMesh> _load_mesh(const tinygltf::Node* p_gltf_node, GLTFLoadContext& p_ctx) {
+std::shared_ptr<StaticMesh> _load_gltf_mesh(
+		const tinygltf::Node* p_gltf_node, GLTFLoadContext& p_ctx) {
 	std::shared_ptr<StaticMesh> mesh = std::make_shared<StaticMesh>();
 
 	const tinygltf::Mesh& gltf_mesh = p_ctx.model->meshes[p_gltf_node->mesh];
@@ -447,7 +475,8 @@ std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx
 
 		texture = AssetSystem::register_asset(
 				Texture::create(format, glm::uvec2(gltf_image.width, gltf_image.height),
-						gltf_image.image.data(), sampler_options));
+						gltf_image.image.data(), sampler_options),
+				std::format("mem://gltf/texture/?id={}", texture_index));
 	} else {
 		const fs::path texture_path = p_ctx.base_path / gltf_image.uri;
 		auto texture_opt = AssetSystem::load<Texture>(texture_path.string(), sampler_options);

@@ -12,17 +12,24 @@ namespace gl {
 
 using AssetHandle = UID;
 
+struct AssetMetadata {
+	const char* type_name;
+	std::string path;
+};
+
 struct IAssetRegistry {
 	virtual ~IAssetRegistry() = default;
+
+	virtual size_t get_asset_size() const = 0;
 
 	virtual void collect_garbage() = 0;
 
 	virtual void clear() = 0;
 
-	virtual void reset() = 0;
+	virtual std::unordered_map<AssetHandle, AssetMetadata> get_asset_metadatas() const = 0;
 
-	virtual void serialize(json& p_json) const = 0;
-	virtual void deserialize(const json& p_json) = 0;
+	virtual void serialize(json& p_out_json) const = 0;
+	virtual void deserialize(const json& p_in_json) = 0;
 };
 
 template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
@@ -32,7 +39,6 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	};
 
 	std::unordered_map<AssetHandle, AssetEntry> assets;
-	bool is_registered = false;
 
 	virtual ~AssetRegistry() = default;
 
@@ -40,6 +46,8 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 		static AssetRegistry instance;
 		return instance;
 	}
+
+	size_t get_asset_size() const override { return assets.size(); }
 
 	void collect_garbage() override {
 		std::erase_if(assets, [](const auto& item) {
@@ -73,21 +81,70 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 
 	void clear() override { assets.clear(); }
 
-	void reset() override { is_registered = false; }
+	std::unordered_map<AssetHandle, AssetMetadata> get_asset_metadatas() const override {
+		std::unordered_map<AssetHandle, AssetMetadata> result;
+		result.reserve(assets.size());
 
-	void serialize(json& p_out_json) const override {
-		json list = json::array();
 		for (auto& [handle, entry] : assets) {
-			if (!entry.path.empty()) {
-				list.push_back({ { "uid", handle }, { "path", entry.path } });
-			}
+			result.emplace(handle, AssetMetadata{ T::get_type_name(), entry.path });
 		}
 
-		p_out_json[T::get_type_name()] = list;
+		return result;
+	}
+
+	void serialize(json& p_out_json) const override {
+		if constexpr (IsLoadableAsset<T>) {
+			// Only loadable assets can be (de)serialized
+
+			json j;
+			for (auto& [handle, entry] : assets) {
+				// Only serialize non memory types
+				if (!entry.path.empty() && !entry.path.starts_with("mem://")) {
+					j.push_back(json{ { "handle", handle }, { "path", entry.path } });
+				}
+			}
+
+			if (j.size() > 0) {
+				p_out_json = j;
+			} else {
+				p_out_json = json::value_t::null;
+			}
+		}
 	}
 
 	void deserialize(const json& p_in_json) override {
-		// TODO!
+		if constexpr (IsLoadableAsset<T>) {
+			// Only loadable assets can be (de)serialized
+
+			if (!p_in_json.is_array()) {
+				GL_LOG_ERROR("Unable to deserialize Assets of type '{}'.", T::get_type_name());
+				return;
+			}
+
+			for (const auto& asset : p_in_json) {
+				AssetHandle handle;
+				AssetEntry entry;
+
+				asset["handle"].get_to(handle);
+				asset["path"].get_to(entry.path);
+
+				assets[handle] = entry;
+			}
+
+			// Load all assets
+			// TODO! do this in a seperate thread
+			auto it = assets.begin();
+			while (it != assets.end()) {
+				// TODO! abs path
+				// TODO! metadata
+				if (const auto instance = T::load(it->second.path)) {
+					it->second.instance = instance;
+					it++;
+				} else {
+					it = assets.erase(it);
+				}
+			}
+		}
 	}
 };
 
@@ -112,9 +169,7 @@ class GL_API AssetSystem {
 public:
 	using AssetDeletionFn = std::function<void()>;
 
-	static void init();
-
-	static void shutdown();
+	static void clear();
 
 	/**
 	 * Remove unusued assets from the registry
@@ -127,7 +182,7 @@ public:
 	 *
 	 */
 	template <typename T, typename... Args>
-		requires IsLoadableAsset<T, Args...>
+		requires IsLoadableAsset<T> || IsLoadableAsset<T, Args...>
 	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path, Args&&... p_args) {
 		const auto absolute_path = get_absolute_path(p_path);
 		if (absolute_path.has_error()) {
@@ -148,7 +203,7 @@ public:
 	 *
 	 */
 	template <typename T, typename... Args>
-		requires IsCreatableAsset<T, Args...>
+		requires IsCreatableAsset<T> || IsCreatableAsset<T, Args...>
 	static std::optional<AssetHandle> create(Args&&... p_args) {
 		const std::shared_ptr<T> asset = T::create(std::forward<Args>(p_args)...);
 		if (!asset) {
@@ -183,13 +238,30 @@ public:
 		return registry.erase(p_handle);
 	}
 
-	template <typename T> static AssetRegistry<T>& get_registry() {
+	static std::unordered_map<AssetHandle, AssetMetadata> get_asset_metadatas() {
+		size_t total_asset_count = 0;
+		for (const auto& [_, reg] : s_registries) {
+			total_asset_count += reg->get_asset_size();
+		}
+
+		std::unordered_map<AssetHandle, AssetMetadata> result;
+		result.reserve(total_asset_count);
+
+		for (const auto& [_, reg] : s_registries) {
+			auto metadatas = reg->get_asset_metadatas();
+			result.merge(metadatas);
+		}
+
+		return result;
+	}
+
+	template <IsReflectedAsset T> static AssetRegistry<T>& get_registry() {
 		auto& reg = AssetRegistry<T>::get();
 
-		// Add asset registry to the asset system
-		if (!reg.is_registered) {
-			s_registries.push_back(&reg);
-			reg.is_registered = true;
+		// Add asset registry to the asset system if not already existing
+		constexpr const char* type_name = T::get_type_name();
+		if (s_registries.find(type_name) == s_registries.end()) {
+			s_registries[T::get_type_name()] = &reg;
 		}
 
 		return reg;
@@ -205,7 +277,8 @@ public:
 	static void deserialize(const json& p_json);
 
 private:
-	inline static std::vector<IAssetRegistry*> s_registries;
+	// type_name - registry map
+	inline static std::unordered_map<std::string_view, IAssetRegistry*> s_registries;
 };
 
 } // namespace gl

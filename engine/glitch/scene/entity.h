@@ -19,7 +19,7 @@ struct IdComponent {
 };
 
 struct RelationComponent {
-	UID parent_id = 0;
+	UID parent_id = INVALID_UID;
 	std::vector<UID> children_ids = {};
 };
 
@@ -89,9 +89,6 @@ private:
 
 	friend class HierarchyPanel;
 };
-
-void to_json(json& p_json, const Entity& p_entity);
-void from_json(const json& p_json, Entity& p_entity);
 
 constexpr Entity INVALID_ENTITY = {};
 

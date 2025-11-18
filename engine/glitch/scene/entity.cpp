@@ -1,7 +1,5 @@
 #include "glitch/scene/entity.h"
 
-#include "components.h"
-#include "glitch/renderer/light_sources.h"
 #include "glitch/scene/scene.h"
 
 namespace gl {
@@ -46,14 +44,7 @@ void Entity::set_parent(Entity parent) {
 	parent_relation.children_ids.push_back(get_uid());
 
 	// Make transform values relative to the new parent.
-	Transform& transform = get_transform();
-	Transform& parent_transform = parent.get_transform();
-
-	transform.local_position = transform.get_position() - parent_transform.get_position();
-	transform.local_rotation = transform.get_rotation() - parent_transform.get_rotation();
-	transform.local_scale = transform.get_scale() / parent_transform.get_scale();
-
-	transform.parent = &parent_transform;
+	get_transform().parent = &parent.get_transform();
 }
 
 bool Entity::is_parent() const { return get_relation().children_ids.size() > 0; }
@@ -177,37 +168,5 @@ bool Entity::operator==(const Entity& other) const {
 }
 
 bool Entity::operator!=(const Entity& other) const { return !(*this == other); }
-
-void to_json(json& p_json, const Entity& p_entity) {
-	GL_ASSERT(p_entity.has_component<IdComponent>());
-	GL_ASSERT(p_entity.has_component<Transform>());
-	GL_ASSERT(p_entity.has_component<RelationComponent>());
-
-	p_json = json();
-
-	p_json["id"] = p_entity.get_uid();
-	p_json["tag"] = p_entity.get_name();
-	p_json["parent_id"] = p_entity.get_relation().parent_id;
-
-	p_json["transform"] = p_entity.get_transform();
-
-	if (p_entity.has_component<CameraComponent>()) {
-		p_json["camera_component"] = *p_entity.get_component<CameraComponent>();
-	}
-	if (p_entity.has_component<MeshComponent>()) {
-		p_json["mesh_component"] = *p_entity.get_component<MeshComponent>();
-	}
-	if (p_entity.has_component<DirectionalLight>()) {
-		p_json["directional_light"] = *p_entity.get_component<DirectionalLight>();
-	}
-	if (p_entity.has_component<PointLight>()) {
-		p_json["point_light"] = *p_entity.get_component<PointLight>();
-	}
-	if (p_entity.has_component<ScriptComponent>()) {
-		p_json["script_component"] = *p_entity.get_component<ScriptComponent>();
-	}
-}
-
-void from_json(const json& p_json, Entity& p_entity) {}
 
 } //namespace gl

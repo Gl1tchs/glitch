@@ -53,10 +53,30 @@ struct AnotherMockAsset {
 	}
 };
 
+struct MockSerializedAsset {
+	GL_REFLECT_ASSET("MockSerializedAsset");
+
+	std::string data;
+	fs::path loaded_path;
+
+	MockSerializedAsset(std::string p_data, fs::path p_path) :
+			data(std::move(p_data)), loaded_path(std::move(p_path)) {}
+
+	// The deserialize method in AssetRegistry expects this signature
+	static std::shared_ptr<MockSerializedAsset> load(const fs::path& p_path) {
+		// Simulate file reading based on path
+		if (p_path == "/home/glitch/save_data.json") {
+			return std::make_shared<MockSerializedAsset>("Restored Data", p_path);
+		}
+		return nullptr;
+	}
+};
+
 // --- Concept Sanity Checks ---
 static_assert(IsCreatableAsset<MockCreatableAsset, int>);
 static_assert(IsLoadableAsset<MockLoadableAsset, int>);
 static_assert(IsCreatableAsset<AnotherMockAsset>);
+static_assert(IsLoadableAsset<MockSerializedAsset>);
 
 // --- Test Cases ---
 
@@ -86,8 +106,6 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 	// Reset mock asset static flags
 	MockLoadableAsset::s_force_load_failure = false;
 	MockCreatableAsset::s_force_create_failure = false;
-
-	AssetSystem::init();
 
 	AssetHandle h_create_valid;
 	AssetHandle h_load_valid;
@@ -230,7 +248,7 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 		REQUIRE(asset_shutdown_check != nullptr); // It's there
 
 		// Call shutdown
-		AssetSystem::shutdown();
+		AssetSystem::clear();
 
 		// Check if asset is gone
 		asset_shutdown_check = AssetSystem::get<AnotherMockAsset>(h_shutdown);
@@ -241,7 +259,106 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 		CHECK(asset_create_after_shutdown == nullptr);
 	}
 
-	// Final cleanup
-	AssetSystem::shutdown(); // Ensure clean state for next test case
 	CHECK(os::setenv("GL_WORKING_DIR", "")); // Reset env
+}
+
+TEST_CASE("AssetSystem Serialization") {
+	AssetSystem::clear();
+	os::setenv("GL_WORKING_DIR", "/home/glitch");
+
+	SUBCASE("Serialize and Deserialize Loadable Assets") {
+		AssetHandle original_handle;
+
+		{
+			// We manually register a "loaded" asset to simulate a valid state
+			// because we want to test the serialization logic specifically.
+			auto asset = std::make_shared<MockSerializedAsset>(
+					"Original Data", "/home/glitch/save_data.json");
+
+			// Register with a path so it is treated as a file-based asset
+			original_handle = AssetSystem::register_asset(asset, "/home/glitch/save_data.json");
+
+			REQUIRE(original_handle.is_valid());
+		}
+
+		// Serialize: Save the state to JSON
+		json serialized_data;
+		AssetSystem::serialize(serialized_data);
+
+		// Verify JSON structure
+		CHECK(serialized_data.contains("MockSerializedAsset"));
+		CHECK(serialized_data["MockSerializedAsset"].is_array());
+		CHECK(serialized_data["MockSerializedAsset"].size() == 1);
+		CHECK(serialized_data["MockSerializedAsset"][0]["path"] == "/home/glitch/save_data.json");
+
+		AssetHandle saved_handle = serialized_data["MockSerializedAsset"][0]["handle"];
+		CHECK(saved_handle == original_handle);
+
+		//  Reset: Shutdown AssetSystem to clear memory
+		AssetSystem::clear();
+
+		// Verify asset is gone
+		CHECK(AssetSystem::get<MockSerializedAsset>(original_handle) == nullptr);
+
+		AssetSystem::deserialize(serialized_data);
+
+		auto restored_asset = AssetSystem::get<MockSerializedAsset>(original_handle);
+		REQUIRE(restored_asset != nullptr);
+		CHECK(restored_asset->data == "Restored Data"); // Value set by static load()
+		CHECK(restored_asset->loaded_path == "/home/glitch/save_data.json");
+	}
+
+	SUBCASE("Non-Loadable Assets are NOT Serialized") {
+		// MockCreatableAsset is creatable but not loadable (no static load(path) fn)
+		// or simply has no path associated in registry.
+
+		auto handle_opt = AssetSystem::create<MockCreatableAsset>(999);
+		REQUIRE(handle_opt.has_value());
+
+		json serialized_data;
+		AssetSystem::serialize(serialized_data);
+
+		// AssetRegistry::serialize checks 'if constexpr (IsLoadableAsset<T>)'
+		// Even if it did, assets created via create() usually have empty paths.
+		// The MockCreatableAsset shouldn't appear in the output.
+		CHECK_FALSE(serialized_data.contains("MockCreatableAsset"));
+	}
+
+	SUBCASE("Memory-only Assets are NOT Serialized") {
+		// Manually register a loadable asset but with a "mem://" path
+		auto asset =
+				std::make_shared<MockSerializedAsset>("Mem Data", "mem://MockSerializedAsset/test");
+		AssetSystem::register_asset(asset, "mem://MockSerializedAsset/test");
+
+		json serialized_data;
+		AssetSystem::serialize(serialized_data);
+
+		// Logic in AssetRegistry::serialize skips "mem://" prefix
+		if (serialized_data.contains("MockSerializedAsset")) {
+			CHECK(serialized_data["MockSerializedAsset"].empty());
+		} else {
+			CHECK(!serialized_data.contains("MockSerializedAsset"));
+		}
+	}
+
+	SUBCASE("Deserialization skips missing files") {
+		// create JSON manually to simulate a save file pointing to a non-existent asset
+		json fake_save;
+		fake_save["MockSerializedAsset"] = json::array({
+				{
+						{ "handle", AssetHandle() }, // Random valid UID
+						{ "path", "/home/glitch/missing_file.json" },
+				},
+		});
+
+		AssetSystem::deserialize(fake_save);
+
+		// Iterate registries to see if anything was added
+		auto metadata = AssetSystem::get_asset_metadatas();
+		CHECK(metadata.empty());
+	}
+
+	// Cleanup
+	AssetSystem::clear();
+	os::setenv("GL_WORKING_DIR", "");
 }

@@ -28,7 +28,6 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 
 	// System initialization
 
-	AssetSystem::init();
 	ScriptEngine::init();
 	MaterialSystem::init();
 }
@@ -38,7 +37,7 @@ Application::~Application() {
 
 	// Destroy systems
 
-	AssetSystem::shutdown();
+	AssetSystem::clear();
 	MaterialSystem::shutdown();
 	ScriptEngine::shutdown();
 }

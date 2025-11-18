@@ -4,19 +4,16 @@
 
 namespace gl {
 
-void AssetSystem::init() { shutdown(); }
-
-void AssetSystem::shutdown() {
-	for (auto& reg : s_registries) {
+void AssetSystem::clear() {
+	for (auto& [_, reg] : s_registries) {
 		reg->clear();
-		reg->reset();
 	}
 
 	s_registries.clear();
 }
 
 void AssetSystem::collect_garbage() {
-	for (auto& reg : s_registries) {
+	for (auto& [_, reg] : s_registries) {
 		reg->collect_garbage();
 	}
 }
@@ -55,11 +52,34 @@ Result<fs::path, PathProcessError> AssetSystem::get_absolute_path(std::string_vi
 
 void AssetSystem::serialize(json& p_json) {
 	p_json = json();
-	for (const auto& reg : s_registries) {
-		reg->serialize(p_json);
+	for (const auto& [type_name, reg] : s_registries) {
+		json j;
+		reg->serialize(j);
+
+		if (!j.is_null()) {
+			p_json[type_name] = j;
+		}
 	}
 }
 
-void AssetSystem::deserialize(const json& p_json) {}
+void AssetSystem::deserialize(const json& p_json) {
+	// Clear the assets
+	// NOTE: We do not call clear() here to be able to access registry keys
+	for (auto& [_, reg] : s_registries) {
+		reg->clear();
+	}
+
+	for (const auto& [type_name, items] : p_json.items()) {
+		const auto it = s_registries.find(type_name);
+		if (it != s_registries.end()) {
+			IAssetRegistry* reg = it->second;
+			reg->deserialize(items);
+		} else {
+			GL_LOG_WARNING("[AssetSystem::deserialize] Asset type '{}' found in save file but not "
+						   "registered in AssetSystem.",
+					type_name);
+		}
+	}
+}
 
 } //namespace gl

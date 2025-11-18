@@ -58,8 +58,8 @@ public:
 	 */
 	template <typename... TComponents> EntityView<TComponents...> view();
 
-	static bool serialize(std::string_view p_path, Scene& p_scene);
-	static bool deserialize(std::string_view p_path, Scene& p_scene);
+	static bool serialize(std::string_view p_path, const std::shared_ptr<Scene> p_scene);
+	static bool deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene);
 
 private:
 	std::unordered_map<UID, Entity> entity_map;
