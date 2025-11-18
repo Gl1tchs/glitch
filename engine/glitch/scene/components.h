@@ -20,7 +20,7 @@ struct CameraComponent {
 	bool enabled = true;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraComponent, camera, enabled);
+GL_DEFINE_SERIALIZABLE(CameraComponent, camera, enabled);
 
 struct ScriptComponent {
 	std::string script_path;
@@ -39,6 +39,6 @@ struct ScriptComponent {
 };
 
 // TODO metadata
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScriptComponent, script_path);
+GL_DEFINE_SERIALIZABLE(ScriptComponent, script_path);
 
 } //namespace gl

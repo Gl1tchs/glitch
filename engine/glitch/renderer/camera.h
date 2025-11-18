@@ -27,7 +27,7 @@ struct GL_API OrthographicCamera : Camera {
 	glm::mat4 get_projection_matrix() const override;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+GL_DEFINE_SERIALIZABLE(
 		OrthographicCamera, aspect_ratio, near_clip, far_clip, zoom_level);
 
 struct GL_API PerspectiveCamera : Camera {
@@ -40,6 +40,6 @@ struct GL_API PerspectiveCamera : Camera {
 	glm::mat4 get_projection_matrix() const override;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PerspectiveCamera, aspect_ratio, near_clip, far_clip, fov);
+GL_DEFINE_SERIALIZABLE(PerspectiveCamera, aspect_ratio, near_clip, far_clip, fov);
 
 } //namespace gl

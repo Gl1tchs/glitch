@@ -14,7 +14,7 @@ struct DirectionalLight {
 	Color color;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(DirectionalLight, direction, color);
+GL_DEFINE_SERIALIZABLE(DirectionalLight, direction, color);
 
 struct PointLight {
 	glm::vec4 position;
@@ -24,7 +24,7 @@ struct PointLight {
 	float _pad[2];
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PointLight, position, color, linear, quadratic);
+GL_DEFINE_SERIALIZABLE(PointLight, position, color, linear, quadratic);
 
 template <typename T>
 concept LightSource = IsAnyOf<T, DirectionalLight, PointLight>;

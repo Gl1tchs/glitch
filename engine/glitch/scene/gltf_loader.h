@@ -15,7 +15,7 @@ struct GLTFSourceComponent {
 	// TODO: load options
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GLTFSourceComponent, model_id, asset_path);
+GL_DEFINE_SERIALIZABLE(GLTFSourceComponent, model_id, asset_path);
 
 /**
  * Component representing an entity, loaded from a
@@ -27,7 +27,7 @@ struct GLTFInstanceComponent {
 	int gltf_node_id;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GLTFInstanceComponent, source_model_id, gltf_node_id);
+GL_DEFINE_SERIALIZABLE(GLTFInstanceComponent, source_model_id, gltf_node_id);
 
 enum class GLTFLoadError {
 	NONE,
