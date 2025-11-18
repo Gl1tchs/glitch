@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "glitch/asset/asset.h"
 #include "glitch/core/color.h"
 #include "glitch/renderer/types.h"
 
@@ -23,6 +24,8 @@ struct TextureSamplerOptions {
  */
 class Texture {
 public:
+	GL_REFLECT_ASSET("Texture")
+
 	~Texture();
 
 	// AssetType method overrides

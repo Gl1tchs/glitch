@@ -5,9 +5,91 @@
 
 #pragma once
 
+#include "glitch/asset/asset.h"
 #include "glitch/core/uid.h"
 
 namespace gl {
+
+using AssetHandle = UID;
+
+struct IAssetRegistry {
+	virtual ~IAssetRegistry() = default;
+
+	virtual void collect_garbage() = 0;
+
+	virtual void clear() = 0;
+
+	virtual void reset() = 0;
+
+	virtual void serialize(json& p_json) const = 0;
+	virtual void deserialize(const json& p_json) = 0;
+};
+
+template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
+	struct AssetEntry {
+		std::shared_ptr<T> instance;
+		std::string path;
+	};
+
+	std::unordered_map<AssetHandle, AssetEntry> assets;
+	bool is_registered = false;
+
+	virtual ~AssetRegistry() = default;
+
+	static AssetRegistry& get() {
+		static AssetRegistry instance;
+		return instance;
+	}
+
+	void collect_garbage() override {
+		std::erase_if(assets, [](const auto& item) {
+			// use_count 1 means only the map holds it
+			return item.second.instance.use_count() == 1;
+		});
+	}
+
+	/**
+	 * Registers given asset to the registry, so that it would automatically deleted
+	 * if no other reference is pointing to it.
+	 *
+	 * @param p_path Path of the asset to be registered
+	 */
+	AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path) {
+		AssetHandle handle; // new random uid
+		assets.insert_or_assign(handle, AssetEntry{ p_asset, p_path });
+		return handle;
+	}
+
+	std::shared_ptr<T> get_asset(AssetHandle p_handle) {
+		const auto it = assets.find(p_handle);
+		if (it == assets.end()) {
+			return nullptr;
+		}
+
+		return it->second.instance;
+	}
+
+	bool erase(AssetHandle p_handle) { return assets.erase(p_handle) > 0; }
+
+	void clear() override { assets.clear(); }
+
+	void reset() override { is_registered = false; }
+
+	void serialize(json& p_out_json) const override {
+		json list = json::array();
+		for (auto& [handle, entry] : assets) {
+			if (!entry.path.empty()) {
+				list.push_back({ { "uid", handle }, { "path", entry.path } });
+			}
+		}
+
+		p_out_json[T::get_type_name()] = list;
+	}
+
+	void deserialize(const json& p_in_json) override {
+		// TODO!
+	}
+};
 
 enum class PathProcessError {
 	EMPTY_PATH,
@@ -18,31 +100,6 @@ enum class PathProcessError {
 enum class AssetLoadingError {
 	FILE_ERROR,
 	PARSING_ERROR,
-};
-
-using AssetHandle = UID;
-
-template <typename T> struct AssetRegistry {
-private:
-	inline static std::unordered_map<AssetHandle, std::shared_ptr<T>> s_map;
-	inline static bool s_is_registered = false;
-	friend class AssetSystem;
-};
-
-/**
- * Enforces that T has a static load() method accepting a path and other args.
- */
-template <typename T, typename... Args>
-concept IsLoadableAsset = requires(const fs::path& p_path) {
-	{ T::load(p_path, std::declval<Args>()...) } -> std::same_as<std::shared_ptr<T>>;
-};
-
-/**
- * Enforces that T has a static create() method accepting arguments.
- */
-template <typename T, typename... Args>
-concept IsCreatableAsset = requires {
-	{ T::create(std::declval<Args>()...) } -> std::same_as<std::shared_ptr<T>>;
 };
 
 /**
@@ -82,7 +139,8 @@ public:
 			return make_err<AssetHandle>(AssetLoadingError::PARSING_ERROR);
 		}
 
-		return register_asset(asset);
+		auto& registry = get_registry<T>();
+		return registry.register_asset(asset, absolute_path.get_value().string());
 	}
 
 	/**
@@ -97,7 +155,8 @@ public:
 			return std::nullopt;
 		}
 
-		return register_asset(asset);
+		auto& registry = get_registry<T>();
+		return registry.register_asset(asset, "");
 	}
 
 	/**
@@ -106,13 +165,13 @@ public:
 	 */
 	template <typename T> static std::shared_ptr<T> get(AssetHandle p_handle) {
 		auto& registry = get_registry<T>();
+		return registry.get_asset(p_handle);
+	}
 
-		const auto it = registry.find(p_handle);
-		if (it == registry.end()) {
-			return nullptr;
-		}
-
-		return it->second;
+	template <typename T>
+	static AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path = "") {
+		auto& registry = get_registry<T>();
+		return registry.register_asset(p_asset, p_path);
 	}
 
 	/**
@@ -121,44 +180,19 @@ public:
 	 */
 	template <typename T> static bool free(AssetHandle p_handle) {
 		auto& registry = get_registry<T>();
-
-		const size_t num_removed = registry.erase(p_handle);
-		return num_removed > 0;
+		return registry.erase(p_handle);
 	}
 
-	/**
-	 * Registers given asset to the registry, so that it would automatically deleted
-	 * if no other reference is pointing to it.
-	 *
-	 */
-	template <typename T> static AssetHandle register_asset(std::shared_ptr<T> p_asset) {
-		AssetHandle handle; // new random uid
-		// Push the asset to the register
-		get_registry<T>().insert_or_assign(handle, p_asset);
-		return handle;
-	}
+	template <typename T> static AssetRegistry<T>& get_registry() {
+		auto& reg = AssetRegistry<T>::get();
 
-	template <typename T>
-	static std::unordered_map<AssetHandle, std::shared_ptr<T>>& get_registry() {
-		if (!AssetRegistry<T>::s_is_registered) {
-			s_cleanup_registry.push_back([]() { AssetRegistry<T>::s_map.clear(); });
-
-			s_gc_registry.push_back([]() {
-				auto& map = AssetRegistry<T>::s_map;
-				// Remove the elements, which has a use_count of 1
-				// (only held and owned by the map)
-				std::erase_if(map, [](const auto& item) {
-					const auto& [handle, ptr] = item;
-					return ptr.use_count() == 1;
-				});
-			});
-
-			s_resetter_registry.push_back([]() { AssetRegistry<T>::s_is_registered = false; });
-
-			AssetRegistry<T>::s_is_registered = true;
+		// Add asset registry to the asset system
+		if (!reg.is_registered) {
+			s_registries.push_back(&reg);
+			reg.is_registered = true;
 		}
 
-		return AssetRegistry<T>::s_map;
+		return reg;
 	}
 
 	/**
@@ -167,10 +201,11 @@ public:
 	 */
 	static Result<fs::path, PathProcessError> get_absolute_path(std::string_view p_path);
 
+	static void serialize(json& p_json);
+	static void deserialize(const json& p_json);
+
 private:
-	static std::vector<AssetDeletionFn> s_cleanup_registry;
-	static std::vector<AssetDeletionFn> s_gc_registry;
-	static std::vector<AssetDeletionFn> s_resetter_registry;
+	inline static std::vector<IAssetRegistry*> s_registries;
 };
 
 } // namespace gl

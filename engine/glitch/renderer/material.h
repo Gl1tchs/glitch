@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "glitch/asset/asset.h"
 #include "glitch/renderer/texture.h"
 #include "glitch/renderer/types.h"
 
@@ -41,6 +42,8 @@ struct MaterialDefinition {
 
 class GL_API MaterialInstance {
 public:
+	GL_REFLECT_ASSET("Material")
+
 	MaterialInstance(std::shared_ptr<MaterialDefinition> p_definition);
 	~MaterialInstance();
 

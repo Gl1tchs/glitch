@@ -4,30 +4,20 @@
 
 namespace gl {
 
-std::vector<AssetSystem::AssetDeletionFn> AssetSystem::s_cleanup_registry;
-std::vector<AssetSystem::AssetDeletionFn> AssetSystem::s_gc_registry;
-std::vector<AssetSystem::AssetDeletionFn> AssetSystem::s_resetter_registry;
-
 void AssetSystem::init() { shutdown(); }
 
 void AssetSystem::shutdown() {
-	for (auto& fn : s_cleanup_registry) {
-		fn();
+	for (auto& reg : s_registries) {
+		reg->clear();
+		reg->reset();
 	}
-	s_cleanup_registry.clear();
 
-	s_gc_registry.clear();
-
-	// Reset internal asset registry state
-	for (auto& fn : s_resetter_registry) {
-		fn();
-	}
-	s_resetter_registry.clear();
+	s_registries.clear();
 }
 
 void AssetSystem::collect_garbage() {
-	for (auto& fn : s_gc_registry) {
-		fn();
+	for (auto& reg : s_registries) {
+		reg->collect_garbage();
 	}
 }
 
@@ -62,5 +52,14 @@ Result<fs::path, PathProcessError> AssetSystem::get_absolute_path(std::string_vi
 
 	return absolute_path;
 }
+
+void AssetSystem::serialize(json& p_json) {
+	p_json = json();
+	for (const auto& reg : s_registries) {
+		reg->serialize(p_json);
+	}
+}
+
+void AssetSystem::deserialize(const json& p_json) {}
 
 } //namespace gl

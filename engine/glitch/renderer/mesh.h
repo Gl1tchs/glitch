@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "glitch/asset/asset.h"
 #include "glitch/renderer/frustum.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/types.h"
@@ -37,6 +38,8 @@ struct GL_API MeshPrimitive {
 };
 
 struct StaticMesh {
+	GL_REFLECT_ASSET("Mesh")
+
 	~StaticMesh();
 
 	std::vector<std::shared_ptr<MeshPrimitive>> primitives;

@@ -1,11 +1,14 @@
 #include <doctest/doctest.h>
 
+#include "glitch/asset/asset.h"
 #include "glitch/asset/asset_system.h"
 #include "glitch/platform/os.h"
 
 using namespace gl;
 
 struct MockCreatableAsset {
+	GL_REFLECT_ASSET("MockCreatableAsset");
+
 	int value;
 	inline static bool s_force_create_failure = false;
 
@@ -20,6 +23,8 @@ struct MockCreatableAsset {
 };
 
 struct MockLoadableAsset {
+	GL_REFLECT_ASSET("MockLoadableAsset");
+
 	int value;
 	fs::path loaded_from;
 	inline static bool s_force_load_failure = false;
@@ -41,6 +46,8 @@ struct MockLoadableAsset {
 };
 
 struct AnotherMockAsset {
+	GL_REFLECT_ASSET("AnotherMockAsset");
+
 	static std::shared_ptr<AnotherMockAsset> create() {
 		return std::make_shared<AnotherMockAsset>();
 	}

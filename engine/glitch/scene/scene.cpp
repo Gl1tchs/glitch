@@ -55,12 +55,15 @@ bool Scene::serialize(std::string_view p_path, Scene& p_scene) {
 
 	GL_LOG_TRACE("Serializing scene to: {}", p_path);
 
-	nlohmann::json j;
+	json j;
 	j["entities"] = nlohmann::json::array();
 
 	for (Entity e : p_scene.view()) {
 		j["entities"].push_back(e);
 	}
+
+	j["assets"] = json();
+	AssetSystem::serialize(j["assets"]);
 
 	std::ofstream file(abs_path.get_value());
 	if (!file.is_open()) {
