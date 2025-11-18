@@ -39,4 +39,6 @@ struct GL_API Transform {
 
 inline constexpr Transform DEFAULT_TRANSFORM{};
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Transform, local_position, local_rotation, local_scale);
+
 } //namespace gl

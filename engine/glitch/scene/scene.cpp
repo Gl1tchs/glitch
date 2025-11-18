@@ -46,7 +46,7 @@ bool Scene::is_running() const { return running; }
 
 bool Scene::is_paused() const { return paused; }
 
-bool Scene::serialize(std::string_view p_path, const Scene& p_scene) {
+bool Scene::serialize(std::string_view p_path, Scene& p_scene) {
 	const auto abs_path = AssetSystem::get_absolute_path(p_path);
 	if (!abs_path) {
 		GL_LOG_ERROR("Unable to serialize scene to path: {}", p_path);
@@ -58,6 +58,10 @@ bool Scene::serialize(std::string_view p_path, const Scene& p_scene) {
 	nlohmann::json j;
 	j["entities"] = nlohmann::json::array();
 
+	for (Entity e : p_scene.view()) {
+		j["entities"].push_back(e);
+	}
+
 	std::ofstream file(abs_path.get_value());
 	if (!file.is_open()) {
 		GL_LOG_ERROR("Unable to open file at path '{}' for serialization",
@@ -66,7 +70,7 @@ bool Scene::serialize(std::string_view p_path, const Scene& p_scene) {
 	}
 
 	// Write serialized json to the file.
-	file << j;
+	file << j.dump(2);
 
 	return true;
 }
@@ -98,22 +102,19 @@ void Scene::copy_to(Scene& p_dest) {
 	}
 }
 
-Entity Scene::create(const std::string& p_name, UID p_parent_id) {
-	return create(UID(), p_name, p_parent_id);
+Entity Scene::create(const std::string& p_name, Entity p_parent) {
+	return create(UID(), p_name, p_parent);
 }
 
-Entity Scene::create(UID p_uid, const std::string& p_name, UID p_parent_id) {
+Entity Scene::create(UID p_uid, const std::string& p_name, Entity p_parent) {
 	Entity entity{ spawn(), this };
 
 	entity.add_component<IdComponent>(p_uid, p_name);
 	entity.add_component<Transform>();
 	entity.add_component<RelationComponent>();
 
-	if (p_parent_id) {
-		std::optional<Entity> parent = find_by_id(p_parent_id);
-		if (parent) {
-			entity.set_parent(*parent);
-		}
+	if (p_parent) {
+		entity.set_parent(p_parent);
 	}
 
 	entity_map[p_uid] = entity;

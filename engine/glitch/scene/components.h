@@ -15,10 +15,14 @@ struct MeshComponent {
 	bool visible; // internal scene renderer functionality for frustum culling
 };
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(MeshComponent, mesh, visible);
+
 struct CameraComponent {
 	PerspectiveCamera camera;
 	bool enabled = true;
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CameraComponent, camera, enabled);
 
 struct ScriptComponent {
 	std::string script_path;
@@ -35,5 +39,8 @@ struct ScriptComponent {
 
 	void reset();
 };
+
+// TODO metadata
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScriptComponent, script_path);
 
 } //namespace gl

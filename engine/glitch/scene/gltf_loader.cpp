@@ -31,7 +31,7 @@ struct GLTFLoadContext {
 
 static size_t _hash_gltf_model(const tinygltf::Model& p_model);
 
-static void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, UID p_parent_id);
+static void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent);
 
 static std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_primitive,
 		const tinygltf::Mesh* p_mesh, GLTFLoadContext& p_ctx);
@@ -104,19 +104,19 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const fs::path& p
 	const tinygltf::Scene& scene = model.scenes[model.defaultScene];
 
 	for (int node_index : scene.nodes) {
-		_parse_static_mesh(ctx, node_index, base_entity.get_uid());
+		_parse_static_mesh(ctx, node_index, base_entity);
 	}
 
 	return GLTFLoadError::NONE;
 }
 
-void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, UID p_parent_id) {
+void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
 	const tinygltf::Node& gltf_node = p_ctx.model->nodes[p_node_idx];
 	if (gltf_node.mesh < 0) {
 		return;
 	}
 
-	Entity entity = p_ctx.scene->create("", p_parent_id);
+	Entity entity = p_ctx.scene->create("", p_parent);
 	{
 		std::shared_ptr<StaticMesh> static_mesh = _load_mesh(&gltf_node, p_ctx);
 
@@ -155,7 +155,7 @@ void _parse_static_mesh(GLTFLoadContext& p_ctx, int p_node_idx, UID p_parent_id)
 	}
 
 	for (int child_node_idx : gltf_node.children) {
-		_parse_static_mesh(p_ctx, child_node_idx, entity.get_uid());
+		_parse_static_mesh(p_ctx, child_node_idx, entity);
 	}
 }
 

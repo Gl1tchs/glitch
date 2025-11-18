@@ -5,8 +5,7 @@ namespace gl {
 static std::random_device random_device;
 
 static thread_local std::mt19937_64 engine(random_device());
-static thread_local std::uniform_int_distribution<uint32_t>
-		uniform_distribution;
+static thread_local std::uniform_int_distribution<uint32_t> uniform_distribution;
 
 UID::UID() : value(uniform_distribution(engine)) {}
 
@@ -33,5 +32,9 @@ UID& UID::operator=(uint32_t&& p_other) {
 	value = p_other;
 	return *this;
 }
+
+void to_json(json& p_json, const UID& p_uid) { p_json = p_uid.value; }
+
+void from_json(const json& p_json, UID& p_uid) { p_json.get_to(p_uid.value); }
 
 } //namespace gl

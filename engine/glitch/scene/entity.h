@@ -40,7 +40,7 @@ public:
 
 	template <typename T> const T* get_component() const;
 
-	template <typename... Components> bool has_component() const;
+	template <typename TComponent> bool has_component() const;
 
 	template <typename T> void remove_component();
 
@@ -89,6 +89,9 @@ private:
 
 	friend class HierarchyPanel;
 };
+
+void to_json(json& p_json, const Entity& p_entity);
+void from_json(const json& p_json, Entity& p_entity);
 
 constexpr Entity INVALID_ENTITY = {};
 

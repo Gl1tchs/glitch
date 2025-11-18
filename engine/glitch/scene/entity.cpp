@@ -1,5 +1,7 @@
 #include "glitch/scene/entity.h"
 
+#include "components.h"
+#include "glitch/renderer/light_sources.h"
 #include "glitch/scene/scene.h"
 
 namespace gl {
@@ -175,5 +177,37 @@ bool Entity::operator==(const Entity& other) const {
 }
 
 bool Entity::operator!=(const Entity& other) const { return !(*this == other); }
+
+void to_json(json& p_json, const Entity& p_entity) {
+	GL_ASSERT(p_entity.has_component<IdComponent>());
+	GL_ASSERT(p_entity.has_component<Transform>());
+	GL_ASSERT(p_entity.has_component<RelationComponent>());
+
+	p_json = json();
+
+	p_json["id"] = p_entity.get_uid();
+	p_json["tag"] = p_entity.get_name();
+	p_json["parent_id"] = p_entity.get_relation().parent_id;
+
+	p_json["transform"] = p_entity.get_transform();
+
+	if (p_entity.has_component<CameraComponent>()) {
+		p_json["camera_component"] = *p_entity.get_component<CameraComponent>();
+	}
+	if (p_entity.has_component<MeshComponent>()) {
+		p_json["mesh_component"] = *p_entity.get_component<MeshComponent>();
+	}
+	if (p_entity.has_component<DirectionalLight>()) {
+		p_json["directional_light"] = *p_entity.get_component<DirectionalLight>();
+	}
+	if (p_entity.has_component<PointLight>()) {
+		p_json["point_light"] = *p_entity.get_component<PointLight>();
+	}
+	if (p_entity.has_component<ScriptComponent>()) {
+		p_json["script_component"] = *p_entity.get_component<ScriptComponent>();
+	}
+}
+
+void from_json(const json& p_json, Entity& p_entity) {}
 
 } //namespace gl

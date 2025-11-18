@@ -98,8 +98,9 @@ target_include_directories(glitch
 	PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/engine
 	${GLM_INCLUDES}
+	${VENDOR_DIR}/include/public # public header only libraries
   PRIVATE
-	${VENDOR_DIR}/include # header only libraries
+	${VENDOR_DIR}/include/private # private header only libraries
 	${GL_OUTPUT_DIR}/include
 	${GLFW_INCLUDES}
 	${SPIRV_REFLECT_INCLUDES}

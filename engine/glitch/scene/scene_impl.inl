@@ -54,8 +54,8 @@ template <typename T> inline const T* Entity::get_component() const {
 	return scene->get<T>(handle);
 }
 
-template <typename... Components> inline bool Entity::has_component() const {
-	return scene->has<Components...>(handle);
+template <typename TComponent> inline bool Entity::has_component() const {
+	return scene->has<TComponent>(handle);
 }
 
 template <typename T> inline void Entity::remove_component() { scene->remove<T>(handle); }

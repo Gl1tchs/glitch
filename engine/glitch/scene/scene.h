@@ -23,9 +23,6 @@ public:
 
 	void copy_to(Scene& p_dest);
 
-	static bool serialize(std::string_view p_path, const Scene& p_scene);
-	static bool deserialize(std::string_view p_path, Scene& p_scene);
-
 	// Scene logic
 
 	void start();
@@ -44,8 +41,8 @@ public:
 
 	// ECS
 
-	Entity create(const std::string& p_name, UID p_parent_id = 0);
-	Entity create(UID p_uid, const std::string& p_name, UID p_parent_id = INVALID_UID);
+	Entity create(const std::string& p_name, Entity p_parent = INVALID_ENTITY);
+	Entity create(UID p_uid, const std::string& p_name, Entity p_parent = INVALID_ENTITY);
 
 	void destroy(Entity p_entity);
 	void destroy(UID p_uid);
@@ -60,6 +57,9 @@ public:
 	 * returning an iterable view of `Entity` objects.
 	 */
 	template <typename... TComponents> EntityView<TComponents...> view();
+
+	static bool serialize(std::string_view p_path, Scene& p_scene);
+	static bool deserialize(std::string_view p_path, Scene& p_scene);
 
 private:
 	std::unordered_map<UID, Entity> entity_map;

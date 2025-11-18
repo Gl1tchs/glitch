@@ -21,11 +21,9 @@ struct Color {
 	 * Gray-Scale constructor, fills every component
 	 * except `alpha` to `p_value`
 	 */
-	constexpr Color(float p_value = 0.0f) :
-			r(p_value), g(p_value), b(p_value) {}
+	constexpr Color(float p_value = 0.0f) : r(p_value), g(p_value), b(p_value) {}
 
-	constexpr Color(
-			float p_red, float p_green, float p_blue, float p_alpha = 1.0f) :
+	constexpr Color(float p_red, float p_green, float p_blue, float p_alpha = 1.0f) :
 			r(p_red), g(p_green), b(p_blue), a(p_alpha) {}
 
 	/**
@@ -55,10 +53,11 @@ struct Color {
 	}
 
 	constexpr bool operator==(const Color& p_other) const {
-		return r == p_other.r && g == p_other.g && b == p_other.b &&
-				a == p_other.a;
+		return r == p_other.r && g == p_other.g && b == p_other.b && a == p_other.a;
 	}
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a);
 
 constexpr Color COLOR_BLACK(0.0f, 0.0f, 0.0f, 1.0f);
 constexpr Color COLOR_WHITE(1.0f, 1.0f, 1.0f, 1.0f);

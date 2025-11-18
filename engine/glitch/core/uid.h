@@ -34,6 +34,9 @@ struct GL_API UID {
 
 inline const UID INVALID_UID = 0;
 
+void to_json(json& p_json, const UID& p_uid);
+void from_json(const json& p_json, UID& p_uid);
+
 } //namespace gl
 
 namespace std {

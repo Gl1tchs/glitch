@@ -374,7 +374,7 @@ void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 				"HIERARCHY_ITEM_CONTEXT_MENU", ImGuiPopupFlags_MouseButtonRight)) {
 		if (ImGui::MenuItem("Add Child")) {
 			static uint32_t s_entity_counter = 0;
-			_get_scene()->create(std::format("Entity {}", s_entity_counter++), p_entity.get_uid());
+			_get_scene()->create(std::format("Entity {}", s_entity_counter++), p_entity);
 		}
 		if (ImGui::MenuItem("Delete")) {
 			node_deletion_queue.push_function([this, p_entity]() {

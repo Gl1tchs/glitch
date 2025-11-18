@@ -14,6 +14,7 @@
 
 ## Asset System
 
+- [ ] Serialize script component metadata
 - [ ] Asset Metadata and serialization
 - [ ] Make AssetSystem thread safe
 - [ ] More asset definitions
@@ -59,7 +60,7 @@
 
 ## Bugs
 
-- [ ] Swapchain resize gives descriptor set = 0 error
+- [ ] Swapchain resize gives descriptor set = 0 error`
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 - [ ] Renderer::create_render_image expects same format as swapchain for color attachments
 
