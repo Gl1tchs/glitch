@@ -11,12 +11,8 @@
 
 ## Asset System
 
+- [ ] GLTF Metadata
 - [ ] Proper project system for environment variables
-- [ ] Script as asset:
-    - [ ] ScriptMetadata { fields }
-- [ ] Asset Metadatas
-    - [ ] e.g. GLTFSourceMetadata { model_path, loading_options  }
-    - [x] Texture metadata
 - [ ] Make AssetSystem thread safe
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine
 - [ ] Async GLTF model loading progress
@@ -66,3 +62,8 @@
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 - [ ] Renderer::create_render_image expects same format as swapchain for color attachments
 
+
+## Refactors
+
+- [ ] JSON Serialization should ensure type safety and should return json not take reference
+- [ ] All Errors should be handled

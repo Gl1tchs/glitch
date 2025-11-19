@@ -16,6 +16,7 @@ enum class ScriptResult {
 	INVALID_SCRIPT_FILE, // script file could't be found
 	FUNCTION_NOT_FOUND, // function could not be found
 	INVALID_SCRIPT_REF,
+	INVALID_FIELD_NAME,
 };
 
 typedef std::variant<double, std::string, bool> ScriptValueType;
@@ -24,6 +25,9 @@ struct ScriptMetadata {
 	std::unordered_map<std::string, ScriptValueType> fields;
 	std::vector<std::string> methods;
 };
+
+void to_json(json& p_json, const ScriptMetadata& p_metadata);
+void from_json(const json& p_json, ScriptMetadata& p_metadata);
 
 class ScriptEngine {
 public:
@@ -123,6 +127,12 @@ public:
 	static bool call_function(int p_nargs);
 
 	static ScriptMetadata get_metadata(ScriptRef p_ref);
+
+	/**
+	 * Writes metadata fields to lua
+	 *
+	 */
+	static ScriptResult set_metadata(ScriptRef p_ref, const ScriptMetadata& p_metadata);
 
 	static std::optional<double> get_number_field(ScriptRef p_ref, const char* p_field_name);
 

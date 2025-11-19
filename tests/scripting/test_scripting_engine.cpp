@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "glitch/scene/components.h"
 #include "glitch/scene/scene.h"
+#include "glitch/scripting/script.h"
 #include "glitch/scripting/script_engine.h"
 
 using namespace gl;
@@ -70,7 +70,7 @@ TEST_CASE("Calling engine code") {
 
 	Entity e = scene->create("Entity");
 
-	ScriptComponent* sc = e.add_component<ScriptComponent>();
+	Script* sc = e.add_component<Script>();
 	sc->script_path = "tests/scripting/lua/test_basic.lua";
 
 	scene->start();
@@ -87,7 +87,7 @@ TEST_CASE("Script fields") {
 
 	Entity e = scene->create("Entity");
 
-	ScriptComponent* sc = e.add_component<ScriptComponent>();
+	Script* sc = e.add_component<Script>();
 	sc->script_path = "tests/scripting/lua/test_fields.lua";
 
 	CHECK(sc->load() == ScriptResult::SUCCESS);

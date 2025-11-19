@@ -5,6 +5,7 @@
 #include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
 #include "glitch/scene/gltf_loader.h"
+#include "glitch/scripting/script.h"
 #include "glitch/scripting/script_system.h"
 
 #include <json/json.hpp>
@@ -173,8 +174,8 @@ static json _serialize_entity(const Entity& p_entity) {
 	if (p_entity.has_component<PointLight>()) {
 		j["point_light"] = *p_entity.get_component<PointLight>();
 	}
-	if (p_entity.has_component<ScriptComponent>()) {
-		j["script_component"] = *p_entity.get_component<ScriptComponent>();
+	if (p_entity.has_component<Script>()) {
+		j["script"] = *p_entity.get_component<Script>();
 	}
 
 	return j;
@@ -199,15 +200,12 @@ bool Scene::serialize(std::string_view p_path, std::shared_ptr<Scene> p_scene) {
 	j["assets"] = json();
 	AssetSystem::serialize(j["assets"]);
 
-	std::ofstream file(abs_path.get_value());
-	if (!file.is_open()) {
+	// Write serialized json to the file.
+	if (json_save(p_path, j) != JSONLoadError::NONE) {
 		GL_LOG_ERROR("[Scene::serialize] Unable to open file at path '{}' for serialization",
 				abs_path.get_value().string());
 		return false;
 	}
-
-	// Write serialized json to the file.
-	file << j.dump(2);
 
 	return true;
 }
@@ -258,44 +256,34 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 	}
 
 	if (p_json.contains("camera_component")) {
-		entity.add_component<CameraComponent>();
-		p_json.at("camera_component").get_to(*entity.get_component<CameraComponent>());
+		CameraComponent* cc = entity.add_component<CameraComponent>();
+		p_json.at("camera_component").get_to(*cc);
 	}
 	if (p_json.contains("directional_light")) {
-		entity.add_component<DirectionalLight>();
-		p_json.at("directional_light").get_to(*entity.get_component<DirectionalLight>());
+		DirectionalLight* dl = entity.add_component<DirectionalLight>();
+		p_json.at("directional_light").get_to(*dl);
 	}
 	if (p_json.contains("point_light")) {
-		entity.add_component<PointLight>();
-		p_json.at("point_light").get_to(*entity.get_component<PointLight>());
+		PointLight* pl = entity.add_component<PointLight>();
+		p_json.at("point_light").get_to(*pl);
 	}
-	if (p_json.contains("script_component")) {
-		entity.add_component<ScriptComponent>();
-		p_json.at("script_component").get_to(*entity.get_component<ScriptComponent>());
+	if (p_json.contains("script")) {
+		Script* sc = entity.add_component<Script>();
+		p_json.at("script").get_to(*sc);
 	}
 
 	return entity;
 }
 
 bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene) {
-	const auto abs_path = AssetSystem::get_absolute_path(p_path);
-	if (!abs_path) {
-		GL_LOG_ERROR("[Scene::deserialize] Unable to deserialize scene from path: {}", p_path);
-		return false;
-	}
-
-	GL_LOG_TRACE("[Scene::deserialize] Deserializing scene to: {}", p_path);
-
-	json j;
-
-	std::ifstream file(abs_path.get_value());
-	if (!file.is_open()) {
+	const auto res = json_load(p_path);
+	if (!res) {
 		GL_LOG_ERROR("[Scene::deserialize] Unable to open file at path '{}' for deserialization",
-				abs_path.get_value().string());
+				p_path);
 		return false;
 	}
 
-	file >> j;
+	const json& j = res.get_value();
 
 	std::shared_ptr<Scene> new_scene = std::make_shared<Scene>();
 	for (const json& j_entity : j["entities"]) {

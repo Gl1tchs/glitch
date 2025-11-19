@@ -79,7 +79,7 @@ bool Texture::save(const fs::path& p_metadata_path, std::shared_ptr<Texture> p_t
 	j["wrap_v"] = p_texture->sampler_options.wrap_v;
 	j["wrap_w"] = p_texture->sampler_options.wrap_w;
 
-	const auto res = save_json(p_metadata_path.string(), j);
+	const auto res = json_save(p_metadata_path.string(), j);
 	if (res != JSONLoadError::NONE) {
 		if (res == JSONLoadError::FILE_OPEN_ERROR) {
 			GL_LOG_ERROR(
@@ -111,7 +111,7 @@ std::shared_ptr<Texture> Texture::load(const fs::path& p_path) {
 		return nullptr;
 	}
 
-	const auto res = load_json(p_path.string());
+	const auto res = json_load(p_path.string());
 	if (!res) {
 		GL_LOG_ERROR("[Texture::load] Unable to load texture, error while parsing metadata.");
 		return nullptr;
@@ -171,7 +171,7 @@ std::shared_ptr<Texture> Texture::load_from_file(
 	tx->sampler = backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
 			p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
 	tx->sampler_options = p_sampler;
-	tx->asset_path = p_asset_path;
+	tx->asset_path = p_asset_path.string();
 
 	stbi_image_free(data);
 

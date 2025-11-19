@@ -6,18 +6,16 @@
 #include "glitch/scene/components.h"
 
 #include <glitch/core/event/input.h>
+#include <glitch/core/templates/variant_helpers.h>
 #include <glitch/renderer/pipeline_builder.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/renderer/shader_library.h>
 #include <glitch/scene/gltf_loader.h>
+#include <glitch/scripting/script.h>
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 #include <tinyfiledialogs/tinyfiledialogs.h>
-
-template <class... Ts> struct overloaded : Ts... {
-	using Ts::operator()...;
-};
 
 void EditorLayer::start() {
 	renderer_settings.vsync = true;
@@ -509,11 +507,11 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 
 			for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
 				ShaderUniformVariable value = *mat->get_param(uniform.name);
-				std::visit(overloaded{ [&](int& arg) {
-										  if (ImGui::InputInt(uniform.name.c_str(), &arg)) {
-											  mat->set_param(uniform.name, arg);
-										  }
-									  },
+				std::visit(VariantOverloaded{ [&](int& arg) {
+												 if (ImGui::InputInt(uniform.name.c_str(), &arg)) {
+													 mat->set_param(uniform.name, arg);
+												 }
+											 },
 								   [&](float& arg) {
 									   if (ImGui::InputFloat(uniform.name.c_str(), &arg)) {
 										   mat->set_param(uniform.name, arg);
@@ -574,8 +572,8 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 		ImGui::PopID();
 	}
 
-	if (p_entity.has_component<ScriptComponent>()) {
-		ScriptComponent* sc = p_entity.get_component<ScriptComponent>();
+	if (p_entity.has_component<Script>()) {
+		Script* sc = p_entity.get_component<Script>();
 
 		ImGui::SeparatorText("Script");
 		ImGui::PushID("SCRIPT_PROPS");
@@ -612,12 +610,12 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 					continue;
 				}
 
-				std::visit(overloaded{ [&](double& arg) {
-										  if (ImGui::InputDouble(name.c_str(), &arg)) {
-											  ScriptEngine::set_field(
-													  sc->script, name.c_str(), arg);
-										  }
-									  },
+				std::visit(VariantOverloaded{ [&](double& arg) {
+												 if (ImGui::InputDouble(name.c_str(), &arg)) {
+													 ScriptEngine::set_field(
+															 sc->script, name.c_str(), arg);
+												 }
+											 },
 								   [&](std::string& arg) {
 									   if (ImGui::InputText(name.c_str(), &arg)) {
 										   ScriptEngine::set_field(sc->script, name.c_str(), arg);
@@ -651,8 +649,8 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 			p_entity.add_component<PointLight>();
 		}
 
-		if (!p_entity.has_component<ScriptComponent>() && ImGui::MenuItem("Script")) {
-			p_entity.add_component<ScriptComponent>();
+		if (!p_entity.has_component<Script>() && ImGui::MenuItem("Script")) {
+			p_entity.add_component<Script>();
 		}
 
 		ImGui::EndPopup();

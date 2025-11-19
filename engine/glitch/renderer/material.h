@@ -78,6 +78,8 @@ private:
 	bool dirty = false;
 };
 
+static_assert(IsCreatableAsset<Material, std::string>);
+
 class GL_API MaterialSystem {
 public:
 	MaterialSystem() = delete;

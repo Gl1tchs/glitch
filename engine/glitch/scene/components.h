@@ -6,7 +6,6 @@
 
 #include "glitch/asset/asset_system.h"
 #include "glitch/renderer/camera.h"
-#include "glitch/scripting/script_engine.h"
 
 namespace gl {
 
@@ -21,24 +20,5 @@ struct CameraComponent {
 };
 
 GL_DEFINE_SERIALIZABLE(CameraComponent, camera, enabled);
-
-struct ScriptComponent {
-	std::string script_path;
-
-	ScriptRef script = 0;
-	bool is_loaded = false;
-
-	// metadata cache for reloading
-	std::optional<ScriptMetadata> metadata = std::nullopt;
-
-	ScriptResult load();
-
-	void unload();
-
-	void reset();
-};
-
-// TODO metadata
-GL_DEFINE_SERIALIZABLE(ScriptComponent, script_path);
 
 } //namespace gl

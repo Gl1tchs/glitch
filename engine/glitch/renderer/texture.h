@@ -59,6 +59,9 @@ private:
 	TextureSamplerOptions sampler_options;
 };
 
+static_assert(IsCreatableAsset<Texture, Color, glm::uvec2, TextureSamplerOptions>);
+static_assert(IsLoadableAsset<Texture>);
+
 template <> size_t hash64(const Texture& p_texture);
 
 } //namespace gl
