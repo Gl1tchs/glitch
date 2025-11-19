@@ -5,26 +5,22 @@ and interactive simulations.
 
 ## Building
 
-### 🔗 Dependencies
+### Dependencies
 
 You’ll need the following:
 
 - [Vulkan SDK](https://www.lunarg.com/vulkan-sdk)
 - C++20 compiler
 - `cmake` ≥ 3.20
-- `make` or `ninja`
+- `ninja`
 
-### 🧬 Cloning and Building
+### Cloning and Building
+
+Glitch uses CMakeFetch content to retrieve some third party dependencies. So this may take a while.
 
 ```bash
-git clone --recursive https://github.com/Gl1tchs/glitch.git
+git clone https://github.com/Gl1tchs/glitch.git
 cd glitch
-make
-```
-
-Or with CMake directly:
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake --preset release
+cmake --build --preset build-release
 ```

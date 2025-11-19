@@ -2,6 +2,7 @@
 
 #include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
+#include "glitch/renderer/texture.h"
 
 namespace gl {
 
@@ -24,8 +25,7 @@ size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 	}
 }
 
-Material::Material(std::shared_ptr<MaterialDefinition> p_definition) :
-		definition(p_definition) {}
+Material::Material(std::shared_ptr<MaterialDefinition> p_definition) : definition(p_definition) {}
 
 Material::~Material() {
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
@@ -76,7 +76,7 @@ void Material::upload() {
 	}
 
 	// Texture, binding
-	std::vector<std::pair<std::weak_ptr<Texture>, int>> textures;
+	std::vector<std::pair<std::shared_ptr<Texture>, int>> textures;
 
 	std::vector<std::pair<size_t, ShaderUniformMetadata>> write_order;
 	write_order.reserve(params.size());
@@ -92,16 +92,14 @@ void Material::upload() {
 		}
 
 		if (meta->type == ShaderUniformVariableType::TEXTURE) {
-			// TODO: maybe a little overkill
-			std::visit(
-					[&textures, &meta](const auto& arg) {
-						using T = std::decay_t<decltype(arg)>;
-						if constexpr (std::is_same_v<T, std::weak_ptr<Texture>>) {
-							textures.push_back(std::make_pair(arg, meta->binding));
-						}
-					},
-					param);
-			continue;
+			if (!std::holds_alternative<AssetHandle>(param)) {
+				continue;
+			}
+
+			AssetHandle texture_handle = std::get<AssetHandle>(param);
+			if (auto texture = AssetSystem::get<Texture>(texture_handle)) {
+				textures.push_back(std::make_pair(texture, meta->binding));
+			}
 		}
 
 		const size_t alignment = uniform_type_std140_alignment(meta->type);
@@ -155,11 +153,9 @@ void Material::upload() {
 	uniforms.push_back(material_data_uniform);
 
 	// Upload textures
-	for (const auto& [texture_weak, binding] : textures) {
-		if (const std::shared_ptr<Texture> texture = texture_weak.lock()) {
-			ShaderUniform uniform = texture->get_uniform(binding);
-			uniforms.push_back(uniform);
-		}
+	for (const auto& [texture, binding] : textures) {
+		ShaderUniform uniform = texture->get_uniform(binding);
+		uniforms.push_back(uniform);
 	}
 
 	// free the previous uniform set if already exists

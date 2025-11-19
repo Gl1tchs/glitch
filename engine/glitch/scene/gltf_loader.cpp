@@ -3,6 +3,7 @@
 #include "glitch/asset/asset_system.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/mesh.h"
+#include "glitch/renderer/texture.h"
 #include "glitch/scene/components.h"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -26,8 +27,6 @@ struct GLTFLoadContext {
 	fs::path base_path;
 	UID model_id;
 	std::unordered_map<size_t, AssetHandle> loaded_textures;
-	std::shared_ptr<Texture> default_texture;
-	std::shared_ptr<Material> default_material;
 };
 
 static size_t _hash_gltf_model(const tinygltf::Model& p_model);
@@ -40,7 +39,10 @@ static std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive*
 static std::shared_ptr<StaticMesh> _load_gltf_mesh(
 		const tinygltf::Node* p_gltf_node, GLTFLoadContext& p_ctx);
 
-static std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx);
+static AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx);
+
+static AssetHandle s_default_texture = INVALID_UID;
+static AssetHandle s_default_material = INVALID_UID;
 
 GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string& p_path) {
 	const auto abs_path_result = AssetSystem::get_absolute_path(p_path);
@@ -102,30 +104,22 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 	ctx.model_id = gltf_sc->model_id;
 
 	// Lazy initialization of defaults
-	static AssetHandle default_texture = INVALID_UID;
-	if (!default_texture || !AssetSystem::get<Texture>(default_texture)) {
-		ctx.default_texture = Texture::create(COLOR_WHITE, { 1, 1 });
-		default_texture = AssetSystem::register_asset(ctx.default_texture, "mem://texture/default");
-	} else {
-		ctx.default_texture = AssetSystem::get<Texture>(default_texture);
+	if (!s_default_texture || !AssetSystem::get<Texture>(s_default_texture)) {
+		auto tex = Texture::create(COLOR_WHITE, { 1, 1 });
+		s_default_texture = AssetSystem::register_asset(tex, "mem://texture/default");
 	}
+	if (!s_default_material || !AssetSystem::get<Material>(s_default_material)) {
+		auto mat = Material::create("pbr_standard");
+		mat->set_param("base_color", COLOR_WHITE);
+		mat->set_param("metallic", 0.5f);
+		mat->set_param("roughness", 0.5f);
+		mat->set_param("u_diffuse_texture", s_default_texture);
+		mat->set_param("u_normal_texture", s_default_texture);
+		mat->set_param("u_metallic_roughness_texture", s_default_texture);
+		mat->set_param("u_ambient_occlusion_texture", s_default_texture);
+		mat->upload();
 
-	static AssetHandle default_material = INVALID_UID;
-	if (!default_material || !AssetSystem::get<Material>(default_material)) {
-		ctx.default_material = Material::create("pbr_standard");
-		ctx.default_material->set_param("base_color", COLOR_WHITE);
-		ctx.default_material->set_param("metallic", 0.5f);
-		ctx.default_material->set_param("roughness", 0.5f);
-		ctx.default_material->set_param("u_diffuse_texture", ctx.default_texture);
-		ctx.default_material->set_param("u_normal_texture", ctx.default_texture);
-		ctx.default_material->set_param("u_metallic_roughness_texture", ctx.default_texture);
-		ctx.default_material->set_param("u_ambient_occlusion_texture", ctx.default_texture);
-		ctx.default_material->upload();
-
-		default_material =
-				AssetSystem::register_asset(ctx.default_material, "mem://material/default");
-	} else {
-		ctx.default_material = AssetSystem::get<Material>(default_material);
+		s_default_material = AssetSystem::register_asset(mat, "mem://material/default");
 	}
 
 	for (int node_index : model.scenes[model.defaultScene].nodes) {
@@ -363,17 +357,18 @@ std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_prim
 							float(diffuse_factor[2].GetNumberAsDouble()),
 							float(diffuse_factor[3].GetNumberAsDouble())));
 
-			int diffuse_texture_index = _get_extension_texture_index(specGloss, "diffuseTexture");
-			std::weak_ptr<Texture> diffuse_texture = (diffuse_texture_index >= 0)
+			const int diffuse_texture_index =
+					_get_extension_texture_index(specGloss, "diffuseTexture");
+			AssetHandle diffuse_texture = (diffuse_texture_index >= 0)
 					? _load_texture(diffuse_texture_index, p_ctx)
-					: p_ctx.default_texture;
+					: s_default_texture;
 			material->set_param("u_diffuse_texture", diffuse_texture);
 
-			int specular_texture_index =
+			const int specular_texture_index =
 					_get_extension_texture_index(specGloss, "specularGlossinessTexture");
-			std::weak_ptr<Texture> specular_texture = (specular_texture_index >= 0)
+			AssetHandle specular_texture = (specular_texture_index >= 0)
 					? _load_texture(specular_texture_index, p_ctx)
-					: p_ctx.default_texture;
+					: s_default_texture;
 			material->set_param("u_metallic_roughness_texture", specular_texture);
 
 			material->set_param("metallic", 0.0f);
@@ -388,34 +383,34 @@ std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_prim
 			material->set_param("roughness",
 					static_cast<float>(gltf_material.pbrMetallicRoughness.roughnessFactor));
 
-			int albedo_texture_index = gltf_material.pbrMetallicRoughness.baseColorTexture.index;
-			std::weak_ptr<Texture> albedo_texture = (albedo_texture_index >= 0)
+			const int albedo_texture_index =
+					gltf_material.pbrMetallicRoughness.baseColorTexture.index;
+			AssetHandle albedo_texture = (albedo_texture_index >= 0)
 					? _load_texture(albedo_texture_index, p_ctx)
-					: p_ctx.default_texture;
+					: s_default_texture;
 			material->set_param("u_diffuse_texture", albedo_texture);
 
-			int metallic_roughness_texture_index =
+			const int metallic_roughness_texture_index =
 					gltf_material.pbrMetallicRoughness.metallicRoughnessTexture.index;
-			std::weak_ptr<Texture> metallic_roughness_texture =
-					(metallic_roughness_texture_index >= 0)
+			AssetHandle metallic_roughness_texture = (metallic_roughness_texture_index >= 0)
 					? _load_texture(metallic_roughness_texture_index, p_ctx)
-					: p_ctx.default_texture;
+					: s_default_texture;
 			material->set_param("u_metallic_roughness_texture", metallic_roughness_texture);
 		}
 
 		{
 			const int normal_texture_index = gltf_material.normalTexture.index;
-			std::weak_ptr<Texture> normal_texture = (normal_texture_index > 0)
+			AssetHandle normal_texture = (normal_texture_index > 0)
 					? _load_texture(normal_texture_index, p_ctx)
-					: p_ctx.default_texture;
+					: s_default_texture;
 			material->set_param("u_normal_texture", normal_texture);
 		}
 
 		{
 			const int occlusion_texture_index = gltf_material.occlusionTexture.index;
-			std::weak_ptr<Texture> occlusion_texture = (occlusion_texture_index > 0)
+			AssetHandle occlusion_texture = (occlusion_texture_index > 0)
 					? _load_texture(occlusion_texture_index, p_ctx)
-					: p_ctx.default_texture;
+					: s_default_texture;
 			material->set_param("u_ambient_occlusion_texture", occlusion_texture);
 		}
 
@@ -423,18 +418,18 @@ std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_prim
 	}
 
 	std::shared_ptr<MeshPrimitive> prim = MeshPrimitive::create(prim_vertices, prim_indices);
-	prim->material = material ? material : p_ctx.default_material;
+	prim->material = material ? material : AssetSystem::get<Material>(s_default_material);
 
 	return prim;
 }
 
-std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx) {
+AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx) {
 	size_t hash = 0;
 	hash_combine(hash, texture_index);
 	hash_combine(hash, p_ctx.model_hash);
 
 	if (auto it = p_ctx.loaded_textures.find(hash); it != p_ctx.loaded_textures.end()) {
-		return AssetSystem::get<Texture>(it->second);
+		return it->second;
 	}
 
 	const tinygltf::Texture& gltf_texture = p_ctx.model->textures[texture_index];
@@ -484,7 +479,7 @@ std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx
 		if (!texture) {
 			GL_LOG_ERROR("[GLTFLoader::_load_texture] Unable to load GLTF texture from path '{}'",
 					texture_path.string());
-			return nullptr;
+			return INVALID_UID;
 		}
 
 		texture_handle = AssetSystem::register_asset(texture);
@@ -492,7 +487,7 @@ std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx
 
 	p_ctx.loaded_textures[hash] = texture_handle;
 
-	return AssetSystem::get<Texture>(texture_handle);
+	return texture_handle;
 }
 
 size_t _hash_gltf_model(const tinygltf::Model& p_model) {

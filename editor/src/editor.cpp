@@ -3,6 +3,7 @@
 #include "glitch/asset/asset_system.h"
 #include "glitch/core/application.h"
 #include "glitch/renderer/mesh.h"
+#include "glitch/renderer/texture.h"
 #include "glitch/scene/components.h"
 
 #include <glitch/core/event/input.h>
@@ -17,6 +18,19 @@
 #include <misc/cpp/imgui_stdlib.h>
 #include <tinyfiledialogs/tinyfiledialogs.h>
 
+// Helper to draw components cleanly
+template <typename T>
+void EditorLayer::_draw_component(
+		const std::string& name, Entity& entity, std::function<void(T&)> ui_function) {
+	if (entity.has_component<T>()) {
+		ImGui::PushID((void*)typeid(T).hash_code());
+		ImGui::SeparatorText(name.c_str());
+		T* component = entity.get_component<T>();
+		ui_function(*component);
+		ImGui::PopID();
+	}
+}
+
 void EditorLayer::start() {
 	renderer_settings.vsync = true;
 
@@ -25,10 +39,9 @@ void EditorLayer::start() {
 
 	SceneRendererSpecification specs = {};
 	specs.msaa = 4;
-
 	scene_renderer = std::make_shared<SceneRenderer>(specs);
 
-	// This must be created after scene renderer for it to initialize materials
+	// Create initial scene
 	Entity camera = scene->create("Camera");
 	camera.get_transform().local_position = { 0.0f, 0.5f, 3.0f };
 	camera.get_transform().local_rotation = { -5.0f, 0.0, 0.0f };
@@ -43,20 +56,15 @@ void EditorLayer::start() {
 
 	{
 		auto entity = scene->create("Directional Light");
-
 		DirectionalLight* directional_light = entity.add_component<DirectionalLight>();
-
 		directional_light->direction = { -1, -1, -1, 0 };
 		directional_light->color = COLOR_WHITE;
 	}
-
 	{
 		auto entity = scene->create("Point Light");
 		entity.get_transform().local_position = { 0, 3, 0 };
-
 		PointLight* point_light = entity.add_component<PointLight>();
 		point_light->color = COLOR_RED;
-		// http://www.ogre3d.org/tikiwiki/tiki-index.php?page=-Point+Light+Attenuation
 		point_light->linear = 0.14;
 		point_light->quadratic = 0.07;
 	}
@@ -65,10 +73,12 @@ void EditorLayer::start() {
 void EditorLayer::update(float p_dt) {
 	GL_PROFILE_SCOPE;
 
+	// Logic Update
 	if (is_running) {
 		runtime_scene->update(p_dt);
 	}
 
+	// Sync camera controller
 	for (Entity camera : _get_scene()->view<CameraComponent>()) {
 		CameraComponent* cc = camera.get_component<CameraComponent>();
 		if (cc->enabled) {
@@ -77,363 +87,553 @@ void EditorLayer::update(float p_dt) {
 		}
 	}
 
+	// Render Scene
 	DrawingContext ctx;
 	ctx.scene = _get_scene();
 	ctx.settings = renderer_settings;
-
 	scene_renderer->submit(ctx);
 
+	// Render UI
 	Application::get()->get_renderer()->imgui_begin();
 	{
-		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-		static ImGuiWindowFlags window_flags =
-				ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+		_begin_dockspace();
+		_render_menubar();
+		_render_viewport(p_dt);
+		_render_stats();
+		_render_settings();
 
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(viewport->Pos);
-		ImGui::SetNextWindowSize(viewport->Size);
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-		if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode) {
-			window_flags |= ImGuiWindowFlags_NoBackground;
-		}
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("GL_DOCK_SPACE", nullptr, window_flags);
-		ImGui::PopStyleVar(3);
-
-		// DockSpace
-		ImGuiIO& io = ImGui::GetIO();
-		ImGuiStyle& style = ImGui::GetStyle();
-		float min_win_size_x = style.WindowMinSize.x;
-		style.WindowMinSize.x = 200.0f;
-		if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
-			ImGuiID dockspace_id = ImGui::GetID("GL_DOCK_SPACE");
-			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-		}
-
-		style.WindowMinSize.x = min_win_size_x;
-		{
-			if (ImGui::BeginMainMenuBar()) {
-				if (ImGui::BeginMenu("File")) {
-					if (!is_running) {
-						if (ImGui::MenuItem("Save Scene")) {
-							if (scene_path && fs::exists(*scene_path)) {
-								if (!Scene::serialize(scene_path->string(), scene)) {
-									GL_LOG_ERROR("Unable to serialize scene to path: {}",
-											scene_path->string());
-								}
-							} else {
-								constexpr const char* FILTER_PATERNS[2] = { "*.json" };
-								const char* path = tinyfd_saveFileDialog(
-										"Save Scene", "", 1, FILTER_PATERNS, "JSON Files");
-
-								if (path) {
-									if (Scene::serialize(path, scene)) {
-										scene_path = fs::path(path);
-									} else {
-										scene_path = std::nullopt;
-									}
-								}
-							}
-						}
-
-						if (ImGui::MenuItem("Load Scene")) {
-							constexpr const char* FILTER_PATERNS[2] = { "*.json" };
-							const char* path = tinyfd_openFileDialog(
-									"Load Scene", "", 1, FILTER_PATERNS, "JSON Files", 0);
-
-							if (path) {
-								if (Scene::deserialize(path, scene)) {
-									scene_path = fs::path(path);
-								} else {
-									GL_LOG_ERROR(
-											"[EDITOR] Unable to deserialize scene from path '{}'",
-											path);
-								}
-							}
-						}
-					}
-
-					if (ImGui::MenuItem("Load GLTF Model")) {
-						constexpr const char* FILTER_PATERNS[2] = { "*.glb", "*.gltf" };
-						const char* path = tinyfd_openFileDialog("Load Model", "",
-								sizeof(FILTER_PATERNS) / sizeof(FILTER_PATERNS[0]), FILTER_PATERNS,
-								"GLTF Files", 0);
-
-						if (path) {
-							if (GLTFLoadError result = GLTFLoader::load(_get_scene(), path);
-									result != GLTFLoadError::NONE) {
-								// TODO: enum serialization
-								// GL_LOG_ERROR("{}", result.get_error());
-								GL_LOG_ERROR("[EDITOR] Unable to load GLTF Model from: %s",
-										fs::path(path).filename().string());
-							}
-						}
-					}
-
-					ImGui::Separator();
-
-					if (ImGui::MenuItem("Exit")) {
-						Application::get()->quit();
-					}
-
-					ImGui::EndMenu();
-				}
-
-				ImGui::EndMainMenuBar();
-			}
-
-			ImGui::Begin("Viewport", nullptr,
-					ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-
-			// Remove default padding
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
-
-			// Get final rendered image size (actual texture size)
-			const glm::uvec2 image_size =
-					Application::get()->get_renderer()->get_final_image_size();
-			ImTextureID tex_id = reinterpret_cast<ImTextureID>(
-					Application::get()->get_renderer()->get_final_image_descriptor());
-
-			// Get the available region inside the window (without scrollbars or
-			// padding)
-			ImVec2 avail = ImGui::GetContentRegionAvail();
-
-			// Calculate scale to fit (keep aspect ratio)
-			float scale = std::min(avail.x / (float)image_size.x, avail.y / (float)image_size.y);
-
-			// Final size after scaling
-			ImVec2 final_size = { image_size.x * scale, image_size.y * scale };
-
-			// Center it by adjusting the cursor
-			ImVec2 cursor_pos = ImGui::GetCursorPos();
-			ImGui::SetCursorPos({ cursor_pos.x + (avail.x - final_size.x) * 0.5f,
-					cursor_pos.y + (avail.y - final_size.y) * 0.5f });
-
-			// Draw the image
-			ImGui::Image(tex_id, final_size);
-
-			if (ImGui::IsWindowFocused()) {
-				static bool mouse_disabled = false;
-				if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
-					if (!mouse_disabled) {
-						Application::get()->get_window()->set_cursor_mode(
-								WINDOW_CURSOR_MODE_DISABLED);
-						mouse_disabled = true;
-					}
-
-					camera_controller.update(p_dt);
-				} else {
-					camera_controller.last_mouse_pos.x = Input::get_mouse_position().x;
-					camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
-				}
-
-				if (Input::is_mouse_released(MOUSE_BUTTON_RIGHT)) {
-					if (mouse_disabled) {
-						Application::get()->get_window()->set_cursor_mode(
-								WINDOW_CURSOR_MODE_NORMAL);
-						mouse_disabled = false;
-					}
-				}
-			}
-
-			ImGui::PopStyleVar();
-			ImGui::End();
-
-			ImGui::Begin("Stats");
-			{
-				const ApplicationPerfStats& stats = Application::get()->get_perf_stats();
-
-				ImGui::SeparatorText("Application");
-				{
-					ImGui::Text("Event Loop: %.3f (FPS: %.2f)", stats.delta_time,
-							1.0f / std::max(stats.delta_time, 1e-6f));
-				}
-
-				ImGui::SeparatorText("Renderer");
-				{
-					ImGui::Text("Draw Calls: %d", stats.renderer_stats.draw_calls);
-					ImGui::Text("Index Count: %d", stats.renderer_stats.index_count);
-				}
-			}
-			ImGui::End();
-
-			ImGui::Begin("Settings");
-			{
-				ImGui::SeparatorText("Editor");
-
-				static bool s_render_grid = true;
-				if (ImGui::Checkbox("Render Grid", &s_render_grid)) {
-					grid_pass->set_active(s_render_grid);
-				}
-
-				ImGui::SeparatorText("Renderer");
-
-				ImGui::DragFloat("Resolution Scale", &renderer_settings.resolution_scale, 0.01f,
-						0.01f, 1.0f, "%.2f");
-				ImGui::Checkbox("VSync", &renderer_settings.vsync);
-			}
-			ImGui::End();
-
-			ImGui::Begin("Hierarchy");
-			{
-				_render_hierarchy();
-			}
-			ImGui::End();
-
-			ImGui::Begin("Inspector");
-			if (selected_entity.is_valid()) {
-				_render_inspector(selected_entity);
-			}
-			ImGui::End();
-
-			ImGui::Begin("Asset Registry");
-			{
-				_render_asset_registry();
-			}
-			ImGui::End();
-
-			ImGui::Begin("Script");
-
-			if (!is_running) {
-				if (ImGui::Button("Run Scripts")) {
-					// Copy the scene
-					scene->copy_to(*runtime_scene);
-
-					selected_entity = Entity((EntityId)selected_entity, runtime_scene.get());
-
-					runtime_scene->start();
-					is_running = true;
-				}
-			} else {
-				if (ImGui::Button("Stop Scripts")) {
-					runtime_scene->stop();
-
-					is_running = false;
-
-					selected_entity = Entity((EntityId)selected_entity, scene.get());
-				}
-			}
-
-			ImGui::End();
-		}
-
+		ImGui::Begin("Hierarchy");
+		_render_hierarchy();
 		ImGui::End();
+
+		// Hieararchy selects entities and inspector uses it
+		// thats why we need to keep this here
+		if (selected_entity && selected_entity.get_uid() != selected_id) {
+			// Free thumbnails on entity switch
+			{
+				Renderer::get_backend()->device_wait();
+				for (const auto& [_, desc] : thumb_texture_descriptors) {
+					Renderer::get_backend()->imgui_image_free(desc);
+				}
+				thumb_texture_descriptors.clear();
+			}
+			selected_id = selected_entity.get_uid();
+		}
+
+		ImGui::Begin("Inspector");
+		if (selected_entity.is_valid()) {
+			_render_inspector(selected_entity);
+		}
+		ImGui::End();
+
+		ImGui::Begin("Asset Registry");
+		_render_asset_registry();
+		ImGui::End();
+
+		_render_script_panel();
+		_end_dockspace();
 	}
 
 	Application::get()->get_renderer()->imgui_end();
 
-	// Delete nodes if any requested
-	node_deletion_queue.flush();
+	frame_deletion_queue.flush();
 }
 
-void EditorLayer::destroy() {}
+void EditorLayer::destroy() {
+	Renderer::get_backend()->device_wait();
+	for (const auto& [_, desc] : thumb_texture_descriptors) {
+		Renderer::get_backend()->imgui_image_free(desc);
+	}
+	thumb_texture_descriptors.clear();
+}
+
+void EditorLayer::_begin_dockspace() {
+	static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+	static ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->Pos);
+	ImGui::SetNextWindowSize(viewport->Size);
+	ImGui::SetNextWindowViewport(viewport->ID);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+	if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
+		window_flags |= ImGuiWindowFlags_NoBackground;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("GL_DOCK_SPACE", nullptr, window_flags);
+	ImGui::PopStyleVar(3);
+
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
+		ImGuiID dockspace_id = ImGui::GetID("GL_DOCK_SPACE");
+		ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+	}
+}
+
+void EditorLayer::_end_dockspace() {
+	ImGui::End(); // End GL_DOCK_SPACE
+}
+
+void EditorLayer::_render_menubar() {
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("File")) {
+			if (!is_running) {
+				if (ImGui::MenuItem("Save Scene")) {
+					if (scene_path && fs::exists(*scene_path)) {
+						if (!Scene::serialize(scene_path->string(), scene)) {
+							GL_LOG_ERROR("Unable to serialize scene");
+						}
+					} else {
+						const char* filter = "*.json";
+						if (const char* path = tinyfd_saveFileDialog(
+									"Save Scene", "", 1, &filter, "JSON")) {
+							if (Scene::serialize(path, scene))
+								scene_path = fs::path(path);
+						}
+					}
+				}
+				if (ImGui::MenuItem("Load Scene")) {
+					const char* filter = "*.json";
+					if (const char* path = tinyfd_openFileDialog(
+								"Load Scene", "", 1, &filter, "JSON", 0)) {
+						if (Scene::deserialize(path, scene))
+							scene_path = fs::path(path);
+					}
+				}
+			}
+			if (ImGui::MenuItem("Load GLTF Model")) {
+				const char* filters[] = { "*.glb", "*.gltf" };
+				if (const char* path =
+								tinyfd_openFileDialog("Load Model", "", 2, filters, "GLTF", 0)) {
+					GLTFLoader::load(_get_scene(), path);
+				}
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem("Exit"))
+				Application::get()->quit();
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+}
+
+void EditorLayer::_render_viewport(float p_dt) {
+	// Push zero padding to ensure texture fills the window
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+	ImGui::Begin(
+			"Viewport", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+	const ImVec2 viewport_size = ImGui::GetContentRegionAvail();
+
+	// Get Texture Data
+	const glm::uvec2 image_size = Application::get()->get_renderer()->get_final_image_size();
+	ImTextureID tex_id = reinterpret_cast<ImTextureID>(
+			Application::get()->get_renderer()->get_final_image_descriptor());
+
+	// Calculate Aspect Ratio Scale
+	const float scale =
+			std::min(viewport_size.x / (float)image_size.x, viewport_size.y / (float)image_size.y);
+	const ImVec2 final_size = { image_size.x * scale, image_size.y * scale };
+
+	// Center Image
+	const ImVec2 cursor_pos = ImGui::GetCursorPos();
+	ImGui::SetCursorPos({ cursor_pos.x + (viewport_size.x - final_size.x) * 0.5f,
+			cursor_pos.y + (viewport_size.y - final_size.y) * 0.5f });
+
+	ImGui::Image(tex_id, final_size);
+
+	// --- INPUT HANDLING ---
+
+	static bool is_navigating = false;
+
+	// We allow input processing if:
+	// 1. We are ALREADY navigating (ignoring whether we are hovered or not)
+	// 2. OR We are hovering/focused and want to START navigating
+	bool can_handle_input = is_navigating || (ImGui::IsWindowHovered() && ImGui::IsWindowFocused());
+
+	if (can_handle_input) {
+		if (Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
+			if (!is_navigating) {
+				// Start Navigation
+				Application::get()->get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_DISABLED);
+				is_navigating = true;
+			}
+
+			// Update Camera
+			camera_controller.update(p_dt);
+		}
+	}
+
+	// Handle Release: Check specifically if we WERE navigating and now released
+	if (is_navigating && !Input::is_mouse_pressed(MOUSE_BUTTON_RIGHT)) {
+		Application::get()->get_window()->set_cursor_mode(WINDOW_CURSOR_MODE_NORMAL);
+		is_navigating = false;
+	}
+
+	// Prevent "Jumps": Keep syncing last mouse position when we are NOT navigating
+	// so the delta is 0 the moment we click.
+	if (!is_navigating) {
+		camera_controller.last_mouse_pos.x = Input::get_mouse_position().x;
+		camera_controller.last_mouse_pos.y = Input::get_mouse_position().y;
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+
+void EditorLayer::_render_stats() {
+	ImGui::Begin("Stats");
+	const ApplicationPerfStats& stats = Application::get()->get_perf_stats();
+	ImGui::SeparatorText("Application");
+	ImGui::Text("DT: %.3f ms (%.1f FPS)", stats.delta_time * 1000.0f,
+			1.0f / std::max(stats.delta_time, 1e-6f));
+
+	ImGui::SeparatorText("Renderer");
+	ImGui::Text("Draw Calls: %d", stats.renderer_stats.draw_calls);
+	ImGui::Text("Indices: %d", stats.renderer_stats.index_count);
+	ImGui::End();
+}
+
+void EditorLayer::_render_settings() {
+	ImGui::Begin("Settings");
+	ImGui::SeparatorText("Editor");
+	if (ImGui::Checkbox("Render Grid", &show_grid)) {
+		grid_pass->set_active(show_grid);
+	}
+	ImGui::SeparatorText("Renderer");
+	ImGui::DragFloat("Res Scale", &renderer_settings.resolution_scale, 0.01f, 0.01f, 1.0f);
+	ImGui::Checkbox("VSync", &renderer_settings.vsync);
+	ImGui::End();
+}
+
+void EditorLayer::_render_inspector(Entity& p_entity) {
+	// Calculate Footer Height for "Add Component" button
+	float footer_height = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+
+	// Begin Child region for scrollable properties, leaving space at bottom
+	ImGui::BeginChild("InspectorProperties", ImVec2(0, -footer_height), false);
+
+	IdComponent* idc = p_entity.get_component<IdComponent>();
+	ImGui::TextDisabled("UUID: %u", idc->id.value);
+	ImGui::InputText("Tag", &idc->tag);
+
+	// Transform
+	ImGui::SeparatorText("Transform");
+	ImGui::DragFloat3("Pos", &p_entity.get_transform().local_position.x, 0.1f);
+	ImGui::DragFloat3("Rot", &p_entity.get_transform().local_rotation.x, 0.1f);
+	ImGui::DragFloat3("Scl", &p_entity.get_transform().local_scale.x, 0.1f);
+
+	// Specific Components
+	if (p_entity.has_component<GLTFSourceComponent>()) {
+		ImGui::SeparatorText("GLTF Info");
+		auto* c = p_entity.get_component<GLTFSourceComponent>();
+		ImGui::TextWrapped("Path: %s", c->asset_path.c_str());
+	}
+
+	_draw_component<CameraComponent>("Camera", p_entity, [](CameraComponent& cc) {
+		ImGui::DragFloat("Near", &cc.camera.near_clip);
+		ImGui::DragFloat("Far", &cc.camera.far_clip);
+		ImGui::DragFloat("FOV", &cc.camera.fov);
+		ImGui::Checkbox("Active", &cc.enabled);
+	});
+
+	_draw_component<DirectionalLight>("Directional Light", p_entity, [](DirectionalLight& dl) {
+		ImGui::DragFloat3("Dir", &dl.direction.x, 0.01f, -1.0f, 1.0f);
+		ImGui::ColorEdit3("Color", &dl.color.r);
+	});
+
+	_draw_component<PointLight>("Point Light", p_entity, [](PointLight& pl) {
+		ImGui::ColorEdit3("Color", &pl.color.r);
+		ImGui::DragFloat("Linear", &pl.linear, 0.01f);
+		ImGui::DragFloat("Quadratic", &pl.quadratic, 0.01f);
+	});
+
+	// MESH RENDERER & MATERIAL (with Texture Logic)
+	_draw_component<MeshComponent>("Mesh Renderer", p_entity, [this](MeshComponent& mc) {
+		ImGui::Text("Mesh ID: %u", mc.mesh.value);
+		auto mesh = AssetSystem::get<StaticMesh>(mc.mesh);
+		if (!mesh || mesh->primitives.empty())
+			return;
+
+		ImGui::SeparatorText("Material");
+		auto mat = mesh->primitives.front()->material;
+
+		for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
+			auto value = mat->get_param(uniform.name);
+			if (!value) {
+				continue;
+			}
+
+			std::visit(
+					VariantOverloaded{
+							[&](int& arg) {
+								if (ImGui::InputInt(uniform.name.c_str(), &arg)) {
+									mat->set_param(uniform.name, arg);
+								}
+							},
+							[&](float& arg) {
+								if (ImGui::InputFloat(uniform.name.c_str(), &arg)) {
+									mat->set_param(uniform.name, arg);
+								}
+							},
+							[&](glm::vec2& arg) {
+								if (ImGui::InputFloat2(uniform.name.c_str(), &arg.x)) {
+									mat->set_param(uniform.name, arg);
+								}
+							},
+							[&](glm::vec3& arg) {
+								if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
+									mat->set_param(uniform.name, arg);
+								}
+							},
+							[&](glm::vec4& arg) {
+								if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
+									mat->set_param(uniform.name, arg);
+								}
+							},
+							[&](Color& arg) {
+								if (ImGui::ColorEdit4(uniform.name.c_str(), &arg.r)) {
+									mat->set_param(uniform.name, arg);
+								}
+							},
+							[&](AssetHandle& handle) {
+								// Resolve the Asset
+								const auto tex = AssetSystem::get<Texture>(handle);
+								const auto metadata = AssetSystem::get_metadata<Texture>(handle);
+
+								ImGui::PushID(uniform.name.c_str());
+
+								ImGui::BeginGroup();
+
+								constexpr float thumb_size = 48.0f;
+								void* desc_to_render = GL_NULL_HANDLE;
+
+								if (tex) {
+									// Try to find existing descriptor in cache
+									const auto it = thumb_texture_descriptors.find(handle.value);
+
+									if (it != thumb_texture_descriptors.end()) {
+										desc_to_render = it->second;
+									} else {
+										// Not found? Upload once and cache it.
+										desc_to_render =
+												Renderer::get_backend()->imgui_image_upload(
+														tex->get_image(), tex->get_sampler());
+										thumb_texture_descriptors[handle.value] = desc_to_render;
+									}
+
+									// Render Image (Thumbnail)
+									ImGui::Image((ImTextureID)desc_to_render,
+											ImVec2(thumb_size, thumb_size));
+
+									// Yellow selection border on hover
+									if (ImGui::IsItemHovered()) {
+										ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(),
+												ImGui::GetItemRectMax(),
+												IM_COL32(255, 255, 0, 255));
+
+										if (metadata) {
+											ImGui::SetTooltip("%s\nDouble-click to enlarge",
+													metadata->path.c_str());
+										}
+									}
+
+									// Double-click to open popup
+									if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+										ImGui::OpenPopup("TEX_PREVIEW_POPUP");
+									}
+
+								} else {
+									// --- NO TEXTURE ---
+									ImGui::PushStyleColor(
+											ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+									ImGui::Button("##EmptyTex", ImVec2(thumb_size, thumb_size));
+									ImGui::PopStyleColor();
+
+									if (ImGui::IsItemHovered())
+										ImGui::SetTooltip("No Texture Assigned");
+								}
+
+								// Render uniform name
+								ImGui::SameLine();
+								float cursor_y = ImGui::GetCursorPosY();
+								float center_offset =
+										(thumb_size / 2.0f) - (ImGui::GetTextLineHeight() / 2.0f);
+								ImGui::SetCursorPosY(cursor_y + center_offset);
+
+								ImGui::Text("%s", uniform.name.c_str());
+
+								ImGui::SetCursorPosY(cursor_y);
+								ImGui::EndGroup();
+
+								// --- POPUP LOGIC ---
+								if (ImGui::BeginPopup("TEX_PREVIEW_POPUP")) {
+									if (tex && desc_to_render) {
+										ImGui::Text("Asset: %s",
+												(tex && metadata) ? metadata->path.c_str()
+																  : "None");
+										ImGui::Separator();
+
+										// Reuse the SAME descriptor from the cache!
+										// ImGui handles the scaling, so we don't need a separate
+										// upload for the big version.
+										const float aspect =
+												(float)tex->get_size().x / (float)tex->get_size().y;
+										const float width = 300.0f;
+
+										ImGui::Image((ImTextureID)desc_to_render,
+												ImVec2(width, width / aspect));
+									}
+									ImGui::EndPopup();
+								}
+
+								ImGui::PopID();
+							},
+					},
+					*value);
+		}
+	});
+
+	// SCRIPTING
+	_draw_component<Script>("Script", p_entity, [this](Script& sc) {
+		ImGui::InputText("Script Path", &sc.script_path);
+
+		// Logic to load/unload script
+		if (sc.is_loaded) {
+			if (!std::ifstream(sc.script_path).good())
+				sc.unload();
+		} else if (!sc.script_path.empty() && std::ifstream(sc.script_path).good()) {
+			sc.load();
+		}
+
+		if (sc.is_loaded && !is_running) {
+			sc.metadata = ScriptEngine::get_metadata(sc.script);
+		}
+
+		// Render script fields
+		if (sc.is_loaded) {
+			for (auto& [name, value] : sc.metadata->fields) {
+				if (name.starts_with("__")) {
+					continue;
+				}
+
+				std::visit(VariantOverloaded{
+								   [&](double& v) {
+									   ImGui::InputDouble(name.c_str(), &v) &&
+											   ScriptEngine::set_field(sc.script, name.c_str(), v);
+								   },
+								   [&](std::string& v) {
+									   ImGui::InputText(name.c_str(), &v) &&
+											   ScriptEngine::set_field(sc.script, name.c_str(), v);
+								   },
+								   [&](bool& v) {
+									   ImGui::Checkbox(name.c_str(), &v) &&
+											   ScriptEngine::set_field(sc.script, name.c_str(), v);
+								   },
+						   },
+						value);
+			}
+		}
+	});
+
+	ImGui::EndChild(); // End Properties Area
+
+	ImGui::Separator();
+	if (ImGui::Button("Add Component", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+		ImGui::OpenPopup("ADD_COMPONENT_POPUP");
+	}
+
+	if (ImGui::BeginPopup("ADD_COMPONENT_POPUP")) {
+		if (!p_entity.has_component<DirectionalLight>()) {
+			if (ImGui::MenuItem("Directional Light"))
+				p_entity.add_component<DirectionalLight>();
+		}
+		if (!p_entity.has_component<PointLight>()) {
+			if (ImGui::MenuItem("Point Light"))
+				p_entity.add_component<PointLight>();
+		}
+		if (!p_entity.has_component<Script>()) {
+			if (ImGui::MenuItem("Script"))
+				p_entity.add_component<Script>();
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void EditorLayer::_render_script_panel() {
+	ImGui::Begin("Script");
+	if (!is_running) {
+		if (ImGui::Button("Run Scripts", ImVec2(-1, 0))) {
+			scene->copy_to(*runtime_scene);
+			selected_entity = Entity((EntityId)selected_entity, runtime_scene.get());
+			runtime_scene->start();
+			is_running = true;
+		}
+	} else {
+		if (ImGui::Button("Stop Scripts", ImVec2(-1, 0))) {
+			runtime_scene->stop();
+			is_running = false;
+			selected_entity = Entity((EntityId)selected_entity, scene.get());
+		}
+	}
+	ImGui::End();
+}
 
 void EditorLayer::_render_hierarchy() {
 	for (Entity entity : _get_scene()->view()) {
-		if (!entity.is_valid()) {
-			continue;
+		if (entity.is_valid() && !entity.get_parent()) {
+			ImGui::PushID(entity.get_uid().value);
+			_render_hierarchy_entry(entity);
+			ImGui::PopID();
 		}
-
-		// Only process top-level entities (those without a parent).
-		// The recursive function will handle the children.
-		if (entity.get_parent()) {
-			continue;
-		}
-
-		ImGui::PushID(entity.get_uid().value);
-
-		// Start the recursive rendering for each root entity
-		_render_hierarchy_entry(entity);
-
-		ImGui::PopID();
 	}
 }
 
 void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
-	const std::string label = p_entity.get_name().empty()
-			? std::format("Entity {}", p_entity.get_uid().value)
-			: p_entity.get_name();
-
+	const std::string label = p_entity.get_name().empty() ? "Entity" : p_entity.get_name();
 	const bool is_selected =
 			selected_entity.is_valid() && p_entity.get_uid() == selected_entity.get_uid();
+	const auto children = p_entity.get_children();
 
-	// Get children ahead of time to decide if this is a leaf or a branch
-	const auto& children = p_entity.get_children();
+	ImGuiTreeNodeFlags flags =
+			(children.empty() ? ImGuiTreeNodeFlags_Leaf : ImGuiTreeNodeFlags_OpenOnArrow) |
+			ImGuiTreeNodeFlags_OpenOnDoubleClick | (is_selected ? ImGuiTreeNodeFlags_Selected : 0);
 
-	// Leaf Node: The entity has no children.
-	if (children.empty()) {
-		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen |
-				ImGuiTreeNodeFlags_Bullet;
-		if (is_selected) {
-			flags |= ImGuiTreeNodeFlags_Selected;
-		}
+	const bool node_open =
+			ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s", label.c_str());
 
-		ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s", label.c_str());
-		if (ImGui::IsItemClicked()) {
-			selected_entity = p_entity;
-		}
-
-		// Render the context menu for this entity
-		_render_hierarchy_context_menu(p_entity);
+	if (ImGui::IsItemClicked()) {
+		selected_entity = p_entity;
 	}
-	// Branch Node: The entity has children.
-	else {
-		ImGuiTreeNodeFlags flags =
-				ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-		if (is_selected) {
-			flags |= ImGuiTreeNodeFlags_Selected;
+
+	_render_hierarchy_context_menu(p_entity);
+
+	if (node_open) {
+		for (const Entity& child : children) {
+			ImGui::PushID(child.get_uid().value);
+			_render_hierarchy_entry(child);
+			ImGui::PopID();
 		}
-
-		// Create a tree node that can be expanded
-		bool node_open =
-				ImGui::TreeNodeEx((void*)(uint64_t)p_entity.get_uid(), flags, "%s", label.c_str());
-
-		if (ImGui::IsItemClicked()) {
-			selected_entity = p_entity;
-		}
-
-		// Render the context menu for this entity
-		_render_hierarchy_context_menu(p_entity);
-
-		// If the node is open, recursively render all children
-		if (node_open) {
-			for (const Entity& child : children) {
-				ImGui::PushID(child.get_uid().value);
-
-				_render_hierarchy_entry(child);
-
-				ImGui::PopID();
-			}
-			ImGui::TreePop();
-		}
+		ImGui::TreePop();
 	}
 }
 
 void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
-	if (ImGui::BeginPopupContextItem(
-				"HIERARCHY_ITEM_CONTEXT_MENU", ImGuiPopupFlags_MouseButtonRight)) {
+	if (ImGui::BeginPopupContextItem()) {
 		if (ImGui::MenuItem("Add Child")) {
-			static uint32_t s_entity_counter = 0;
-			_get_scene()->create(std::format("Entity {}", s_entity_counter++), p_entity);
+			_get_scene()->create("New Entity", p_entity);
 		}
 		if (ImGui::MenuItem("Delete")) {
-			node_deletion_queue.push_function([this, p_entity]() {
+			frame_deletion_queue.push_function([this, p_entity]() {
 				Renderer::get_backend()->device_wait();
-
-				// Unselect the entity
-				if (selected_entity && selected_entity.get_uid() == p_entity.get_uid()) {
+				if (selected_entity && selected_entity.get_uid() == p_entity.get_uid())
 					selected_entity = INVALID_ENTITY;
-				}
-
 				_get_scene()->destroy(p_entity);
-
 				AssetSystem::collect_garbage();
 			});
 		}
@@ -441,228 +641,9 @@ void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 	}
 }
 
-void EditorLayer::_render_inspector(Entity& p_entity) {
-	IdComponent* idc = p_entity.get_component<IdComponent>();
-
-	ImGui::Text("ID: %s", std::format("{}", idc->id.value).c_str());
-	ImGui::InputText("Name", &idc->tag);
-
-	{
-		ImGui::SeparatorText("Transform");
-		ImGui::PushID("TRANSFORM_PROPS");
-
-		ImGui::DragFloat3("Position", &p_entity.get_transform().local_position.x, 0.1f);
-		ImGui::DragFloat3("Rotation", &p_entity.get_transform().local_rotation.x, 0.1f);
-		ImGui::DragFloat3("Scale", &p_entity.get_transform().local_scale.x, 0.1f);
-
-		ImGui::PopID();
-	}
-
-	if (p_entity.has_component<GLTFSourceComponent>()) {
-		ImGui::SeparatorText("GLTF Source");
-
-		const GLTFSourceComponent* gltf_sc = p_entity.get_component<GLTFSourceComponent>();
-
-		ImGui::Text("ID: %u", gltf_sc->model_id.value);
-		ImGui::Text("Path: %s", gltf_sc->asset_path.c_str());
-	}
-
-	if (p_entity.has_component<GLTFInstanceComponent>()) {
-		ImGui::SeparatorText("GLTF Instance");
-
-		const GLTFInstanceComponent* gltf_ic = p_entity.get_component<GLTFInstanceComponent>();
-
-		ImGui::Text("Source ID: %u", gltf_ic->source_model_id.value);
-	}
-
-	if (p_entity.has_component<CameraComponent>()) {
-		ImGui::SeparatorText("Camera");
-		ImGui::PushID("CAMERA_PROPS");
-
-		CameraComponent* cc = p_entity.get_component<CameraComponent>();
-
-		ImGui::DragFloat("Near Clip", &cc->camera.near_clip);
-		ImGui::DragFloat("Far Clip", &cc->camera.far_clip);
-		ImGui::DragFloat("FOV", &cc->camera.fov);
-		ImGui::Checkbox("Enabled", &cc->enabled);
-
-		ImGui::PopID();
-	}
-
-	if (p_entity.has_component<MeshComponent>()) {
-		ImGui::SeparatorText("Mesh");
-		ImGui::PushID("MESH_PROPS");
-
-		MeshComponent* mc = p_entity.get_component<MeshComponent>();
-
-		ImGui::Text("Mesh ID: %u", mc->mesh.value);
-
-		if (std::shared_ptr<StaticMesh> mesh = AssetSystem::get<StaticMesh>(mc->mesh)) {
-			ImGui::Text("Primitives: %zu", mesh->primitives.size());
-
-			ImGui::SeparatorText("Material");
-
-			const std::shared_ptr<MeshPrimitive> prim = mesh->primitives.front();
-			const std::shared_ptr<Material> mat = prim->material;
-
-			for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
-				ShaderUniformVariable value = *mat->get_param(uniform.name);
-				std::visit(VariantOverloaded{ [&](int& arg) {
-												 if (ImGui::InputInt(uniform.name.c_str(), &arg)) {
-													 mat->set_param(uniform.name, arg);
-												 }
-											 },
-								   [&](float& arg) {
-									   if (ImGui::InputFloat(uniform.name.c_str(), &arg)) {
-										   mat->set_param(uniform.name, arg);
-									   }
-								   },
-								   [&](glm::vec2& arg) {
-									   if (ImGui::InputFloat2(uniform.name.c_str(), &arg.x)) {
-										   mat->set_param(uniform.name, arg);
-									   }
-								   },
-								   [&](glm::vec3& arg) {
-									   if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
-										   mat->set_param(uniform.name, arg);
-									   }
-								   },
-								   [&](glm::vec4& arg) {
-									   if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
-										   mat->set_param(uniform.name, arg);
-									   }
-								   },
-								   [&](Color& arg) {
-									   if (ImGui::ColorEdit4(uniform.name.c_str(), &arg.r)) {
-										   mat->set_param(uniform.name, arg);
-									   }
-								   },
-								   [](std::weak_ptr<Texture>& arg) {
-									   // TODO
-								   } },
-						value);
-			}
-		}
-
-		ImGui::PopID();
-	}
-
-	if (p_entity.has_component<DirectionalLight>()) {
-		DirectionalLight* dl = p_entity.get_component<DirectionalLight>();
-
-		ImGui::SeparatorText("Directional Light");
-		ImGui::PushID("DIR_LIGHT_PROPS");
-
-		ImGui::DragFloat3("Direction", &dl->direction.x, 0.01f, -1.0f, 1.0f);
-		ImGui::ColorEdit3("Color", &dl->color.r);
-
-		ImGui::PopID();
-	}
-
-	if (p_entity.has_component<PointLight>()) {
-		PointLight* pl = p_entity.get_component<PointLight>();
-
-		ImGui::SeparatorText("Point Light");
-		ImGui::PushID("POINT_LIGHT_PROPS");
-
-		ImGui::ColorEdit3("Color", &pl->color.r);
-		ImGui::DragFloat("Linear", &pl->linear, 0.01f, 0.0001f, 1.0f);
-		ImGui::DragFloat("Quadratic", &pl->quadratic, 0.01f, 0.0001f, 2.0f);
-
-		ImGui::PopID();
-	}
-
-	if (p_entity.has_component<Script>()) {
-		Script* sc = p_entity.get_component<Script>();
-
-		ImGui::SeparatorText("Script");
-		ImGui::PushID("SCRIPT_PROPS");
-
-		ImGui::InputText("Path", &sc->script_path);
-
-		// Unload the script if path changed
-		// TODO: more elegant solution
-		if (sc->is_loaded) {
-			const std::ifstream ifs(sc->script_path);
-			if (!ifs.good()) {
-				sc->unload();
-			}
-		}
-
-		// Load the script if it hasn't already
-		if (!sc->is_loaded && !sc->script_path.empty()) {
-			const std::ifstream ifs(sc->script_path);
-			if (ifs.good() && sc->load() != ScriptResult::SUCCESS) {
-				sc->script_path = "";
-			}
-		}
-
-		if (sc->is_loaded) {
-			ScriptMetadata metadata = ScriptEngine::get_metadata(sc->script);
-			// Only update the metadata if scripts are not running
-			if (!is_running) {
-				sc->metadata = metadata;
-			}
-
-			for (auto& [name, value] : metadata.fields) {
-				// skip fields starting with '__'
-				if (std::string(name).starts_with("__")) {
-					continue;
-				}
-
-				std::visit(VariantOverloaded{ [&](double& arg) {
-												 if (ImGui::InputDouble(name.c_str(), &arg)) {
-													 ScriptEngine::set_field(
-															 sc->script, name.c_str(), arg);
-												 }
-											 },
-								   [&](std::string& arg) {
-									   if (ImGui::InputText(name.c_str(), &arg)) {
-										   ScriptEngine::set_field(sc->script, name.c_str(), arg);
-									   }
-								   },
-								   [&](bool& arg) {
-									   if (ImGui::Checkbox(name.c_str(), &arg)) {
-										   ScriptEngine::set_field(sc->script, name.c_str(), arg);
-									   }
-								   } },
-						value);
-			}
-		}
-
-		ImGui::PopID();
-	}
-
-	ImGui::SetCursorPosY(
-			ImGui::GetCursorPos().y + ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight());
-
-	if (ImGui::Button("Add Component", ImVec2(-1, 0))) {
-		ImGui::OpenPopup("NODE_ADD_COMPONENT");
-	}
-
-	if (ImGui::BeginPopup("NODE_ADD_COMPONENT")) {
-		if (!p_entity.has_component<DirectionalLight>() && ImGui::MenuItem("Directional Light")) {
-			p_entity.add_component<DirectionalLight>();
-		}
-
-		if (!p_entity.has_component<PointLight>() && ImGui::MenuItem("Point Light")) {
-			p_entity.add_component<PointLight>();
-		}
-
-		if (!p_entity.has_component<Script>() && ImGui::MenuItem("Script")) {
-			p_entity.add_component<Script>();
-		}
-
-		ImGui::EndPopup();
-	}
-}
-
 void EditorLayer::_render_asset_registry() {
 	for (const auto& [handle, metadata] : AssetSystem::get_asset_metadatas()) {
-		ImGui::Separator();
-		ImGui::Text("Handle: %u", handle.value);
-		ImGui::Text("Path: %s", metadata.path.c_str());
-		ImGui::Text("Type: %s", metadata.type_name);
+		ImGui::Text("%s [%s]", metadata.path.c_str(), metadata.type_name);
 	}
 }
 

@@ -20,7 +20,6 @@
 
 ## Editor
 
-- [ ] Material texture inspector
 - [ ] Content browser
 
 ## Scripting

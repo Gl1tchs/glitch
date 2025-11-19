@@ -46,14 +46,19 @@ public:
 
 	DataFormat get_format() const;
 
+	const glm::uvec2 get_size() const;
+
 	const Image get_image() const;
 
 	const Sampler get_sampler() const;
+
+	const std::string& get_path() const;
 
 private:
 	DataFormat format;
 	Image image;
 	Sampler sampler;
+	glm::uvec2 size;
 
 	std::string asset_path;
 	TextureSamplerOptions sampler_options;

@@ -6,13 +6,13 @@
 #pragma once
 
 #include "glitch/asset/asset.h"
-#include "glitch/renderer/texture.h"
+#include "glitch/asset/asset_system.h"
 #include "glitch/renderer/types.h"
 
 namespace gl {
 
 using ShaderUniformVariable =
-		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color, std::weak_ptr<Texture>>;
+		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color, AssetHandle /* Texture */>;
 
 enum class ShaderUniformVariableType : int {
 	INT,

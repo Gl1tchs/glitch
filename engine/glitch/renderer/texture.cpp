@@ -27,6 +27,7 @@ std::shared_ptr<Texture> Texture::create(
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = DataFormat::R8G8B8A8_UNORM;
+	tx->size = p_size;
 	tx->image = backend->image_create(
 			DataFormat::R8G8B8A8_UNORM, p_size, &color_data, IMAGE_USAGE_SAMPLED_BIT, true);
 	tx->sampler =
@@ -42,6 +43,7 @@ std::shared_ptr<Texture> Texture::create(DataFormat p_format, const glm::uvec2& 
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = p_format;
+	tx->size = p_size;
 	tx->image = backend->image_create(p_format, p_size, p_data, IMAGE_USAGE_SAMPLED_BIT, true);
 	tx->sampler =
 			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter, p_sampler.wrap_u,
@@ -166,6 +168,7 @@ std::shared_ptr<Texture> Texture::load_from_file(
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
 	tx->format = DataFormat::R8G8B8A8_UNORM;
+	tx->size = { w, h };
 	tx->image =
 			backend->image_create(DataFormat::R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);
 	tx->sampler = backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
@@ -190,9 +193,13 @@ ShaderUniform Texture::get_uniform(uint32_t p_binding) const {
 
 DataFormat Texture::get_format() const { return format; }
 
+const glm::uvec2 Texture::get_size() const { return size; }
+
 const Image Texture::get_image() const { return image; }
 
 const Sampler Texture::get_sampler() const { return sampler; }
+
+const std::string& Texture::get_path() const { return asset_path; }
 
 template <> size_t hash64(const Texture& p_texture) {
 	size_t seed = 0;

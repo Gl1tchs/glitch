@@ -6,7 +6,6 @@
 #pragma once
 
 #include "glitch/asset/asset.h"
-#include "glitch/core/templates/concepts.h"
 #include "glitch/core/uid.h"
 
 namespace gl {
@@ -78,6 +77,15 @@ struct AssetRegistry : public IAssetRegistry {
 		}
 
 		return it->second.instance;
+	}
+
+	std::optional<AssetMetadata> get_metadata(AssetHandle p_handle) {
+		const auto it = assets.find(p_handle);
+		if (it == assets.end()) {
+			return std::nullopt;
+		}
+
+		return AssetMetadata{ T::get_type_name(), it->second.path };
 	}
 
 	bool erase(AssetHandle p_handle) { return assets.erase(p_handle) > 0; }
@@ -194,7 +202,7 @@ public:
 	 * Loads and registers the asset to the compatible asset registry.
 	 *
 	 */
-	template <typename T>
+	template <IsReflectedAsset T>
 		requires IsLoadableAsset<T>
 	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path) {
 		const auto absolute_path = get_absolute_path(p_path);
@@ -215,7 +223,7 @@ public:
 	 * Creates and registers the asset to the compatible registry
 	 *
 	 */
-	template <typename T, typename... Args>
+	template <IsReflectedAsset T, typename... Args>
 		requires IsCreatableAsset<T> || IsCreatableAsset<T, Args...>
 	static std::optional<AssetHandle> create(Args&&... p_args) {
 		const std::shared_ptr<T> asset = T::create(std::forward<Args>(p_args)...);
@@ -231,12 +239,18 @@ public:
 	 * Retrieve asset from registry
 	 *
 	 */
-	template <typename T> static std::shared_ptr<T> get(AssetHandle p_handle) {
+	template <IsReflectedAsset T> static std::shared_ptr<T> get(AssetHandle p_handle) {
 		auto& registry = get_registry<T>();
 		return registry.get_asset(p_handle);
 	}
 
-	template <typename T>
+	template <IsReflectedAsset T>
+	static std::optional<AssetMetadata> get_metadata(AssetHandle p_handle) {
+		auto& registry = get_registry<T>();
+		return registry.get_metadata(p_handle);
+	}
+
+	template <IsReflectedAsset T>
 	static AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path = "") {
 		auto& registry = get_registry<T>();
 		return registry.register_asset(p_asset, p_path);
@@ -246,7 +260,7 @@ public:
 	 * Release given asset handle from registry.
 	 *
 	 */
-	template <typename T> static bool free(AssetHandle p_handle) {
+	template <IsReflectedAsset T> static bool free(AssetHandle p_handle) {
 		auto& registry = get_registry<T>();
 		return registry.erase(p_handle);
 	}
