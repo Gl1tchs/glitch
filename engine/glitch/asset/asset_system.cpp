@@ -18,10 +18,23 @@ void AssetSystem::collect_garbage() {
 	}
 }
 
-/**
- * Transforms engine path format with suffix 'res://' to absolute path
- *
- */
+std::unordered_map<AssetHandle, AssetMetadata> AssetSystem::get_asset_metadata() {
+	size_t total_asset_count = 0;
+	for (const auto& [_, reg] : s_registries) {
+		total_asset_count += reg->get_asset_size();
+	}
+
+	std::unordered_map<AssetHandle, AssetMetadata> result;
+	result.reserve(total_asset_count);
+
+	for (const auto& [_, reg] : s_registries) {
+		auto metadatas = reg->get_asset_metadata();
+		result.merge(metadatas);
+	}
+
+	return result;
+}
+
 Result<fs::path, PathProcessError> AssetSystem::get_absolute_path(std::string_view p_path) {
 	if (p_path.empty()) {
 		return make_err<fs::path>(PathProcessError::EMPTY_PATH);

@@ -642,7 +642,7 @@ void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 }
 
 void EditorLayer::_render_asset_registry() {
-	for (const auto& [handle, metadata] : AssetSystem::get_asset_metadatas()) {
+	for (const auto& [handle, metadata] : AssetSystem::get_asset_metadata()) {
 		ImGui::Text("%s [%s]", metadata.path.c_str(), metadata.type_name);
 	}
 }

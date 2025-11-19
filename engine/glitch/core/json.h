@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "glitch/core/result.h"
+#include "glitch/core/templates/result.h"
 
 #include <json/json.hpp>
 

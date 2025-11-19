@@ -2,8 +2,6 @@
 
 ## Critical Bugs
 
-- [ ] ImGui Popups (AddComponent) are not working and cause VkDeviceDestroy problems during shut-down 
-
 ## Core
 
 - [ ] Per Frame Allocators
@@ -11,8 +9,8 @@
 
 ## Asset System
 
-- [ ] GLTF Metadata
 - [ ] Proper project system for environment variables
+- [ ] GLTF Metadata
 - [ ] Make AssetSystem thread safe
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine
 - [ ] Async GLTF model loading progress
@@ -56,11 +54,8 @@
 
 ## Bugs
 
-- [ ] ImGui viewports are not working.
-- [ ] Swapchain resize gives descriptor set = 0 error`
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 - [ ] Renderer::create_render_image expects same format as swapchain for color attachments
-
 
 ## Refactors
 

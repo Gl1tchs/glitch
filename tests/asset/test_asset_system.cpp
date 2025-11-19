@@ -363,7 +363,7 @@ TEST_CASE("AssetSystem Serialization") {
 		AssetSystem::deserialize(fake_save);
 
 		// Iterate registries to see if anything was added
-		auto metadata = AssetSystem::get_asset_metadatas();
+		const auto metadata = AssetSystem::get_asset_metadata();
 		CHECK(metadata.empty());
 	}
 

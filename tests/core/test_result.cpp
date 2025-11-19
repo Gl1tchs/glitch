@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include "glitch/core/result.h"
+#include "glitch/core/templates/result.h"
 
 gl::Result<float, bool> divide(int a, int b) {
 	if (b == 0) {

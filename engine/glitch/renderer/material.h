@@ -65,7 +65,7 @@ public:
 	// Binds descriptors for set = 0 index = 0
 	void bind_uniform_set(CommandBuffer p_cmd);
 
-	// Asset type override
+	// Creates and registers Material to the AssetRegistry
 	static std::shared_ptr<Material> create(const std::string& p_def_name);
 
 private:

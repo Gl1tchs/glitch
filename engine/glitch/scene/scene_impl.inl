@@ -1,5 +1,6 @@
 #pragma once
 
+#include "glitch/scene/scene.h"
 #include "glitch/scene/view.h"
 
 namespace gl {
