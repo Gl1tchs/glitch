@@ -502,7 +502,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 			ImGui::SeparatorText("Material");
 
 			const std::shared_ptr<MeshPrimitive> prim = mesh->primitives.front();
-			const std::shared_ptr<MaterialInstance> mat = prim->material;
+			const std::shared_ptr<Material> mat = prim->material;
 
 			for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
 				ShaderUniformVariable value = *mat->get_param(uniform.name);

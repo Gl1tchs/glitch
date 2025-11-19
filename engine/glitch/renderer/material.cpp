@@ -24,10 +24,10 @@ size_t uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 	}
 }
 
-MaterialInstance::MaterialInstance(std::shared_ptr<MaterialDefinition> p_definition) :
+Material::Material(std::shared_ptr<MaterialDefinition> p_definition) :
 		definition(p_definition) {}
 
-MaterialInstance::~MaterialInstance() {
+Material::~Material() {
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	backend->device_wait();
@@ -36,15 +36,15 @@ MaterialInstance::~MaterialInstance() {
 	backend->buffer_free(material_data_buffer);
 }
 
-std::shared_ptr<MaterialDefinition> MaterialInstance::get_definition() const { return definition; }
+std::shared_ptr<MaterialDefinition> Material::get_definition() const { return definition; }
 
-Pipeline MaterialInstance::get_pipeline() const { return definition->pipeline; }
+Pipeline Material::get_pipeline() const { return definition->pipeline; }
 
-Shader MaterialInstance::get_shader() const { return definition->shader; }
+Shader Material::get_shader() const { return definition->shader; }
 
-UniformSet MaterialInstance::get_set() const { return material_set; }
+UniformSet Material::get_set() const { return material_set; }
 
-std::optional<ShaderUniformVariable> MaterialInstance::get_param(const std::string& p_name) {
+std::optional<ShaderUniformVariable> Material::get_param(const std::string& p_name) {
 	const auto it = params.find(p_name);
 	if (it == params.end()) {
 		return {};
@@ -53,18 +53,18 @@ std::optional<ShaderUniformVariable> MaterialInstance::get_param(const std::stri
 	return it->second;
 }
 
-const std::vector<ShaderUniformMetadata>& MaterialInstance::get_uniforms() const {
+const std::vector<ShaderUniformMetadata>& Material::get_uniforms() const {
 	return definition->uniforms;
 }
 
-void MaterialInstance::set_param(const std::string& p_name, ShaderUniformVariable p_value) {
+void Material::set_param(const std::string& p_name, ShaderUniformVariable p_value) {
 	params[p_name] = p_value;
 	dirty = true;
 }
 
-bool MaterialInstance::is_dirty() const { return dirty; }
+bool Material::is_dirty() const { return dirty; }
 
-void MaterialInstance::upload() {
+void Material::upload() {
 	GL_PROFILE_SCOPE;
 
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
@@ -173,12 +173,12 @@ void MaterialInstance::upload() {
 	dirty = false;
 }
 
-void MaterialInstance::bind_uniform_set(CommandBuffer p_cmd) {
+void Material::bind_uniform_set(CommandBuffer p_cmd) {
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 	backend->command_bind_uniform_sets(p_cmd, definition->shader, 0, material_set);
 }
 
-std::shared_ptr<MaterialInstance> MaterialInstance::create(const std::string& p_def_name) {
+std::shared_ptr<Material> Material::create(const std::string& p_def_name) {
 	return MaterialSystem::create_instance(p_def_name);
 }
 
@@ -199,13 +199,13 @@ void MaterialSystem::register_definition(const std::string& p_name, MaterialDefi
 	s_definitions[p_name] = std::make_shared<MaterialDefinition>(p_def);
 }
 
-std::shared_ptr<MaterialInstance> MaterialSystem::create_instance(const std::string& p_def_name) {
+std::shared_ptr<Material> MaterialSystem::create_instance(const std::string& p_def_name) {
 	const auto it = s_definitions.find(p_def_name);
 	if (it == s_definitions.end()) {
 		return nullptr;
 	}
 
-	return std::make_shared<MaterialInstance>(it->second);
+	return std::make_shared<Material>(it->second);
 }
 
 } //namespace gl

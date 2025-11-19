@@ -27,7 +27,7 @@ struct GLTFLoadContext {
 	UID model_id;
 	std::unordered_map<size_t, AssetHandle> loaded_textures;
 	std::shared_ptr<Texture> default_texture;
-	std::shared_ptr<MaterialInstance> default_material;
+	std::shared_ptr<Material> default_material;
 };
 
 static size_t _hash_gltf_model(const tinygltf::Model& p_model);
@@ -111,8 +111,8 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 	}
 
 	static AssetHandle default_material = INVALID_UID;
-	if (!default_material || !AssetSystem::get<MaterialInstance>(default_material)) {
-		ctx.default_material = MaterialInstance::create("pbr_standard");
+	if (!default_material || !AssetSystem::get<Material>(default_material)) {
+		ctx.default_material = Material::create("pbr_standard");
 		ctx.default_material->set_param("base_color", COLOR_WHITE);
 		ctx.default_material->set_param("metallic", 0.5f);
 		ctx.default_material->set_param("roughness", 0.5f);
@@ -125,7 +125,7 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 		default_material =
 				AssetSystem::register_asset(ctx.default_material, "mem://material/default");
 	} else {
-		ctx.default_material = AssetSystem::get<MaterialInstance>(default_material);
+		ctx.default_material = AssetSystem::get<Material>(default_material);
 	}
 
 	for (int node_index : model.scenes[model.defaultScene].nodes) {
@@ -334,7 +334,7 @@ std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_prim
 			GL_ASSERT(false, "Unsupported index type");
 	}
 
-	std::shared_ptr<MaterialInstance> material = nullptr;
+	std::shared_ptr<Material> material = nullptr;
 	if (p_primitive->material >= 0 && p_primitive->material < p_ctx.model->materials.size()) {
 		const tinygltf::Material& gltf_material = p_ctx.model->materials[p_primitive->material];
 		const auto& base_color = gltf_material.pbrMetallicRoughness.baseColorFactor;

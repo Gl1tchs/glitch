@@ -6,27 +6,25 @@
 
 ## Core
 
-- [ ] Event System use std::move_only_function
 - [ ] Per Frame Allocators
 - [ ] Headless build creation.
-
-## Serialization
-
-- [ ] Custom flat INI parser for configuration files with array support.
-- [ ] Custom scene description language
-- [ ] Implementing an asset system.
 
 ## Asset System
 
 - [ ] Proper project system for environment variables
-- [ ] Serialize script component metadata
+- [ ] Script as asset:
+    - [ ] ScriptMetadata { fields }
 - [ ] Asset Metadata
+    - [ ] e.g. GLTFSourceMetadata { model_path, loading_options  }
 - [ ] Make AssetSystem thread safe
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine
 - [ ] Async GLTF model loading progress
+- [ ] Async asset (de)serialization
 
 ## Editor
 
+- [ ] Material texture inspector
+- [ ] Content browser
 
 ## Scripting
 
@@ -39,7 +37,6 @@
 
 ## Renderer
 
-- [ ] I am not a big fan of the Material structure 
 - [ ] Shadow maps
   - [ ] Light goes inside walls
 - [ ] Cubemaps and IBL
@@ -61,10 +58,9 @@
 
 ## Linux
 
-- [ ] Test test platform utilities
-
 ## Bugs
 
+- [ ] ImGui viewports are not working.
 - [ ] Swapchain resize gives descriptor set = 0 error`
 - [ ] Fix immediate commands running in a separate thread causes race conditions between queue submits.
 - [ ] Renderer::create_render_image expects same format as swapchain for color attachments

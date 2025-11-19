@@ -40,12 +40,12 @@ struct MaterialDefinition {
 	std::vector<ShaderUniformMetadata> uniforms;
 };
 
-class GL_API MaterialInstance {
+class GL_API Material {
 public:
 	GL_REFLECT_ASSET("Material")
 
-	MaterialInstance(std::shared_ptr<MaterialDefinition> p_definition);
-	~MaterialInstance();
+	Material(std::shared_ptr<MaterialDefinition> p_definition);
+	~Material();
 
 	std::shared_ptr<MaterialDefinition> get_definition() const;
 	Pipeline get_pipeline() const;
@@ -66,7 +66,7 @@ public:
 	void bind_uniform_set(CommandBuffer p_cmd);
 
 	// Asset type override
-	static std::shared_ptr<MaterialInstance> create(const std::string& p_def_name);
+	static std::shared_ptr<Material> create(const std::string& p_def_name);
 
 private:
 	std::shared_ptr<MaterialDefinition> definition;
@@ -87,7 +87,7 @@ public:
 
 	static void register_definition(const std::string& p_name, MaterialDefinition p_def);
 
-	static std::shared_ptr<MaterialInstance> create_instance(const std::string& p_def_name);
+	static std::shared_ptr<Material> create_instance(const std::string& p_def_name);
 };
 
 } //namespace gl

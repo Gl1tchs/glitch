@@ -27,7 +27,7 @@ struct GL_API MeshPrimitive {
 	BufferDeviceAddress vertex_buffer_address;
 	uint32_t index_count;
 
-	std::shared_ptr<MaterialInstance> material;
+	std::shared_ptr<Material> material;
 
 	AABB aabb;
 
