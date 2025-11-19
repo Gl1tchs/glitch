@@ -14,8 +14,9 @@
 - [ ] Proper project system for environment variables
 - [ ] Script as asset:
     - [ ] ScriptMetadata { fields }
-- [ ] Asset Metadata
+- [ ] Asset Metadatas
     - [ ] e.g. GLTFSourceMetadata { model_path, loading_options  }
+    - [x] Texture metadata
 - [ ] Make AssetSystem thread safe
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine
 - [ ] Async GLTF model loading progress

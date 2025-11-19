@@ -8,6 +8,7 @@
 #include <glitch/scene/scene_renderer.h>
 
 #include "camera_controller.h"
+#include "glitch/renderer/texture.h"
 #include "grid_pass.h"
 
 using namespace gl;

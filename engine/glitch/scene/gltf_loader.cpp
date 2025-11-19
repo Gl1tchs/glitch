@@ -451,7 +451,7 @@ std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx
 		sampler_options.wrap_v = _gltf_to_image_wrapping(sampler.wrapT);
 	}
 
-	AssetHandle texture;
+	AssetHandle texture_handle;
 	if (gltf_image.uri.empty()) {
 		DataFormat format;
 		switch (gltf_image.component) {
@@ -473,25 +473,26 @@ std::shared_ptr<Texture> _load_texture(int texture_index, GLTFLoadContext& p_ctx
 						"count");
 		}
 
-		texture = AssetSystem::register_asset(
+		texture_handle = AssetSystem::register_asset(
 				Texture::create(format, glm::uvec2(gltf_image.width, gltf_image.height),
 						gltf_image.image.data(), sampler_options),
 				std::format("mem://gltf/texture/?id={}", texture_index));
 	} else {
 		const fs::path texture_path = p_ctx.base_path / gltf_image.uri;
-		auto texture_opt = AssetSystem::load<Texture>(texture_path.string(), sampler_options);
-		if (!texture_opt) {
+
+		auto texture = Texture::load_from_file(texture_path, sampler_options);
+		if (!texture) {
 			GL_LOG_ERROR("[GLTFLoader::_load_texture] Unable to load GLTF texture from path '{}'",
 					texture_path.string());
 			return nullptr;
 		}
 
-		texture = *texture_opt;
+		texture_handle = AssetSystem::register_asset(texture);
 	}
 
-	p_ctx.loaded_textures[hash] = texture;
+	p_ctx.loaded_textures[hash] = texture_handle;
 
-	return AssetSystem::get<Texture>(texture);
+	return AssetSystem::get<Texture>(texture_handle);
 }
 
 size_t _hash_gltf_model(const tinygltf::Model& p_model) {

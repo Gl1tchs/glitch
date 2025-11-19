@@ -6,6 +6,7 @@
 #pragma once
 
 #include "glitch/asset/asset.h"
+#include "glitch/core/templates/concepts.h"
 #include "glitch/core/uid.h"
 
 namespace gl {
@@ -32,7 +33,9 @@ struct IAssetRegistry {
 	virtual void deserialize(const json& p_in_json) = 0;
 };
 
-template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
+template <typename T>
+	requires IsReflectedAsset<T>
+struct AssetRegistry : public IAssetRegistry {
 	struct AssetEntry {
 		std::shared_ptr<T> instance;
 		std::string path;
@@ -93,14 +96,24 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	}
 
 	void serialize(json& p_out_json) const override {
+		// Only loadable assets can be (de)serialized
 		if constexpr (IsLoadableAsset<T>) {
-			// Only loadable assets can be (de)serialized
-
 			json j;
 			for (auto& [handle, entry] : assets) {
+				// Do not serialize uninitialized assets
+				if (!entry.instance) {
+					continue;
+				}
+
 				// Only serialize non memory types
 				if (!entry.path.empty() && !entry.path.starts_with("mem://")) {
-					j.push_back(json{ { "handle", handle }, { "path", entry.path } });
+					// Serialize metadata
+					entry.instance->save(entry.path, entry.instance);
+
+					j.push_back(json{
+							{ "handle", handle },
+							{ "path", entry.path },
+					});
 				}
 			}
 
@@ -113,9 +126,8 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	}
 
 	void deserialize(const json& p_in_json) override {
+		// Only loadable assets can be (de)serialized
 		if constexpr (IsLoadableAsset<T>) {
-			// Only loadable assets can be (de)serialized
-
 			if (!p_in_json.is_array()) {
 				GL_LOG_ERROR("Unable to deserialize Assets of type '{}'.", T::get_type_name());
 				return;
@@ -139,6 +151,7 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 				// TODO! metadata
 				if (const auto instance = T::load(it->second.path)) {
 					it->second.instance = instance;
+
 					it++;
 				} else {
 					it = assets.erase(it);
@@ -181,15 +194,15 @@ public:
 	 * Loads and registers the asset to the compatible asset registry.
 	 *
 	 */
-	template <typename T, typename... Args>
-		requires IsLoadableAsset<T> || IsLoadableAsset<T, Args...>
-	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path, Args&&... p_args) {
+	template <typename T>
+		requires IsLoadableAsset<T>
+	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path) {
 		const auto absolute_path = get_absolute_path(p_path);
 		if (absolute_path.has_error()) {
 			return make_err<AssetHandle>(AssetLoadingError::FILE_ERROR);
 		}
 
-		const std::shared_ptr<T> asset = T::load(*absolute_path, std::forward<Args>(p_args)...);
+		const std::shared_ptr<T> asset = T::load(*absolute_path);
 		if (!asset) {
 			return make_err<AssetHandle>(AssetLoadingError::PARSING_ERROR);
 		}

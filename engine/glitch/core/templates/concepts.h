@@ -20,13 +20,8 @@ concept IsAnyOf = (std::same_as<T, U> || ...);
  */
 template <typename T>
 concept IsSerializable = requires {
-	{
-		T::serialize(std::declval<std::string_view>(), std::declval<const T&>())
-	} -> std::same_as<bool>;
-	{ T::deserialize(std::declval<std::string_view>(), std::declval<T&>()) } -> std::same_as<bool>;
-} || requires {
-	{ to_json(std::declval<const T&>(), std::declval<json&>()) };
-	{ from_json(std::declval<T&>(), std::declval<const json&>()) };
+	{ T::serialize(std::declval<json&>(), std::declval<const T&>()) } -> std::same_as<bool>;
+	{ T::deserialize(std::declval<const json&>(), std::declval<T&>()) } -> std::same_as<bool>;
 };
 
 } //namespace gl

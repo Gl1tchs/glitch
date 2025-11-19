@@ -1,4 +1,6 @@
 #include "editor.h"
+
+#include "glitch/asset/asset_system.h"
 #include "glitch/core/application.h"
 #include "glitch/renderer/mesh.h"
 #include "glitch/scene/components.h"
@@ -323,6 +325,7 @@ void EditorLayer::update(float p_dt) {
 
 			ImGui::End();
 		}
+
 		ImGui::End();
 	}
 

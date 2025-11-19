@@ -31,14 +31,18 @@ struct MockLoadableAsset {
 
 	MockLoadableAsset(int v, const fs::path& p) : value(v), loaded_from(p) {}
 
-	static std::shared_ptr<MockLoadableAsset> load(const fs::path& p_path, int p_value) {
+	static bool save(const fs::path& p_metadata_path, std::shared_ptr<MockLoadableAsset> p_asset) {
+		return !s_force_load_failure;
+	}
+
+	static std::shared_ptr<MockLoadableAsset> load(const fs::path& p_path) {
 		if (s_force_load_failure) {
 			return nullptr; // simulate a parsing error
 		}
 
 		// Simulate a successful load only for a specific path
 		if (p_path == fs::path("/home/glitch/test_asset.dat")) {
-			return std::make_shared<MockLoadableAsset>(p_value, p_path);
+			return std::make_shared<MockLoadableAsset>(0, p_path);
 		}
 
 		return nullptr; // simulate file not found at path
@@ -62,6 +66,11 @@ struct MockSerializedAsset {
 	MockSerializedAsset(std::string p_data, fs::path p_path) :
 			data(std::move(p_data)), loaded_path(std::move(p_path)) {}
 
+	static bool save(
+			const fs::path& p_metadata_path, std::shared_ptr<MockSerializedAsset> p_asset) {
+		return true;
+	}
+
 	// The deserialize method in AssetRegistry expects this signature
 	static std::shared_ptr<MockSerializedAsset> load(const fs::path& p_path) {
 		// Simulate file reading based on path
@@ -74,7 +83,7 @@ struct MockSerializedAsset {
 
 // --- Concept Sanity Checks ---
 static_assert(IsCreatableAsset<MockCreatableAsset, int>);
-static_assert(IsLoadableAsset<MockLoadableAsset, int>);
+static_assert(IsLoadableAsset<MockLoadableAsset>);
 static_assert(IsCreatableAsset<AnotherMockAsset>);
 static_assert(IsLoadableAsset<MockSerializedAsset>);
 
@@ -129,26 +138,26 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 	}
 
 	SUBCASE("Load and Get") {
-		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset.dat", 123);
+		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset.dat");
 		REQUIRE(handle_res.has_value());
 		h_load_valid = *handle_res;
 		CHECK(h_load_valid.is_valid());
 
 		auto asset_load = AssetSystem::get<MockLoadableAsset>(h_load_valid);
 		REQUIRE(asset_load != nullptr);
-		CHECK(asset_load->value == 123);
+		CHECK(asset_load->value == 0);
 		CHECK(asset_load->loaded_from == fs::path("/home/glitch/test_asset.dat"));
 	}
 
 	SUBCASE("Load Failure (Path Error)") {
-		auto handle_res = AssetSystem::load<MockLoadableAsset>("bad://path.dat", 0);
+		auto handle_res = AssetSystem::load<MockLoadableAsset>("bad://path.dat");
 		REQUIRE(handle_res.has_error());
 		CHECK(handle_res.get_error() == AssetLoadingError::FILE_ERROR);
 	}
 
 	SUBCASE("Load Failure (Parsing Error)") {
 		MockLoadableAsset::s_force_load_failure = true;
-		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset.dat", 0);
+		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset.dat");
 		REQUIRE(handle_res.has_error());
 		CHECK(handle_res.get_error() == AssetLoadingError::PARSING_ERROR);
 		MockLoadableAsset::s_force_load_failure = false; // reset
