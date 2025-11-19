@@ -8,5 +8,9 @@ Application* create_application(gl::VectorView<const char*> p_args) {
 		.name = "Glitch Editor",
 		.args = p_args,
 	};
-	return new EditorApplication(info);
+
+	Application* app = new Application(info);
+	app->push_layer<EditorLayer>();
+
+	return app;
 }

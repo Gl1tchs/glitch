@@ -12,8 +12,7 @@ namespace gl {
 #define GL_DEFINE_HANDLE(object) typedef struct object##_T* object;
 
 // defines handles that are needed to be freed by user
-#define GL_DEFINE_NON_DISPATCHABLE_HANDLE(object)                              \
-	typedef struct object##_T* object;
+#define GL_DEFINE_NON_DISPATCHABLE_HANDLE(object) typedef struct object##_T* object;
 
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Buffer)
 GL_DEFINE_NON_DISPATCHABLE_HANDLE(Image)
@@ -191,6 +190,12 @@ enum class ImageFiltering : int {
 	LINEAR = 1,
 };
 
+GL_SERIALIZE_ENUM(ImageFiltering,
+		{
+				{ ImageFiltering::LINEAR, "linear" },
+				{ ImageFiltering::NEAREST, "nearest" },
+		})
+
 enum class ImageWrappingMode : int {
 	REPEAT = 0,
 	MIRRORED_REPEAT = 1,
@@ -199,6 +204,15 @@ enum class ImageWrappingMode : int {
 	MIRROR_CLAMP_TO_EDGE = 4,
 	MAX = 0x7FFFFFFF
 };
+
+GL_SERIALIZE_ENUM(ImageWrappingMode,
+		{
+				{ ImageWrappingMode::REPEAT, "repeat" },
+				{ ImageWrappingMode::MIRRORED_REPEAT, "mirrored_repeat" },
+				{ ImageWrappingMode::CLAMP_TO_EDGE, "clamp_to_edge" },
+				{ ImageWrappingMode::CLAMP_TO_BORDER, "clamp_to_border" },
+				{ ImageWrappingMode::MIRROR_CLAMP_TO_EDGE, "mirror_clamp_to_edge" },
+		})
 
 enum ImageAspectFlags {
 	IMAGE_ASPECT_COLOR_BIT = 0x00000001,

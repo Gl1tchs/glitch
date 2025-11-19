@@ -41,23 +41,25 @@ public:
 
 	// ECS
 
-	Entity create(const std::string& p_name, UID p_parent_id = 0);
-	Entity create(UID p_uid, const std::string& p_name,
-			UID p_parent_id = INVALID_UID);
+	Entity create(const std::string& p_name, Entity p_parent = INVALID_ENTITY);
+	Entity create(UID p_uid, const std::string& p_name, Entity p_parent = INVALID_ENTITY);
 
 	void destroy(Entity p_entity);
 	void destroy(UID p_uid);
 
 	bool exists(UID p_uid) const;
 
-	Optional<Entity> find_by_id(UID p_uid);
-	Optional<Entity> find_by_name(const std::string& p_name);
+	std::optional<Entity> find_by_id(UID p_uid);
+	std::optional<Entity> find_by_name(const std::string& p_name);
 
 	/**
 	 * Get entities with specified components,
 	 * returning an iterable view of `Entity` objects.
 	 */
 	template <typename... TComponents> EntityView<TComponents...> view();
+
+	static bool serialize(std::string_view p_path, const std::shared_ptr<Scene> p_scene);
+	static bool deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene);
 
 private:
 	std::unordered_map<UID, Entity> entity_map;

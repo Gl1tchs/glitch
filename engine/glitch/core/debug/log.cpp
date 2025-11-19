@@ -2,7 +2,7 @@
 
 namespace gl {
 
-const char* LOG_LEVEL_TO_STR[] = {
+constexpr const char* LOG_LEVEL_TO_STR[] = {
 	[LOG_LEVEL_TRACE] = "TRACE",
 	[LOG_LEVEL_INFO] = "INFO",
 	[LOG_LEVEL_WARNING] = "WARNING",
@@ -10,7 +10,15 @@ const char* LOG_LEVEL_TO_STR[] = {
 	[LOG_LEVEL_FATAL] = "FATAL",
 };
 
-inline static std::string get_timestamp() {
+constexpr const char* VERBOSITY_TO_COLOR[] = {
+	[LOG_LEVEL_TRACE] = "\x1B[1m", // None
+	[LOG_LEVEL_INFO] = "\x1B[32m", // Green
+	[LOG_LEVEL_WARNING] = "\x1B[93m", // Yellow
+	[LOG_LEVEL_ERROR] = "\x1B[91m", // Light Red
+	[LOG_LEVEL_FATAL] = "\x1B[31m", // Red
+};
+
+static std::string _get_timestamp() {
 	const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
 	std::tm tm_now{};
@@ -26,33 +34,11 @@ inline static std::string get_timestamp() {
 	return ss.str();
 }
 
-std::unordered_map<LogLevel, std::string> Logger::s_verbosity_colors = {
-	{ LOG_LEVEL_TRACE, "\x1B[1m" }, // None
-	{ LOG_LEVEL_INFO, "\x1B[32m" }, // Green
-	{ LOG_LEVEL_WARNING, "\x1B[93m" }, // Yellow
-	{ LOG_LEVEL_ERROR, "\x1B[91m" }, // Light Red
-	{ LOG_LEVEL_FATAL, "\x1B[31m" }, // Red
-};
-
 void Logger::log(LogLevel p_level, const std::string& p_fmt) {
-	const std::string time_stamp = get_timestamp();
-
-	const std::string message =
-			std::format("[{}] [{}] {}", time_stamp, LOG_LEVEL_TO_STR[p_level], p_fmt);
-
-	const std::string colored_messages = _get_colored_message(message, p_level);
-
 	// Output to stdout
-	std::cout << colored_messages << "\x1B[0m\n";
-}
-
-std::string Logger::_get_colored_message(const std::string& p_message, LogLevel p_level) {
-	const auto color_it = s_verbosity_colors.find(p_level);
-	if (color_it != s_verbosity_colors.end()) {
-		return color_it->second + p_message;
-	}
-
-	return p_message; // No color for the default case
+	std::cout << VERBOSITY_TO_COLOR[p_level]
+			  << std::format("[{}] [{}] {}", _get_timestamp(), LOG_LEVEL_TO_STR[p_level], p_fmt)
+			  << "\x1B[0m\n";
 }
 
 } //namespace gl

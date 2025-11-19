@@ -20,7 +20,7 @@ PipelineBuilder& PipelineBuilder::add_color_attachment(DataFormat p_format) {
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::set_depth_attachment(Optional<DataFormat> p_format) {
+PipelineBuilder& PipelineBuilder::set_depth_attachment(std::optional<DataFormat> p_format) {
 	if (p_format) {
 		rendering_state.depth_attachment = *p_format;
 	}
@@ -81,7 +81,7 @@ PipelineBuilder& PipelineBuilder::set_render_primitive(RenderPrimitive p_prim) {
 }
 
 std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
-	Ref<RenderBackend> backend = Renderer::get_backend();
+	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
 	Shader shader = backend->shader_create_from_bytecode(shader_stages);
 

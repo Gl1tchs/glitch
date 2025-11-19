@@ -5,13 +5,14 @@
 
 #pragma once
 
+#include "glitch/asset/asset.h"
 #include "glitch/renderer/texture.h"
 #include "glitch/renderer/types.h"
 
 namespace gl {
 
-using ShaderUniformVariable = std::variant<int, float, glm::vec2, glm::vec3,
-		glm::vec4, Color, Ref<Texture>>;
+using ShaderUniformVariable =
+		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, Color, std::weak_ptr<Texture>>;
 
 enum class ShaderUniformVariableType : int {
 	INT,
@@ -39,12 +40,14 @@ struct MaterialDefinition {
 	std::vector<ShaderUniformMetadata> uniforms;
 };
 
-class GL_API MaterialInstance {
+class GL_API Material {
 public:
-	MaterialInstance(Ref<MaterialDefinition> p_definition);
-	~MaterialInstance();
+	GL_REFLECT_ASSET("Material")
 
-	Ref<MaterialDefinition> get_definition() const;
+	Material(std::shared_ptr<MaterialDefinition> p_definition);
+	~Material();
+
+	std::shared_ptr<MaterialDefinition> get_definition() const;
 	Pipeline get_pipeline() const;
 	Shader get_shader() const;
 
@@ -52,7 +55,7 @@ public:
 
 	const std::vector<ShaderUniformMetadata>& get_uniforms() const;
 
-	Optional<ShaderUniformVariable> get_param(const std::string& p_name);
+	std::optional<ShaderUniformVariable> get_param(const std::string& p_name);
 	void set_param(const std::string& p_name, ShaderUniformVariable p_value);
 
 	bool is_dirty() const;
@@ -62,8 +65,11 @@ public:
 	// Binds descriptors for set = 0 index = 0
 	void bind_uniform_set(CommandBuffer p_cmd);
 
+	// Asset type override
+	static std::shared_ptr<Material> create(const std::string& p_def_name);
+
 private:
-	Ref<MaterialDefinition> definition;
+	std::shared_ptr<MaterialDefinition> definition;
 
 	Buffer material_data_buffer = GL_NULL_HANDLE;
 	UniformSet material_set = GL_NULL_HANDLE;
@@ -72,17 +78,18 @@ private:
 	bool dirty = false;
 };
 
+static_assert(IsCreatableAsset<Material, std::string>);
+
 class GL_API MaterialSystem {
 public:
 	MaterialSystem() = delete;
 
 	static void init();
-	static void destroy();
+	static void shutdown();
 
-	static void register_definition(
-			const std::string& p_name, MaterialDefinition p_def);
+	static void register_definition(const std::string& p_name, MaterialDefinition p_def);
 
-	static Ref<MaterialInstance> create_instance(const std::string& p_def_name);
+	static std::shared_ptr<Material> create_instance(const std::string& p_def_name);
 };
 
 } //namespace gl

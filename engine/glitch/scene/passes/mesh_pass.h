@@ -41,7 +41,7 @@ public:
 	void setup(Renderer& p_renderer) override;
 	void execute(CommandBuffer p_cmd, Renderer& p_renderer) override;
 
-	void set_scene(Ref<Scene> p_scene);
+	void set_scene(std::shared_ptr<Scene> p_scene);
 
 private:
 	enum class ScenePreprocessError {
@@ -52,14 +52,14 @@ private:
 	ScenePreprocessError _preprocess_scene();
 
 private:
-	Ref<Scene> scene;
+	std::shared_ptr<Scene> scene;
 
-	Optional<PerspectiveCamera> camera;
+	std::optional<PerspectiveCamera> camera;
 
 	PushConstants push_constants = {};
 	SceneBuffer scene_data;
 	size_t scene_data_hash;
-	Ref<StorageBuffer> scene_data_sbo;
+	std::shared_ptr<StorageBuffer> scene_data_sbo;
 };
 
 size_t hash64(const MeshPass::SceneBuffer& p_buf);

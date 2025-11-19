@@ -10,7 +10,7 @@ const RelationComponent& Entity::get_relation() const {
 	return *get_component<RelationComponent>();
 }
 
-Optional<Entity> Entity::get_parent() const {
+std::optional<Entity> Entity::get_parent() const {
 	const UID parent_id = get_relation().parent_id;
 	if (!parent_id) {
 		return {};
@@ -26,7 +26,7 @@ void Entity::set_parent(Entity parent) {
 	}
 
 	// Remove old parent if exists.
-	Optional<Entity> current_parent = get_parent();
+	std::optional<Entity> current_parent = get_parent();
 	if (current_parent) {
 		(*current_parent).remove_child(*this);
 	}
@@ -44,14 +44,7 @@ void Entity::set_parent(Entity parent) {
 	parent_relation.children_ids.push_back(get_uid());
 
 	// Make transform values relative to the new parent.
-	Transform& transform = get_transform();
-	Transform& parent_transform = parent.get_transform();
-
-	transform.local_position = transform.get_position() - parent_transform.get_position();
-	transform.local_rotation = transform.get_rotation() - parent_transform.get_rotation();
-	transform.local_scale = transform.get_scale() / parent_transform.get_scale();
-
-	transform.parent = &parent_transform;
+	get_transform().parent = &parent.get_transform();
 }
 
 bool Entity::is_parent() const { return get_relation().children_ids.size() > 0; }
@@ -82,7 +75,7 @@ std::vector<Entity> Entity::get_children() const {
 	return children;
 }
 
-Optional<Entity> Entity::find_child_by_id(UID p_uid) const {
+std::optional<Entity> Entity::find_child_by_id(UID p_uid) const {
 	const auto& children = get_relation().children_ids;
 	const auto it = std::find(children.begin(), children.end(), p_uid);
 	if (it == children.end()) {
@@ -92,13 +85,13 @@ Optional<Entity> Entity::find_child_by_id(UID p_uid) const {
 	return scene->find_by_id(*it);
 }
 
-Optional<Entity> Entity::find_child_by_name(const std::string& p_name) const {
-	Optional<Entity> child_to_find = scene->find_by_name(p_name);
+std::optional<Entity> Entity::find_child_by_name(const std::string& p_name) const {
+	std::optional<Entity> child_to_find = scene->find_by_name(p_name);
 	if (!child_to_find) {
 		return std::nullopt;
 	}
 
-	Optional<Entity> child_parent = child_to_find->get_parent();
+	std::optional<Entity> child_parent = child_to_find->get_parent();
 	if (!child_parent || (uint32_t)*child_parent != handle) {
 		return std::nullopt;
 	}
@@ -136,7 +129,7 @@ bool Entity::is_parent_of(Entity parent, Entity child) {
 	}
 
 	// check recursively if child is one of parent's
-	Optional<Entity> child_parent = child.get_parent();
+	std::optional<Entity> child_parent = child.get_parent();
 
 	// if top level return false
 	if (!child_parent) {

@@ -1,29 +1,27 @@
 #pragma once
 
-#include <glitch/core/application.h>
 #include <glitch/core/deletion_queue.h>
+#include <glitch/core/layer.h>
 #include <glitch/renderer/camera.h>
 #include <glitch/renderer/render_backend.h>
 #include <glitch/scene/entity.h>
-#include <glitch/scene/gltf_loader.h>
 #include <glitch/scene/scene_renderer.h>
 
 #include "camera_controller.h"
+#include "glitch/renderer/texture.h"
 #include "grid_pass.h"
 
 using namespace gl;
 
-class EditorApplication : public Application {
+class EditorLayer : public Layer {
 public:
-	EditorApplication(const ApplicationCreateInfo& info);
-	virtual ~EditorApplication() = default;
+	virtual ~EditorLayer() = default;
 
-protected:
-	void _on_start() override;
+	void start() override;
 
-	void _on_update(float p_dt) override;
+	void update(float p_dt) override;
 
-	void _on_destroy() override;
+	void destroy() override;
 
 private:
 	void _render_hierarchy();
@@ -34,18 +32,19 @@ private:
 
 	void _render_inspector(Entity& p_entity);
 
-	Ref<Scene> _get_scene();
+	void _render_asset_registry();
+
+	std::shared_ptr<Scene> _get_scene();
 
 private:
-	Ref<SceneRenderer> scene_renderer;
+	std::shared_ptr<SceneRenderer> scene_renderer;
 
-	Ref<Scene> scene;
-	Scope<GLTFLoader> gltf_loader;
+	std::shared_ptr<Scene> scene;
+	std::optional<fs::path> scene_path = std::nullopt;
 
 	CameraController camera_controller;
-	UID camera_uid;
 
-	Ref<GridPass> grid_pass;
+	std::shared_ptr<GridPass> grid_pass;
 
 	Entity selected_entity = INVALID_ENTITY;
 	DeletionQueue node_deletion_queue;
@@ -53,6 +52,6 @@ private:
 	RendererSettings renderer_settings = {};
 
 	// Scripting
-	Ref<Scene> runtime_scene;
+	std::shared_ptr<Scene> runtime_scene;
 	bool is_running = false;
 };

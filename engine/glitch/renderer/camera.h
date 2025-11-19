@@ -27,6 +27,9 @@ struct GL_API OrthographicCamera : Camera {
 	glm::mat4 get_projection_matrix() const override;
 };
 
+GL_DEFINE_SERIALIZABLE(
+		OrthographicCamera, aspect_ratio, near_clip, far_clip, zoom_level);
+
 struct GL_API PerspectiveCamera : Camera {
 	float fov = 45.0f;
 
@@ -36,5 +39,7 @@ struct GL_API PerspectiveCamera : Camera {
 	glm::mat4 get_view_matrix(const Transform& p_transform) const override;
 	glm::mat4 get_projection_matrix() const override;
 };
+
+GL_DEFINE_SERIALIZABLE(PerspectiveCamera, aspect_ratio, near_clip, far_clip, fov);
 
 } //namespace gl

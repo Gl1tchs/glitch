@@ -5,55 +5,43 @@
 
 #pragma once
 
-#include "glitch/renderer/material.h"
-#include "glitch/renderer/mesh.h"
 #include "glitch/scene/scene.h"
-
-namespace tinygltf {
-class Node;
-class Primitive;
-class Model;
-class Mesh;
-} //namespace tinygltf
 
 namespace gl {
 
-class GL_API GLTFLoader {
-public:
-	GLTFLoader();
-	~GLTFLoader();
+struct GLTFSourceComponent {
+	UID model_id;
+	std::string asset_path;
+	// TODO: load options
+};
 
-	Result<Entity, std::string> load_gltf(const fs::path& p_path,
-			Ref<Scene> p_scene,
-			Ref<MaterialInstance> p_overload_material = nullptr);
+GL_DEFINE_SERIALIZABLE(GLTFSourceComponent, model_id, asset_path);
 
-private:
-	void _parse_node(Ref<Scene> p_scene, int p_node_idx,
-			const tinygltf::Model* p_model, const size_t p_model_hash,
-			const fs::path& p_base_path,
-			Ref<MaterialInstance> p_overload_material,
-			UID p_parent_id = INVALID_UID);
+/**
+ * Component representing an entity, loaded from a
+ * GLTF scene.
+ *
+ */
+struct GLTFInstanceComponent {
+	UID source_model_id;
+	int gltf_node_id;
+};
 
-	Ref<Mesh> _load_mesh(const tinygltf::Node* p_gltf_node,
-			const tinygltf::Model* p_model, const size_t p_model_hash,
-			const fs::path& p_base_path,
-			Ref<MaterialInstance> p_overload_material);
+GL_DEFINE_SERIALIZABLE(GLTFInstanceComponent, source_model_id, gltf_node_id);
 
-	Ref<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_primitive,
-			const tinygltf::Model* p_model, const size_t p_model_hash,
-			const tinygltf::Mesh* p_mesh, const fs::path& p_base_path,
-			Ref<MaterialInstance> p_overload_material);
+enum class GLTFLoadError {
+	NONE,
+	INVALID_EXTENSION,
+	PARSING_ERROR,
+	PATH_ERROR,
+};
 
-	Ref<Texture> _load_texture(int texture_index,
-			const tinygltf::Model* p_model, const size_t p_model_hash,
-			const fs::path& p_base_path);
-
-private:
-	Ref<Texture> default_texture;
-	Ref<MaterialInstance> default_material;
-
-	// model + texture_index hash = texture
-	std::unordered_map<size_t, Ref<Texture>> loaded_textures;
+/**
+ * GLTF loader, loads and registers GLTF models to the given scene from path.
+ *
+ */
+struct GL_API GLTFLoader {
+	static GLTFLoadError load(std::shared_ptr<Scene> p_scene, const std::string& p_path);
 };
 
 } //namespace gl

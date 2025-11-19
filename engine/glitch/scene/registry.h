@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "glitch/core/templates/concepts.h"
 #include "glitch/scene/component_lookup.h"
 #include "glitch/scene/view.h"
 
@@ -39,8 +40,7 @@ public:
 	/**
 	 * Assigns specified component to the entity
 	 */
-	template <typename T, typename... TArgs>
-	T* assign(EntityId p_entity, TArgs&&... args) {
+	template <typename T, typename... TArgs> T* assign(EntityId p_entity, TArgs&&... args) {
 		if (!is_valid(p_entity)) {
 			return nullptr;
 		}
@@ -56,10 +56,8 @@ public:
 			pool_helpers[component_id] = PoolHelpers{
 				.element_size = sizeof(T),
 				// Copy function (uses placement new + copy constructor)
-				.copy_fn =
-						[](void* dest, const void* src) {
-							new (dest) T(*static_cast<const T*>(src));
-						},
+				.copy_fn = [](void* dest,
+								   const void* src) { new (dest) T(*static_cast<const T*>(src)); },
 				// Destroy function (calls destructor)
 				.destroy_fn = [](void* data) { static_cast<T*>(data)->~T(); },
 			};
@@ -68,12 +66,11 @@ public:
 		// Call destructor if component already exists
 		if (entities[get_entity_index(p_entity)].mask.test(component_id)) {
 			pool_helpers[component_id].destroy_fn(
-					component_pools[component_id]->get(
-							get_entity_index(p_entity)));
+					component_pools[component_id]->get(get_entity_index(p_entity)));
 		}
 
-		T* component = new (component_pools[component_id]->get(
-				get_entity_index(p_entity))) T(std::forward<TArgs>(args)...);
+		T* component = new (component_pools[component_id]->get(get_entity_index(p_entity)))
+				T(std::forward<TArgs>(args)...);
 
 		entities[get_entity_index(p_entity)].mask.set(component_id);
 
@@ -106,8 +103,7 @@ public:
 
 		if (entities[entity_idx].mask.test(component_id)) {
 			// call component's destructor
-			if (pool_helpers.size() > component_id &&
-					pool_helpers[component_id].destroy_fn) {
+			if (pool_helpers.size() > component_id && pool_helpers[component_id].destroy_fn) {
 				pool_helpers[component_id].destroy_fn(
 						component_pools[component_id]->get(entity_idx));
 			}
@@ -141,8 +137,8 @@ public:
 			return nullptr;
 		}
 
-		T* component = static_cast<T*>(
-				component_pools[component_id]->get(get_entity_index(p_entity)));
+		T* component =
+				static_cast<T*>(component_pools[component_id]->get(get_entity_index(p_entity)));
 
 		return component;
 	}
@@ -170,8 +166,7 @@ public:
 
 		const uint32_t component_ids[] = { get_component_id<TComponents>()... };
 		for (int i = 0; i < sizeof...(TComponents); i++) {
-			if (!entities[get_entity_index(p_entity)].mask.test(
-						component_ids[i])) {
+			if (!entities[get_entity_index(p_entity)].mask.test(component_ids[i])) {
 				return false;
 			}
 		}

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "glitch/asset/asset.h"
 #include "glitch/renderer/frustum.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/types.h"
@@ -26,36 +27,22 @@ struct GL_API MeshPrimitive {
 	BufferDeviceAddress vertex_buffer_address;
 	uint32_t index_count;
 
-	Ref<MaterialInstance> material;
+	std::shared_ptr<Material> material;
 
 	AABB aabb;
 
 	~MeshPrimitive();
 
-	static Ref<MeshPrimitive> create(const std::span<MeshVertex>& p_vertices,
-			const std::span<uint32_t>& p_indices);
+	static std::shared_ptr<MeshPrimitive> create(
+			const std::span<MeshVertex>& p_vertices, const std::span<uint32_t>& p_indices);
 };
 
-struct Mesh {
-	std::vector<Ref<MeshPrimitive>> primitives;
-};
+struct StaticMesh {
+	GL_REFLECT_ASSET("Mesh")
 
-class GL_API MeshSystem {
-public:
-	static void free_all();
+	~StaticMesh();
 
-	static MeshHandle register_mesh(Ref<Mesh> p_mesh);
-	
-	/**
-	 * @returns Ref<Mesh> if found `nullptr` otherwise 
-	 */
-	static Ref<Mesh> get_mesh(MeshHandle p_handle);
-	
-	/**
-	 * @param p_handle handle to find and delete
-	 * @returns `true` if deletion successfull `false` if mesh do not exists 
-	 */
-	static bool free_mesh(MeshHandle p_handle);
+	std::vector<std::shared_ptr<MeshPrimitive>> primitives;
 };
 
 } //namespace gl

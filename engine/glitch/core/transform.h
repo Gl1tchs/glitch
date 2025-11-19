@@ -39,4 +39,6 @@ struct GL_API Transform {
 
 inline constexpr Transform DEFAULT_TRANSFORM{};
 
+GL_DEFINE_SERIALIZABLE(Transform, local_position, local_rotation, local_scale);
+
 } //namespace gl

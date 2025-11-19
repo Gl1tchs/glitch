@@ -39,7 +39,7 @@ inline static VKAPI_ATTR VkBool32 VKAPI_CALL _vk_debug_callback(
 
 VulkanRenderBackend* VulkanRenderBackend::s_instance = nullptr;
 
-void VulkanRenderBackend::init(Ref<Window> window) {
+void VulkanRenderBackend::init(std::shared_ptr<Window> window) {
 	GL_ASSERT(s_instance == nullptr, "Only one backend can exist at a time.");
 	s_instance = this;
 

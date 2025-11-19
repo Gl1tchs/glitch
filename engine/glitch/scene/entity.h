@@ -19,7 +19,7 @@ struct IdComponent {
 };
 
 struct RelationComponent {
-	UID parent_id = 0;
+	UID parent_id = INVALID_UID;
 	std::vector<UID> children_ids = {};
 };
 
@@ -30,26 +30,24 @@ class GL_API Entity {
 public:
 	constexpr Entity() : handle(INVALID_ENTITY_ID) {}
 
-	Entity(EntityId p_handle, Scene* p_scene) :
-			handle(p_handle), scene(p_scene) {}
+	Entity(EntityId p_handle, Scene* p_scene) : handle(p_handle), scene(p_scene) {}
 
 	Entity(const Entity& p_other) = default;
 
-	template <typename T, typename... Args>
-	auto& add_component(Args&&... p_args);
+	template <typename T, typename... Args> T* add_component(Args&&... p_args);
 
 	template <typename T> T* get_component();
 
 	template <typename T> const T* get_component() const;
 
-	template <typename... Components> bool has_component() const;
+	template <typename TComponent> bool has_component() const;
 
 	template <typename T> void remove_component();
 
 	RelationComponent& get_relation();
 	const RelationComponent& get_relation() const;
 
-	Optional<Entity> get_parent() const;
+	std::optional<Entity> get_parent() const;
 	void set_parent(Entity p_parent);
 
 	bool is_parent() const;
@@ -58,8 +56,8 @@ public:
 
 	std::vector<Entity> get_children() const;
 
-	Optional<Entity> find_child_by_id(UID p_uid) const;
-	Optional<Entity> find_child_by_name(const std::string& p_name) const;
+	std::optional<Entity> find_child_by_id(UID p_uid) const;
+	std::optional<Entity> find_child_by_name(const std::string& p_name) const;
 
 	bool remove_child(Entity p_child);
 

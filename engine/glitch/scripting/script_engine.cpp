@@ -1,12 +1,52 @@
 #include "glitch/scripting/script_engine.h"
 
+#include "glitch/core/templates/variant_helpers.h"
+
 #include <lua.hpp>
 
 namespace gl {
 
-template <class... Ts> struct overloaded : Ts... {
-	using Ts::operator()...;
-};
+void to_json(json& p_json, const ScriptMetadata& p_metadata) {
+	for (const auto& [name, field] : p_metadata.fields) {
+		json j;
+		j["name"] = name;
+		std::visit(VariantOverloaded{
+						   [&](const double& arg) { j["value"] = arg; },
+						   [&](const std::string& arg) { j["value"] = arg; },
+						   [&](const bool& arg) { j["value"] = arg; },
+				   },
+				field);
+
+		p_json["fields"].push_back(j);
+	}
+}
+
+void from_json(const json& p_json, ScriptMetadata& p_metadata) {
+	for (const auto& j : p_json["fields"]) {
+		if (!j.contains("name") || !j.contains("value")) {
+			GL_LOG_ERROR("[from_json] Unable to deserialize field: name or value does not exist "
+						 "in json.");
+			continue;
+		}
+
+		std::string name = j["name"].get<std::string>();
+		ScriptValueType value;
+		// TODO use an enum maybe
+		if (j["value"].is_number()) {
+			value = j["value"].get<double>();
+		} else if (j["value"].is_string()) {
+			value = j["value"].get<std::string>();
+		} else if (j["value"].is_boolean()) {
+			value = j["value"].get<bool>();
+		} else {
+			GL_LOG_ERROR("[from_json] Unable to deserialize field '{}' for type '{}'", name,
+					j["value"].type_name());
+			continue;
+		}
+
+		p_metadata.fields[name] = value;
+	}
+}
 
 static lua_State* s_lua = nullptr;
 
@@ -192,7 +232,32 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 	return metadata;
 }
 
-Optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_field_name) {
+ScriptResult ScriptEngine::set_metadata(ScriptRef p_ref, const ScriptMetadata& p_metadata) {
+	if (p_ref == 0) {
+		return {};
+	}
+
+	push_script(p_ref); // Stack: [table]
+
+	for (const auto& [name, field] : p_metadata.fields) {
+		std::visit(VariantOverloaded{
+						   [&](const double& arg) { lua_pushnumber(s_lua, arg); },
+						   [&](const std::string& arg) { lua_pushstring(s_lua, arg.c_str()); },
+						   [&](const bool& arg) { lua_pushboolean(s_lua, arg); },
+				   },
+				field);
+
+		// Set the field: table[field_name] = value
+		// This pops the value but leaves the table.
+		lua_setfield(s_lua, -2, name.c_str());
+	}
+
+	pop_stack(1); // Stack: []s
+
+	return ScriptResult::SUCCESS;
+}
+
+std::optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -212,7 +277,8 @@ Optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_f
 	return {};
 }
 
-Optional<std::string> ScriptEngine::get_string_field(ScriptRef p_ref, const char* p_field_name) {
+std::optional<std::string> ScriptEngine::get_string_field(
+		ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -232,7 +298,7 @@ Optional<std::string> ScriptEngine::get_string_field(ScriptRef p_ref, const char
 	return {};
 }
 
-Optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field_name) {
+std::optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field_name) {
 	if (p_ref == 0) {
 		return {};
 	}
@@ -254,9 +320,9 @@ Optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field
 
 bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value) {
 	bool result;
-	std::visit(overloaded{ [&](double& arg) {
-							  result = ScriptEngine::set_field(p_ref, p_field_name, arg);
-						  },
+	std::visit(VariantOverloaded{ [&](double& arg) {
+									 result = ScriptEngine::set_field(p_ref, p_field_name, arg);
+								 },
 					   [&](std::string& arg) {
 						   result = ScriptEngine::set_field(p_ref, p_field_name, arg);
 					   },

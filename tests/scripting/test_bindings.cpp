@@ -1,7 +1,7 @@
 #include <doctest.h>
 
-#include "glitch/scene/components.h"
 #include "glitch/scene/scene.h"
+#include "glitch/scripting/script.h"
 #include "glitch/scripting/script_engine.h"
 #include "glitch/scripting/script_system.h"
 
@@ -14,20 +14,20 @@ TEST_CASE("Test script bindings") {
 
 	Entity e = scene.create("Entity");
 
-	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "tests/scripting/lua/test_bindings.lua";
+	Script* sc = e.add_component<Script>();
+	sc->script_path = "tests/scripting/lua/test_bindings.lua";
 
-	CHECK(sc.load() == ScriptResult::SUCCESS);
+	CHECK(sc->load() == ScriptResult::SUCCESS);
 
 	ScriptSystem::on_runtime_start(&scene);
 
-	CHECK(ScriptEngine::exec_function(sc.script, "test_bindings", e.get_uid().value) ==
+	CHECK(ScriptEngine::exec_function(sc->script, "test_bindings", e.get_uid().value) ==
 			ScriptResult::SUCCESS);
 
-	sc.unload();
+	sc->unload();
 
-	CHECK(!sc.is_loaded);
-	CHECK(sc.script == 0);
+	CHECK(!sc->is_loaded);
+	CHECK(sc->script == 0);
 
 	ScriptEngine::shutdown();
 }

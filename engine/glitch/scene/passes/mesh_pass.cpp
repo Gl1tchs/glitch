@@ -1,6 +1,7 @@
 #include "glitch/scene/passes/mesh_pass.h"
 
 #include "glitch/core/application.h"
+#include "glitch/renderer/mesh.h"
 #include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
 
@@ -34,10 +35,9 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 		return;
 	}
 
-	Ref<RenderBackend> backend = p_renderer.get_backend();
+	std::shared_ptr<RenderBackend> backend = p_renderer.get_backend();
 
-	p_renderer.begin_rendering(p_cmd,
-			p_renderer.get_render_image("geo_albedo").value(),
+	p_renderer.begin_rendering(p_cmd, p_renderer.get_render_image("geo_albedo").value(),
 			p_renderer.get_render_image("geo_depth").value());
 
 	Pipeline bound_pipeline = GL_NULL_HANDLE;
@@ -48,12 +48,12 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			continue;
 		}
 
-		Ref<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
-		if (!mesh) {
+		std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
+		if (!smesh) {
 			continue;
 		}
 
-		for (Ref<MeshPrimitive> primitive : mesh->primitives) {
+		for (std::shared_ptr<MeshPrimitive> primitive : smesh->primitives) {
 			// Bind the pipeline if not already bound
 			Pipeline pipeline = primitive->material->get_pipeline();
 			if (pipeline != bound_pipeline) {
@@ -71,8 +71,7 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 				// Object transformation
 				push_constants.transform = entity.get_transform().to_mat4();
 
-				backend->command_push_constants(p_cmd,
-						primitive->material->get_shader(), 0,
+				backend->command_push_constants(p_cmd, primitive->material->get_shader(), 0,
 						sizeof(PushConstants), &push_constants);
 			}
 
@@ -83,8 +82,7 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			backend->command_draw_indexed(p_cmd, primitive->index_count);
 
 			{
-				ApplicationPerfStats& stats =
-						Application::get_instance()->get_perf_stats();
+				ApplicationPerfStats& stats = Application::get()->get_perf_stats();
 
 				stats.renderer_stats.draw_calls++;
 				stats.renderer_stats.index_count += primitive->index_count;
@@ -95,10 +93,10 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 	p_renderer.end_rendering(p_cmd);
 }
 
-void MeshPass::set_scene(Ref<Scene> p_scene) { scene = p_scene; }
+void MeshPass::set_scene(std::shared_ptr<Scene> p_scene) { scene = p_scene; }
 
 MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
-	Optional<Transform> camera_transform = std::nullopt;
+	std::optional<Transform> camera_transform = std::nullopt;
 	for (Entity entity : scene->view<CameraComponent>()) {
 		CameraComponent* cc = entity.get_component<CameraComponent>();
 		if (cc->enabled) {
@@ -109,14 +107,13 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 		}
 	}
 
-	if (!camera) {
+	if (!camera || !camera_transform) {
 		return ScenePreprocessError::NO_CAMERA;
 	}
 
-	camera.value().aspect_ratio =
-			Application::get_instance()->get_window()->get_aspect_ratio();
+	camera.value().aspect_ratio = Application::get()->get_window()->get_aspect_ratio();
 
-	Optional<DirectionalLight> directional_light;
+	std::optional<DirectionalLight> directional_light;
 	for (Entity entity : scene->view<DirectionalLight>()) {
 		const DirectionalLight* dl = entity.get_component<DirectionalLight>();
 		directional_light = *dl;
@@ -134,17 +131,14 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	{
 		scene_data.view_projection = camera.value().get_projection_matrix() *
 				camera.value().get_view_matrix(*camera_transform);
-		scene_data.camera_position =
-				glm::vec4(camera_transform.value().get_position(), 0.0f);
+		scene_data.camera_position = glm::vec4(camera_transform.value().get_position(), 0.0f);
 
 		// Directional light
-		scene_data.directional_light =
-				directional_light ? *directional_light : DirectionalLight{};
+		scene_data.directional_light = directional_light ? *directional_light : DirectionalLight{};
 
 		// Copy point lights
 		const size_t count = std::min<size_t>(16, point_lights.size());
-		std::copy_n(
-				point_lights.begin(), count, scene_data.point_lights.begin());
+		std::copy_n(point_lights.begin(), count, scene_data.point_lights.begin());
 		scene_data.num_point_lights = count;
 
 		// Reupload the scene buffer if it's updated
@@ -162,16 +156,15 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	for (Entity entity : scene->view<MeshComponent>()) {
 		MeshComponent* mc = entity.get_component<MeshComponent>();
 
-		Ref<Mesh> mesh = MeshSystem::get_mesh(mc->mesh);
-		if (!mesh) {
+		std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
+		if (!smesh) {
 			mc->visible = false;
 			continue;
 		}
 
-		for (const auto& prim : mesh->primitives) {
+		for (const std::shared_ptr<MeshPrimitive>& prim : smesh->primitives) {
 			// If objects is not inside of the view frustum, discard it.
-			const AABB aabb =
-					prim->aabb.transform(entity.get_transform().to_mat4());
+			const AABB aabb = prim->aabb.transform(entity.get_transform().to_mat4());
 			if (!aabb.is_inside_frustum(view_frustum)) {
 				mc->visible = false;
 				continue;

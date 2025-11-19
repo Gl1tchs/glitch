@@ -1,6 +1,6 @@
 #include "glitch/scripting/script_system.h"
 
-#include "glitch/scene/components.h"
+#include "glitch/scripting/script.h"
 
 namespace gl {
 
@@ -23,8 +23,8 @@ void ScriptSystem::invoke_on_create() {
 		return;
 	}
 
-	for (Entity entity : s_scene->view<ScriptComponent>()) {
-		ScriptComponent* sc = entity.get_component<ScriptComponent>();
+	for (Entity entity : s_scene->view<Script>()) {
+		Script* sc = entity.get_component<Script>();
 
 		if (!sc->is_loaded) {
 			switch (sc->load()) {
@@ -64,8 +64,8 @@ void ScriptSystem::invoke_on_update(float p_dt) {
 		return;
 	}
 
-	for (Entity entity : s_scene->view<ScriptComponent>()) {
-		ScriptComponent* sc = entity.get_component<ScriptComponent>();
+	for (Entity entity : s_scene->view<Script>()) {
+		Script* sc = entity.get_component<Script>();
 
 		const ScriptResult result =
 				ScriptEngine::exec_function(sc->script, "on_update", entity.get_uid().value, p_dt);
@@ -86,8 +86,8 @@ void ScriptSystem::invoke_on_destroy() {
 		return;
 	}
 
-	for (Entity entity : s_scene->view<ScriptComponent>()) {
-		ScriptComponent* sc = entity.get_component<ScriptComponent>();
+	for (Entity entity : s_scene->view<Script>()) {
+		Script* sc = entity.get_component<Script>();
 
 		const ScriptResult result =
 				ScriptEngine::exec_function(sc->script, "on_destroy", entity.get_uid().value);

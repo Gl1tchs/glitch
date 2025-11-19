@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
-#include "glitch/scene/components.h"
 #include "glitch/scene/scene.h"
+#include "glitch/scripting/script.h"
 #include "glitch/scripting/script_engine.h"
 
 using namespace gl;
@@ -19,6 +19,7 @@ TEST_CASE("Script loading") {
 		return Player
 	)";
 
+	GL_LOG_INFO("Error is expected:");
 	Result<ScriptRef, ScriptResult> res = ScriptEngine::load_script(SYNTAX_ERROR);
 
 	CHECK(res.has_error());
@@ -34,6 +35,7 @@ TEST_CASE("Script loading") {
 		-- do not return anything
 	)";
 
+	GL_LOG_INFO("Error is expected:");
 	res = ScriptEngine::load_script(TABLE_ERROR);
 
 	CHECK(res.has_error());
@@ -64,12 +66,12 @@ TEST_CASE("Script loading") {
 TEST_CASE("Calling engine code") {
 	ScriptEngine::init();
 
-	Ref<Scene> scene = create_ref<Scene>();
+	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
 	Entity e = scene->create("Entity");
 
-	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "tests/scripting/lua/test_basic.lua";
+	Script* sc = e.add_component<Script>();
+	sc->script_path = "tests/scripting/lua/test_basic.lua";
 
 	scene->start();
 	scene->update(0.0f);
@@ -81,16 +83,16 @@ TEST_CASE("Calling engine code") {
 TEST_CASE("Script fields") {
 	ScriptEngine::init();
 
-	Ref<Scene> scene = create_ref<Scene>();
+	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
 	Entity e = scene->create("Entity");
 
-	ScriptComponent& sc = e.add_component<ScriptComponent>();
-	sc.script_path = "tests/scripting/lua/test_fields.lua";
+	Script* sc = e.add_component<Script>();
+	sc->script_path = "tests/scripting/lua/test_fields.lua";
 
-	CHECK(sc.load() == ScriptResult::SUCCESS);
+	CHECK(sc->load() == ScriptResult::SUCCESS);
 
-	ScriptMetadata metadata = ScriptEngine::get_metadata(sc.script);
+	ScriptMetadata metadata = ScriptEngine::get_metadata(sc->script);
 	CHECK(metadata.fields.size() == 3);
 
 	CHECK(metadata.fields.find("name") != metadata.fields.end());
@@ -107,7 +109,7 @@ TEST_CASE("Script fields") {
 
 	scene->start();
 
-	metadata = ScriptEngine::get_metadata(sc.script);
+	metadata = ScriptEngine::get_metadata(sc->script);
 
 	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
 	CHECK(100.0 == std::get<double>(metadata.fields["health"]));
@@ -115,7 +117,7 @@ TEST_CASE("Script fields") {
 
 	scene->update(0.0f);
 
-	metadata = ScriptEngine::get_metadata(sc.script);
+	metadata = ScriptEngine::get_metadata(sc->script);
 
 	CHECK("Player1" == std::get<std::string>(metadata.fields["name"]));
 	CHECK(80.0 == std::get<double>(metadata.fields["health"]));
@@ -124,16 +126,16 @@ TEST_CASE("Script fields") {
 	// Destroys and resets the data
 	scene->stop();
 
-	metadata = ScriptEngine::get_metadata(sc.script);
+	metadata = ScriptEngine::get_metadata(sc->script);
 
 	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
 	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
 	CHECK(false == std::get<bool>(metadata.fields["alive"]));
 
-	sc.unload();
+	sc->unload();
 
-	CHECK(!sc.is_loaded);
-	CHECK(sc.script == 0);
+	CHECK(!sc->is_loaded);
+	CHECK(sc->script == 0);
 
 	ScriptEngine::shutdown();
 }

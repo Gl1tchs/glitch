@@ -28,9 +28,7 @@ glm::vec3 Transform::get_scale() const {
 	}
 }
 
-void Transform::translate(const glm::vec3& p_translation) {
-	local_position += p_translation;
-}
+void Transform::translate(const glm::vec3& p_translation) { local_position += p_translation; }
 
 void Transform::rotate(const float p_angle, const glm::vec3 p_axis) {
 	local_rotation += p_angle * p_axis;

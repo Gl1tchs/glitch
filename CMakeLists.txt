@@ -64,6 +64,25 @@ file(GLOB_RECURSE SOURCES
 	"${CMAKE_CURRENT_LIST_DIR}/engine/*.cpp"
 )
 
+# Discard files from platform/unix and platform/win32 directories
+list(FILTER SOURCES EXCLUDE REGEX "platform/unix/.*")
+list(FILTER SOURCES EXCLUDE REGEX "platform/win32/.*")
+
+# Platform specific code files
+if(WIN32)
+    file(GLOB_RECURSE WIN32_SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/engine/glitch/platform/win32/*.h"
+        "${CMAKE_CURRENT_LIST_DIR}/engine/glitch/platform/win32/*.cpp"
+    )
+    list(APPEND SOURCES ${WIN32_SOURCES})
+elseif(UNIX)
+    file(GLOB_RECURSE UNIX_SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/engine/glitch/platform/unix/*.h"
+        "${CMAKE_CURRENT_LIST_DIR}/engine/glitch/platform/unix/*.cpp"
+    )
+    list(APPEND SOURCES ${UNIX_SOURCES})
+endif()
+
 list(APPEND SOURCES ${IMGUI_FILES})
 list(APPEND SOURCES ${SPIRV_REFLECT_FILES})
 
@@ -79,8 +98,9 @@ target_include_directories(glitch
 	PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/engine
 	${GLM_INCLUDES}
-	PRIVATE
-	${VENDOR_DIR}/include # header only libraries
+	${VENDOR_DIR}/include/public # public header only libraries
+  PRIVATE
+	${VENDOR_DIR}/include/private # private header only libraries
 	${GL_OUTPUT_DIR}/include
 	${GLFW_INCLUDES}
 	${SPIRV_REFLECT_INCLUDES}

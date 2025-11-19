@@ -1,8 +1,10 @@
 #include "glitch/core/application.h"
 
+#include "glitch/asset/asset_system.h"
 #include "glitch/core/event/event_system.h"
 #include "glitch/core/timer.h"
 #include "glitch/renderer/material.h"
+#include "glitch/scripting/script_engine.h"
 
 namespace gl {
 
@@ -12,26 +14,35 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 	GL_ASSERT(!s_instance, "Only one instance can exists at a time!");
 	s_instance = this;
 
+	// Initialize core systems (window / events)
+
 	WindowCreateInfo window_info = {};
 	window_info.title = p_info.name;
-	window = create_ref<Window>(window_info);
+	window = std::make_shared<Window>(window_info);
 
 	event::subscribe<WindowCloseEvent>([this](const auto& _event) { running = false; });
 
-	// initialize render backend
-	renderer = create_ref<Renderer>(window);
+	// Initialize the renderer
+
+	renderer = std::make_shared<Renderer>(window);
+
+	// System initialization
+
+	ScriptEngine::init();
+	MaterialSystem::init();
 }
 
 Application::~Application() {
 	renderer->wait_for_device();
 
-	// Destroy material system
-	MaterialSystem::destroy();
+	// Destroy systems
+
+	AssetSystem::clear();
+	MaterialSystem::shutdown();
+	ScriptEngine::shutdown();
 }
 
 void Application::run() {
-	_on_start();
-
 	Timer timer;
 	while (running) {
 		const float dt = timer.get_delta_time();
@@ -42,13 +53,14 @@ void Application::run() {
 		_event_loop(dt);
 	}
 
-	_on_destroy();
+	// Clear and destroy the layers
+	layer_stack.clear();
 }
 
 void Application::quit() { running = false; }
 
 void Application::enqueue_main_thread(MainThreadFunc p_function) {
-	Application* app = get_instance();
+	Application* app = Application::get();
 	if (!app) {
 		return;
 	}
@@ -57,15 +69,13 @@ void Application::enqueue_main_thread(MainThreadFunc p_function) {
 	app->main_thread_queue.push_back(p_function);
 }
 
-Ref<Window> Application::get_window() { return window; }
+std::shared_ptr<Window> Application::get_window() { return window; }
 
-Ref<Renderer> Application::get_renderer() { return renderer; }
+std::shared_ptr<Renderer> Application::get_renderer() { return renderer; }
 
 ApplicationPerfStats& Application::get_perf_stats() { return perf_stats; }
 
-Ref<RenderBackend> Application::get_render_backend() { return Renderer::get_backend(); }
-
-Application* Application::get_instance() { return s_instance; }
+Application* Application::get() { return s_instance; }
 
 void Application::_event_loop(float p_dt) {
 	GL_PROFILE_SCOPE;
@@ -77,7 +87,9 @@ void Application::_event_loop(float p_dt) {
 	{
 		GL_PROFILE_SCOPE_N("Application::_on_update");
 
-		_on_update(p_dt);
+		for (const auto& layer : layer_stack) {
+			layer->update(p_dt);
+		}
 	}
 }
 
