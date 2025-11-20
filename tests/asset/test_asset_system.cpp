@@ -157,7 +157,7 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 
 	SUBCASE("Load Failure (Parsing Error)") {
 		MockLoadableAsset::s_force_load_failure = true;
-		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset.dat");
+		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset2.dat");
 		REQUIRE(handle_res.has_error());
 		CHECK(handle_res.get_error() == AssetLoadingError::PARSING_ERROR);
 		MockLoadableAsset::s_force_load_failure = false; // reset
