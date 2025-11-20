@@ -120,11 +120,8 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 	}
 
 	// Need a descriptor pool.
-	DescriptorSetPools::iterator pool_sets_it = {};
-	VkDescriptorPool vk_pool =
-			(VkDescriptorPool)_uniform_pool_find_or_create(pool_key, &pool_sets_it);
+	VkDescriptorPool vk_pool = (VkDescriptorPool)_uniform_pool_find_or_create(pool_key);
 	GL_ASSERT(vk_pool);
-	pool_sets_it->second[vk_pool]++;
 
 	VkDescriptorSetAllocateInfo descriptor_set_allocate_info = {};
 	descriptor_set_allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -138,7 +135,7 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 	VkResult res =
 			vkAllocateDescriptorSets(device, &descriptor_set_allocate_info, &vk_descriptor_set);
 	if (res) {
-		_uniform_pool_unreference(pool_sets_it, vk_pool);
+		_uniform_pool_unreference(pool_key, vk_pool);
 
 		GL_LOG_ERROR("[VULKAN] [VulkanRenderBackend::uniform_set_create] Cannot allocate "
 					 "descriptor sets, error {}.",
@@ -165,7 +162,7 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 	VulkanUniformSet* usi = VersatileResource::allocate<VulkanUniformSet>(resources_allocator);
 	usi->vk_descriptor_set = vk_descriptor_set;
 	usi->vk_descriptor_pool = vk_pool;
-	usi->pool_sets_it = pool_sets_it;
+	usi->pool_key = pool_key;
 
 	return UniformSet(usi);
 }
@@ -179,7 +176,7 @@ void VulkanRenderBackend::uniform_set_free(UniformSet p_uniform_set) {
 
 	vkFreeDescriptorSets(device, usi->vk_descriptor_pool, 1, &usi->vk_descriptor_set);
 
-	_uniform_pool_unreference(usi->pool_sets_it, usi->vk_descriptor_pool);
+	_uniform_pool_unreference(usi->pool_key, usi->vk_descriptor_pool);
 
 	VersatileResource::free(resources_allocator, usi);
 }
@@ -187,13 +184,14 @@ void VulkanRenderBackend::uniform_set_free(UniformSet p_uniform_set) {
 static const uint32_t MAX_DESCRIPTOR_SETS_PER_POOL = 10;
 
 VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
-		const DescriptorSetPoolKey& p_key, DescriptorSetPools::iterator* r_pool_sets_it) {
-	DescriptorSetPools::iterator pool_sets_it = descriptor_set_pools.find(p_key);
-
-	if (pool_sets_it != descriptor_set_pools.end()) {
-		for (auto& pair : pool_sets_it->second) {
+		const DescriptorSetPoolKey& p_key) {
+	// Try to find existing pool with space
+	const auto it = descriptor_set_pools.find(p_key);
+	if (it != descriptor_set_pools.end()) {
+		for (auto& pair : it->second) {
 			if (pair.second < MAX_DESCRIPTOR_SETS_PER_POOL) {
-				*r_pool_sets_it = pool_sets_it;
+				pair.second++; // Increment ref count
+				return pair.first;
 			}
 		}
 	}
@@ -261,7 +259,6 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 	VkDescriptorPoolCreateInfo descriptor_set_pool_create_info = {};
 	descriptor_set_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptor_set_pool_create_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-
 	descriptor_set_pool_create_info.maxSets = MAX_DESCRIPTOR_SETS_PER_POOL;
 	descriptor_set_pool_create_info.poolSizeCount = (uint32_t)vk_sizes.size();
 	descriptor_set_pool_create_info.pPoolSizes = vk_sizes.data();
@@ -270,29 +267,21 @@ VkDescriptorPool VulkanRenderBackend::_uniform_pool_find_or_create(
 	VK_CHECK(vkCreateDescriptorPool(device, &descriptor_set_pool_create_info, nullptr, &vk_pool));
 
 	// Bookkeep.
-	if (pool_sets_it == descriptor_set_pools.end()) {
-		pool_sets_it = descriptor_set_pools
-							   .emplace(p_key, std::unordered_map<VkDescriptorPool, uint32_t>())
-							   .first;
-	}
-
-	std::unordered_map<VkDescriptorPool, uint32_t>& pool_rcs = pool_sets_it->second;
-	pool_rcs.emplace(vk_pool, 0);
-	*r_pool_sets_it = pool_sets_it;
+	descriptor_set_pools[p_key][vk_pool] = 1;
 
 	return vk_pool;
 }
 
 void VulkanRenderBackend::_uniform_pool_unreference(
-		DescriptorSetPools::iterator p_pool_sets_it, VkDescriptorPool p_vk_descriptor_pool) {
-	std::unordered_map<VkDescriptorPool, uint32_t>::iterator pool_rcs_it =
-			p_pool_sets_it->second.find(p_vk_descriptor_pool);
+		const DescriptorSetPoolKey& p_key, VkDescriptorPool p_vk_descriptor_pool) {
+	const auto pool_sets_it = descriptor_set_pools.find(p_key);
+	const auto pool_rcs_it = pool_sets_it->second.find(p_vk_descriptor_pool);
 	pool_rcs_it->second--;
 	if (pool_rcs_it->second == 0) {
 		vkDestroyDescriptorPool(device, p_vk_descriptor_pool, nullptr);
-		p_pool_sets_it->second.erase(p_vk_descriptor_pool);
-		if (p_pool_sets_it->second.empty()) {
-			descriptor_set_pools.erase(p_pool_sets_it);
+		pool_sets_it->second.erase(p_vk_descriptor_pool);
+		if (pool_sets_it->second.empty()) {
+			descriptor_set_pools.erase(pool_sets_it);
 		}
 	}
 }

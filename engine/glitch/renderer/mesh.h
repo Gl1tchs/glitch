@@ -7,7 +7,6 @@
 
 #include "glitch/asset/asset.h"
 #include "glitch/renderer/frustum.h"
-#include "glitch/renderer/material.h"
 #include "glitch/renderer/types.h"
 
 namespace gl {
@@ -21,28 +20,24 @@ struct MeshVertex {
 	float uv_y;
 };
 
-struct GL_API MeshPrimitive {
+/**
+ * Asset type of Mesh defining a static mesh primitive.
+ *
+ */
+struct GL_API StaticMesh {
+	GL_REFLECT_ASSET("Mesh")
+
 	Buffer vertex_buffer;
 	Buffer index_buffer;
 	BufferDeviceAddress vertex_buffer_address;
 	uint32_t index_count;
 
-	std::shared_ptr<Material> material;
-
 	AABB aabb;
-
-	~MeshPrimitive();
-
-	static std::shared_ptr<MeshPrimitive> create(
-			const std::span<MeshVertex>& p_vertices, const std::span<uint32_t>& p_indices);
-};
-
-struct StaticMesh {
-	GL_REFLECT_ASSET("Mesh")
 
 	~StaticMesh();
 
-	std::vector<std::shared_ptr<MeshPrimitive>> primitives;
+	static std::shared_ptr<StaticMesh> create(
+			const std::span<MeshVertex>& p_vertices, const std::span<uint32_t>& p_indices);
 };
 
 } //namespace gl

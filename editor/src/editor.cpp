@@ -201,8 +201,9 @@ void EditorLayer::_render_menubar() {
 					const char* filter = "*.json";
 					if (const char* path = tinyfd_openFileDialog(
 								"Load Scene", "", 1, &filter, "JSON", 0)) {
-						if (Scene::deserialize(path, scene))
+						if (Scene::deserialize(path, scene)) {
 							scene_path = fs::path(path);
+						}
 					}
 				}
 			}
@@ -353,15 +354,52 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 		ImGui::DragFloat("Quadratic", &pl.quadratic, 0.01f);
 	});
 
-	// MESH RENDERER & MATERIAL (with Texture Logic)
-	_draw_component<MeshComponent>("Mesh Renderer", p_entity, [this](MeshComponent& mc) {
+	_draw_component<MeshComponent>("Mesh Component", p_entity, [this](MeshComponent& mc) {
 		ImGui::Text("Mesh ID: %u", mc.mesh.value);
-		auto mesh = AssetSystem::get<StaticMesh>(mc.mesh);
-		if (!mesh || mesh->primitives.empty())
+		const auto mesh = AssetSystem::get<StaticMesh>(mc.mesh);
+		if (!mesh) {
 			return;
+		}
 
-		ImGui::SeparatorText("Material");
-		auto mat = mesh->primitives.front()->material;
+		ImGui::Text("Index Count: %u", mesh->index_count);
+	});
+
+	_draw_component<
+			MaterialComponent>("Material Component", p_entity, [this](MaterialComponent& mc) {
+		const auto mat = AssetSystem::get<Material>(mc.handle);
+		if (!mat) {
+			return;
+		}
+
+		static std::string s_definition_path = mc.definition_path;
+		if (ImGui::InputText(
+					"Definition", &s_definition_path, ImGuiInputTextFlags_EnterReturnsTrue)) {
+			// Get the definition and recreate the material if definition already exists
+			if (const auto definition =
+							AssetSystem::get_by_path<MaterialDefinition>(s_definition_path)) {
+				if (const auto handle = AssetSystem::create<Material>(s_definition_path)) {
+					mc.handle = *handle;
+					mc.definition_path = s_definition_path;
+				} else {
+					GL_LOG_ERROR("[EDITOR] Unable to load MaterialDefinition from path '{}'",
+							s_definition_path);
+					s_definition_path = mc.definition_path;
+				}
+			} else {
+				// Create new definition otherwise
+				if (const auto definition =
+								AssetSystem::load<MaterialDefinition>(s_definition_path)) {
+					if (const auto handle = AssetSystem::create<Material>(s_definition_path)) {
+						mc.handle = *handle;
+						mc.definition_path = s_definition_path;
+					}
+				} else {
+					GL_LOG_ERROR("[EDITOR] Unable to load MaterialDefinition from path '{}'",
+							s_definition_path);
+					s_definition_path = mc.definition_path;
+				}
+			}
+		}
 
 		for (const ShaderUniformMetadata& uniform : mat->get_uniforms()) {
 			auto value = mat->get_param(uniform.name);
@@ -387,24 +425,19 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 								}
 							},
 							[&](glm::vec3& arg) {
-								if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
+								if (ImGui::ColorEdit3(uniform.name.c_str(), &arg.x)) {
 									mat->set_param(uniform.name, arg);
 								}
 							},
 							[&](glm::vec4& arg) {
-								if (ImGui::InputFloat3(uniform.name.c_str(), &arg.x)) {
+								if (ImGui::ColorEdit4(uniform.name.c_str(), &arg.x)) {
 									mat->set_param(uniform.name, arg);
 								}
 							},
-							[&](Color& arg) {
-								if (ImGui::ColorEdit4(uniform.name.c_str(), &arg.r)) {
-									mat->set_param(uniform.name, arg);
-								}
-							},
-							[&](AssetHandle& handle) {
+							[&](AssetHandle& arg) {
 								// Resolve the Asset
-								const auto tex = AssetSystem::get<Texture>(handle);
-								const auto metadata = AssetSystem::get_metadata<Texture>(handle);
+								const auto tex = AssetSystem::get<Texture>(arg);
+								const auto metadata = AssetSystem::get_metadata<Texture>(arg);
 
 								ImGui::PushID(uniform.name.c_str());
 
@@ -413,9 +446,46 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 								constexpr float thumb_size = 48.0f;
 								void* desc_to_render = GL_NULL_HANDLE;
 
+								constexpr const char* k_filter_patterns[5] = { "*.png", "*.jpg",
+									"*.jpeg", "*.tga", "*.bmp" };
+								auto open_texture_dialog = [&]() {
+									const char* path = tinyfd_openFileDialog("Load Texture", "", 5,
+											k_filter_patterns, "Image Files", 0);
+
+									if (path) {
+										const auto fs_path = fs::path(path);
+										const auto metadata_path = fs_path.parent_path() /
+												fs_path.filename().replace_extension(std::format(
+														"{}.gltex", fs_path.extension().string()));
+
+										// If metadata exists load it from there
+										if (fs::exists(metadata_path)) {
+											if (auto res = AssetSystem::load<Texture>(
+														metadata_path.string())) {
+												arg = *res;
+
+												mat->set_param(uniform.name, arg);
+											}
+										} else {
+											// Otherwise create an texture asset and load it.
+											const auto texture = Texture::load_from_file(path);
+											if (texture) {
+												// serialize metadata
+												texture->save(metadata_path, texture);
+
+												// TODO! use res:// notation in the future
+												arg = AssetSystem::register_asset(
+														texture, metadata_path.string());
+
+												mat->set_param(uniform.name, arg);
+											}
+										}
+									}
+								};
+
 								if (tex) {
 									// Try to find existing descriptor in cache
-									const auto it = thumb_texture_descriptors.find(handle.value);
+									const auto it = thumb_texture_descriptors.find(arg.value);
 
 									if (it != thumb_texture_descriptors.end()) {
 										desc_to_render = it->second;
@@ -424,7 +494,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 										desc_to_render =
 												Renderer::get_backend()->imgui_image_upload(
 														tex->get_image(), tex->get_sampler());
-										thumb_texture_descriptors[handle.value] = desc_to_render;
+										thumb_texture_descriptors[arg.value] = desc_to_render;
 									}
 
 									// Render Image (Thumbnail)
@@ -438,7 +508,8 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 												IM_COL32(255, 255, 0, 255));
 
 										if (metadata) {
-											ImGui::SetTooltip("%s\nDouble-click to enlarge",
+											ImGui::SetTooltip("%s\nDouble-click to "
+															  "enlarge\nRight-click to change",
 													metadata->path.c_str());
 										}
 									}
@@ -448,15 +519,33 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 										ImGui::OpenPopup("TEX_PREVIEW_POPUP");
 									}
 
+									//  Right Click Context Menu to Load New
+									if (ImGui::BeginPopupContextItem("TEX_CONTEXT_MENU")) {
+										if (ImGui::MenuItem("Load from file...")) {
+											open_texture_dialog();
+										}
+										if (ImGui::MenuItem("Clear Texture")) {
+											arg = AssetHandle(); // Reset to invalid/null handle
+											mat->set_param(uniform.name, arg);
+										}
+										ImGui::EndPopup();
+									}
+
 								} else {
 									// --- NO TEXTURE ---
 									ImGui::PushStyleColor(
 											ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
-									ImGui::Button("##EmptyTex", ImVec2(thumb_size, thumb_size));
+
+									// Click the empty button to open dialog immediately
+									if (ImGui::Button(
+												"##EmptyTex", ImVec2(thumb_size, thumb_size))) {
+										open_texture_dialog();
+									}
+
 									ImGui::PopStyleColor();
 
 									if (ImGui::IsItemHovered())
-										ImGui::SetTooltip("No Texture Assigned");
+										ImGui::SetTooltip("No Texture Assigned\nClick to Load...");
 								}
 
 								// Render uniform name
@@ -595,6 +684,10 @@ void EditorLayer::_render_hierarchy() {
 }
 
 void EditorLayer::_render_hierarchy_entry(Entity p_entity) {
+	if (!p_entity.is_valid()) {
+		return;
+	}
+
 	const std::string label = p_entity.get_name().empty() ? "Entity" : p_entity.get_name();
 	const bool is_selected =
 			selected_entity.is_valid() && p_entity.get_uid() == selected_entity.get_uid();
@@ -642,8 +735,42 @@ void EditorLayer::_render_hierarchy_context_menu(Entity p_entity) {
 }
 
 void EditorLayer::_render_asset_registry() {
-	for (const auto& [handle, metadata] : AssetSystem::get_asset_metadata()) {
-		ImGui::Text("%s [%s]", metadata.path.c_str(), metadata.type_name);
+	const float button_height = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+
+	ImGui::BeginChild("AssetRegistryChild", ImVec2(-1, -button_height));
+
+	if (ImGui::BeginTable("AssetRegistryTable", 3,
+				ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY |
+						ImGuiTableFlags_ScrollX)) {
+		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Path",
+				ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort |
+						ImGuiTableColumnFlags_NoResize);
+		ImGui::TableHeadersRow();
+
+		for (const auto& [handle, metadata] : AssetSystem::get_asset_metadata()) {
+			ImGui::TableNextRow();
+
+			ImGui::TableNextColumn();
+			ImGui::Text("%s", metadata.type_name);
+
+			ImGui::TableNextColumn();
+			ImGui::Text("%u", handle.value);
+
+			ImGui::TableNextColumn();
+			ImGui::Text("%s", metadata.path.c_str());
+		}
+
+		ImGui::EndTable();
+	}
+
+	ImGui::EndChild();
+
+	ImGui::Separator();
+
+	if (ImGui::Button("Collect Garbage", ImVec2(-1, 0))) {
+		AssetSystem::collect_garbage();
 	}
 }
 

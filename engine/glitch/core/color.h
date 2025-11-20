@@ -57,7 +57,7 @@ struct Color {
 	}
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a);
+GL_DEFINE_SERIALIZABLE(Color, r, g, b, a);
 
 constexpr Color COLOR_BLACK(0.0f, 0.0f, 0.0f, 1.0f);
 constexpr Color COLOR_WHITE(1.0f, 1.0f, 1.0f, 1.0f);

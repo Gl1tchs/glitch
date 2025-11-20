@@ -1,17 +1,35 @@
 #include "glitch/scene/passes/mesh_pass.h"
 
 #include "glitch/core/application.h"
+#include "glitch/renderer/material.h"
 #include "glitch/renderer/mesh.h"
+#include "glitch/renderer/texture.h"
 #include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
 
 namespace gl {
+
+MeshPass::~MeshPass() { Renderer::get_backend()->device_wait(); }
 
 void MeshPass::setup(Renderer& p_renderer) {
 	GL_PROFILE_SCOPE;
 
 	scene_data_sbo = StorageBuffer::create(sizeof(SceneBuffer), &scene_data);
 	push_constants.scene_buffer = scene_data_sbo->get_device_address();
+
+	default_texture = Texture::create(COLOR_WHITE);
+
+	const AssetHandle texture_handle = AssetSystem::register_asset(default_texture);
+
+	default_material = Material::create("mem://MaterialDefinition/pipelines/pbr_standard");
+	default_material->set_param("base_color", glm::vec4(1.0, 0.2, 1.0, 1.0));
+	default_material->set_param("roughness", 0.5f);
+	default_material->set_param("metallic", 0.5f);
+	default_material->set_param("u_diffuse_texture", texture_handle);
+	default_material->set_param("u_metallic_roughness_texture", texture_handle);
+	default_material->set_param("u_normal_texture", texture_handle);
+	default_material->set_param("u_ambient_occlusion_texture", texture_handle);
+	default_material->upload();
 }
 
 void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
@@ -48,45 +66,53 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 			continue;
 		}
 
-		std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
+		const std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
 		if (!smesh) {
 			continue;
 		}
 
-		for (std::shared_ptr<MeshPrimitive> primitive : smesh->primitives) {
-			// Bind the pipeline if not already bound
-			Pipeline pipeline = primitive->material->get_pipeline();
-			if (pipeline != bound_pipeline) {
-				backend->command_bind_graphics_pipeline(p_cmd, pipeline);
-				bound_pipeline = pipeline;
+		// If there is no mesh component attached use the default one
+		std::shared_ptr<Material> material = default_material;
+		if (entity.has_component<MaterialComponent>()) {
+			const auto handle = entity.get_component<MaterialComponent>()->handle;
+			const auto mat = AssetSystem::get<Material>(handle);
+			if (mat != nullptr) {
+				material = mat;
 			}
+		}
 
-			// set = 0 material data
-			primitive->material->bind_uniform_set(p_cmd);
+		// Bind the pipeline if not already bound
+		Pipeline pipeline = material->get_pipeline();
 
-			// Push constants
-			{
-				push_constants.vertex_buffer = primitive->vertex_buffer_address;
+		if (pipeline != bound_pipeline) {
+			backend->command_bind_graphics_pipeline(p_cmd, pipeline);
+			bound_pipeline = pipeline;
+		}
 
-				// Object transformation
-				push_constants.transform = entity.get_transform().to_mat4();
+		// set = 0 material data
+		material->bind_uniform_set(p_cmd);
 
-				backend->command_push_constants(p_cmd, primitive->material->get_shader(), 0,
-						sizeof(PushConstants), &push_constants);
-			}
+		// Push constants
+		{
+			push_constants.vertex_buffer = smesh->vertex_buffer_address;
 
-			// Render
-			backend->command_bind_index_buffer(
-					p_cmd, primitive->index_buffer, 0, IndexType::UINT32);
+			// Object transformation
+			push_constants.transform = entity.get_transform().to_mat4();
 
-			backend->command_draw_indexed(p_cmd, primitive->index_count);
+			backend->command_push_constants(
+					p_cmd, material->get_shader(), 0, sizeof(PushConstants), &push_constants);
+		}
 
-			{
-				ApplicationPerfStats& stats = Application::get()->get_perf_stats();
+		// Render
+		backend->command_bind_index_buffer(p_cmd, smesh->index_buffer, 0, IndexType::UINT32);
 
-				stats.renderer_stats.draw_calls++;
-				stats.renderer_stats.index_count += primitive->index_count;
-			}
+		backend->command_draw_indexed(p_cmd, smesh->index_count);
+
+		{
+			ApplicationPerfStats& stats = Application::get()->get_perf_stats();
+
+			stats.renderer_stats.draw_calls++;
+			stats.renderer_stats.index_count += smesh->index_count;
 		}
 	}
 
@@ -162,22 +188,23 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 			continue;
 		}
 
-		for (const std::shared_ptr<MeshPrimitive>& prim : smesh->primitives) {
-			// If objects is not inside of the view frustum, discard it.
-			const AABB aabb = prim->aabb.transform(entity.get_transform().to_mat4());
-			if (!aabb.is_inside_frustum(view_frustum)) {
-				mc->visible = false;
-				continue;
-			}
-
-			// TODO: if material component then set
-
-			if (prim->material->is_dirty()) {
-				prim->material->upload();
-			}
-
-			mc->visible = true;
+		// If objects is not inside of the view frustum, discard it.
+		const AABB aabb = smesh->aabb.transform(entity.get_transform().to_mat4());
+		if (!aabb.is_inside_frustum(view_frustum)) {
+			mc->visible = false;
+			continue;
 		}
+
+		// If there is a material component attached and is_dirty, reuppload it to the GPU
+		if (entity.has_component<MaterialComponent>()) {
+			const auto handle = entity.get_component<MaterialComponent>()->handle;
+			const auto material = AssetSystem::get<Material>(handle);
+			if (material != nullptr && material->is_dirty()) {
+				material->upload();
+			}
+		}
+
+		mc->visible = true;
 	}
 
 	return ScenePreprocessError::NONE;

@@ -2,13 +2,13 @@
 
 #include "glitch/asset/asset_system.h"
 #include "glitch/renderer/light_sources.h"
+#include "glitch/renderer/material.h"
+#include "glitch/renderer/texture.h"
 #include "glitch/scene/components.h"
 #include "glitch/scene/entity.h"
 #include "glitch/scene/gltf_loader.h"
 #include "glitch/scripting/script.h"
 #include "glitch/scripting/script_system.h"
-
-#include <json/json.hpp>
 
 namespace gl {
 
@@ -158,24 +158,64 @@ static json _serialize_entity(const Entity& p_entity) {
 	j["parent_id"] = p_entity.get_relation().parent_id;
 	j["transform"] = p_entity.get_transform();
 
-	if (p_entity.has_component<GLTFSourceComponent>()) {
-		j["gltf_source_component"] = *p_entity.get_component<GLTFSourceComponent>();
+	if (const GLTFSourceComponent* gltf_sc = p_entity.get_component<GLTFSourceComponent>()) {
+		j["gltf_source_component"] = *gltf_sc;
 	}
-	if (p_entity.has_component<GLTFInstanceComponent>()) {
-		j["gltf_instance_component"] = *p_entity.get_component<GLTFInstanceComponent>();
+	if (const GLTFInstanceComponent* gltf_ic = p_entity.get_component<GLTFInstanceComponent>()) {
+		j["gltf_instance_component"] = *gltf_ic;
 	}
 
-	if (p_entity.has_component<CameraComponent>()) {
-		j["camera_component"] = *p_entity.get_component<CameraComponent>();
+	if (const MaterialComponent* mc = p_entity.get_component<MaterialComponent>()) {
+		const auto material = AssetSystem::get<Material>(mc->handle);
+		if (material) {
+			j["material_component"]["definition_path"] = mc->definition_path;
+			// Serialize uniforms
+			j["material_component"]["uniforms"] = json::array();
+			for (const auto& uniform : material->get_uniforms()) {
+				const auto value = material->get_param(uniform.name);
+				if (!value) {
+					GL_LOG_WARNING(
+							"[_serialize_entity] Unable to serialize MaterialComponent for entity "
+							"'{}. Uniform field '{}' does not have a value.",
+							p_entity.get_name(), uniform.name);
+					continue;
+				}
+
+				// Skip if texture is a memory asset
+				if (uniform.type == ShaderUniformVariableType::TEXTURE) {
+					const auto& handle = std::get<AssetHandle>(*value);
+					if (const auto meta = AssetSystem::get_metadata<Texture>(handle);
+							meta->is_memory_asset()) {
+						continue;
+					}
+				}
+
+				json uniform_json;
+				uniform_json["name"] = uniform.name;
+				uniform_json["binding"] = uniform.binding;
+				uniform_json["type"] = uniform.type;
+				std::visit([&](auto&& arg) { uniform_json["value"] = arg; }, *value);
+
+				j["material_component"]["uniforms"].push_back(uniform_json);
+			}
+		} else {
+			GL_LOG_WARNING("[_serialize_entity] Unable to serialize MaterialComponent for entity "
+						   "'{}. Material metadata does not exist.",
+					p_entity.get_name());
+		}
 	}
-	if (p_entity.has_component<DirectionalLight>()) {
-		j["directional_light"] = *p_entity.get_component<DirectionalLight>();
+
+	if (const CameraComponent* cc = p_entity.get_component<CameraComponent>()) {
+		j["camera_component"] = *cc;
 	}
-	if (p_entity.has_component<PointLight>()) {
-		j["point_light"] = *p_entity.get_component<PointLight>();
+	if (const DirectionalLight* dl = p_entity.get_component<DirectionalLight>()) {
+		j["directional_light"] = *dl;
 	}
-	if (p_entity.has_component<Script>()) {
-		j["script"] = *p_entity.get_component<Script>();
+	if (const PointLight* pl = p_entity.get_component<PointLight>()) {
+		j["point_light"] = *pl;
+	}
+	if (const Script* sc = p_entity.get_component<Script>()) {
+		j["script"] = *sc;
 	}
 
 	return j;
@@ -231,9 +271,6 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 		return INVALID_ENTITY;
 	}
 
-	// Remove unusued assets
-	AssetSystem::collect_garbage();
-
 	Entity entity = p_scene->create(id, tag);
 
 	if (p_json.contains("parent_id")) {
@@ -253,6 +290,60 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 	if (p_json.contains("gltf_instance_component")) {
 		GLTFInstanceComponent* gltf_ic = entity.add_component<GLTFInstanceComponent>();
 		p_json.at("gltf_instance_component").get_to(*gltf_ic);
+	}
+
+	if (p_json.contains("material_component")) {
+		MaterialComponent* mc = entity.add_component<MaterialComponent>();
+		mc->handle = INVALID_UID;
+
+		p_json["material_component"]["definition_path"].get_to(mc->definition_path);
+
+		// Deserialize uniforms if any
+		if (p_json["material_component"].contains("uniforms") &&
+				p_json["material_component"]["uniforms"].is_array()) {
+			for (const auto& uniform : p_json["material_component"]["uniforms"]) {
+				if (!uniform.contains("name") || !uniform.contains("type") ||
+						!uniform.contains("value")) {
+					GL_LOG_WARNING("[_deserialize_entity] Unable to deserialize material for "
+								   "entity '{}' uniform {}.",
+							entity.get_name(),
+							uniform.contains("name") ? uniform["name"].get<std::string>() : "");
+					continue;
+				}
+
+				const std::string name = uniform["name"].get<std::string>();
+
+				try {
+					ShaderUniformVariable value;
+					switch (uniform["type"].get<ShaderUniformVariableType>()) {
+						case ShaderUniformVariableType::INT:
+							value = uniform["value"].get<int>();
+							break;
+						case ShaderUniformVariableType::FLOAT:
+							value = uniform["value"].get<float>();
+							break;
+						case ShaderUniformVariableType::VEC2:
+							value = uniform["value"].get<glm::vec2>();
+							break;
+						case ShaderUniformVariableType::VEC3:
+							value = uniform["value"].get<glm::vec3>();
+							break;
+						case ShaderUniformVariableType::VEC4:
+							value = uniform["value"].get<glm::vec4>();
+							break;
+						case ShaderUniformVariableType::TEXTURE:
+							value = uniform["value"].get<AssetHandle>();
+							break;
+					}
+
+					mc->uniforms[name] = value;
+				} catch (const json::exception&) {
+					GL_LOG_ERROR("[_deserialize_entity] Unable to parse uniform value '{}' for "
+								 "entity '{}'",
+							name, entity.get_name());
+				}
+			}
+		}
 	}
 
 	if (p_json.contains("camera_component")) {
@@ -285,6 +376,19 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 
 	const json& j = res.get_value();
 
+	if (!j.contains("entities") || !j["entities"].is_array()) {
+		GL_LOG_ERROR("[Scene::deserialize] Unable to deserialize scene from path '{}', invalid "
+					 "entity list.",
+				p_path);
+		return false;
+	}
+
+	if (j.contains("assets") && j["assets"].is_object()) {
+		AssetSystem::deserialize(j["assets"]);
+	} else {
+		GL_LOG_WARNING("[Scene::deserialize] Unable to deserialize asset registry.");
+	}
+
 	std::shared_ptr<Scene> new_scene = std::make_shared<Scene>();
 	for (const json& j_entity : j["entities"]) {
 		Entity _ = _deserialize_entity(j_entity, new_scene);
@@ -305,44 +409,115 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 	}
 
 	// Load GLTF Models and merge them
-	for (const Entity& gltf_source : new_scene->view<GLTFSourceComponent>()) {
-		const GLTFSourceComponent* gltf_sc = gltf_source.get_component<GLTFSourceComponent>();
+	for (const Entity& source : new_scene->view<GLTFSourceComponent>()) {
+		const GLTFSourceComponent* sc = source.get_component<GLTFSourceComponent>();
 
 		// Load the gltf model
 		// TODO: make this multithreaded
 		std::shared_ptr<Scene> gltf_scene = std::make_shared<Scene>();
-		GLTFLoadError result = GLTFLoader::load(gltf_scene, gltf_sc->asset_path);
-		if (result != GLTFLoadError::NONE) {
-			GL_LOG_ERROR("[Scene::deserialize] Unable to load GLTF model from path ''",
-					gltf_sc->asset_path);
+		if (GLTFLoader::load(gltf_scene, sc->asset_path) != GLTFLoadError::NONE) {
+			GL_LOG_ERROR(
+					"[Scene::deserialize] Unable to load GLTF model from path ''", sc->asset_path);
 			continue;
 		}
 
 		// Iterate through gltf instances
-		for (Entity gltf_instance : new_scene->view<GLTFInstanceComponent>()) {
-			const GLTFInstanceComponent* gltf_ic =
-					gltf_instance.get_component<GLTFInstanceComponent>();
+		for (Entity instance : new_scene->view<GLTFInstanceComponent>()) {
+			const GLTFInstanceComponent* ic = instance.get_component<GLTFInstanceComponent>();
 
 			// Skip if instance is not owned by this source
-			if (gltf_ic->source_model_id != gltf_sc->model_id) {
+			if (ic->source_model_id != sc->model_id) {
 				continue;
 			}
 
 			// Iterate through loaded instances
-			for (const Entity& gltf_instance_loaded : gltf_scene->view<GLTFInstanceComponent>()) {
+			for (const Entity& gltf_entity : gltf_scene->view<GLTFInstanceComponent>()) {
 				const GLTFInstanceComponent* gltf_ic_loaded =
-						gltf_instance_loaded.get_component<GLTFInstanceComponent>();
+						gltf_entity.get_component<GLTFInstanceComponent>();
 
 				// Skip the instance if node ids' do not match
-				if (gltf_ic_loaded->gltf_node_id != gltf_ic->gltf_node_id) {
+				if (gltf_ic_loaded->gltf_node_id != ic->gltf_node_id) {
 					continue;
 				}
 
 				// Copy the mesh component
-				if (const MeshComponent* mc_loaded =
-								gltf_instance_loaded.get_component<MeshComponent>()) {
-					MeshComponent* mc = gltf_instance.add_component<MeshComponent>();
-					mc->mesh = mc_loaded->mesh;
+				if (MeshComponent const* gltf_mesh = gltf_entity.get_component<MeshComponent>()) {
+					// Ensure we get the component if it exists (from deserialize) or add it
+					MeshComponent* mc = instance.has_component<MeshComponent>()
+							? instance.get_component<MeshComponent>()
+							: instance.add_component<MeshComponent>();
+					mc->mesh = gltf_mesh->mesh;
+				}
+
+				if (MaterialComponent const* gltf_mc =
+								gltf_entity.get_component<MaterialComponent>()) {
+					if (MaterialComponent* instance_mc =
+									instance.get_component<MaterialComponent>()) {
+						// If definitions are same do not create new component but update
+						// GLTF one.
+						if (instance_mc->definition_path == gltf_mc->definition_path) {
+							auto mat = AssetSystem::get<Material>(gltf_mc->handle);
+							if (mat) {
+							} else {
+								GL_LOG_ERROR("[Scene::deserialize] Unable to retrieve material "
+											 "from GLTF model for entity '{}'.",
+										instance.get_name());
+							}
+
+							instance_mc->handle = gltf_mc->handle;
+
+							// Update uniforms
+							for (const auto& [name, uniform] : instance_mc->uniforms) {
+								// This is now also this Entity's material
+								if (!mat->set_param(name, uniform)) {
+									GL_LOG_ERROR("[Scene::deserialize] Unable to set uniform "
+												 "parameter '{}' "
+												 "for definition '{}' for entity '{}'.",
+											name, instance_mc->definition_path,
+											instance.get_name());
+								}
+							}
+						} else {
+							// If definitions differ, initialize our custom material.
+							if (auto handle = AssetSystem::create<Material>(
+										instance_mc->definition_path)) {
+								instance_mc->handle = *handle;
+
+								const auto mat = AssetSystem::get<Material>(instance_mc->handle);
+
+								// Update uniforms
+								for (const auto& [name, uniform] : instance_mc->uniforms) {
+									if (!mat->set_param(name, uniform)) {
+										GL_LOG_ERROR("[Scene::deserialize] Unable to set uniform "
+													 "parameter '{}' "
+													 "for definition '{}' for entity '{}'.",
+												name, instance_mc->definition_path,
+												instance.get_name());
+									}
+								}
+							} else {
+								GL_LOG_ERROR("[Scene::deserialize] Unable to initialize material "
+											 "from definition '{}' for entity '{}'.",
+										instance_mc->definition_path, instance.get_name());
+							}
+						}
+					} else {
+						// CASE: No serialized material. Use GLTF defaults exactly.
+						MaterialComponent* mc = instance.add_component<MaterialComponent>();
+						*mc = *gltf_mc;
+
+						// Copy parameter state from the source GLTF entity to the new instance
+						const auto entity_mat = AssetSystem::get<Material>(mc->handle);
+						const auto gltf_mat = AssetSystem::get<Material>(gltf_mc->handle);
+
+						if (entity_mat && gltf_mat) {
+							for (const auto& uniform : gltf_mat->get_uniforms()) {
+								if (const auto value = gltf_mat->get_param(uniform.name)) {
+									entity_mat->set_param(uniform.name, *value);
+								}
+							}
+						}
+					}
 				}
 			}
 		}

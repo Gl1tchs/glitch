@@ -115,4 +115,9 @@ size_t get_data_format_size(DataFormat p_format) {
 	}
 }
 
+bool is_depth_format(DataFormat p_format) {
+	return (p_format == DataFormat::D16_UNORM || p_format == DataFormat::D16_UNORM_S8_UINT ||
+			p_format == DataFormat::D16_UNORM || p_format == DataFormat::D32_SFLOAT);
+}
+
 } //namespace gl

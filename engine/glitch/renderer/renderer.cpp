@@ -2,7 +2,6 @@
 
 #include "glitch/platform/vulkan/vk_backend.h"
 #include "glitch/renderer/graphics_pass.h"
-#include "glitch/renderer/mesh.h"
 #include "glitch/renderer/types.h"
 
 #include <imgui.h>

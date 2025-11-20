@@ -3,7 +3,6 @@
 #include "glitch/asset/asset_system.h"
 #include "glitch/core/event/event_system.h"
 #include "glitch/core/timer.h"
-#include "glitch/renderer/material.h"
 #include "glitch/scripting/script_engine.h"
 
 namespace gl {
@@ -29,16 +28,13 @@ Application::Application(const ApplicationCreateInfo& p_info) {
 	// System initialization
 
 	ScriptEngine::init();
-	MaterialSystem::init();
 }
 
 Application::~Application() {
 	renderer->wait_for_device();
 
 	// Destroy systems
-
 	AssetSystem::clear();
-	MaterialSystem::shutdown();
 	ScriptEngine::shutdown();
 }
 

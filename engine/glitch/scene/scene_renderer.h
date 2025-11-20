@@ -11,6 +11,12 @@
 
 namespace gl {
 
+constexpr const char* DEFINITION_PATH_UNLIT_STANDARD =
+		"mem://MaterialDefinition/pipelines/unlit_standard";
+
+constexpr const char* DEFINITION_PATH_PBR_STANDARD =
+		"mem://MaterialDefinition/pipelines/pbr_standard";
+
 struct DrawingContext {
 	std::shared_ptr<Scene> scene;
 	RendererSettings settings = {};

@@ -8,7 +8,9 @@
 #include "glitch/renderer/camera.h"
 #include "glitch/renderer/graphics_pass.h"
 #include "glitch/renderer/light_sources.h"
+#include "glitch/renderer/material.h"
 #include "glitch/renderer/storage_buffer.h"
+#include "glitch/renderer/texture.h"
 #include "glitch/scene/scene.h"
 
 namespace gl {
@@ -36,7 +38,7 @@ public:
 		BufferDeviceAddress scene_buffer;
 	};
 
-	virtual ~MeshPass() = default;
+	virtual ~MeshPass();
 
 	void setup(Renderer& p_renderer) override;
 	void execute(CommandBuffer p_cmd, Renderer& p_renderer) override;
@@ -60,6 +62,9 @@ private:
 	SceneBuffer scene_data;
 	size_t scene_data_hash;
 	std::shared_ptr<StorageBuffer> scene_data_sbo;
+
+	std::shared_ptr<Texture> default_texture = nullptr;
+	std::shared_ptr<Material> default_material = nullptr;
 };
 
 size_t hash64(const MeshPass::SceneBuffer& p_buf);

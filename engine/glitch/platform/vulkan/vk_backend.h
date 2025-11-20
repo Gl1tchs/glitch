@@ -174,7 +174,7 @@ public:
 	struct VulkanUniformSet {
 		VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
 		VkDescriptorPool vk_descriptor_pool = VK_NULL_HANDLE;
-		DescriptorSetPools::iterator pool_sets_it = {};
+		DescriptorSetPoolKey pool_key;
 	};
 
 	UniformSet uniform_set_create(
@@ -351,11 +351,10 @@ private:
 
 	VmaPool _find_or_create_small_allocs_pool(uint32_t p_mem_type_index);
 
-	VkDescriptorPool _uniform_pool_find_or_create(
-			const DescriptorSetPoolKey& p_key, DescriptorSetPools::iterator* r_pool_sets_it);
+	VkDescriptorPool _uniform_pool_find_or_create(const DescriptorSetPoolKey& p_key);
 
 	void _uniform_pool_unreference(
-			DescriptorSetPools::iterator p_pool_sets_it, VkDescriptorPool p_vk_descriptor_pool);
+			const DescriptorSetPoolKey& p_key, VkDescriptorPool p_vk_descriptor_pool);
 
 private:
 	static VulkanRenderBackend* s_instance;

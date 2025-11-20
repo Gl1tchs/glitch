@@ -1,0 +1,29 @@
+{
+    "shader": {
+        "vs": "shader.vert.spv",
+        "fs": "shader.frag.spv"
+    },
+    "color_attachments": [
+        "geo_albedo"
+    ],
+    "depth_attachment": "geo_depth",
+    "pipeline": {
+        "depth_test": true,
+        "compare_op": "less",
+        "depth_write": true,
+        "blend": true,
+        "primitive": "triangle_list"
+    },
+    "uniforms": [
+        {
+            "name": "base_color",
+            "binding": 0,
+            "type": "vec4"
+        },
+        {
+            "name": "u_diffuse_texture",
+            "binding": 1,
+            "type": "texture"
+        }
+    ]
+}

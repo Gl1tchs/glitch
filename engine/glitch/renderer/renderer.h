@@ -132,10 +132,6 @@ public:
 
 	RenderStats& get_stats();
 
-	static DataFormat get_color_attachment_format();
-
-	static DataFormat get_depth_attachment_format();
-
 	static std::shared_ptr<RenderBackend> get_backend();
 
 private:

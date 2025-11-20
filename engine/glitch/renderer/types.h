@@ -136,6 +136,8 @@ enum class DataFormat : int {
 
 GL_API size_t get_data_format_size(DataFormat p_format);
 
+GL_API bool is_depth_format(DataFormat p_format);
+
 enum class CompareOperator : int {
 	NEVER = 0,
 	LESS = 1,
@@ -146,6 +148,18 @@ enum class CompareOperator : int {
 	GREATER_OR_EQUAL = 6,
 	ALWAYS = 7,
 };
+
+GL_SERIALIZE_ENUM(CompareOperator,
+		{
+				{ CompareOperator::NEVER, "never" },
+				{ CompareOperator::LESS, "less" },
+				{ CompareOperator::EQUAL, "equal" },
+				{ CompareOperator::LESS_OR_EQUAL, "less_or_equal" },
+				{ CompareOperator::GREATER, "greater" },
+				{ CompareOperator::NOT_EQUAL, "not_equal" },
+				{ CompareOperator::GREATER_OR_EQUAL, "greater_or_equal" },
+				{ CompareOperator::ALWAYS, "always" },
+		})
 
 enum class MemoryAllocationType {
 	CPU,
@@ -378,6 +392,21 @@ enum class RenderPrimitive : int {
 	TRIANGLE_STRIP_WITH_ADJACENCY = 9,
 	PATCH_LIST = 10,
 };
+
+GL_SERIALIZE_ENUM(RenderPrimitive,
+		{
+				{ RenderPrimitive::POINT_LIST, "point_list" },
+				{ RenderPrimitive::LINE_LIST, "line_list" },
+				{ RenderPrimitive::LINE_STRIP, "line_strip" },
+				{ RenderPrimitive::TRIANGLE_LIST, "triangle_list" },
+				{ RenderPrimitive::TRIANGLE_STRIP, "triangle_strip" },
+				{ RenderPrimitive::TRIANGLE_FAN, "triangle_fan" },
+				{ RenderPrimitive::LINE_LIST_WITH_ADJACENCY, "line_list_with_adjacency" },
+				{ RenderPrimitive::LINE_STRIP_WITH_ADJACENCY, "line_strip_with_adjacency" },
+				{ RenderPrimitive::TRIANGLE_LIST_WITH_ADJACENCY, "triangle_list_with_adjacency" },
+				{ RenderPrimitive::TRIANGLE_STRIP_WITH_ADJACENCY, "triangle_strip_with_adjacency" },
+				{ RenderPrimitive::PATCH_LIST, "patch_list" },
+		})
 
 enum class PolygonCullMode : int {
 	DISABLED,

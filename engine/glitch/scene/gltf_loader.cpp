@@ -5,6 +5,7 @@
 #include "glitch/renderer/mesh.h"
 #include "glitch/renderer/texture.h"
 #include "glitch/scene/components.h"
+#include "glitch/scene/scene_renderer.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -27,17 +28,17 @@ struct GLTFLoadContext {
 	fs::path base_path;
 	UID model_id;
 	std::unordered_map<size_t, AssetHandle> loaded_textures;
+	std::unordered_map<int, AssetHandle> loaded_materials;
 };
 
 static size_t _hash_gltf_model(const tinygltf::Model& p_model);
 
 static void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent);
 
-static std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_primitive,
+static std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primitive,
 		const tinygltf::Mesh* p_mesh, GLTFLoadContext& p_ctx);
 
-static std::shared_ptr<StaticMesh> _load_gltf_mesh(
-		const tinygltf::Node* p_gltf_node, GLTFLoadContext& p_ctx);
+static AssetHandle _load_material(int material_index, GLTFLoadContext& p_ctx);
 
 static AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx);
 
@@ -106,11 +107,11 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 	// Lazy initialization of defaults
 	if (!s_default_texture || !AssetSystem::get<Texture>(s_default_texture)) {
 		auto tex = Texture::create(COLOR_WHITE, { 1, 1 });
-		s_default_texture = AssetSystem::register_asset(tex, "mem://texture/default");
+		s_default_texture = AssetSystem::register_asset(tex);
 	}
 	if (!s_default_material || !AssetSystem::get<Material>(s_default_material)) {
-		auto mat = Material::create("pbr_standard");
-		mat->set_param("base_color", COLOR_WHITE);
+		auto mat = Material::create(DEFINITION_PATH_PBR_STANDARD);
+		mat->set_param("base_color", VEC3_ONE);
 		mat->set_param("metallic", 0.5f);
 		mat->set_param("roughness", 0.5f);
 		mat->set_param("u_diffuse_texture", s_default_texture);
@@ -119,7 +120,7 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 		mat->set_param("u_ambient_occlusion_texture", s_default_texture);
 		mat->upload();
 
-		s_default_material = AssetSystem::register_asset(mat, "mem://material/default");
+		s_default_material = AssetSystem::register_asset(mat);
 	}
 
 	for (int node_index : model.scenes[model.defaultScene].nodes) {
@@ -131,20 +132,8 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 
 void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
 	const tinygltf::Node& gltf_node = p_ctx.model->nodes[p_node_idx];
-	if (gltf_node.mesh < 0) {
-		return;
-	}
 
 	Entity entity = p_ctx.scene->create(gltf_node.name, p_parent);
-	entity.add_component<GLTFInstanceComponent>(p_ctx.model_id, gltf_node.mesh);
-	{
-		std::shared_ptr<StaticMesh> static_mesh = _load_gltf_mesh(&gltf_node, p_ctx);
-
-		MeshComponent* mc = entity.add_component<MeshComponent>();
-		mc->mesh = AssetSystem::register_asset(
-				static_mesh, std::format("mem://gltf/mesh/?path=[{}]", p_ctx.base_path.string()));
-		mc->visible = true;
-	}
 
 	if (gltf_node.matrix.size() == 16) {
 		glm::mat4 mat = glm::make_mat4(gltf_node.matrix.data());
@@ -175,21 +164,49 @@ void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
 		}
 	}
 
+	// Load mesh
+	if (gltf_node.mesh >= 0) {
+		entity.add_component<GLTFInstanceComponent>(p_ctx.model_id, gltf_node.mesh);
+
+		const tinygltf::Mesh& gltf_mesh = p_ctx.model->meshes[gltf_node.mesh];
+
+		// Lambda to attach components to an entity
+		const auto attach_mesh_components =
+				[&](Entity target_entity, const tinygltf::Primitive& primitive, int prim_index) {
+					// Load Geometry
+					const std::shared_ptr<StaticMesh> static_mesh =
+							_load_static_mesh(&primitive, &gltf_mesh, p_ctx);
+
+					MeshComponent* mc = target_entity.add_component<MeshComponent>();
+					// Register unique mesh asset
+					mc->mesh = AssetSystem::register_asset(static_mesh,
+							std::format("mem://Mesh/GLTF/?node={}&&prim={}&&model={}",
+									p_ctx.model_hash, gltf_node.name, prim_index));
+					mc->visible = true;
+
+					// Load/Attach Material
+					MaterialComponent* mat_comp = target_entity.add_component<MaterialComponent>();
+					mat_comp->definition_path = DEFINITION_PATH_PBR_STANDARD;
+					mat_comp->handle = _load_material(primitive.material, p_ctx);
+				};
+
+		// If single primitive, attach to the main Node entity
+		if (gltf_mesh.primitives.size() == 1) {
+			attach_mesh_components(entity, gltf_mesh.primitives[0], 0);
+		}
+		// If multiple primitives, create sub-entities
+		else {
+			for (size_t i = 0; i < gltf_mesh.primitives.size(); ++i) {
+				Entity prim_entity =
+						p_ctx.scene->create(std::format("{}_prim_{}", gltf_node.name, i), entity);
+				attach_mesh_components(prim_entity, gltf_mesh.primitives[i], i);
+			}
+		}
+	}
+
 	for (int child_node_idx : gltf_node.children) {
 		_parse_gltf_node(p_ctx, child_node_idx, entity);
 	}
-}
-
-std::shared_ptr<StaticMesh> _load_gltf_mesh(
-		const tinygltf::Node* p_gltf_node, GLTFLoadContext& p_ctx) {
-	std::shared_ptr<StaticMesh> mesh = std::make_shared<StaticMesh>();
-
-	const tinygltf::Mesh& gltf_mesh = p_ctx.model->meshes[p_gltf_node->mesh];
-	for (const auto& primitive : gltf_mesh.primitives) {
-		mesh->primitives.push_back(_load_primitive(&primitive, &gltf_mesh, p_ctx));
-	}
-
-	return mesh;
 }
 
 static ImageFiltering _gltf_to_image_filtering(int p_gltf_filter) {
@@ -234,7 +251,7 @@ static int _get_extension_texture_index(
 	return -1;
 }
 
-std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_primitive,
+std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primitive,
 		const tinygltf::Mesh* p_mesh, GLTFLoadContext& p_ctx) {
 	uint16_t parsing_flags = 0;
 
@@ -328,111 +345,118 @@ std::shared_ptr<MeshPrimitive> _load_primitive(const tinygltf::Primitive* p_prim
 			GL_ASSERT(false, "Unsupported index type");
 	}
 
-	std::shared_ptr<Material> material = nullptr;
-	if (p_primitive->material >= 0 && p_primitive->material < p_ctx.model->materials.size()) {
-		const tinygltf::Material& gltf_material = p_ctx.model->materials[p_primitive->material];
+	return StaticMesh::create(prim_vertices, prim_indices);
+}
+
+AssetHandle _load_material(int p_material_index, GLTFLoadContext& p_ctx) {
+	if (p_material_index < 0 || p_material_index >= p_ctx.model->materials.size()) {
+		return s_default_material;
+	}
+
+	// Check Cache
+	if (auto it = p_ctx.loaded_materials.find(p_material_index);
+			it != p_ctx.loaded_materials.end()) {
+		return it->second;
+	}
+
+	const tinygltf::Material& gltf_material = p_ctx.model->materials[p_material_index];
+
+	std::optional<AssetHandle> handle_opt =
+			AssetSystem::create<Material>(DEFINITION_PATH_PBR_STANDARD);
+
+	if (!handle_opt) {
+		GL_LOG_ERROR("[GLTFLoader::_load_material] Failed to create material asset for GLTF "
+					 "material: {}",
+				gltf_material.name);
+		return s_default_material;
+	}
+
+	const AssetHandle handle = *handle_opt;
+	std::shared_ptr<Material> material = AssetSystem::get<Material>(*handle_opt);
+
+	// Set Parameters
+	const auto& base_color = gltf_material.pbrMetallicRoughness.baseColorFactor;
+
+	if (const auto it = gltf_material.extensions.find("KHR_materials_pbrSpecularGlossiness");
+			it != gltf_material.extensions.end()) {
+		const tinygltf::Value& specGloss = it->second;
+
+		const auto& diffuse_factor = specGloss.Has("diffuseFactor")
+				? specGloss.Get("diffuseFactor").Get<tinygltf::Value::Array>()
+				: tinygltf::Value::Array{ tinygltf::Value(1.0), tinygltf::Value(1.0),
+					  tinygltf::Value(1.0), tinygltf::Value(1.0) };
+
+		material->set_param("base_color",
+				glm::vec4(float(diffuse_factor[0].GetNumberAsDouble()),
+						float(diffuse_factor[1].GetNumberAsDouble()),
+						float(diffuse_factor[2].GetNumberAsDouble()),
+						float(diffuse_factor[3].GetNumberAsDouble())));
+
+		const int diffuse_texture_index = _get_extension_texture_index(specGloss, "diffuseTexture");
+		AssetHandle diffuse_texture = (diffuse_texture_index >= 0)
+				? _load_texture(diffuse_texture_index, p_ctx)
+				: s_default_texture;
+		material->set_param("u_diffuse_texture", diffuse_texture);
+
+		const int specular_texture_index =
+				_get_extension_texture_index(specGloss, "specularGlossinessTexture");
+		AssetHandle specular_texture = (specular_texture_index >= 0)
+				? _load_texture(specular_texture_index, p_ctx)
+				: s_default_texture;
+		material->set_param("u_metallic_roughness_texture", specular_texture);
+
+		material->set_param("metallic", 0.0f);
+		material->set_param("roughness", 1.0f);
+	} else {
 		const auto& base_color = gltf_material.pbrMetallicRoughness.baseColorFactor;
+		material->set_param("base_color",
+				glm::vec4(base_color[0], base_color[1], base_color[2], base_color[3]));
 
-		material = MaterialSystem::create_instance("pbr_standard");
-
-		material->set_param(
-				"base_color", Color(base_color[0], base_color[1], base_color[2], base_color[3]));
 		material->set_param(
 				"metallic", static_cast<float>(gltf_material.pbrMetallicRoughness.metallicFactor));
 		material->set_param("roughness",
 				static_cast<float>(gltf_material.pbrMetallicRoughness.roughnessFactor));
 
-		if (const auto it = gltf_material.extensions.find("KHR_materials_pbrSpecularGlossiness");
-				it != gltf_material.extensions.end()) {
-			const tinygltf::Value& specGloss = it->second;
+		const int albedo_texture_index = gltf_material.pbrMetallicRoughness.baseColorTexture.index;
+		AssetHandle albedo_texture = (albedo_texture_index >= 0)
+				? _load_texture(albedo_texture_index, p_ctx)
+				: s_default_texture;
+		material->set_param("u_diffuse_texture", albedo_texture);
 
-			const auto& diffuse_factor = specGloss.Has("diffuseFactor")
-					? specGloss.Get("diffuseFactor").Get<tinygltf::Value::Array>()
-					: tinygltf::Value::Array{ tinygltf::Value(1.0), tinygltf::Value(1.0),
-						  tinygltf::Value(1.0), tinygltf::Value(1.0) };
-
-			material->set_param("base_color",
-					Color(float(diffuse_factor[0].GetNumberAsDouble()),
-							float(diffuse_factor[1].GetNumberAsDouble()),
-							float(diffuse_factor[2].GetNumberAsDouble()),
-							float(diffuse_factor[3].GetNumberAsDouble())));
-
-			const int diffuse_texture_index =
-					_get_extension_texture_index(specGloss, "diffuseTexture");
-			AssetHandle diffuse_texture = (diffuse_texture_index >= 0)
-					? _load_texture(diffuse_texture_index, p_ctx)
-					: s_default_texture;
-			material->set_param("u_diffuse_texture", diffuse_texture);
-
-			const int specular_texture_index =
-					_get_extension_texture_index(specGloss, "specularGlossinessTexture");
-			AssetHandle specular_texture = (specular_texture_index >= 0)
-					? _load_texture(specular_texture_index, p_ctx)
-					: s_default_texture;
-			material->set_param("u_metallic_roughness_texture", specular_texture);
-
-			material->set_param("metallic", 0.0f);
-			material->set_param("roughness", 1.0f);
-		} else {
-			const auto& base_color = gltf_material.pbrMetallicRoughness.baseColorFactor;
-			material->set_param("base_color",
-					Color(base_color[0], base_color[1], base_color[2], base_color[3]));
-
-			material->set_param("metallic",
-					static_cast<float>(gltf_material.pbrMetallicRoughness.metallicFactor));
-			material->set_param("roughness",
-					static_cast<float>(gltf_material.pbrMetallicRoughness.roughnessFactor));
-
-			const int albedo_texture_index =
-					gltf_material.pbrMetallicRoughness.baseColorTexture.index;
-			AssetHandle albedo_texture = (albedo_texture_index >= 0)
-					? _load_texture(albedo_texture_index, p_ctx)
-					: s_default_texture;
-			material->set_param("u_diffuse_texture", albedo_texture);
-
-			const int metallic_roughness_texture_index =
-					gltf_material.pbrMetallicRoughness.metallicRoughnessTexture.index;
-			AssetHandle metallic_roughness_texture = (metallic_roughness_texture_index >= 0)
-					? _load_texture(metallic_roughness_texture_index, p_ctx)
-					: s_default_texture;
-			material->set_param("u_metallic_roughness_texture", metallic_roughness_texture);
-		}
-
-		{
-			const int normal_texture_index = gltf_material.normalTexture.index;
-			AssetHandle normal_texture = (normal_texture_index > 0)
-					? _load_texture(normal_texture_index, p_ctx)
-					: s_default_texture;
-			material->set_param("u_normal_texture", normal_texture);
-		}
-
-		{
-			const int occlusion_texture_index = gltf_material.occlusionTexture.index;
-			AssetHandle occlusion_texture = (occlusion_texture_index > 0)
-					? _load_texture(occlusion_texture_index, p_ctx)
-					: s_default_texture;
-			material->set_param("u_ambient_occlusion_texture", occlusion_texture);
-		}
-
-		material->upload();
+		const int metallic_roughness_texture_index =
+				gltf_material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+		AssetHandle metallic_roughness_texture = (metallic_roughness_texture_index >= 0)
+				? _load_texture(metallic_roughness_texture_index, p_ctx)
+				: s_default_texture;
+		material->set_param("u_metallic_roughness_texture", metallic_roughness_texture);
 	}
 
-	std::shared_ptr<MeshPrimitive> prim = MeshPrimitive::create(prim_vertices, prim_indices);
-	prim->material = material ? material : AssetSystem::get<Material>(s_default_material);
+	// Common maps
+	const int norm_index = gltf_material.normalTexture.index;
+	material->set_param("u_normal_texture",
+			(norm_index >= 0) ? _load_texture(norm_index, p_ctx) : s_default_texture);
 
-	return prim;
+	const int occ_index = gltf_material.occlusionTexture.index;
+	material->set_param("u_ambient_occlusion_texture",
+			(occ_index >= 0) ? _load_texture(occ_index, p_ctx) : s_default_texture);
+
+	material->upload();
+
+	// Cache and return
+	p_ctx.loaded_materials[p_material_index] = handle;
+	return handle;
 }
 
-AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx) {
+AssetHandle _load_texture(int p_texture_index, GLTFLoadContext& p_ctx) {
 	size_t hash = 0;
-	hash_combine(hash, texture_index);
+	hash_combine(hash, p_texture_index);
 	hash_combine(hash, p_ctx.model_hash);
 
 	if (auto it = p_ctx.loaded_textures.find(hash); it != p_ctx.loaded_textures.end()) {
 		return it->second;
 	}
 
-	const tinygltf::Texture& gltf_texture = p_ctx.model->textures[texture_index];
+	const tinygltf::Texture& gltf_texture = p_ctx.model->textures[p_texture_index];
 	const tinygltf::Image& gltf_image = p_ctx.model->images[gltf_texture.source];
 
 	TextureSamplerOptions sampler_options = {};
@@ -471,7 +495,8 @@ AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx) {
 		texture_handle = AssetSystem::register_asset(
 				Texture::create(format, glm::uvec2(gltf_image.width, gltf_image.height),
 						gltf_image.image.data(), sampler_options),
-				std::format("mem://gltf/texture/?id={}", texture_index));
+				std::format(
+						"mem://Texture/GLTF/?id={}&&model={}", p_ctx.model_hash, p_texture_index));
 	} else {
 		const fs::path texture_path = p_ctx.base_path / gltf_image.uri;
 
@@ -482,7 +507,9 @@ AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx) {
 			return INVALID_UID;
 		}
 
-		texture_handle = AssetSystem::register_asset(texture);
+		texture_handle = AssetSystem::register_asset(texture,
+				std::format("mem://Texture/GLTF/?path={}&&model={}", p_ctx.model_hash,
+						texture_path.string()));
 	}
 
 	p_ctx.loaded_textures[hash] = texture_handle;

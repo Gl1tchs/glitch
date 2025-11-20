@@ -15,6 +15,13 @@ using AssetHandle = UID;
 struct AssetMetadata {
 	const char* type_name;
 	std::string path;
+
+	/**
+	 * A memory asset is an asset, created by engine or other resources,
+	 * that does not depend on a file.
+	 *
+	 */
+	bool is_memory_asset() const;
 };
 
 struct IAssetRegistry {
@@ -25,8 +32,11 @@ struct IAssetRegistry {
 	virtual void collect_garbage() = 0;
 
 	virtual void clear() = 0;
+	virtual void clear_non_persistent() = 0;
 
 	virtual std::unordered_map<AssetHandle, AssetMetadata> get_asset_metadata() const = 0;
+
+	virtual void reload_all() = 0;
 
 	virtual void serialize(json& p_out_json) const = 0;
 	virtual void deserialize(const json& p_in_json) = 0;
@@ -36,6 +46,7 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	struct AssetEntry {
 		std::shared_ptr<T> instance;
 		std::string path;
+		bool is_persistent = false;
 	};
 
 	std::unordered_map<AssetHandle, AssetEntry> assets;
@@ -53,18 +64,34 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	 * if no other reference is pointing to it.
 	 *
 	 * @param p_path Path of the asset to be registered
+	 * @param p_prev_handle Handle of the asset to be registered. Default is a random UID
 	 */
-	AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path);
+	AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path,
+			std::optional<AssetHandle> p_prev_handle = std::nullopt);
+
+	/**
+	 * Registers an asset that will live for the lifetime of the application.
+	 * Garbage collection will skip this asset even if the reference count is 1.
+	 */
+	AssetHandle register_asset_persistent(
+			std::shared_ptr<T> p_asset, const std::string& p_path = "");
 
 	std::shared_ptr<T> get_asset(AssetHandle p_handle);
+
+	std::shared_ptr<T> get_asset_by_path(const std::string& p_path);
+
+	std::optional<AssetHandle> get_handle_by_path(const std::string& p_path) const;
 
 	std::optional<AssetMetadata> get_metadata(AssetHandle p_handle);
 
 	bool erase(AssetHandle p_handle);
 
 	void clear() override;
+	void clear_non_persistent() override;
 
 	std::unordered_map<AssetHandle, AssetMetadata> get_asset_metadata() const override;
+
+	void reload_all() override;
 
 	void serialize(json& p_out_json) const override;
 
@@ -95,13 +122,24 @@ public:
 	// Clear all asset registries and remove definitions.
 	static void clear();
 
+	static void clear_non_persistent();
+
 	// Remove unusued assets from the registry
 	static void collect_garbage();
 
-	// Loads and registers the asset to the compatible asset registry.
+	// Reload all loadable assets
+	static void reload_all();
+
+	/**
+	 * Loads and registers the asset to the compatible asset registry.
+	 * If given path already loaded creates a new handle pointing to that instance.
+	 *
+	 * @param p_prev_handle Custom asset handle to give. Used by scene deserialization.
+	 */
 	template <IsReflectedAsset T>
 		requires IsLoadableAsset<T>
-	static Result<AssetHandle, AssetLoadingError> load(std::string_view p_path);
+	static Result<AssetHandle, AssetLoadingError> load(
+			const std::string& p_path, std::optional<AssetHandle> p_prev_handle = std::nullopt);
 
 	// Creates and registers the asset to the compatible registry
 	template <IsReflectedAsset T, typename... Args>
@@ -111,6 +149,8 @@ public:
 	// Retrieve asset from registry
 	template <IsReflectedAsset T> static std::shared_ptr<T> get(AssetHandle p_handle);
 
+	template <IsReflectedAsset T> static std::shared_ptr<T> get_by_path(const std::string& p_path);
+
 	// Retrieve asset metadata from registry
 	template <IsReflectedAsset T>
 	static std::optional<AssetMetadata> get_metadata(AssetHandle p_handle);
@@ -119,9 +159,18 @@ public:
 	 * Registers an asset type to the registry, type is guaranteed to get destroyed if no other
 	 * reference exists.
 	 *
+	 * @param p_prev_handle Handle of the asset to be registered. Default is a random UID.
 	 */
 	template <IsReflectedAsset T>
-	static AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path = "");
+	static AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path = "",
+			std::optional<AssetHandle> p_prev_handle = std::nullopt);
+
+	/**
+	 * Registers an asset type to the registry that persists through garbage collection.
+	 */
+	template <IsReflectedAsset T>
+	static AssetHandle register_asset_persistent(
+			std::shared_ptr<T> p_asset, const std::string& p_path = "");
 
 	// Release given asset handle from registry.
 	template <IsReflectedAsset T> static bool free(AssetHandle p_handle);

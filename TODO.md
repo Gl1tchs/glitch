@@ -9,7 +9,14 @@
 
 ## Asset System
 
+- [ ] Collect garbage is not working as intended.
+  - [ ] Create a custom AssetHandle that keeps atomic count.
+- [ ] An intermediate file type for meshes
+  - [ ] Move GLTFLoader to the Editor and use our custom types in the engine
+  - [ ] StaticMeshes are now assets, Materials are now widely used
+  - [ ] GLTF Import creates static mesh and materials
 - [ ] Proper project system for environment variables
+  - [ ] 'glitch://' protocol for engine shaders
 - [ ] GLTF Metadata
 - [ ] Make AssetSystem thread safe
 - [ ] Execute AssetSystem::collect_garbage in a good place in the engine
@@ -30,6 +37,9 @@
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
 
 ## Renderer
+
+- [ ] Usage of Material::create should be nicer 
+- [ ] MaterialDefinition should parse shader uniforms
 
 - [ ] Shadow maps
   - [ ] Light goes inside walls

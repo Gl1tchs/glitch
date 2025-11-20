@@ -1,0 +1,8 @@
+{
+    "path": "res://texture.png",
+    "min_filter": "linear",
+    "mag_filter": "linear",
+    "wrap_u": "clamp_to_edge",
+    "wrap_v": "clamp_to_edge",
+    "wrap_w": "clamp_to_edge"
+}

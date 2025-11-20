@@ -61,12 +61,6 @@ bool Texture::save(const fs::path& p_metadata_path, std::shared_ptr<Texture> p_t
 		return false;
 	}
 
-	if (!fs::exists(p_metadata_path)) {
-		GL_LOG_ERROR(
-				"[Texture::save] Unable to save Texture metadata to path, path doesn't exist.");
-		return false;
-	}
-
 	if (p_texture->asset_path.empty()) {
 		GL_LOG_ERROR("[Texture::save] Unable to save Texture metadata to path, asset path should "
 					 "not be empty.");
