@@ -14,14 +14,9 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 	clear_pass = std::make_shared<ClearPass>();
 	renderer->add_pass(clear_pass, -10);
 
-	const auto color_format =
-			backend->image_get_format(renderer->get_render_image("geo_albedo").value());
-	const auto depth_format =
-			backend->image_get_format(renderer->get_render_image("geo_depth").value());
-
 	// Register material definitions
 	{
-		const auto unlit_def = MaterialDefinition::create({ color_format }, depth_format,
+		const auto unlit_def = MaterialDefinition::create({ "geo_albedo" }, "geo_depth",
 				{
 						.fs_path = "glitch://pipelines/unlit/mesh.frag.spv",
 						.vs_path = "glitch://pipelines/unlit/mesh.vert.spv",
@@ -49,7 +44,7 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 	}
 
 	{
-		const auto pbr_def = MaterialDefinition::create({ color_format }, depth_format,
+		const auto pbr_def = MaterialDefinition::create({ "geo_albedo" }, "geo_depth",
 				{
 						.fs_path = "glitch://pipelines/pbr/mesh.frag.spv",
 						.vs_path = "glitch://pipelines/pbr/mesh.vert.spv",

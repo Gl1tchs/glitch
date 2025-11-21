@@ -6,11 +6,34 @@
 #pragma once
 
 #include "glitch/asset/asset.h"
+#include "glitch/core/ref_counted.h"
 #include "glitch/core/uid.h"
 
 namespace gl {
 
-using AssetHandle = UID;
+// Counted atomic reference for GC system.
+class AssetHandle : public RefCounted<UID> {
+public:
+	AssetHandle() : RefCounted<UID>(UID()) {}
+	AssetHandle(UID p_id) : RefCounted<UID>(std::move(p_id)) {}
+
+	AssetHandle(const AssetHandle& p_rhs) : RefCounted<UID>(p_rhs) {}
+	AssetHandle(AssetHandle&& p_rhs) noexcept : RefCounted<UID>(std::move(p_rhs)) {}
+
+	virtual ~AssetHandle() override = default;
+
+	AssetHandle& operator=(const AssetHandle& p_rhs) {
+		RefCounted<UID>::operator=(p_rhs);
+		return *this;
+	}
+
+	AssetHandle& operator=(AssetHandle&& p_rhs) noexcept {
+		RefCounted<UID>::operator=(std::move(p_rhs));
+		return *this;
+	}
+};
+
+const AssetHandle INVALID_ASSET_HANDLE = AssetHandle();
 
 struct AssetMetadata {
 	const char* type_name;
@@ -76,13 +99,13 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	AssetHandle register_asset_persistent(
 			std::shared_ptr<T> p_asset, const std::string& p_path = "");
 
-	std::shared_ptr<T> get_asset(AssetHandle p_handle);
+	std::shared_ptr<T> get_asset(const AssetHandle& p_handle);
 
 	std::shared_ptr<T> get_asset_by_path(const std::string& p_path);
 
 	std::optional<AssetHandle> get_handle_by_path(const std::string& p_path) const;
 
-	std::optional<AssetMetadata> get_metadata(AssetHandle p_handle);
+	std::optional<AssetMetadata> get_metadata(const AssetHandle& p_handle);
 
 	bool erase(AssetHandle p_handle);
 
@@ -147,13 +170,13 @@ public:
 	static std::optional<AssetHandle> create(Args&&... p_args);
 
 	// Retrieve asset from registry
-	template <IsReflectedAsset T> static std::shared_ptr<T> get(AssetHandle p_handle);
+	template <IsReflectedAsset T> static std::shared_ptr<T> get(const AssetHandle& p_handle);
 
 	template <IsReflectedAsset T> static std::shared_ptr<T> get_by_path(const std::string& p_path);
 
 	// Retrieve asset metadata from registry
 	template <IsReflectedAsset T>
-	static std::optional<AssetMetadata> get_metadata(AssetHandle p_handle);
+	static std::optional<AssetMetadata> get_metadata(const AssetHandle& p_handle);
 
 	/**
 	 * Registers an asset type to the registry, type is guaranteed to get destroyed if no other
@@ -173,7 +196,7 @@ public:
 			std::shared_ptr<T> p_asset, const std::string& p_path = "");
 
 	// Release given asset handle from registry.
-	template <IsReflectedAsset T> static bool free(AssetHandle p_handle);
+	template <IsReflectedAsset T> static bool free(const AssetHandle& p_handle);
 
 	template <IsReflectedAsset T> static AssetRegistry<T>& get_registry();
 
@@ -192,5 +215,16 @@ private:
 };
 
 } // namespace gl
+
+namespace std {
+template <> struct hash<gl::AssetHandle> {
+	size_t operator()(const gl::AssetHandle& p_handle) const { // Check for null pointer first
+		if (p_handle.get_ref_count() == 0) {
+			return 0;
+		}
+		return std::hash<gl::UID>{}(p_handle.get_value());
+	}
+};
+} //namespace std
 
 #include "glitch/asset/asset_system.inl"

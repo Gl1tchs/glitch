@@ -355,7 +355,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 	});
 
 	_draw_component<MeshComponent>("Mesh Component", p_entity, [this](MeshComponent& mc) {
-		ImGui::Text("Mesh ID: %u", mc.mesh.value);
+		ImGui::Text("Mesh ID: %u", mc.mesh.get_value().value);
 		const auto mesh = AssetSystem::get<StaticMesh>(mc.mesh);
 		if (!mesh) {
 			return;
@@ -485,7 +485,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 
 								if (tex) {
 									// Try to find existing descriptor in cache
-									const auto it = thumb_texture_descriptors.find(arg.value);
+									const auto it = thumb_texture_descriptors.find(arg.get_value());
 
 									if (it != thumb_texture_descriptors.end()) {
 										desc_to_render = it->second;
@@ -494,7 +494,7 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 										desc_to_render =
 												Renderer::get_backend()->imgui_image_upload(
 														tex->get_image(), tex->get_sampler());
-										thumb_texture_descriptors[arg.value] = desc_to_render;
+										thumb_texture_descriptors[arg.get_value()] = desc_to_render;
 									}
 
 									// Render Image (Thumbnail)
@@ -600,13 +600,16 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 			sc.load();
 		}
 
-		if (sc.is_loaded && !is_running) {
-			sc.metadata = ScriptEngine::get_metadata(sc.script);
-		}
-
 		// Render script fields
 		if (sc.is_loaded) {
-			for (auto& [name, value] : sc.metadata->fields) {
+			auto metadata = ScriptEngine::get_metadata(sc.script);
+			// Only update the metadata if scripts are not running
+			if (!is_running) {
+				sc.metadata = metadata;
+			}
+
+			for (auto& [name, value] : metadata.fields) {
+				// Skip private fields
 				if (name.starts_with("__")) {
 					continue;
 				}
@@ -739,11 +742,12 @@ void EditorLayer::_render_asset_registry() {
 
 	ImGui::BeginChild("AssetRegistryChild", ImVec2(-1, -button_height));
 
-	if (ImGui::BeginTable("AssetRegistryTable", 3,
+	if (ImGui::BeginTable("AssetRegistryTable", 4,
 				ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY |
 						ImGuiTableFlags_ScrollX)) {
 		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("RC", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Path",
 				ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort |
 						ImGuiTableColumnFlags_NoResize);
@@ -756,7 +760,10 @@ void EditorLayer::_render_asset_registry() {
 			ImGui::Text("%s", metadata.type_name);
 
 			ImGui::TableNextColumn();
-			ImGui::Text("%u", handle.value);
+			ImGui::Text("%u", handle.get_value().value);
+
+			ImGui::TableNextColumn();
+			ImGui::Text("%u", handle.get_ref_count());
 
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", metadata.path.c_str());

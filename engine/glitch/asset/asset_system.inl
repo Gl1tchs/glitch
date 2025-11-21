@@ -20,9 +20,9 @@ template <IsReflectedAsset T> size_t AssetRegistry<T>::get_asset_size() const {
 
 template <IsReflectedAsset T> void AssetRegistry<T>::collect_garbage() {
 	std::erase_if(assets, [](const auto& item) {
-		// use_count 1 means only the map holds it
+		// get_ref_count() == 1 means only the map holds it
 		// Only delete if it is NOT persistent
-		return item.second.instance.use_count() == 1 && !item.second.is_persistent;
+		return item.first.get_ref_count() == 1 && !item.second.is_persistent;
 	});
 }
 
@@ -48,7 +48,7 @@ AssetHandle AssetRegistry<T>::register_asset_persistent(
 	return handle;
 }
 
-template <IsReflectedAsset T> std::shared_ptr<T> AssetRegistry<T>::get_asset(AssetHandle p_handle) {
+template <IsReflectedAsset T> std::shared_ptr<T> AssetRegistry<T>::get_asset(const AssetHandle& p_handle) {
 	const auto it = assets.find(p_handle);
 	if (it == assets.end()) {
 		return nullptr;
@@ -80,7 +80,7 @@ std::optional<AssetHandle> AssetRegistry<T>::get_handle_by_path(const std::strin
 }
 
 template <IsReflectedAsset T>
-std::optional<AssetMetadata> AssetRegistry<T>::get_metadata(AssetHandle p_handle) {
+std::optional<AssetMetadata> AssetRegistry<T>::get_metadata(const AssetHandle& p_handle) {
 	const auto it = assets.find(p_handle);
 	if (it == assets.end()) {
 		return std::nullopt;
@@ -226,7 +226,7 @@ std::optional<AssetHandle> AssetSystem::create(Args&&... p_args) {
 	return registry.register_asset(asset, _get_default_mem_path<T>());
 }
 
-template <IsReflectedAsset T> std::shared_ptr<T> AssetSystem::get(AssetHandle p_handle) {
+template <IsReflectedAsset T> std::shared_ptr<T> AssetSystem::get(const AssetHandle& p_handle) {
 	auto& registry = get_registry<T>();
 	return registry.get_asset(p_handle);
 }
@@ -238,7 +238,7 @@ std::shared_ptr<T> AssetSystem::get_by_path(const std::string& p_path) {
 }
 
 template <IsReflectedAsset T>
-std::optional<AssetMetadata> AssetSystem::get_metadata(AssetHandle p_handle) {
+std::optional<AssetMetadata> AssetSystem::get_metadata(const AssetHandle& p_handle) {
 	auto& registry = get_registry<T>();
 	return registry.get_metadata(p_handle);
 }
@@ -257,7 +257,7 @@ AssetHandle AssetSystem::register_asset_persistent(
 	return registry.register_asset_persistent(p_asset, p_path);
 }
 
-template <IsReflectedAsset T> bool AssetSystem::free(AssetHandle p_handle) {
+template <IsReflectedAsset T> bool AssetSystem::free(const AssetHandle& p_handle) {
 	auto& registry = get_registry<T>();
 	return registry.erase(p_handle);
 }

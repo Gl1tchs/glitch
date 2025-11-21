@@ -9,8 +9,10 @@
 
 ## Asset System
 
-- [ ] Collect garbage is not working as intended.
-  - [ ] Create a custom AssetHandle that keeps atomic count.
+- [x] Collect garbage is not working as intended.
+  - [x] Create a custom AssetHandle that keeps atomic count.
+    - [ ] Create more tests and make usage more clear
+    - [ ] Scene::destroy should dynamically deallocate handles in components
 - [ ] An intermediate file type for meshes
   - [ ] Move GLTFLoader to the Editor and use our custom types in the engine
   - [ ] StaticMeshes are now assets, Materials are now widely used
@@ -37,6 +39,8 @@
 - [ ] Maybe all scripts need to be loaded before starting to run more efficiently
 
 ## Renderer
+
+- [ ] Shader compiler for MaterialDefinition assets
 
 - [ ] Usage of Material::create should be nicer 
 - [ ] MaterialDefinition should parse shader uniforms

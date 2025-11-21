@@ -98,6 +98,15 @@ void Scene::destroy(Entity p_entity) {
 		return;
 	}
 
+	// Release asset handles for GC
+	// TODO do this dynamically.
+	if (auto mc = p_entity.get_component<MeshComponent>()) {
+		mc->mesh.release();
+	}
+	if (auto mc = p_entity.get_component<MaterialComponent>()) {
+		mc->handle.release();
+	}
+
 	// Destroy the children if any
 	for (auto child : p_entity.get_children()) {
 		destroy(child);
@@ -185,7 +194,7 @@ static json _serialize_entity(const Entity& p_entity) {
 				if (uniform.type == ShaderUniformVariableType::TEXTURE) {
 					const auto& handle = std::get<AssetHandle>(*value);
 					if (const auto meta = AssetSystem::get_metadata<Texture>(handle);
-							meta->is_memory_asset()) {
+							meta && meta->is_memory_asset()) {
 						continue;
 					}
 				}
@@ -294,7 +303,7 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 
 	if (p_json.contains("material_component")) {
 		MaterialComponent* mc = entity.add_component<MaterialComponent>();
-		mc->handle = INVALID_UID;
+		mc->handle = INVALID_ASSET_HANDLE;
 
 		p_json["material_component"]["definition_path"].get_to(mc->definition_path);
 
@@ -431,7 +440,7 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 			}
 
 			// Iterate through loaded instances
-			for (const Entity& gltf_entity : gltf_scene->view<GLTFInstanceComponent>()) {
+			for (Entity gltf_entity : gltf_scene->view<GLTFInstanceComponent>()) {
 				const GLTFInstanceComponent* gltf_ic_loaded =
 						gltf_entity.get_component<GLTFInstanceComponent>();
 
@@ -449,8 +458,7 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 					mc->mesh = gltf_mesh->mesh;
 				}
 
-				if (MaterialComponent const* gltf_mc =
-								gltf_entity.get_component<MaterialComponent>()) {
+				if (MaterialComponent* gltf_mc = gltf_entity.get_component<MaterialComponent>()) {
 					if (MaterialComponent* instance_mc =
 									instance.get_component<MaterialComponent>()) {
 						// If definitions are same do not create new component but update
@@ -464,7 +472,7 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 										instance.get_name());
 							}
 
-							instance_mc->handle = gltf_mc->handle;
+							instance_mc->handle = std::move(gltf_mc->handle);
 
 							// Update uniforms
 							for (const auto& [name, uniform] : instance_mc->uniforms) {
@@ -481,7 +489,7 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 							// If definitions differ, initialize our custom material.
 							if (auto handle = AssetSystem::create<Material>(
 										instance_mc->definition_path)) {
-								instance_mc->handle = *handle;
+								instance_mc->handle = std::move(*handle);
 
 								const auto mat = AssetSystem::get<Material>(instance_mc->handle);
 
@@ -504,7 +512,9 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 					} else {
 						// CASE: No serialized material. Use GLTF defaults exactly.
 						MaterialComponent* mc = instance.add_component<MaterialComponent>();
-						*mc = *gltf_mc;
+						mc->handle = std::move(gltf_mc->handle);
+						mc->definition_path = std::move(gltf_mc->definition_path);
+						mc->uniforms = std::move(gltf_mc->uniforms);
 
 						// Copy parameter state from the source GLTF entity to the new instance
 						const auto entity_mat = AssetSystem::get<Material>(mc->handle);

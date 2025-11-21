@@ -24,10 +24,21 @@ const MaterialPipelineOptions& MaterialDefinition::get_pipeline_options() {
 
 const std::vector<ShaderUniformMetadata>& MaterialDefinition::get_uniforms() { return uniforms; }
 
+static std::optional<DataFormat> _get_attachment_by_render_image_id(const std::string& p_id) {
+	auto renderer = Application::get()->get_renderer();
+
+	std::optional<Image> image = renderer->get_render_image(p_id);
+	if (!image) {
+		return std::nullopt;
+	}
+
+	return renderer->get_backend()->image_get_format(*image);
+}
+
 std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
-		const std::vector<DataFormat> p_color_attachments, DataFormat p_depth_attachment,
-		MaterialShaderLoadInfo p_shader_info, std::vector<ShaderUniformMetadata> p_uniforms,
-		MaterialPipelineOptions p_pipeline_options) {
+		const std::vector<std::string> p_color_attachment_ids,
+		const std::string& p_depth_attachment_id, MaterialShaderLoadInfo p_shader_info,
+		std::vector<ShaderUniformMetadata> p_uniforms, MaterialPipelineOptions p_pipeline_options) {
 	// Spirvv Data should be loaded using ShaderLibrary::get_bundled_spirv
 
 	std::vector<uint32_t> spirv_vert;
@@ -61,13 +72,33 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
 		spirv_frag = ShaderLibrary::get_spirv_data(*fs_path_abs);
 	}
 
-	auto builder =
-			PipelineBuilder()
-					.set_depth_attachment(p_depth_attachment)
-					.add_shader_stage(ShaderStage::VERTEX, spirv_vert)
-					.add_shader_stage(ShaderStage::FRAGMENT, spirv_frag)
-					.with_multisample(Application::get()->get_renderer()->get_msaa_samples(), true)
-					.set_render_primitive(p_pipeline_options.primitive);
+	auto builder = PipelineBuilder();
+
+	const auto depth_attachment = _get_attachment_by_render_image_id(p_depth_attachment_id);
+	if (!depth_attachment || !is_depth_format(*depth_attachment)) {
+		GL_LOG_ERROR("[MaterialDefinition::create] Unable to find depth attachment '{}' in "
+					 "renderer context.",
+				p_depth_attachment_id);
+		return nullptr;
+	}
+
+	for (const auto& id : p_color_attachment_ids) {
+		const auto color_attachment = _get_attachment_by_render_image_id(id);
+		if (!color_attachment) {
+			GL_LOG_ERROR("[MaterialDefinition::create] Unable to find color attachment '{}' in "
+						 "renderer context.",
+					id);
+			return nullptr;
+		}
+
+		builder.add_color_attachment(*color_attachment);
+	}
+
+	builder.set_depth_attachment(depth_attachment)
+			.add_shader_stage(ShaderStage::VERTEX, spirv_vert)
+			.add_shader_stage(ShaderStage::FRAGMENT, spirv_frag)
+			.with_multisample(Application::get()->get_renderer()->get_msaa_samples(), true)
+			.set_render_primitive(p_pipeline_options.primitive);
 
 	if (p_pipeline_options.depth_test) {
 		builder.with_depth_test(p_pipeline_options.compare_op, p_pipeline_options.depth_write);
@@ -77,17 +108,13 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
 		builder.with_blend();
 	}
 
-	for (const auto& attachment : p_color_attachments) {
-		builder.add_color_attachment(attachment);
-	}
-
 	const auto [shader, pipeline] = builder.build();
 
 	std::shared_ptr<MaterialDefinition> definition = std::make_shared<MaterialDefinition>();
 	definition->shader = shader;
 	definition->pipeline = pipeline;
-	definition->color_attachments = p_color_attachments;
-	definition->depth_attachment = p_depth_attachment;
+	definition->color_attachment_ids = p_color_attachment_ids;
+	definition->depth_attachment_id = p_depth_attachment_id;
 	definition->shader_info = p_shader_info;
 	definition->pipeline_options = p_pipeline_options;
 	definition->uniforms = p_uniforms;
@@ -107,6 +134,9 @@ bool MaterialDefinition::save(
 	json j;
 	j["shader"]["vs"] = p_definition->shader_info.vs_path;
 	j["shader"]["fs"] = p_definition->shader_info.fs_path;
+
+	j["color_attachments"] = p_definition->color_attachment_ids;
+	j["depth_attachment"] = p_definition->depth_attachment_id;
 
 	j["pipeline"]["depth_test"] = p_definition->pipeline_options.depth_test;
 	j["pipeline"]["compare_op"] = p_definition->pipeline_options.compare_op;
@@ -199,55 +229,10 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_p
 		return nullptr;
 	}
 
-	const auto renderer = Application::get()->get_renderer();
+	const std::string depth_attachment_id = j["depth_attachment"].get<std::string>();
 
-	DataFormat depth_attachment;
-	{
-		const auto attachment_name = j["depth_attachment"].get<std::string>();
-		std::optional<Image> image = renderer->get_render_image(attachment_name);
-
-		if (!image) {
-			GL_LOG_ERROR("[MaterialDefinition::load] Unable to find depth attachment of name {} "
-						 "registered to the renderer.",
-					attachment_name);
-			return nullptr;
-		}
-
-		depth_attachment = renderer->get_backend()->image_get_format(*image);
-		if (!is_depth_format(depth_attachment)) {
-			GL_LOG_ERROR("[MaterialDefinition::load] Given depth attachment of name '{}' is "
-						 "not a depth format.",
-					attachment_name);
-			return nullptr;
-		}
-	}
-
-	std::vector<DataFormat> color_attachments;
-	{
-		for (const auto& attachment_json : j["color_attachments"]) {
-			if (!attachment_json.is_string()) {
-				GL_LOG_ERROR(
-						"[MaterialDefinition::load] Unable to parse color attachment from path "
-						"'{}'. See 'doc/conventions/material.json'",
-						p_path.string());
-				return nullptr;
-			}
-
-			const auto attachment_name = attachment_json.get<std::string>();
-
-			std::optional<Image> image = renderer->get_render_image(attachment_name);
-			if (!image) {
-				GL_LOG_ERROR(
-						"[MaterialDefinition::load] Unable to find color attachment of name {} "
-						"registered to the renderer.",
-						attachment_name);
-				return nullptr;
-			}
-
-			DataFormat attachment_format = renderer->get_backend()->image_get_format(*image);
-			color_attachments.push_back(attachment_format);
-		}
-	}
+	const std::vector<std::string> color_attachment_ids =
+			j["color_attachments"].get<std::vector<std::string>>();
 
 	MaterialPipelineOptions pipeline_options = {};
 	if (j.contains("pipeline")) {
@@ -287,8 +272,8 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_p
 		}
 	}
 
-	return create(
-			color_attachments, depth_attachment, { fs_path, vs_path }, uniforms, pipeline_options);
+	return create(color_attachment_ids, depth_attachment_id, { fs_path, vs_path }, uniforms,
+			pipeline_options);
 }
 
 Material::~Material() {
@@ -339,7 +324,7 @@ bool Material::set_param(const std::string& p_name, ShaderUniformVariable p_valu
 bool Material::is_dirty() const { return dirty; }
 
 static AssetHandle _get_default_texture() {
-	static AssetHandle s_default_texture = INVALID_UID;
+	static AssetHandle s_default_texture = INVALID_ASSET_HANDLE;
 	if (!s_default_texture || !AssetSystem::get<Texture>(s_default_texture)) {
 		s_default_texture = AssetSystem::register_asset(
 				Texture::create(COLOR_WHITE), "mem://texture/material_default");
@@ -466,7 +451,11 @@ bool Material::upload() {
 		std::visit(
 				[&cpu_buffer, &write_offset](auto&& arg) {
 					using T = std::decay_t<decltype(arg)>;
-					std::memcpy(cpu_buffer.data() + write_offset, &arg, sizeof(T));
+					if constexpr (std::is_same_v<T, AssetHandle>) {
+						std::memcpy(cpu_buffer.data() + write_offset, &arg.get_value(), sizeof(T));
+					} else {
+						std::memcpy(cpu_buffer.data() + write_offset, &arg, sizeof(T));
+					}
 				},
 				value);
 	}
@@ -522,6 +511,15 @@ void Material::bind_uniform_set(CommandBuffer p_cmd) {
 
 std::shared_ptr<Material> Material::create(const std::string& p_def_path) {
 	auto definition = AssetSystem::get_by_path<MaterialDefinition>(p_def_path);
+	if (!definition) {
+		if (const auto res = AssetSystem::load<MaterialDefinition>(p_def_path)) {
+			definition = AssetSystem::get<MaterialDefinition>(*res);
+		} else {
+			GL_LOG_ERROR("[Material::create] Unable to load MaterialDefinition from path '{}'",
+					p_def_path);
+			return nullptr;
+		}
+	}
 
 	std::shared_ptr<Material> material = std::make_shared<Material>();
 	material->definition = definition;

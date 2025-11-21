@@ -213,16 +213,16 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 		// Create an asset and hold a reference to it
 		auto h_gc_keep_opt = AssetSystem::create<MockCreatableAsset>(100);
 		REQUIRE(h_gc_keep_opt.has_value());
-		AssetHandle h_gc_keep = *h_gc_keep_opt;
-		std::shared_ptr<MockCreatableAsset> my_ref =
-				AssetSystem::get<MockCreatableAsset>(h_gc_keep);
-		// use_count is at least 2 (my_ref + registry)
-		REQUIRE(my_ref != nullptr);
+
+		AssetHandle& h_gc_keep = *h_gc_keep_opt;
+		AssetHandle h_gc_keep2 = h_gc_keep;
+
+		REQUIRE(h_gc_keep2.is_valid());
 
 		// Create an asset and don't hold a reference
-		auto h_gc_remove_opt = AssetSystem::create<MockCreatableAsset>(200);
-		REQUIRE(h_gc_remove_opt.has_value());
-		AssetHandle h_gc_remove = *h_gc_remove_opt;
+		auto h_gc_remove = AssetSystem::create<MockCreatableAsset>(200);
+		REQUIRE(h_gc_remove.has_value());
+		h_gc_remove->release();
 		// use_count in registry is 1
 
 		// Call GC
@@ -233,12 +233,13 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 		CHECK(asset_gc_keep != nullptr); // Should still be there
 		CHECK(asset_gc_keep->value == 100);
 
-		auto asset_gc_remove = AssetSystem::get<MockCreatableAsset>(h_gc_remove);
+		auto asset_gc_remove = AssetSystem::get<MockCreatableAsset>(*h_gc_remove);
 		CHECK(asset_gc_remove == nullptr); // Should be gone
 
 		// Release our reference and GC again
-		my_ref.reset();
 		asset_gc_keep.reset();
+		h_gc_keep.release();
+		h_gc_keep2.release();
 		// use_count for h_gc_keep in registry is now 1
 
 		AssetSystem::collect_garbage();

@@ -42,8 +42,8 @@ static AssetHandle _load_material(int material_index, GLTFLoadContext& p_ctx);
 
 static AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx);
 
-static AssetHandle s_default_texture = INVALID_UID;
-static AssetHandle s_default_material = INVALID_UID;
+static AssetHandle s_default_texture = INVALID_ASSET_HANDLE;
+static AssetHandle s_default_material = INVALID_ASSET_HANDLE;
 
 GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string& p_path) {
 	const auto abs_path_result = AssetSystem::get_absolute_path(p_path);
@@ -504,7 +504,7 @@ AssetHandle _load_texture(int p_texture_index, GLTFLoadContext& p_ctx) {
 		if (!texture) {
 			GL_LOG_ERROR("[GLTFLoader::_load_texture] Unable to load GLTF texture from path '{}'",
 					texture_path.string());
-			return INVALID_UID;
+			return INVALID_ASSET_HANDLE;
 		}
 
 		texture_handle = AssetSystem::register_asset(texture,

@@ -66,8 +66,9 @@ public:
 	const std::vector<ShaderUniformMetadata>& get_uniforms();
 
 	static std::shared_ptr<MaterialDefinition> create(
-			const std::vector<DataFormat> p_color_attachments, DataFormat p_depth_attachment,
-			MaterialShaderLoadInfo p_shader_info, std::vector<ShaderUniformMetadata> p_uniforms,
+			const std::vector<std::string> p_color_attachment_ids,
+			const std::string& p_depth_attachment_id, MaterialShaderLoadInfo p_shader_info,
+			std::vector<ShaderUniformMetadata> p_uniforms,
 			MaterialPipelineOptions p_pipeline_options = {});
 
 	static bool save(
@@ -78,14 +79,14 @@ private:
 	Shader shader;
 	Pipeline pipeline;
 
-	std::vector<DataFormat> color_attachments;
-	DataFormat depth_attachment;
+	std::vector<std::string> color_attachment_ids;
+	std::string depth_attachment_id;
 	MaterialShaderLoadInfo shader_info;
 	MaterialPipelineOptions pipeline_options;
 	std::vector<ShaderUniformMetadata> uniforms;
 };
 
-static_assert(IsCreatableAsset<MaterialDefinition, std::vector<DataFormat>, DataFormat,
+static_assert(IsCreatableAsset<MaterialDefinition, std::vector<std::string>, std::string,
 		MaterialShaderLoadInfo, std::vector<ShaderUniformMetadata>, MaterialPipelineOptions>);
 static_assert(IsLoadableAsset<MaterialDefinition>);
 
