@@ -37,39 +37,22 @@ static std::optional<DataFormat> _get_attachment_by_render_image_id(const std::s
 
 std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
 		const std::vector<std::string> p_color_attachment_ids,
-		const std::string& p_depth_attachment_id, MaterialShaderLoadInfo p_shader_info,
+		const std::string& p_depth_attachment_id, const std::string& p_shader_info,
 		std::vector<ShaderUniformMetadata> p_uniforms, MaterialPipelineOptions p_pipeline_options) {
 	// Spirvv Data should be loaded using ShaderLibrary::get_bundled_spirv
-
-	std::vector<uint32_t> spirv_vert;
-	if (p_shader_info.vs_path.starts_with("glitch://")) {
-		spirv_vert = ShaderLibrary::get_bundled_spirv(
-				p_shader_info.vs_path.substr(sizeof("glitch://") - 1).c_str());
+	std::vector<uint32_t> spirv_data;
+	if (p_shader_info.starts_with("glitch://")) {
+		spirv_data = ShaderLibrary::get_bundled_spirv(
+				p_shader_info.substr(sizeof("glitch://") - 1).c_str());
 	} else {
-		const auto vs_path_abs = AssetSystem::get_absolute_path(p_shader_info.vs_path);
-		if (!vs_path_abs) {
-			GL_LOG_ERROR(
-					"[MaterialDefinition::create] Path of fragment shader '{}' does not exist.",
-					p_shader_info.vs_path);
+		const auto path_abs = AssetSystem::get_absolute_path(p_shader_info);
+		if (!path_abs) {
+			GL_LOG_ERROR("[MaterialDefinition::create] Path of shader '{}' does not exist.",
+					p_shader_info);
 			return nullptr;
 		}
 
-		spirv_vert = ShaderLibrary::get_spirv_data(*vs_path_abs);
-	}
-	std::vector<uint32_t> spirv_frag;
-	if (p_shader_info.fs_path.starts_with("glitch://")) {
-		spirv_frag = ShaderLibrary::get_bundled_spirv(
-				p_shader_info.fs_path.substr(sizeof("glitch://") - 1).c_str());
-	} else {
-		const auto fs_path_abs = AssetSystem::get_absolute_path(p_shader_info.fs_path);
-		if (!fs_path_abs) {
-			GL_LOG_ERROR(
-					"[MaterialDefinition::create] Path of fragment shader '{}' does not exist.",
-					p_shader_info.fs_path);
-			return nullptr;
-		}
-
-		spirv_frag = ShaderLibrary::get_spirv_data(*fs_path_abs);
+		spirv_data = ShaderLibrary::get_spirv_data(*path_abs);
 	}
 
 	auto builder = PipelineBuilder();
@@ -95,8 +78,7 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
 	}
 
 	builder.set_depth_attachment(depth_attachment)
-			.add_shader_stage(ShaderStage::VERTEX, spirv_vert)
-			.add_shader_stage(ShaderStage::FRAGMENT, spirv_frag)
+			.set_shader(spirv_data)
 			.with_multisample(Application::get()->get_renderer()->get_msaa_samples(), true)
 			.set_render_primitive(p_pipeline_options.primitive);
 
@@ -132,8 +114,7 @@ bool MaterialDefinition::save(
 	}
 
 	json j;
-	j["shader"]["vs"] = p_definition->shader_info.vs_path;
-	j["shader"]["fs"] = p_definition->shader_info.fs_path;
+	j["shader"] = p_definition->shader_info;
 
 	j["color_attachments"] = p_definition->color_attachment_ids;
 	j["depth_attachment"] = p_definition->depth_attachment_id;
@@ -191,41 +172,18 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_p
 		return nullptr;
 	}
 
-	if (!j["shader"].contains("vs") || !j["shader"].contains("fs")) {
-		GL_LOG_ERROR("[MaterialDefinition::load] Unable to load material, metadata shader object "
-					 "does not contain fs and vs definitions."
-					 "See 'doc/conventions/material.json'");
-		return nullptr;
-	}
-
-	const auto fs_path = j["shader"]["fs"].get<std::string>();
-	const auto fs_path_abs = AssetSystem::get_absolute_path(fs_path);
-	if (!fs_path_abs) {
-		GL_LOG_ERROR("[MaterialDefinition::load] Unable to load fragment shader from path '{}'.",
-				fs_path);
-		return nullptr;
-	}
-
-	const auto vs_path = j["shader"]["vs"].get<std::string>();
-	const auto vs_path_abs = AssetSystem::get_absolute_path(vs_path);
-	if (!vs_path_abs) {
-		GL_LOG_ERROR(
-				"[MaterialDefinition::load] Unable to load vertex shader from path '{}'.", fs_path);
-		return nullptr;
-	}
+	const auto shader = j["shader"].get<std::string>();
 
 	if (!j.contains("color_attachments") || !j["color_attachments"].is_array() ||
 			j["color_attachments"].empty()) {
 		GL_LOG_ERROR("[MaterialDefinition::load] Material definition does not contain any color "
-					 "attachments. See 'doc/conventions/material.json'",
-				fs_path);
+					 "attachments. See 'doc/conventions/material.json'");
 		return nullptr;
 	}
 
 	if (!j.contains("depth_attachment") || !j["depth_attachment"].is_string()) {
 		GL_LOG_ERROR("[MaterialDefinition::load] Material definition does not contain depth "
-					 "attachment. See 'doc/conventions/material.json'",
-				fs_path);
+					 "attachment. See 'doc/conventions/material.json'");
 		return nullptr;
 	}
 
@@ -272,8 +230,7 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_p
 		}
 	}
 
-	return create(color_attachment_ids, depth_attachment_id, { fs_path, vs_path }, uniforms,
-			pipeline_options);
+	return create(color_attachment_ids, depth_attachment_id, shader, uniforms, pipeline_options);
 }
 
 Material::~Material() {

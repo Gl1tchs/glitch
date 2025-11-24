@@ -22,12 +22,8 @@ void GridPass::setup(Renderer& p_renderer) {
 			PipelineBuilder()
 					.add_color_attachment(color_attachment_format)
 					.set_depth_attachment(depth_attachment_format)
-					.add_shader_stage(ShaderStage::VERTEX,
-							ShaderLibrary::get_spirv_data(
-									"build/editor/shaders/infinite_grid.vert.spv"))
-					.add_shader_stage(ShaderStage::FRAGMENT,
-							ShaderLibrary::get_spirv_data(
-									"build/editor/shaders/infinite_grid.frag.spv"))
+					.set_shader(ShaderLibrary::get_spirv_data(
+							"build/editor/shaders/infinite_grid.slang.spv"))
 					.with_depth_test(CompareOperator::LESS, false) // without depth write
 					.with_blend()
 					.with_multisample(p_renderer.get_msaa_samples(), true)

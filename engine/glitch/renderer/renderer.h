@@ -79,7 +79,7 @@ public:
 	enum class ImageCreateError { NONE = 0, ID_EXISTS };
 
 	Result<Image, ImageCreateError> create_render_image(
-			const std::string& p_name, DataFormat p_format, BitField<ImageUsageBits> p_usage);
+			const std::string& p_name, DataFormat p_format, ImageUsageFlags p_usage);
 
 	std::optional<Image> get_render_image(const std::string& p_name);
 
@@ -167,7 +167,7 @@ private:
 	struct RenderImage {
 		Image image;
 		DataFormat format;
-		BitField<ImageUsageBits> usage;
+		ImageUsageFlags usage;
 		bool is_depth_attachment;
 	};
 

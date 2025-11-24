@@ -284,16 +284,16 @@ void Renderer::begin_rendering(CommandBuffer p_cmd, Image p_color_attachment,
 void Renderer::end_rendering(CommandBuffer p_cmd) { s_backend->command_end_rendering(p_cmd); }
 
 Result<Image, Renderer::ImageCreateError> Renderer::create_render_image(
-		const std::string& p_name, DataFormat p_format, BitField<ImageUsageBits> p_usage) {
+		const std::string& p_name, DataFormat p_format, ImageUsageFlags p_usage) {
 	if (renderpass_images.find(p_name) != renderpass_images.end()) {
 		return make_err<Image>(ImageCreateError::ID_EXISTS);
 	}
 
-	if (!p_usage.has_flag(IMAGE_USAGE_TRANSFER_SRC_BIT)) {
-		p_usage.set_flag(IMAGE_USAGE_TRANSFER_SRC_BIT);
+	if (!(p_usage & IMAGE_USAGE_TRANSFER_SRC_BIT)) {
+		p_usage |= IMAGE_USAGE_TRANSFER_SRC_BIT;
 	}
-	if (!p_usage.has_flag(IMAGE_USAGE_TRANSFER_DST_BIT)) {
-		p_usage.set_flag(IMAGE_USAGE_TRANSFER_DST_BIT);
+	if (!(p_usage & IMAGE_USAGE_TRANSFER_DST_BIT)) {
+		p_usage |= IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
 
 	const bool is_depth_format = p_format == DataFormat::D16_UNORM ||

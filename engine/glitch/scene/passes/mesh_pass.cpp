@@ -26,8 +26,8 @@ void MeshPass::setup(Renderer& p_renderer) {
 	default_material->set_param("roughness", 0.5f);
 	default_material->set_param("metallic", 0.5f);
 	default_material->set_param("u_diffuse_texture", texture_handle);
-	default_material->set_param("u_metallic_roughness_texture", texture_handle);
 	default_material->set_param("u_normal_texture", texture_handle);
+	default_material->set_param("u_metallic_roughness_texture", texture_handle);
 	default_material->set_param("u_ambient_occlusion_texture", texture_handle);
 	default_material->upload();
 }

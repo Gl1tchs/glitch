@@ -39,11 +39,6 @@ struct ShaderUniformMetadata {
 	ShaderUniformVariableType type;
 };
 
-struct MaterialShaderLoadInfo {
-	std::string fs_path;
-	std::string vs_path;
-};
-
 struct MaterialPipelineOptions {
 	bool depth_test = true;
 	CompareOperator compare_op = CompareOperator::LESS;
@@ -67,7 +62,7 @@ public:
 
 	static std::shared_ptr<MaterialDefinition> create(
 			const std::vector<std::string> p_color_attachment_ids,
-			const std::string& p_depth_attachment_id, MaterialShaderLoadInfo p_shader_info,
+			const std::string& p_depth_attachment_id, const std::string& p_shader_info,
 			std::vector<ShaderUniformMetadata> p_uniforms,
 			MaterialPipelineOptions p_pipeline_options = {});
 
@@ -81,13 +76,13 @@ private:
 
 	std::vector<std::string> color_attachment_ids;
 	std::string depth_attachment_id;
-	MaterialShaderLoadInfo shader_info;
+	std::string shader_info;
 	MaterialPipelineOptions pipeline_options;
 	std::vector<ShaderUniformMetadata> uniforms;
 };
 
 static_assert(IsCreatableAsset<MaterialDefinition, std::vector<std::string>, std::string,
-		MaterialShaderLoadInfo, std::vector<ShaderUniformMetadata>, MaterialPipelineOptions>);
+		std::string, std::vector<ShaderUniformMetadata>, MaterialPipelineOptions>);
 static_assert(IsLoadableAsset<MaterialDefinition>);
 
 class GL_API Material {

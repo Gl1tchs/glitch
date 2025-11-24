@@ -178,6 +178,7 @@ enum BufferUsageBits {
 	BUFFER_USAGE_INDIRECT_BUFFER_BIT = 0x00000100,
 	BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT = 0x00020000,
 };
+typedef uint32_t BufferUsageFlags;
 
 enum class ImageLayout : int {
 	UNDEFINED = 0,
@@ -257,7 +258,7 @@ struct ImageResolve {
 	glm::uvec3 extent;
 };
 
-enum ImageUsageBits {
+enum ImageUsageBits : uint32_t {
 	IMAGE_USAGE_TRANSFER_SRC_BIT = 0x00000001,
 	IMAGE_USAGE_TRANSFER_DST_BIT = 0x00000002,
 	IMAGE_USAGE_SAMPLED_BIT = 0x00000004,
@@ -265,6 +266,7 @@ enum ImageUsageBits {
 	IMAGE_USAGE_COLOR_ATTACHMENT_BIT = 0x00000010,
 	IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 0x00000020,
 };
+typedef uint32_t ImageUsageFlags;
 
 enum class QueueType {
 	GRAPHICS,
@@ -300,19 +302,19 @@ struct BufferImageCopyRegion {
 
 inline const uint32_t MAX_UNIFORM_SETS = 16;
 
-enum ShaderUniformType : size_t {
-	UNIFORM_TYPE_SAMPLER, // For sampling only (sampler GLSL type).
-	UNIFORM_TYPE_SAMPLER_WITH_TEXTURE, // For sampling only, but includes a
-									   // texture, (samplerXX GLSL type),
-									   // first a sampler then a texture.
-	UNIFORM_TYPE_TEXTURE, // Only texture, (textureXX GLSL type).
-	UNIFORM_TYPE_IMAGE, // Storage image (imageXX GLSL type), for compute
-						// mostly.
-	UNIFORM_TYPE_UNIFORM_BUFFER, // Regular uniform buffer (or UBO).
-	UNIFORM_TYPE_STORAGE_BUFFER, // Storage buffer ("buffer" qualifier) like
-								 // UBO, but supports storage, for compute
-								 // mostly.
-	UNIFORM_TYPE_MAX
+enum ShaderUniformType : uint32_t {
+	UNIFORM_TYPE_SAMPLER = 0, // For sampling only (sampler GLSL type).
+	UNIFORM_TYPE_SAMPLER_WITH_TEXTURE = 1, // For sampling only, but includes a
+										   // texture, (samplerXX GLSL type),
+										   // first a sampler then a texture.
+	UNIFORM_TYPE_TEXTURE = 2, // Only texture, (textureXX GLSL type).
+	UNIFORM_TYPE_IMAGE = 3, // Storage image (imageXX GLSL type), for compute
+							// mostly.
+	UNIFORM_TYPE_UNIFORM_BUFFER = 6, // Regular uniform buffer (or UBO).
+	UNIFORM_TYPE_STORAGE_BUFFER = 7, // Storage buffer ("buffer" qualifier) like
+									 // UBO, but supports storage, for compute
+									 // mostly.
+	UNIFORM_TYPE_MAX,
 };
 
 /**
@@ -480,7 +482,7 @@ enum class BlendOperation : int {
 };
 
 struct ShaderInterfaceVariable {
-	const char* name;
+	std::string name;
 	uint32_t location;
 	DataFormat format;
 };
@@ -584,7 +586,7 @@ struct RenderingState {
 	DataFormat depth_attachment;
 };
 
-enum PipelineDynamicStateFlags {
+enum PipelineDynamicState : uint32_t {
 	DYNAMIC_STATE_LINE_WIDTH = (1 << 0),
 	DYNAMIC_STATE_DEPTH_BIAS = (1 << 1),
 	DYNAMIC_STATE_BLEND_CONSTANTS = (1 << 2),
@@ -593,19 +595,34 @@ enum PipelineDynamicStateFlags {
 	DYNAMIC_STATE_STENCIL_WRITE_MASK = (1 << 5),
 	DYNAMIC_STATE_STENCIL_REFERENCE = (1 << 6),
 };
+typedef uint32_t PipelineDynamicStateFlags;
 
-enum class ShaderStage : int {
-	VERTEX = 0x00000001,
-	TESSELLATION_CONTROL = 0x00000002,
-	TESSELLATION_EVALUATION = 0x00000004,
-	GEOMETRY = 0x00000008,
-	FRAGMENT = 0x00000010,
-	COMPUTE = 0x00000020,
+enum ShaderStage : uint32_t {
+	SHADER_STAGE_VERTEX = 0x00000001,
+	// SHADER_STAGE_TESSELLATION_CONTROL = 0x00000002,
+	// SHADER_STAGE_TESSELLATION_EVALUATION = 0x00000004,
+	// SHADER_STAGE_GEOMETRY = 0x00000008,
+	SHADER_STAGE_FRAGMENT = 0x00000010,
+	SHADER_STAGE_COMPUTE = 0x00000020,
+};
+typedef uint32_t ShaderStageFlags;
+
+struct ShaderReflectionBinding {
+	uint32_t binding_point;
+	uint32_t descriptor_count;
+	ShaderUniformType type;
 };
 
-struct SpirvData {
-	std::vector<uint32_t> byte_code;
-	ShaderStage stage;
+struct ShaderDescriptorReflection {
+	uint32_t set_number;
+	std::vector<ShaderReflectionBinding> bindings;
+};
+
+struct ShaderPushConstantReflection {
+	std::string name;
+	uint32_t offset;
+	uint32_t size;
+	ShaderStageFlags stage_flags;
 };
 
 typedef uint64_t BufferDeviceAddress;

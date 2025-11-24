@@ -5,7 +5,6 @@
 #pragma once
 
 #include "glitch/core/color.h"
-#include "glitch/core/templates/bit_field.h"
 #include "glitch/core/templates/vector_view.h"
 #include "glitch/core/window.h"
 #include "glitch/renderer/types.h"
@@ -37,8 +36,8 @@ public:
 
 	// Buffer
 
-	virtual Buffer buffer_create(uint64_t p_size, BitField<BufferUsageBits> p_usage,
-			MemoryAllocationType p_allocation_type) = 0;
+	virtual Buffer buffer_create(
+			uint64_t p_size, BufferUsageFlags p_usage, MemoryAllocationType p_allocation_type) = 0;
 
 	virtual void buffer_free(Buffer p_buffer) = 0;
 
@@ -51,7 +50,7 @@ public:
 	// Image
 
 	virtual Image image_create(DataFormat p_format, glm::uvec2 p_size, const void* p_data = nullptr,
-			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT, bool p_mipmapped = false,
+			ImageUsageFlags p_usage = IMAGE_USAGE_SAMPLED_BIT, bool p_mipmapped = false,
 			uint32_t p_samples = 1) = 0;
 
 	virtual void image_free(Image p_image) = 0;
@@ -73,10 +72,15 @@ public:
 
 	// Shader
 
-	virtual Shader shader_create_from_bytecode(const std::vector<SpirvData>& p_shaders) = 0;
+	virtual Shader shader_create_from_bytecode(
+			const std::vector<uint32_t>& byte_code, ShaderStageFlags shader_stages) = 0;
 
 	virtual void shader_free(Shader p_shader) = 0;
 
+	virtual std::vector<ShaderDescriptorReflection> shader_get_descriptor_layouts(
+			Shader p_shader) = 0;
+	virtual std::vector<ShaderPushConstantReflection> shader_get_push_constants(
+			Shader p_shader) = 0;
 	virtual std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(Shader p_shader) = 0;
 
 	// Render pass
@@ -145,15 +149,14 @@ public:
 			PipelineRasterizationState p_rasterization_state,
 			PipelineMultisampleState p_multisample_state,
 			PipelineDepthStencilState p_depth_stencil_state, PipelineColorBlendState p_blend_state,
-			BitField<PipelineDynamicStateFlags> p_dynamic_state,
-			RenderingState p_rendering_state) = 0;
+			PipelineDynamicStateFlags p_dynamic_state, RenderingState p_rendering_state) = 0;
 
 	virtual Pipeline render_pipeline_create(Shader p_shader, RenderPass p_render_pass,
 			RenderPrimitive p_render_primitive, PipelineVertexInputState p_vertex_input_state,
 			PipelineRasterizationState p_rasterization_state,
 			PipelineMultisampleState p_multisample_state,
 			PipelineDepthStencilState p_depth_stencil_state, PipelineColorBlendState p_blend_state,
-			BitField<PipelineDynamicStateFlags> p_dynamic_state) = 0;
+			PipelineDynamicStateFlags p_dynamic_state) = 0;
 
 	virtual Pipeline compute_pipeline_create(Shader p_shader) = 0;
 

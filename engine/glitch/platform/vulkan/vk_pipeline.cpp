@@ -286,32 +286,31 @@ static VkPipelineColorBlendStateCreateInfo _get_color_blend_state_info(
 	return color_blend;
 }
 
-static std::vector<VkDynamicState> _get_dynamic_states(
-		BitField<PipelineDynamicStateFlags> p_dynamic_state) {
+static std::vector<VkDynamicState> _get_dynamic_states(PipelineDynamicStateFlags p_dynamic_state) {
 	std::vector<VkDynamicState> states = {
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
 	};
 
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_LINE_WIDTH)) {
+	if (p_dynamic_state & DYNAMIC_STATE_LINE_WIDTH) {
 		states.push_back(VK_DYNAMIC_STATE_LINE_WIDTH);
 	}
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_DEPTH_BIAS)) {
+	if (p_dynamic_state & DYNAMIC_STATE_DEPTH_BIAS) {
 		states.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
 	}
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_BLEND_CONSTANTS)) {
+	if (p_dynamic_state & DYNAMIC_STATE_BLEND_CONSTANTS) {
 		states.push_back(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
 	}
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_DEPTH_BOUNDS)) {
+	if (p_dynamic_state & DYNAMIC_STATE_DEPTH_BOUNDS) {
 		states.push_back(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
 	}
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_STENCIL_COMPARE_MASK)) {
+	if (p_dynamic_state & DYNAMIC_STATE_STENCIL_COMPARE_MASK) {
 		states.push_back(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
 	}
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_STENCIL_WRITE_MASK)) {
+	if (p_dynamic_state & DYNAMIC_STATE_STENCIL_WRITE_MASK) {
 		states.push_back(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
 	}
-	if (p_dynamic_state.has_flag(DYNAMIC_STATE_STENCIL_REFERENCE)) {
+	if (p_dynamic_state & DYNAMIC_STATE_STENCIL_REFERENCE) {
 		states.push_back(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
 	}
 
@@ -342,7 +341,7 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader,
 		PipelineRasterizationState p_rasterization_state,
 		PipelineMultisampleState p_multisample_state,
 		PipelineDepthStencilState p_depth_stencil_state, PipelineColorBlendState p_blend_state,
-		BitField<PipelineDynamicStateFlags> p_dynamic_state, RenderingState p_rendering_state) {
+		PipelineDynamicStateFlags p_dynamic_state, RenderingState p_rendering_state) {
 	// Vertex info
 	const VkPipelineVertexInputStateCreateInfo vertex_info =
 			_get_vertex_input_state_info(this, p_shader, p_vertex_input_state);
@@ -430,7 +429,7 @@ Pipeline VulkanRenderBackend::render_pipeline_create(Shader p_shader, RenderPass
 		PipelineRasterizationState p_rasterization_state,
 		PipelineMultisampleState p_multisample_state,
 		PipelineDepthStencilState p_depth_stencil_state, PipelineColorBlendState p_blend_state,
-		BitField<PipelineDynamicStateFlags> p_dynamic_state) {
+		PipelineDynamicStateFlags p_dynamic_state) {
 	// Vertex info
 	const VkPipelineVertexInputStateCreateInfo vertex_info =
 			_get_vertex_input_state_info(this, p_shader, p_vertex_input_state);

@@ -134,7 +134,7 @@ UniformSet VulkanRenderBackend::uniform_set_create(
 	VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
 	VkResult res =
 			vkAllocateDescriptorSets(device, &descriptor_set_allocate_info, &vk_descriptor_set);
-	if (res) {
+	if (res != VK_SUCCESS) {
 		_uniform_pool_unreference(pool_key, vk_pool);
 
 		GL_LOG_ERROR("[VULKAN] [VulkanRenderBackend::uniform_set_create] Cannot allocate "

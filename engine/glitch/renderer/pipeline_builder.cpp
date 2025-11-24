@@ -27,14 +27,8 @@ PipelineBuilder& PipelineBuilder::set_depth_attachment(std::optional<DataFormat>
 	return *this;
 }
 
-PipelineBuilder& PipelineBuilder::add_shader_stage(
-		ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data) {
-	SpirvData shader_data = {};
-	shader_data.stage = p_stage;
-	shader_data.byte_code = p_spirv_data;
-
-	shader_stages.push_back(shader_data);
-
+PipelineBuilder& PipelineBuilder::set_shader(const std::vector<uint32_t>& p_spirv_data) {
+	shader_spirv_data = p_spirv_data;
 	return *this;
 }
 
@@ -83,7 +77,12 @@ PipelineBuilder& PipelineBuilder::set_render_primitive(RenderPrimitive p_prim) {
 std::pair<Shader, Pipeline> PipelineBuilder::build(RenderPass p_render_pass) {
 	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
 
-	Shader shader = backend->shader_create_from_bytecode(shader_stages);
+	Shader shader = backend->shader_create_from_bytecode(
+			shader_spirv_data, SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT);
+	if (!shader) {
+		GL_LOG_ERROR("[PipelineBuilder::build] Unable to create shader for pipeline.");
+		return std::make_pair(nullptr, nullptr);
+	}
 
 	// If any render pass provided use it to build the pipeline otherwise get
 	// the default render pass from rendering device1

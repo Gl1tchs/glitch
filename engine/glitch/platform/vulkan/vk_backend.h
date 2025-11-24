@@ -42,7 +42,7 @@ public:
 		VkBufferView vk_view = VK_NULL_HANDLE;
 	};
 
-	Buffer buffer_create(uint64_t p_size, BitField<BufferUsageBits> p_usage,
+	Buffer buffer_create(uint64_t p_size, ImageUsageFlags p_usage,
 			MemoryAllocationType p_allocation_type) override;
 
 	void buffer_free(Buffer p_buffer) override;
@@ -65,7 +65,7 @@ public:
 	};
 
 	Image image_create(DataFormat p_format, glm::uvec2 p_size, const void* p_data = nullptr,
-			BitField<ImageUsageBits> p_usage = IMAGE_USAGE_SAMPLED_BIT, bool p_mipmapped = false,
+			ImageUsageFlags p_usage = IMAGE_USAGE_SAMPLED_BIT, bool p_mipmapped = false,
 			uint32_t p_samples = 1) override;
 
 	void image_free(Image p_image) override;
@@ -87,24 +87,42 @@ public:
 
 	// Shader
 
+	struct ShaderDescriptorLayout {
+		uint32_t set_number;
+		VkDescriptorSetLayout layout;
+		std::vector<VkDescriptorSetLayoutBinding> bindings;
+	};
+
+	struct ShaderPushConstant {
+		uint32_t offset;
+		uint32_t size;
+		VkShaderStageFlags stage_flags;
+	};
+
 	struct VulkanShader {
+		VkShaderModule shader_module = VK_NULL_HANDLE;
 		std::vector<VkPipelineShaderStageCreateInfo> stage_create_infos;
-		uint32_t push_constant_stages = 0;
 		std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+		VkShaderStageFlags push_constant_stages;
+		
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+
+		std::vector<ShaderDescriptorReflection> reflection_descriptors;
+		std::vector<ShaderPushConstantReflection> reflection_push_constants;
 
 		std::vector<ShaderInterfaceVariable> vertex_input_variables;
 
-		// hash of the vulkan shader object defined as the
-		// combination of the names of the shaders with
-		// the pipeline layout
 		size_t shader_hash;
 	};
 
-	Shader shader_create_from_bytecode(const std::vector<SpirvData>& p_shaders) override;
+	Shader shader_create_from_bytecode(
+			const std::vector<uint32_t>& byte_code, ShaderStageFlags shader_stages) override;
 
 	void shader_free(Shader p_shader) override;
 
+	// Updated Getters returning agnostic types
+	std::vector<ShaderDescriptorReflection> shader_get_descriptor_layouts(Shader p_shader) override;
+	std::vector<ShaderPushConstantReflection> shader_get_push_constants(Shader p_shader) override;
 	std::vector<ShaderInterfaceVariable> shader_get_vertex_inputs(Shader p_shader) override;
 
 	// Render pass
@@ -209,15 +227,14 @@ public:
 			PipelineRasterizationState p_rasterization_state,
 			PipelineMultisampleState p_multisample_state,
 			PipelineDepthStencilState p_depth_stencil_state, PipelineColorBlendState p_blend_state,
-			BitField<PipelineDynamicStateFlags> p_dynamic_state,
-			RenderingState p_rendering_state) override;
+			PipelineDynamicStateFlags p_dynamic_state, RenderingState p_rendering_state) override;
 
 	Pipeline render_pipeline_create(Shader p_shader, RenderPass p_render_pass,
 			RenderPrimitive p_render_primitive, PipelineVertexInputState p_vertex_input_state,
 			PipelineRasterizationState p_rasterization_state,
 			PipelineMultisampleState p_multisample_state,
 			PipelineDepthStencilState p_depth_stencil_state, PipelineColorBlendState p_blend_state,
-			BitField<PipelineDynamicStateFlags> p_dynamic_state) override;
+			PipelineDynamicStateFlags p_dynamic_state) override;
 
 	Pipeline compute_pipeline_create(Shader p_shader) override;
 
@@ -342,7 +359,7 @@ public:
 	void imgui_image_free(void* p_set) override;
 
 private:
-	Image _image_create(VkFormat p_format, VkExtent3D p_size, BitField<VkImageUsageFlags> p_usage,
+	Image _image_create(VkFormat p_format, VkExtent3D p_size, VkImageUsageFlags p_usage,
 			bool p_mipmapped, VkSampleCountFlagBits p_samples);
 
 	void _generate_image_mipmaps(CommandBuffer p_cmd, Image p_image, glm::uvec2 p_size);

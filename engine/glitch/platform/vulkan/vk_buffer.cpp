@@ -2,9 +2,8 @@
 
 namespace gl {
 
-Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
-		BitField<BufferUsageBits> p_usage,
-		MemoryAllocationType p_allocation_type) {
+Buffer VulkanRenderBackend::buffer_create(
+		uint64_t p_size, BufferUsageFlags p_usage, MemoryAllocationType p_allocation_type) {
 	VkBufferCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	create_info.pNext = nullptr;
@@ -14,34 +13,30 @@ Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
 	VmaAllocationCreateInfo alloc_create_info = {};
 	switch (p_allocation_type) {
 		case MemoryAllocationType::CPU: {
-			bool is_src = p_usage.has_flag(BUFFER_USAGE_TRANSFER_SRC_BIT);
-			bool is_dst = p_usage.has_flag(BUFFER_USAGE_TRANSFER_DST_BIT);
+			bool is_src = p_usage & BUFFER_USAGE_TRANSFER_SRC_BIT;
+			bool is_dst = p_usage & BUFFER_USAGE_TRANSFER_DST_BIT;
 			if (is_src && !is_dst) {
 				// Looks like a staging buffer: CPU maps, writes sequentially,
 				// then GPU copies to VRAM.
-				alloc_create_info.flags =
-						VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+				alloc_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 			}
 			if (is_dst && !is_src) {
 				// Looks like a readback buffer: GPU copies from VRAM, then CPU
 				// maps and reads.
-				alloc_create_info.flags =
-						VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+				alloc_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
 			}
 			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
 			alloc_create_info.requiredFlags =
-					(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+					(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		} break;
 		case MemoryAllocationType::GPU: {
 			alloc_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
 			if (p_size <= SMALL_ALLOCATION_MAX_SIZE) {
 				uint32_t mem_type_index = 0;
-				vmaFindMemoryTypeIndexForBufferInfo(allocator, &create_info,
-						&alloc_create_info, &mem_type_index);
-				alloc_create_info.pool =
-						_find_or_create_small_allocs_pool(mem_type_index);
+				vmaFindMemoryTypeIndexForBufferInfo(
+						allocator, &create_info, &alloc_create_info, &mem_type_index);
+				alloc_create_info.pool = _find_or_create_small_allocs_pool(mem_type_index);
 			}
 		} break;
 	}
@@ -51,12 +46,11 @@ Buffer VulkanRenderBackend::buffer_create(uint64_t p_size,
 	VmaAllocation allocation = nullptr;
 	VmaAllocationInfo alloc_info = {};
 
-	VK_CHECK(vmaCreateBuffer(allocator, &create_info, &alloc_create_info,
-			&vk_buffer, &allocation, &alloc_info));
+	VK_CHECK(vmaCreateBuffer(
+			allocator, &create_info, &alloc_create_info, &vk_buffer, &allocation, &alloc_info));
 
 	// Bookkeep.
-	VulkanBuffer* buf_info =
-			VersatileResource::allocate<VulkanBuffer>(resources_allocator);
+	VulkanBuffer* buf_info = VersatileResource::allocate<VulkanBuffer>(resources_allocator);
 	buf_info->vk_buffer = vk_buffer;
 	buf_info->allocation.handle = allocation;
 	buf_info->allocation.size = alloc_info.size;
@@ -79,8 +73,7 @@ void VulkanRenderBackend::buffer_free(Buffer p_buffer) {
 	VersatileResource::free(resources_allocator, buffer);
 }
 
-BufferDeviceAddress VulkanRenderBackend::buffer_get_device_address(
-		Buffer p_buffer) {
+BufferDeviceAddress VulkanRenderBackend::buffer_get_device_address(Buffer p_buffer) {
 	VulkanBuffer* buffer = (VulkanBuffer*)p_buffer;
 
 	VkBufferDeviceAddressInfo info = {};
@@ -105,8 +98,7 @@ void VulkanRenderBackend::buffer_unmap(Buffer p_buffer) {
 	vmaUnmapMemory(allocator, buffer->allocation.handle);
 }
 
-VmaPool VulkanRenderBackend::_find_or_create_small_allocs_pool(
-		uint32_t p_mem_type_index) {
+VmaPool VulkanRenderBackend::_find_or_create_small_allocs_pool(uint32_t p_mem_type_index) {
 	if (small_allocs_pools.find(p_mem_type_index) != small_allocs_pools.end()) {
 		return small_allocs_pools[p_mem_type_index];
 	}

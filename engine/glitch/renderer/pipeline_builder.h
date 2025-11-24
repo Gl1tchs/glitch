@@ -17,8 +17,7 @@ public:
 
 	PipelineBuilder& set_depth_attachment(std::optional<DataFormat> p_format);
 
-	PipelineBuilder& add_shader_stage(
-			ShaderStage p_stage, const std::vector<uint32_t>& p_spirv_data);
+	PipelineBuilder& set_shader(const std::vector<uint32_t>& p_spirv_data);
 
 	PipelineBuilder& with_depth_test(
 			CompareOperator p_op = CompareOperator::LESS, bool p_depth_write = true);
@@ -36,7 +35,7 @@ public:
 	std::pair<Shader, Pipeline> build(RenderPass p_render_pass = nullptr);
 
 private:
-	std::vector<SpirvData> shader_stages;
+	std::vector<uint32_t> shader_spirv_data;
 
 	RenderPrimitive primitive_type;
 	PipelineVertexInputState vertex_input;

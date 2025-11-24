@@ -26,7 +26,7 @@ public:
 
 		int num_point_lights;
 
-		float _pad0[3];
+		float __pad0[3];
 
 		DirectionalLight directional_light;
 		std::array<PointLight, 16> point_lights;

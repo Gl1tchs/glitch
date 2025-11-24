@@ -17,10 +17,7 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 	// Register material definitions
 	{
 		const auto unlit_def = MaterialDefinition::create({ "geo_albedo" }, "geo_depth",
-				{
-						.fs_path = "glitch://pipelines/unlit/mesh.frag.spv",
-						.vs_path = "glitch://pipelines/unlit/mesh.vert.spv",
-				},
+				"glitch://pipelines/unlit.slang.spv",
 				{
 						{
 								.name = "base_color",
@@ -45,10 +42,7 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 
 	{
 		const auto pbr_def = MaterialDefinition::create({ "geo_albedo" }, "geo_depth",
-				{
-						.fs_path = "glitch://pipelines/pbr/mesh.frag.spv",
-						.vs_path = "glitch://pipelines/pbr/mesh.vert.spv",
-				},
+				"glitch://pipelines/pbr.slang.spv",
 				{
 						{
 								.name = "base_color",

@@ -64,7 +64,7 @@ private:
 	bool is_running = false;
 
 	// UI State
-	bool show_grid = true;
+	bool show_grid = false;
 
 	// Stores descriptors so we don't re-upload every frame.
 	UID selected_id = 0; // so that we can free thumbnails on change
