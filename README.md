@@ -3,6 +3,9 @@
 Glitch is a modular, modern C++ rendering engine built primarily on Vulkan, designed for real-time graphics, game development
 and interactive simulations.
 
+
+![Editor Application](./.github/images/editor.jpg)
+
 ## Building
 
 ### Dependencies
