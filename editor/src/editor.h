@@ -49,7 +49,7 @@ private:
 	std::shared_ptr<SceneRenderer> scene_renderer;
 
 	std::shared_ptr<Scene> scene;
-	std::optional<fs::path> scene_path = std::nullopt;
+	std::optional<std::filesystem::path> scene_path = std::nullopt;
 
 	CameraController camera_controller;
 	std::shared_ptr<GridPass> grid_pass;

@@ -6,58 +6,58 @@ Registry::~Registry() { clear(); }
 
 void Registry::clear() {
 	// call component's destructores
-	for (size_t entity_idx = 0; entity_idx < entities.size(); ++entity_idx) {
-		for (size_t comp_id = 0; comp_id < component_pools.size(); ++comp_id) {
-			if (entities[entity_idx].mask.test(comp_id) && pool_helpers[comp_id].destroy_fn) {
+	for (size_t entity_idx = 0; entity_idx < _entities.size(); ++entity_idx) {
+		for (size_t comp_id = 0; comp_id < _component_pools.size(); ++comp_id) {
+			if (_entities[entity_idx].mask.test(comp_id) && _pool_helpers[comp_id].destroy_fn) {
 				// call the destructor
-				pool_helpers[comp_id].destroy_fn(component_pools[comp_id]->get(entity_idx));
+				_pool_helpers[comp_id].destroy_fn(_component_pools[comp_id]->get(entity_idx));
 			}
 		}
 	}
 
 	// delete the pools
-	for (ComponentPool* pool : component_pools) {
+	for (ComponentPool* pool : _component_pools) {
 		delete pool;
 	}
 
 	// Clear all data
-	component_pools.clear();
-	pool_helpers.clear();
-	entities.clear();
-	free_indices = {};
-	entity_counter = 0;
+	_component_pools.clear();
+	_pool_helpers.clear();
+	_entities.clear();
+	_free_indices = {};
+	_entity_counter = 0;
 }
 
-void Registry::copy_to(Registry& p_dest) {
-	p_dest.clear();
+void Registry::copy_to(Registry& dest) {
+	dest.clear();
 
 	// Copy trivial data
-	p_dest.entity_counter = this->entity_counter;
-	p_dest.free_indices = this->free_indices;
-	p_dest.entities = this->entities; // This copies versions and component masks
+	dest._entity_counter = this->_entity_counter;
+	dest._free_indices = this->_free_indices;
+	dest._entities = this->_entities; // This copies versions and component masks
 
 	// Prepare destination pools
-	p_dest.component_pools.resize(this->component_pools.size(), nullptr);
-	p_dest.pool_helpers = this->pool_helpers;
+	dest._component_pools.resize(this->_component_pools.size(), nullptr);
+	dest._pool_helpers = this->_pool_helpers;
 
 	// Iterate all pools and copy component data
-	for (size_t comp_id = 0; comp_id < this->component_pools.size(); comp_id++) {
-		if (this->component_pools[comp_id] == nullptr) {
+	for (size_t comp_id = 0; comp_id < this->_component_pools.size(); comp_id++) {
+		if (this->_component_pools[comp_id] == nullptr) {
 			continue; // This component type isn't used
 		}
 
 		// Get copy function
-		auto& helper = this->pool_helpers[comp_id];
+		auto& helper = this->_pool_helpers[comp_id];
 
 		// Create a new, empty pool in the destination
-		p_dest.component_pools[comp_id] = new ComponentPool(helper.element_size);
+		dest._component_pools[comp_id] = new ComponentPool(helper.element_size);
 
 		// Iterate all entities and copy components
-		for (size_t entity_idx = 0; entity_idx < this->entities.size(); entity_idx++) {
+		for (size_t entity_idx = 0; entity_idx < this->_entities.size(); entity_idx++) {
 			// If the entity has this component, copy it
-			if (this->entities[entity_idx].mask.test(comp_id)) {
-				void* dest_ptr = p_dest.component_pools[comp_id]->get(entity_idx);
-				void* src_ptr = this->component_pools[comp_id]->get(entity_idx);
+			if (this->_entities[entity_idx].mask.test(comp_id)) {
+				void* dest_ptr = dest._component_pools[comp_id]->get(entity_idx);
+				void* src_ptr = this->_component_pools[comp_id]->get(entity_idx);
 
 				helper.copy_fn(dest_ptr, src_ptr);
 			}
@@ -66,39 +66,48 @@ void Registry::copy_to(Registry& p_dest) {
 }
 
 EntityId Registry::spawn() {
-	if (!free_indices.empty()) {
-		uint32_t new_idx = free_indices.front();
-		free_indices.pop();
+	if (!_free_indices.empty()) {
+		uint32_t new_idx = _free_indices.front();
+		_free_indices.pop();
 
-		EntityId new_id = create_entity_id(new_idx, get_entity_version(entities[new_idx].id));
+		EntityId new_id = create_entity_id(new_idx, get_entity_version(_entities[new_idx].id));
 
-		entities[new_idx].id = new_id;
+		_entities[new_idx].id = new_id;
 
 		return new_id;
 	}
 
-	entities.push_back({ create_entity_id(entities.size(), 0), ComponentMask() });
+	_entities.push_back({ create_entity_id(_entities.size(), 0), ComponentMask() });
 
-	return entities.back().id;
+	return _entities.back().id;
 }
 
-bool Registry::is_valid(EntityId p_entity) {
-	if (get_entity_index(p_entity) >= entities.size()) {
+bool Registry::is_valid(EntityId entity) {
+	if (get_entity_index(entity) >= _entities.size()) {
 		return false;
 	}
 
-	return entities[get_entity_index(p_entity)].id == p_entity;
+	return _entities[get_entity_index(entity)].id == entity;
 }
 
-void Registry::despawn(EntityId p_entity) {
-	const uint32_t entity_idx = get_entity_index(p_entity);
+void Registry::despawn(EntityId entity) {
+	const uint32_t entity_idx = get_entity_index(entity);
 
-	EntityId new_entity_id = create_entity_id(UINT32_MAX, get_entity_version(p_entity) + 1);
+	// Destroy all components
+	for (size_t comp_id = 0; comp_id < _component_pools.size(); ++comp_id) {
+		if (_entities[entity_idx].mask.test(comp_id)) {
+			if (_pool_helpers.size() > comp_id && _pool_helpers[comp_id].destroy_fn) {
+				_pool_helpers[comp_id].destroy_fn(_component_pools[comp_id]->get(entity_idx));
+			}
+		}
+	}
 
-	entities[entity_idx].id = new_entity_id;
-	entities[entity_idx].mask.reset();
+	EntityId new_entity_id = create_entity_id(UINT32_MAX, get_entity_version(entity) + 1);
 
-	free_indices.push(entity_idx);
+	_entities[entity_idx].id = new_entity_id;
+	_entities[entity_idx].mask.reset();
+
+	_free_indices.push(entity_idx);
 }
 
 } //namespace gl

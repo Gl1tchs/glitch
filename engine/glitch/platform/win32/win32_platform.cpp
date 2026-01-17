@@ -9,20 +9,18 @@
 namespace gl {
 namespace os {
 
-const char* getenv(const char* p_name) {
+const char* getenv(const char* name) {
 	// TODO: maybe better way to do this
 	const DWORD buffer_size = 65535;
 	static char buffer[buffer_size];
-	if (GetEnvironmentVariableA(p_name, buffer, buffer_size)) {
+	if (GetEnvironmentVariableA(name, buffer, buffer_size)) {
 		return buffer;
 	} else {
 		return 0;
 	}
 }
 
-bool setenv(const char* p_name, const char* p_value) {
-	return SetEnvironmentVariable(p_name, p_value);
-}
+bool setenv(const char* name, const char* value) { return SetEnvironmentVariable(name, value); }
 
 } //namespace os
 } //namespace gl

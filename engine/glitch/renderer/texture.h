@@ -5,8 +5,9 @@
 #pragma once
 
 #include "glitch/asset/asset.h"
-#include "glitch/core/color.h"
-#include "glitch/renderer/types.h"
+#include "glitch/core/hash.h"
+
+#include <glgpu/glgpu.h>
 
 namespace gl {
 
@@ -30,23 +31,23 @@ public:
 
 	// AssetType method overrides
 
-	static std::shared_ptr<Texture> create(const Color& p_color,
-			const glm::uvec2& p_size = { 1, 1 }, TextureSamplerOptions p_sampler = {});
+	static std::shared_ptr<Texture> create(
+			const Color& color, const Vec2u& size = { 1, 1 }, TextureSamplerOptions sampler = {});
 
-	static std::shared_ptr<Texture> create(DataFormat p_format, const glm::uvec2& p_size,
-			const void* p_data = nullptr, TextureSamplerOptions p_sampler = {});
+	static std::shared_ptr<Texture> create(DataFormat format, const Vec2u& size,
+			const void* data = nullptr, TextureSamplerOptions sampler = {});
 
-	static bool save(const fs::path& p_metadata_path, std::shared_ptr<Texture> p_texture);
-	static std::shared_ptr<Texture> load(const fs::path& p_metadata_path);
+	static bool save(const std::filesystem::path& metadata_path, std::shared_ptr<Texture> texture);
+	static std::shared_ptr<Texture> load(const std::filesystem::path& metadata_path);
 
 	static std::shared_ptr<Texture> load_from_file(
-			const fs::path& p_asset_path, const TextureSamplerOptions& p_sampler = {});
+			const std::filesystem::path& asset_path, const TextureSamplerOptions& sampler = {});
 
-	ShaderUniform get_uniform(uint32_t p_binding) const;
+	ShaderUniform get_uniform(uint32_t binding) const;
 
 	DataFormat get_format() const;
 
-	const glm::uvec2 get_size() const;
+	const Vec2u get_size() const;
 
 	const Image get_image() const;
 
@@ -55,18 +56,18 @@ public:
 	const std::string& get_path() const;
 
 private:
-	DataFormat format;
-	Image image;
-	Sampler sampler;
-	glm::uvec2 size;
+	DataFormat _format;
+	Image _image;
+	Sampler _sampler;
+	Vec2u _size;
 
-	std::string asset_path;
-	TextureSamplerOptions sampler_options;
+	std::string _asset_path;
+	TextureSamplerOptions _sampler_options;
 };
 
-static_assert(IsCreatableAsset<Texture, Color, glm::uvec2, TextureSamplerOptions>);
+static_assert(IsCreatableAsset<Texture, Color, Vec2u, TextureSamplerOptions>);
 static_assert(IsLoadableAsset<Texture>);
 
-template <> size_t hash64(const Texture& p_texture);
+template <> size_t hash64(const Texture& texture);
 
 } //namespace gl

@@ -1,11 +1,17 @@
 #include "glitch/core/json.h"
-
 #include "glitch/asset/asset_system.h"
+
+#include <glgpu/result.h>
+
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <string_view>
 
 namespace gl {
 
-Result<json, JSONLoadError> json_load(std::string_view p_path) {
-	const auto abs_path = AssetSystem::get_absolute_path(p_path);
+Result<json, JSONLoadError> json_load(std::string_view path) {
+	const auto abs_path = AssetSystem::get_absolute_path(path);
 	if (!abs_path) {
 		return make_err<json>(JSONLoadError::INVALID_PATH);
 	}
@@ -25,8 +31,8 @@ Result<json, JSONLoadError> json_load(std::string_view p_path) {
 	}
 }
 
-JSONLoadError json_save(std::string_view p_path, const json& p_json) {
-	const auto abs_path = AssetSystem::get_absolute_path(p_path);
+JSONLoadError json_save(std::string_view path, const json& j) {
+	const auto abs_path = AssetSystem::get_absolute_path(path);
 	if (!abs_path) {
 		return JSONLoadError::INVALID_PATH;
 	}
@@ -37,7 +43,7 @@ JSONLoadError json_save(std::string_view p_path, const json& p_json) {
 	}
 
 	try {
-		f << p_json.dump(2);
+		f << j.dump(2);
 
 		return JSONLoadError::NONE;
 	} catch (const std::runtime_error&) {

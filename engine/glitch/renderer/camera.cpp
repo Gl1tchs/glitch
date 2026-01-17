@@ -1,7 +1,8 @@
 #include "glitch/renderer/camera.h"
 
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
+#include <glgpu/math.h>
+
+#include <cmath>
 
 namespace gl {
 
@@ -10,14 +11,14 @@ OrthographicCamera::OrthographicCamera() : Camera() {
 	far_clip = 1.0f;
 }
 
-glm::mat4 OrthographicCamera::get_view_matrix(
-		const Transform& p_transform) const {
-	return glm::inverse(p_transform.to_mat4());
+Mat4 OrthographicCamera::get_view_matrix(const Transform& transform) const {
+	Mat4 transform_matrix = transform.to_mat4();
+	return transform_matrix.inverse();
 }
 
-glm::mat4 OrthographicCamera::get_projection_matrix() const {
-	return glm::ortho(-aspect_ratio * zoom_level, aspect_ratio * zoom_level,
-			-zoom_level, zoom_level, near_clip, far_clip);
+Mat4 OrthographicCamera::get_projection_matrix() const {
+	return Mat4::ortho(-aspect_ratio * zoom_level, aspect_ratio * zoom_level, -zoom_level,
+			zoom_level, near_clip, far_clip);
 }
 
 PerspectiveCamera::PerspectiveCamera() : Camera() {
@@ -25,16 +26,13 @@ PerspectiveCamera::PerspectiveCamera() : Camera() {
 	far_clip = 10000.0f;
 }
 
-glm::mat4 PerspectiveCamera::get_view_matrix(
-		const Transform& p_transform) const {
-	return glm::lookAt(p_transform.get_position(),
-			p_transform.get_position() + p_transform.get_forward(),
-			p_transform.get_up());
+Mat4 PerspectiveCamera::get_view_matrix(const Transform& transform) const {
+	return Mat4::look_at(transform.get_position(),
+			transform.get_position() + transform.get_forward(), transform.get_up());
 }
 
-glm::mat4 PerspectiveCamera::get_projection_matrix() const {
-	glm::mat4 proj = glm::perspective(
-			glm::radians(fov), aspect_ratio, near_clip, far_clip);
+Mat4 PerspectiveCamera::get_projection_matrix() const {
+	Mat4 proj = Mat4::perspective(math::as_radians(fov), aspect_ratio, near_clip, far_clip);
 
 	// invert the Y direction on projection matrix so that we are more similar
 	// to opengl and gltf axis

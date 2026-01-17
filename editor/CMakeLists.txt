@@ -13,7 +13,7 @@ target_include_directories(glitch-editor
     ${CMAKE_SOURCE_DIR}/engine
     ${IMGUI_INCLUDES}
     ${GLM_INCLUDES}
-    ${CMAKE_SOURCE_DIR}/third_party
+    ${CMAKE_SOURCE_DIR}/external
 )
 
 target_link_libraries(glitch-editor PRIVATE

@@ -4,20 +4,22 @@
 
 #pragma once
 
-#include "glitch/core/color.h"
+#include "glitch/core/core.h"
 #include "glitch/core/templates/concepts.h"
+
+#include <glgpu/glgpu.h>
 
 namespace gl {
 
 struct DirectionalLight {
-	glm::vec4 direction;
+	Vec4f direction;
 	Color color;
 };
 
 GL_DEFINE_SERIALIZABLE(DirectionalLight, direction, color);
 
 struct PointLight {
-	glm::vec4 position;
+	Vec4f position;
 	Color color;
 	float linear;
 	float quadratic;

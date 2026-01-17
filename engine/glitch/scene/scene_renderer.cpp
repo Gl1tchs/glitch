@@ -1,18 +1,18 @@
 #include "glitch/scene/scene_renderer.h"
 
 #include "glitch/core/application.h"
-#include "glitch/renderer/types.h"
+#include "glitch/core/debug/profiling.h"
 
 namespace gl {
 
-SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
-		renderer(Application::get()->get_renderer()), backend(renderer->get_backend()) {
-	renderer->set_msaa_samples(p_specs.msaa);
+SceneRenderer::SceneRenderer(const SceneRendererSpecification& specs) :
+		_renderer(Application::get()->get_renderer()), _device(_renderer->get_device()) {
+	_renderer->set_msaa_samples(specs.msaa);
 
 	// Create and initialize clear pass
 	// which will define geo_albedo and geo_depth
-	clear_pass = std::make_shared<ClearPass>();
-	renderer->add_pass(clear_pass, -10);
+	_clear_pass = std::make_shared<ClearPass>();
+	_renderer->add_pass(_clear_pass, -10);
 
 	// Register material definitions
 	{
@@ -97,33 +97,33 @@ SceneRenderer::SceneRenderer(const SceneRendererSpecification& p_specs) :
 	}
 
 	// Initialize geometry pass
-	mesh_pass = std::make_shared<MeshPass>();
-	renderer->add_pass(mesh_pass);
+	_mesh_pass = std::make_shared<MeshPass>();
+	_renderer->add_pass(_mesh_pass);
 }
 
-SceneRenderer::~SceneRenderer() { renderer->wait_for_device(); }
+SceneRenderer::~SceneRenderer() { _renderer->wait_for_device(); }
 
-void SceneRenderer::submit(const DrawingContext& p_ctx) {
+void SceneRenderer::submit(const DrawingContext& ctx) {
 	GL_PROFILE_SCOPE;
 
-	if (!p_ctx.scene) {
+	if (!ctx.scene) {
 		GL_LOG_WARNING("[SceneRenderer::submit] No Scene assigned to render!");
 		return;
 	}
 
-	mesh_pass->set_scene(p_ctx.scene);
+	_mesh_pass->set_scene(ctx.scene);
 
-	renderer->set_render_present_mode(false);
-	renderer->set_resolution_scale(p_ctx.settings.resolution_scale);
-	renderer->set_vsync(p_ctx.settings.vsync);
+	_renderer->set_render_present_mode(false);
+	_renderer->set_resolution_scale(ctx.settings.resolution_scale);
+	_renderer->set_vsync(ctx.settings.vsync);
 
-	CommandBuffer cmd = renderer->begin_render();
+	CommandBuffer cmd = _renderer->begin_render();
 	{
-		renderer->execute(cmd);
+		_renderer->execute(cmd);
 	}
-	renderer->end_render();
+	_renderer->end_render();
 }
 
-void SceneRenderer::submit_func(RenderFunc&& p_func) { render_funcs.push_back(p_func); }
+void SceneRenderer::submit_func(RenderFunc&& func) { _render_funcs.push_back(func); }
 
 } //namespace gl

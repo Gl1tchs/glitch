@@ -7,16 +7,15 @@
 
 #include "glitch/asset/asset.h"
 #include "glitch/renderer/frustum.h"
-#include "glitch/renderer/types.h"
 
 namespace gl {
 
 typedef uint64_t MeshHandle;
 
 struct MeshVertex {
-	glm::vec3 position;
+	Vec3f position;
 	float uv_x;
-	glm::vec3 normal;
+	Vec3f normal;
 	float uv_y;
 };
 
@@ -37,7 +36,7 @@ struct GL_API StaticMesh {
 	~StaticMesh();
 
 	static std::shared_ptr<StaticMesh> create(
-			const std::span<MeshVertex>& p_vertices, const std::span<uint32_t>& p_indices);
+			const std::span<MeshVertex>& vertices, const std::span<uint32_t>& indices);
 };
 
 } //namespace gl

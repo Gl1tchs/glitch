@@ -1,6 +1,7 @@
 #include "glitch/scene/scene.h"
 
 #include "glitch/asset/asset_system.h"
+#include "glitch/core/debug/profiling.h"
 #include "glitch/renderer/light_sources.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/texture.h"
@@ -15,57 +16,57 @@ namespace gl {
 void Scene::start() {
 	GL_PROFILE_SCOPE;
 
-	running = true;
+	_running = true;
 
 	ScriptSystem::on_runtime_start(this);
 
 	ScriptSystem::invoke_on_create();
 }
 
-void Scene::update(float p_dt) {
+void Scene::update(float dt) {
 	GL_PROFILE_SCOPE;
 
-	if (paused && step_frames-- <= 0) {
+	if (_paused && _step_frames-- <= 0) {
 		return;
 	}
 
-	ScriptSystem::invoke_on_update(p_dt);
+	ScriptSystem::invoke_on_update(dt);
 }
 
 void Scene::stop() {
 	GL_PROFILE_SCOPE;
 
-	running = false;
+	_running = false;
 
 	ScriptSystem::invoke_on_destroy();
 
 	ScriptSystem::on_runtime_stop();
 }
 
-void Scene::set_paused(bool p_paused) { paused = p_paused; }
+void Scene::set_paused(bool paused) { _paused = paused; }
 
-void Scene::step(uint32_t frames) { step_frames = frames; }
+void Scene::step(uint32_t frames) { _step_frames = frames; }
 
-bool Scene::is_running() const { return running; }
+bool Scene::is_running() const { return _running; }
 
-bool Scene::is_paused() const { return paused; }
+bool Scene::is_paused() const { return _paused; }
 
-void Scene::copy_to(Scene& p_dest) {
-	Registry::copy_to(p_dest);
+void Scene::copy_to(Scene& dest) {
+	Registry::copy_to(dest);
 
-	p_dest.entity_map.clear();
+	dest._entity_map.clear();
 
 	// Copy entities
-	p_dest.entity_map.reserve(this->entity_map.size());
-	std::transform(this->entity_map.begin(), this->entity_map.end(),
-			std::inserter(p_dest.entity_map, p_dest.entity_map.end()), [&p_dest](const auto& pair) {
+	dest._entity_map.reserve(this->_entity_map.size());
+	std::transform(this->_entity_map.begin(), this->_entity_map.end(),
+			std::inserter(dest._entity_map, dest._entity_map.end()), [&dest](const auto& pair) {
 				const auto& [uid, entity] = pair;
-				return std::make_pair(uid, Entity(static_cast<EntityId>(entity), &p_dest));
+				return std::make_pair(uid, Entity(static_cast<EntityId>(entity), &dest));
 			});
 
 	// Update entity transforms
 	// NOTE: this must do in a seperate loop to ensure all entities are copied
-	for (Entity entity : p_dest.view<Transform>()) {
+	for (Entity entity : dest.view<Transform>()) {
 		if (entity.is_child()) {
 			Entity parent = *entity.get_parent();
 			entity.get_transform().parent = &parent.get_transform();
@@ -73,59 +74,57 @@ void Scene::copy_to(Scene& p_dest) {
 	}
 }
 
-Entity Scene::create(const std::string& p_name, Entity p_parent) {
-	return create(UID(), p_name, p_parent);
-}
+Entity Scene::create(const std::string& name, Entity parent) { return create(UID(), name, parent); }
 
-Entity Scene::create(UID p_uid, const std::string& p_name, Entity p_parent) {
+Entity Scene::create(UID uid, const std::string& name, Entity parent) {
 	Entity entity{ spawn(), this };
 
-	entity.add_component<IdComponent>(p_uid, p_name);
+	entity.add_component<IdComponent>(uid, name);
 	entity.add_component<Transform>();
 	entity.add_component<RelationComponent>();
 
-	if (p_parent) {
-		entity.set_parent(p_parent);
+	if (parent) {
+		entity.set_parent(parent);
 	}
 
-	entity_map[p_uid] = entity;
+	_entity_map[uid] = entity;
 
 	return entity;
 }
 
-void Scene::destroy(Entity p_entity) {
-	if (!p_entity.is_valid()) {
+void Scene::destroy(Entity entity) {
+	if (!entity.is_valid()) {
 		return;
 	}
 
 	// Release asset handles for GC
 	// TODO do this dynamically.
-	if (auto mc = p_entity.get_component<MeshComponent>()) {
+	if (auto mc = entity.get_component<MeshComponent>()) {
 		mc->mesh.release();
 	}
-	if (auto mc = p_entity.get_component<MaterialComponent>()) {
+	if (auto mc = entity.get_component<MaterialComponent>()) {
 		mc->handle.release();
 	}
 
 	// Destroy the children if any
-	for (auto child : p_entity.get_children()) {
+	for (auto child : entity.get_children()) {
 		destroy(child);
 	}
 
-	// If `p_entity` is a child of some other entity then reset relation
-	if (std::optional<Entity> parent = p_entity.get_parent()) {
+	// If `entity` is a child of some other entity then reset relation
+	if (std::optional<Entity> parent = entity.get_parent()) {
 		std::vector<UID>& parent_children = parent->get_relation().children_ids;
 		parent_children.erase(
-				std::find(parent_children.begin(), parent_children.end(), p_entity.get_uid()));
+				std::find(parent_children.begin(), parent_children.end(), entity.get_uid()));
 	}
 
-	entity_map.erase(p_entity.get_uid());
+	_entity_map.erase(entity.get_uid());
 
-	despawn(p_entity);
+	despawn(entity);
 }
 
-void Scene::destroy(UID p_uid) {
-	std::optional<Entity> entity = find_by_id(p_uid);
+void Scene::destroy(UID uid) {
+	std::optional<Entity> entity = find_by_id(uid);
 	if (!entity) {
 		return;
 	}
@@ -133,48 +132,48 @@ void Scene::destroy(UID p_uid) {
 	despawn(*entity);
 }
 
-bool Scene::exists(UID p_uid) const { return entity_map.find(p_uid) != entity_map.end(); }
+bool Scene::exists(UID uid) const { return _entity_map.find(uid) != _entity_map.end(); }
 
-std::optional<Entity> Scene::find_by_id(UID p_uid) {
-	const auto it = entity_map.find(p_uid);
-	if (it == entity_map.end()) {
+std::optional<Entity> Scene::find_by_id(UID uid) {
+	const auto it = _entity_map.find(uid);
+	if (it == _entity_map.end()) {
 		return {};
 	}
 	return it->second;
 }
 
-std::optional<Entity> Scene::find_by_name(const std::string& p_name) {
+std::optional<Entity> Scene::find_by_name(const std::string& name) {
 	const auto it = std::find_if(
-			entity_map.begin(), entity_map.end(), [&](const std::pair<UID, Entity>& entity_pair) {
-				return entity_pair.second.get_name() == p_name;
+			_entity_map.begin(), _entity_map.end(), [&](const std::pair<UID, Entity>& entity_pair) {
+				return entity_pair.second.get_name() == name;
 			});
-	if (it == entity_map.end()) {
+	if (it == _entity_map.end()) {
 		return {};
 	}
 
 	return it->second;
 }
 
-static json _serialize_entity(const Entity& p_entity) {
-	GL_ASSERT(p_entity.has_component<IdComponent>());
-	GL_ASSERT(p_entity.has_component<Transform>());
-	GL_ASSERT(p_entity.has_component<RelationComponent>());
+static json _serialize_entity(const Entity& entity) {
+	GL_ASSERT(entity.has_component<IdComponent>());
+	GL_ASSERT(entity.has_component<Transform>());
+	GL_ASSERT(entity.has_component<RelationComponent>());
 
 	json j;
 
-	j["id"] = p_entity.get_uid();
-	j["tag"] = p_entity.get_name();
-	j["parent_id"] = p_entity.get_relation().parent_id;
-	j["transform"] = p_entity.get_transform();
+	j["id"] = entity.get_uid();
+	j["tag"] = entity.get_name();
+	j["parent_id"] = entity.get_relation().parent_id;
+	j["transform"] = entity.get_transform();
 
-	if (const GLTFSourceComponent* gltf_sc = p_entity.get_component<GLTFSourceComponent>()) {
+	if (const GLTFSourceComponent* gltf_sc = entity.get_component<GLTFSourceComponent>()) {
 		j["gltf_source_component"] = *gltf_sc;
 	}
-	if (const GLTFInstanceComponent* gltf_ic = p_entity.get_component<GLTFInstanceComponent>()) {
+	if (const GLTFInstanceComponent* gltf_ic = entity.get_component<GLTFInstanceComponent>()) {
 		j["gltf_instance_component"] = *gltf_ic;
 	}
 
-	if (const MaterialComponent* mc = p_entity.get_component<MaterialComponent>()) {
+	if (const MaterialComponent* mc = entity.get_component<MaterialComponent>()) {
 		const auto material = AssetSystem::get<Material>(mc->handle);
 		if (material) {
 			j["material_component"]["definition_path"] = mc->definition_path;
@@ -186,7 +185,7 @@ static json _serialize_entity(const Entity& p_entity) {
 					GL_LOG_WARNING(
 							"[_serialize_entity] Unable to serialize MaterialComponent for entity "
 							"'{}. Uniform field '{}' does not have a value.",
-							p_entity.get_name(), uniform.name);
+							entity.get_name(), uniform.name);
 					continue;
 				}
 
@@ -210,39 +209,39 @@ static json _serialize_entity(const Entity& p_entity) {
 		} else {
 			GL_LOG_WARNING("[_serialize_entity] Unable to serialize MaterialComponent for entity "
 						   "'{}. Material metadata does not exist.",
-					p_entity.get_name());
+					entity.get_name());
 		}
 	}
 
-	if (const CameraComponent* cc = p_entity.get_component<CameraComponent>()) {
+	if (const CameraComponent* cc = entity.get_component<CameraComponent>()) {
 		j["camera_component"] = *cc;
 	}
-	if (const DirectionalLight* dl = p_entity.get_component<DirectionalLight>()) {
+	if (const DirectionalLight* dl = entity.get_component<DirectionalLight>()) {
 		j["directional_light"] = *dl;
 	}
-	if (const PointLight* pl = p_entity.get_component<PointLight>()) {
+	if (const PointLight* pl = entity.get_component<PointLight>()) {
 		j["point_light"] = *pl;
 	}
-	if (const Script* sc = p_entity.get_component<Script>()) {
+	if (const Script* sc = entity.get_component<Script>()) {
 		j["script"] = *sc;
 	}
 
 	return j;
 }
 
-bool Scene::serialize(std::string_view p_path, std::shared_ptr<Scene> p_scene) {
-	const auto abs_path = AssetSystem::get_absolute_path(p_path);
+bool Scene::serialize(std::string_view path, std::shared_ptr<Scene> scene) {
+	const auto abs_path = AssetSystem::get_absolute_path(path);
 	if (!abs_path) {
-		GL_LOG_ERROR("[Scene::serialize] Unable to serialize scene to path: {}", p_path);
+		GL_LOG_ERROR("[Scene::serialize] Unable to serialize scene to path: {}", path);
 		return false;
 	}
 
-	GL_LOG_TRACE("[Scene::serialize] Serializing scene to: {}", p_path);
+	GL_LOG_TRACE("[Scene::serialize] Serializing scene to: {}", path);
 
 	json j;
 	j["entities"] = nlohmann::json::array();
 
-	for (Entity e : p_scene->view()) {
+	for (Entity e : scene->view()) {
 		j["entities"].push_back(_serialize_entity(e));
 	}
 
@@ -250,19 +249,19 @@ bool Scene::serialize(std::string_view p_path, std::shared_ptr<Scene> p_scene) {
 	AssetSystem::serialize(j["assets"]);
 
 	// Write serialized json to the file.
-	if (json_save(p_path, j) != JSONLoadError::NONE) {
+	if (json_save(path, j) != JSONLoadError::NONE) {
 		GL_LOG_ERROR("[Scene::serialize] Unable to open file at path '{}' for serialization",
-				abs_path.get_value().string());
+				abs_path.value().string());
 		return false;
 	}
 
 	return true;
 }
 
-static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_scene) {
+static Entity _deserialize_entity(const json& json, std::shared_ptr<Scene> scene) {
 	UID id;
-	if (p_json.contains("id")) {
-		p_json.at("id").get_to(id);
+	if (json.contains("id")) {
+		json.at("id").get_to(id);
 	} else {
 		GL_LOG_ERROR("[_deserialize_entity] Entity does not contain "
 					 "'id' field"
@@ -271,8 +270,8 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 	}
 
 	std::string tag;
-	if (p_json.contains("tag")) {
-		p_json.at("tag").get_to(tag);
+	if (json.contains("tag")) {
+		json.at("tag").get_to(tag);
 	} else {
 		GL_LOG_ERROR("[_deserialize_entity] Entity does not contain "
 					 "'tag' field "
@@ -280,37 +279,37 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 		return INVALID_ENTITY;
 	}
 
-	Entity entity = p_scene->create(id, tag);
+	Entity entity = scene->create(id, tag);
 
-	if (p_json.contains("parent_id")) {
-		entity.get_component<RelationComponent>()->parent_id = p_json.at("parent_id").get<UID>();
+	if (json.contains("parent_id")) {
+		entity.get_component<RelationComponent>()->parent_id = json.at("parent_id").get<UID>();
 	} else {
 		entity.get_component<RelationComponent>()->parent_id = INVALID_UID;
 	}
 
-	if (p_json.contains("transform")) {
-		p_json.at("transform").get_to(entity.get_transform());
+	if (json.contains("transform")) {
+		json.at("transform").get_to(entity.get_transform());
 	}
 
-	if (p_json.contains("gltf_source_component")) {
+	if (json.contains("gltf_source_component")) {
 		GLTFSourceComponent* gltf_sc = entity.add_component<GLTFSourceComponent>();
-		p_json.at("gltf_source_component").get_to(*gltf_sc);
+		json.at("gltf_source_component").get_to(*gltf_sc);
 	}
-	if (p_json.contains("gltf_instance_component")) {
+	if (json.contains("gltf_instance_component")) {
 		GLTFInstanceComponent* gltf_ic = entity.add_component<GLTFInstanceComponent>();
-		p_json.at("gltf_instance_component").get_to(*gltf_ic);
+		json.at("gltf_instance_component").get_to(*gltf_ic);
 	}
 
-	if (p_json.contains("material_component")) {
+	if (json.contains("material_component")) {
 		MaterialComponent* mc = entity.add_component<MaterialComponent>();
 		mc->handle = INVALID_ASSET_HANDLE;
 
-		p_json["material_component"]["definition_path"].get_to(mc->definition_path);
+		json["material_component"]["definition_path"].get_to(mc->definition_path);
 
 		// Deserialize uniforms if any
-		if (p_json["material_component"].contains("uniforms") &&
-				p_json["material_component"]["uniforms"].is_array()) {
-			for (const auto& uniform : p_json["material_component"]["uniforms"]) {
+		if (json["material_component"].contains("uniforms") &&
+				json["material_component"]["uniforms"].is_array()) {
+			for (const auto& uniform : json["material_component"]["uniforms"]) {
 				if (!uniform.contains("name") || !uniform.contains("type") ||
 						!uniform.contains("value")) {
 					GL_LOG_WARNING("[_deserialize_entity] Unable to deserialize material for "
@@ -332,13 +331,13 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 							value = uniform["value"].get<float>();
 							break;
 						case ShaderUniformVariableType::VEC2:
-							value = uniform["value"].get<glm::vec2>();
+							value = uniform["value"].get<Vec2f>();
 							break;
 						case ShaderUniformVariableType::VEC3:
-							value = uniform["value"].get<glm::vec3>();
+							value = uniform["value"].get<Vec3f>();
 							break;
 						case ShaderUniformVariableType::VEC4:
-							value = uniform["value"].get<glm::vec4>();
+							value = uniform["value"].get<Vec4f>();
 							break;
 						case ShaderUniformVariableType::TEXTURE:
 							value = uniform["value"].get<AssetHandle>();
@@ -355,40 +354,40 @@ static Entity _deserialize_entity(const json& p_json, std::shared_ptr<Scene> p_s
 		}
 	}
 
-	if (p_json.contains("camera_component")) {
+	if (json.contains("camera_component")) {
 		CameraComponent* cc = entity.add_component<CameraComponent>();
-		p_json.at("camera_component").get_to(*cc);
+		json.at("camera_component").get_to(*cc);
 	}
-	if (p_json.contains("directional_light")) {
+	if (json.contains("directional_light")) {
 		DirectionalLight* dl = entity.add_component<DirectionalLight>();
-		p_json.at("directional_light").get_to(*dl);
+		json.at("directional_light").get_to(*dl);
 	}
-	if (p_json.contains("point_light")) {
+	if (json.contains("point_light")) {
 		PointLight* pl = entity.add_component<PointLight>();
-		p_json.at("point_light").get_to(*pl);
+		json.at("point_light").get_to(*pl);
 	}
-	if (p_json.contains("script")) {
+	if (json.contains("script")) {
 		Script* sc = entity.add_component<Script>();
-		p_json.at("script").get_to(*sc);
+		json.at("script").get_to(*sc);
 	}
 
 	return entity;
 }
 
-bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene) {
-	const auto res = json_load(p_path);
+bool Scene::deserialize(std::string_view path, std::shared_ptr<Scene> scene) {
+	const auto res = json_load(path);
 	if (!res) {
-		GL_LOG_ERROR("[Scene::deserialize] Unable to open file at path '{}' for deserialization",
-				p_path);
+		GL_LOG_ERROR(
+				"[Scene::deserialize] Unable to open file at path '{}' for deserialization", path);
 		return false;
 	}
 
-	const json& j = res.get_value();
+	const json& j = res.value();
 
 	if (!j.contains("entities") || !j["entities"].is_array()) {
 		GL_LOG_ERROR("[Scene::deserialize] Unable to deserialize scene from path '{}', invalid "
 					 "entity list.",
-				p_path);
+				path);
 		return false;
 	}
 
@@ -533,7 +532,7 @@ bool Scene::deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene)
 		}
 	}
 
-	new_scene->copy_to(*p_scene);
+	new_scene->copy_to(*scene);
 
 	return true;
 }

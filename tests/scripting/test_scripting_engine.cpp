@@ -1,4 +1,4 @@
-#include <doctest/doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "glitch/scene/scene.h"
 #include "glitch/scripting/script.h"
@@ -22,8 +22,8 @@ TEST_CASE("Script loading") {
 	GL_LOG_INFO("Error is expected:");
 	Result<ScriptRef, ScriptResult> res = ScriptEngine::load_script(SYNTAX_ERROR);
 
-	CHECK(res.has_error());
-	CHECK(res.get_error() == ScriptResult::LOAD_ERROR);
+	REQUIRE(res.is_error());
+	REQUIRE(res.error() == ScriptResult::LOAD_ERROR);
 
 	const char* TABLE_ERROR = R"(
 		local Player = {}
@@ -38,8 +38,8 @@ TEST_CASE("Script loading") {
 	GL_LOG_INFO("Error is expected:");
 	res = ScriptEngine::load_script(TABLE_ERROR);
 
-	CHECK(res.has_error());
-	CHECK(res.get_error() == ScriptResult::INVALID_TABLE);
+	REQUIRE(res.is_error());
+	REQUIRE(res.error() == ScriptResult::INVALID_TABLE);
 
 	const char* VALID_SCRIPT = R"(
 		local Player = {}
@@ -53,11 +53,11 @@ TEST_CASE("Script loading") {
 
 	res = ScriptEngine::load_script(VALID_SCRIPT);
 
-	CHECK(res.has_value());
-	CHECK(res.get_value() != 0);
+	REQUIRE(res.is_ok());
+	REQUIRE(res.value() != 0);
 
-	CHECK(ScriptEngine::exec_function(res.get_value(), "on_create") == ScriptResult::SUCCESS);
-	CHECK(ScriptEngine::exec_function(res.get_value(), "on_update") ==
+	REQUIRE(ScriptEngine::exec_function(res.value(), "on_create") == ScriptResult::SUCCESS);
+	REQUIRE(ScriptEngine::exec_function(res.value(), "on_update") ==
 			ScriptResult::FUNCTION_NOT_FOUND);
 
 	ScriptEngine::shutdown();
@@ -90,52 +90,52 @@ TEST_CASE("Script fields") {
 	Script* sc = e.add_component<Script>();
 	sc->script_path = "tests/scripting/lua/test_fields.lua";
 
-	CHECK(sc->load() == ScriptResult::SUCCESS);
+	REQUIRE(sc->load() == ScriptResult::SUCCESS);
 
 	ScriptMetadata metadata = ScriptEngine::get_metadata(sc->script);
-	CHECK(metadata.fields.size() == 3);
+	REQUIRE(metadata.fields.size() == 3);
 
-	CHECK(metadata.fields.find("name") != metadata.fields.end());
-	CHECK(metadata.fields.find("health") != metadata.fields.end());
-	CHECK(metadata.fields.find("alive") != metadata.fields.end());
+	REQUIRE(metadata.fields.find("name") != metadata.fields.end());
+	REQUIRE(metadata.fields.find("health") != metadata.fields.end());
+	REQUIRE(metadata.fields.find("alive") != metadata.fields.end());
 
-	CHECK(std::holds_alternative<std::string>(metadata.fields["name"]));
-	CHECK(std::holds_alternative<double>(metadata.fields["health"]));
-	CHECK(std::holds_alternative<bool>(metadata.fields["alive"]));
+	REQUIRE(std::holds_alternative<std::string>(metadata.fields["name"]));
+	REQUIRE(std::holds_alternative<double>(metadata.fields["health"]));
+	REQUIRE(std::holds_alternative<bool>(metadata.fields["alive"]));
 
-	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
-	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
-	CHECK(false == std::get<bool>(metadata.fields["alive"]));
+	REQUIRE("Player" == std::get<std::string>(metadata.fields["name"]));
+	REQUIRE(0.0 == std::get<double>(metadata.fields["health"]));
+	REQUIRE(false == std::get<bool>(metadata.fields["alive"]));
 
 	scene->start();
 
 	metadata = ScriptEngine::get_metadata(sc->script);
 
-	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
-	CHECK(100.0 == std::get<double>(metadata.fields["health"]));
-	CHECK(true == std::get<bool>(metadata.fields["alive"]));
+	REQUIRE("Player" == std::get<std::string>(metadata.fields["name"]));
+	REQUIRE(100.0 == std::get<double>(metadata.fields["health"]));
+	REQUIRE(true == std::get<bool>(metadata.fields["alive"]));
 
 	scene->update(0.0f);
 
 	metadata = ScriptEngine::get_metadata(sc->script);
 
-	CHECK("Player1" == std::get<std::string>(metadata.fields["name"]));
-	CHECK(80.0 == std::get<double>(metadata.fields["health"]));
-	CHECK(true == std::get<bool>(metadata.fields["alive"]));
+	REQUIRE("Player1" == std::get<std::string>(metadata.fields["name"]));
+	REQUIRE(80.0 == std::get<double>(metadata.fields["health"]));
+	REQUIRE(true == std::get<bool>(metadata.fields["alive"]));
 
 	// Destroys and resets the data
 	scene->stop();
 
 	metadata = ScriptEngine::get_metadata(sc->script);
 
-	CHECK("Player" == std::get<std::string>(metadata.fields["name"]));
-	CHECK(0.0 == std::get<double>(metadata.fields["health"]));
-	CHECK(false == std::get<bool>(metadata.fields["alive"]));
+	REQUIRE("Player" == std::get<std::string>(metadata.fields["name"]));
+	REQUIRE(0.0 == std::get<double>(metadata.fields["health"]));
+	REQUIRE(false == std::get<bool>(metadata.fields["alive"]));
 
 	sc->unload();
 
-	CHECK(!sc->is_loaded);
-	CHECK(sc->script == 0);
+	REQUIRE(!sc->is_loaded);
+	REQUIRE(sc->script == 0);
 
 	ScriptEngine::shutdown();
 }

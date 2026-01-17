@@ -1,0 +1,7 @@
+- valgrind and make tests run
+- Implement RenderGraph and renderpass concept
+- Implement deferred shading, instanced rendering, ssao and fxaa
+- include/private and include/public should be removed
+- imgui support should be added
+- more tests
+- Mat4::decompose

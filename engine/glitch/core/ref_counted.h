@@ -5,6 +5,12 @@
 
 #pragma once
 
+#include "glitch/core/core.h"
+
+#include <atomic>
+#include <cstdint>
+#include <utility>
+
 namespace gl {
 
 /**
@@ -14,43 +20,43 @@ namespace gl {
  */
 template <typename T> class RefCounted {
 public:
-	constexpr RefCounted() : value(nullptr), ref_count(nullptr) {}
+	constexpr RefCounted() : _value(nullptr), _ref_count(nullptr) {}
 
-	explicit RefCounted(T p_value) :
-			value(new T(std::move(p_value))), ref_count(new std::atomic_uint32_t(1)) {}
+	explicit RefCounted(T value) :
+			_value(new T(std::move(value))), _ref_count(new std::atomic_uint32_t(1)) {}
 
-	RefCounted(const RefCounted& p_rhs) : value(p_rhs.value), ref_count(p_rhs.ref_count) {
+	RefCounted(const RefCounted& rhs) : _value(rhs._value), _ref_count(rhs._ref_count) {
 		_acquire_ref();
 	}
 
-	RefCounted& operator=(const RefCounted& p_rhs) {
-		if (this != &p_rhs) {
+	RefCounted& operator=(const RefCounted& rhs) {
+		if (this != &rhs) {
 			release(); // Release current data
-			value = p_rhs.value;
-			ref_count = p_rhs.ref_count;
+			_value = rhs._value;
+			_ref_count = rhs._ref_count;
 			_acquire_ref(); // Acquire new data
 		}
 		return *this;
 	}
 
-	constexpr RefCounted(RefCounted&& p_rhs) noexcept :
-			value(p_rhs.value), ref_count(p_rhs.ref_count) {
+	constexpr RefCounted(RefCounted&& rhs) noexcept :
+			_value(rhs._value), _ref_count(rhs._ref_count) {
 		// Nullify the source so its destructor doesn't release the data
-		p_rhs.value = nullptr;
-		p_rhs.ref_count = nullptr;
+		rhs._value = nullptr;
+		rhs._ref_count = nullptr;
 	}
 
-	RefCounted& operator=(RefCounted&& p_rhs) noexcept {
-		if (this != &p_rhs) {
+	RefCounted& operator=(RefCounted&& rhs) noexcept {
+		if (this != &rhs) {
 			release(); // Clean up our current data
 
 			// Steal the new data
-			value = p_rhs.value;
-			ref_count = p_rhs.ref_count;
+			_value = rhs._value;
+			_ref_count = rhs._ref_count;
 
 			// Nullify the source
-			p_rhs.value = nullptr;
-			p_rhs.ref_count = nullptr;
+			rhs._value = nullptr;
+			rhs._ref_count = nullptr;
 		}
 		return *this;
 	}
@@ -58,81 +64,81 @@ public:
 	virtual ~RefCounted() { release(); }
 
 	void release() {
-		if (ref_count) {
+		if (_ref_count) {
 			// Atomic decrement returns the PREVIOUS value.
 			// If previous was 1, it is now 0, so we delete.
-			if (ref_count->fetch_sub(1) == 1) {
-				delete value;
-				delete ref_count;
+			if (_ref_count->fetch_sub(1) == 1) {
+				delete _value;
+				delete _ref_count;
 			}
 		}
 	}
 
-	constexpr bool is_valid() const { return ref_count && value; }
+	constexpr bool is_valid() const { return _ref_count && _value; }
 
 	T& get_value() {
-		GL_ASSERT(value);
-		return *value;
+		GL_ASSERT(_value);
+		return *_value;
 	}
 	const T& get_value() const {
-		GL_ASSERT(value);
-		return *value;
+		GL_ASSERT(_value);
+		return *_value;
 	}
 
-	uint32_t get_ref_count() const { return ref_count ? ref_count->load() : 0; }
+	uint32_t get_ref_count() const { return _ref_count ? _ref_count->load() : 0; }
 
 	constexpr operator bool() const { return is_valid(); }
 
 	bool operator<(const RefCounted& other) const {
-		if (!value && !other.value) {
+		if (!_value && !other._value) {
 			return false; // They are equivalent (both null)
 		}
-		if (!value) {
+		if (!_value) {
 			return true; // Null is considered "less than" any non-null
 		}
-		if (!other.value) {
+		if (!other._value) {
 			return false; // Non-null is not "less than" null
 		}
 
 		// Compare the underlying values of type T
-		return *value < *other.value;
+		return *_value < *other._value;
 	}
 
 	bool operator==(const RefCounted& other) const {
-		if (!value && !other.value) {
+		if (!_value && !other._value) {
 			return true;
 		}
-		if (!value || !other.value) {
+		if (!_value || !other._value) {
 			return false;
 		}
-		return *value == *other.value;
+		return *_value == *other._value;
 	}
 
 private:
 	void _acquire_ref() {
-		if (ref_count) {
-			(*ref_count)++; // Atomic increment
+		if (_ref_count) {
+			(*_ref_count)++; // Atomic increment
 		}
 	}
 
 private:
-	T* value;
-	std::atomic_uint32_t* ref_count;
+	T* _value;
+	std::atomic_uint32_t* _ref_count;
 };
 
-template <typename T> void to_json(json& p_json, const RefCounted<T>& p_ref) {
-	if (p_ref.get_ref_count() > 0) {
-		p_json = p_ref.get_value();
+template <typename T> void to_json(json& j, const RefCounted<T>& ref) {
+	if (ref.get_ref_count() > 0) {
+		j = ref.get_value();
 	} else {
-		p_json = json::value_t::null;
+		j = json::value_t::null;
 	}
 }
 
-template <typename T> void from_json(const json& p_json, RefCounted<T>& p_ref) {
-	if (p_json.is_null()) {
-		p_ref = RefCounted<T>();
+template <typename T> void from_json(const json& j, RefCounted<T>& ref) {
+	if (j.is_null()) {
+		ref = RefCounted<T>();
 	} else {
-		p_ref = RefCounted<T>(p_json.get<T>());
+		ref = RefCounted<T>(j.get<T>());
 	}
 }
 
@@ -142,11 +148,11 @@ namespace std {
 template <typename T> struct hash;
 
 template <typename T> struct hash<gl::RefCounted<T>> {
-	size_t operator()(const gl::RefCounted<T>& p_ref) const { // Check for null pointer first
-		if (p_ref.get_ref_count() == 0) {
+	size_t operator()(const gl::RefCounted<T>& ref) const { // Check for null pointer first
+		if (ref.get_ref_count() == 0) {
 			return 0;
 		}
-		return std::hash<T>{}(p_ref.get_value());
+		return std::hash<T>{}(ref.get_value());
 	}
 };
 } //namespace std

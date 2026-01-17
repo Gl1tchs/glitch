@@ -1,5 +1,7 @@
 #include "glitch/scene/passes/clear_pass.h"
 
+#include "glitch/core/debug/profiling.h"
+
 namespace gl {
 
 void ClearPass::setup(Renderer& p_renderer) {
@@ -7,7 +9,7 @@ void ClearPass::setup(Renderer& p_renderer) {
 
 	// Create pass resources
 	p_renderer.create_render_image("geo_albedo",
-			Renderer::get_backend()->swapchain_get_format(p_renderer.get_swapchain()),
+			p_renderer.get_device()->swapchain_get_format(p_renderer.get_swapchain()).value(),
 			IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	p_renderer.create_render_image(
 			"geo_depth", DataFormat::D32_SFLOAT, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -17,8 +19,6 @@ void ClearPass::setup(Renderer& p_renderer) {
 
 void ClearPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 	GL_PROFILE_SCOPE;
-
-	std::shared_ptr<RenderBackend> backend = p_renderer.get_backend();
 
 	// Empty pass to clear the screen
 	// TODO: environment map rendering

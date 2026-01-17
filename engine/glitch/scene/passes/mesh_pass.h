@@ -20,9 +20,9 @@ public:
 	GL_DEFINE_GRAPHICS_PASS("Mesh Pass")
 
 	struct alignas(16) SceneBuffer {
-		glm::mat4 view_projection;
+		Mat4 view_projection;
 
-		glm::vec4 camera_position;
+		Vec4f camera_position;
 
 		int num_point_lights;
 
@@ -33,17 +33,17 @@ public:
 	};
 
 	struct alignas(16) PushConstants {
-		glm::mat4 transform;
+		Mat4 transform;
 		BufferDeviceAddress vertex_buffer;
 		BufferDeviceAddress scene_buffer;
 	};
 
 	virtual ~MeshPass();
 
-	void setup(Renderer& p_renderer) override;
-	void execute(CommandBuffer p_cmd, Renderer& p_renderer) override;
+	void setup(Renderer& renderer) override;
+	void execute(CommandBuffer cmd, Renderer& renderer) override;
 
-	void set_scene(std::shared_ptr<Scene> p_scene);
+	void set_scene(std::shared_ptr<Scene> scene);
 
 private:
 	enum class ScenePreprocessError {
@@ -54,19 +54,19 @@ private:
 	ScenePreprocessError _preprocess_scene();
 
 private:
-	std::shared_ptr<Scene> scene;
+	std::shared_ptr<Scene> _scene;
 
-	std::optional<PerspectiveCamera> camera;
+	std::optional<PerspectiveCamera> _camera;
 
-	PushConstants push_constants = {};
-	SceneBuffer scene_data;
-	size_t scene_data_hash;
-	std::shared_ptr<StorageBuffer> scene_data_sbo;
+	PushConstants _push_constants = {};
+	SceneBuffer _scene_data;
+	size_t _scene_data_hash;
+	std::shared_ptr<StorageBuffer> _scene_data_sbo;
 
-	std::shared_ptr<Texture> default_texture = nullptr;
-	std::shared_ptr<Material> default_material = nullptr;
+	std::shared_ptr<Texture> _default_texture = nullptr;
+	std::shared_ptr<Material> _default_material = nullptr;
 };
 
-size_t hash64(const MeshPass::SceneBuffer& p_buf);
+size_t hash64(const MeshPass::SceneBuffer& buf);
 
 } //namespace gl

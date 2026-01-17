@@ -7,7 +7,7 @@
 
 #include "glitch/core/application.h"
 
-extern gl::Application* create_application(gl::VectorView<const char*> p_args);
+extern gl::Application* create_application(gl::VectorView<const char*> args);
 
 #ifdef GL_MAIN_IMPLEMENTATION
 int main(int argc, const char** argv) {

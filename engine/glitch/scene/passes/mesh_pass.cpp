@@ -1,6 +1,7 @@
 #include "glitch/scene/passes/mesh_pass.h"
 
 #include "glitch/core/application.h"
+#include "glitch/core/debug/profiling.h"
 #include "glitch/renderer/material.h"
 #include "glitch/renderer/mesh.h"
 #include "glitch/renderer/texture.h"
@@ -9,33 +10,33 @@
 
 namespace gl {
 
-MeshPass::~MeshPass() { Renderer::get_backend()->device_wait(); }
+MeshPass::~MeshPass() { Renderer::get_device()->device_wait(); }
 
-void MeshPass::setup(Renderer& p_renderer) {
+void MeshPass::setup(Renderer& renderer) {
 	GL_PROFILE_SCOPE;
 
-	scene_data_sbo = StorageBuffer::create(sizeof(SceneBuffer), &scene_data);
-	push_constants.scene_buffer = scene_data_sbo->get_device_address();
+	_scene_data_sbo = StorageBuffer::create(sizeof(SceneBuffer), &_scene_data);
+	_push_constants.scene_buffer = _scene_data_sbo->get_device_address();
 
-	default_texture = Texture::create(COLOR_WHITE);
+	_default_texture = Texture::create(COLOR_WHITE);
 
-	const AssetHandle texture_handle = AssetSystem::register_asset(default_texture);
+	const AssetHandle texture_handle = AssetSystem::register_asset(_default_texture);
 
-	default_material = Material::create("mem://MaterialDefinition/pipelines/pbr_standard");
-	default_material->set_param("base_color", glm::vec4(1.0, 0.2, 1.0, 1.0));
-	default_material->set_param("roughness", 0.5f);
-	default_material->set_param("metallic", 0.5f);
-	default_material->set_param("u_diffuse_texture", texture_handle);
-	default_material->set_param("u_metallic_roughness_texture", texture_handle);
-	default_material->set_param("u_normal_texture", texture_handle);
-	default_material->set_param("u_ambient_occlusion_texture", texture_handle);
-	default_material->upload();
+	_default_material = Material::create("mem://MaterialDefinition/pipelines/pbr_standard");
+	_default_material->set_param("base_color", Vec4f(1.0, 0.2, 1.0, 1.0));
+	_default_material->set_param("roughness", 0.5f);
+	_default_material->set_param("metallic", 0.5f);
+	_default_material->set_param("u_diffuse_texture", texture_handle);
+	_default_material->set_param("u_metallic_roughness_texture", texture_handle);
+	_default_material->set_param("u_normal_texture", texture_handle);
+	_default_material->set_param("u_ambient_occlusion_texture", texture_handle);
+	_default_material->upload();
 }
 
-void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
+void MeshPass::execute(CommandBuffer cmd, Renderer& renderer) {
 	GL_PROFILE_SCOPE;
 
-	if (!scene) {
+	if (!_scene) {
 		GL_LOG_ERROR("[MeshPass::execute] No scene graph bound to render");
 		return;
 	}
@@ -53,13 +54,13 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 		return;
 	}
 
-	std::shared_ptr<RenderBackend> backend = p_renderer.get_backend();
+	Device* device = renderer.get_device();
 
-	p_renderer.begin_rendering(p_cmd, p_renderer.get_render_image("geo_albedo").value(),
-			p_renderer.get_render_image("geo_depth").value());
+	renderer.begin_rendering(cmd, renderer.get_render_image("geo_albedo").value(),
+			renderer.get_render_image("geo_depth").value());
 
 	Pipeline bound_pipeline = GL_NULL_HANDLE;
-	for (Entity entity : scene->view<MeshComponent>()) {
+	for (Entity entity : _scene->view<MeshComponent>()) {
 		const MeshComponent* mc = entity.get_component<MeshComponent>();
 		if (!mc->visible) {
 			// probably culled or mesh doesn't exist
@@ -72,7 +73,7 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 		}
 
 		// If there is no mesh component attached use the default one
-		std::shared_ptr<Material> material = default_material;
+		std::shared_ptr<Material> material = _default_material;
 		if (entity.has_component<MaterialComponent>()) {
 			const auto handle = entity.get_component<MaterialComponent>()->handle;
 			const auto mat = AssetSystem::get<Material>(handle);
@@ -85,28 +86,28 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 		Pipeline pipeline = material->get_pipeline();
 
 		if (pipeline != bound_pipeline) {
-			backend->command_bind_graphics_pipeline(p_cmd, pipeline);
+			device->command_bind_graphics_pipeline(cmd, pipeline);
 			bound_pipeline = pipeline;
 		}
 
 		// set = 0 material data
-		material->bind_uniform_set(p_cmd);
+		material->bind_uniform_set(cmd);
 
 		// Push constants
 		{
-			push_constants.vertex_buffer = smesh->vertex_buffer_address;
+			_push_constants.vertex_buffer = smesh->vertex_buffer_address;
 
 			// Object transformation
-			push_constants.transform = entity.get_transform().to_mat4();
+			_push_constants.transform = entity.get_transform().to_mat4();
 
-			backend->command_push_constants(
-					p_cmd, material->get_shader(), 0, sizeof(PushConstants), &push_constants);
+			device->command_push_constants(
+					cmd, material->get_shader(), 0, sizeof(PushConstants), &_push_constants);
 		}
 
 		// Render
-		backend->command_bind_index_buffer(p_cmd, smesh->index_buffer, 0, IndexType::UINT32);
+		device->command_bind_index_buffer(cmd, smesh->index_buffer, 0, IndexType::UINT32);
 
-		backend->command_draw_indexed(p_cmd, smesh->index_count);
+		device->command_draw_indexed(cmd, smesh->index_count);
 
 		{
 			ApplicationPerfStats& stats = Application::get()->get_perf_stats();
@@ -116,70 +117,70 @@ void MeshPass::execute(CommandBuffer p_cmd, Renderer& p_renderer) {
 		}
 	}
 
-	p_renderer.end_rendering(p_cmd);
+	renderer.end_rendering(cmd);
 }
 
-void MeshPass::set_scene(std::shared_ptr<Scene> p_scene) { scene = p_scene; }
+void MeshPass::set_scene(std::shared_ptr<Scene> scene) { _scene = scene; }
 
 MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	std::optional<Transform> camera_transform = std::nullopt;
-	for (Entity entity : scene->view<CameraComponent>()) {
+	for (Entity entity : _scene->view<CameraComponent>()) {
 		CameraComponent* cc = entity.get_component<CameraComponent>();
 		if (cc->enabled) {
 			camera_transform = entity.get_transform();
-			camera = cc->camera;
+			_camera = cc->camera;
 			// TODO: more sophisticated solution
 			break;
 		}
 	}
 
-	if (!camera || !camera_transform) {
+	if (!_camera || !camera_transform) {
 		return ScenePreprocessError::NO_CAMERA;
 	}
 
-	camera.value().aspect_ratio = Application::get()->get_window()->get_aspect_ratio();
+	_camera.value().aspect_ratio = Application::get()->get_window()->get_aspect_ratio();
 
 	std::optional<DirectionalLight> directional_light;
-	for (Entity entity : scene->view<DirectionalLight>()) {
+	for (Entity entity : _scene->view<DirectionalLight>()) {
 		const DirectionalLight* dl = entity.get_component<DirectionalLight>();
 		directional_light = *dl;
 	}
 
 	std::vector<PointLight> point_lights;
-	for (Entity entity : scene->view<PointLight>()) {
+	for (Entity entity : _scene->view<PointLight>()) {
 		PointLight* pl = entity.get_component<PointLight>();
-		pl->position = glm::vec4(entity.get_transform().get_position(), 0.0f);
+		pl->position = Vec4f(entity.get_transform().get_position(), 0.0f);
 
 		point_lights.push_back(*pl);
 	}
 
 	// Upload scene data to the GPU
 	{
-		scene_data.view_projection = camera.value().get_projection_matrix() *
-				camera.value().get_view_matrix(*camera_transform);
-		scene_data.camera_position = glm::vec4(camera_transform.value().get_position(), 0.0f);
+		_scene_data.view_projection = _camera.value().get_projection_matrix() *
+				_camera.value().get_view_matrix(*camera_transform);
+		_scene_data.camera_position = Vec4f(camera_transform.value().get_position(), 0.0f);
 
 		// Directional light
-		scene_data.directional_light = directional_light ? *directional_light : DirectionalLight{};
+		_scene_data.directional_light = directional_light ? *directional_light : DirectionalLight{};
 
 		// Copy point lights
 		const size_t count = std::min<size_t>(16, point_lights.size());
-		std::copy_n(point_lights.begin(), count, scene_data.point_lights.begin());
-		scene_data.num_point_lights = count;
+		std::copy_n(point_lights.begin(), count, _scene_data.point_lights.begin());
+		_scene_data.num_point_lights = count;
 
 		// Reupload the scene buffer if it's updated
-		const size_t hash = hash64(scene_data);
-		if (scene_data_hash != hash) {
-			scene_data_sbo->upload(&scene_data);
-			scene_data_hash = hash;
+		const size_t hash = hash64(_scene_data);
+		if (_scene_data_hash != hash) {
+			_scene_data_sbo->upload(&_scene_data);
+			_scene_data_hash = hash;
 		}
 	}
 
 	// Construct a frustum culled render queue to render only visible primitives
-	Frustum view_frustum = Frustum::from_view_proj(scene_data.view_projection);
+	Frustum view_frustum = Frustum::from_view_proj(_scene_data.view_projection);
 
 	// Basic frustum culling and material updating
-	for (Entity entity : scene->view<MeshComponent>()) {
+	for (Entity entity : _scene->view<MeshComponent>()) {
 		MeshComponent* mc = entity.get_component<MeshComponent>();
 
 		std::shared_ptr<StaticMesh> smesh = AssetSystem::get<StaticMesh>(mc->mesh);
@@ -210,16 +211,16 @@ MeshPass::ScenePreprocessError MeshPass::_preprocess_scene() {
 	return ScenePreprocessError::NONE;
 }
 
-size_t hash64(const MeshPass::SceneBuffer& p_buf) {
-	size_t hash = hash64(p_buf.view_projection);
-	hash_combine(hash, hash64(p_buf.camera_position));
+size_t hash64(const MeshPass::SceneBuffer& buf) {
+	size_t hash = hash64(buf.view_projection);
+	hash_combine(hash, hash64(buf.camera_position));
 
-	hash_combine(hash, hash64(p_buf.directional_light.direction));
-	hash_combine(hash, hash64(p_buf.directional_light.color));
+	hash_combine(hash, hash64(buf.directional_light.direction));
+	hash_combine(hash, hash64(buf.directional_light.color));
 
-	hash_combine(hash, hash64(p_buf.num_point_lights));
-	for (int i = 0; i < p_buf.num_point_lights; i++) {
-		PointLight pl = p_buf.point_lights[i];
+	hash_combine(hash, hash64(buf.num_point_lights));
+	for (int i = 0; i < buf.num_point_lights; i++) {
+		PointLight pl = buf.point_lights[i];
 		hash_combine(hash, hash64(pl.position));
 		hash_combine(hash, hash64(pl.color));
 		hash_combine(hash, hash64(pl.linear));

@@ -1,4 +1,4 @@
-#include <doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "glitch/scene/scene.h"
 #include "glitch/scripting/script.h"
@@ -17,17 +17,17 @@ TEST_CASE("Test script bindings") {
 	Script* sc = e.add_component<Script>();
 	sc->script_path = "tests/scripting/lua/test_bindings.lua";
 
-	CHECK(sc->load() == ScriptResult::SUCCESS);
+	REQUIRE(sc->load() == ScriptResult::SUCCESS);
 
 	ScriptSystem::on_runtime_start(&scene);
 
-	CHECK(ScriptEngine::exec_function(sc->script, "test_bindings", e.get_uid().value) ==
+	REQUIRE(ScriptEngine::exec_function(sc->script, "test_bindings", e.get_uid().value) ==
 			ScriptResult::SUCCESS);
 
 	sc->unload();
 
-	CHECK(!sc->is_loaded);
-	CHECK(sc->script == 0);
+	REQUIRE(!sc->is_loaded);
+	REQUIRE(sc->script == 0);
 
 	ScriptEngine::shutdown();
 }

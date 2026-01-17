@@ -1,71 +1,79 @@
 #include "glitch/renderer/material.h"
 
 #include "glitch/core/application.h"
+#include "glitch/core/debug/profiling.h"
 #include "glitch/renderer/pipeline_builder.h"
-#include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 #include "glitch/renderer/shader_library.h"
 #include "glitch/renderer/texture.h"
 
+#include <glgpu/glgpu.h>
+
+#include <algorithm>
+#include <cstring>
+#include <map>
+#include <memory>
+#include <vector>
+
 namespace gl {
 
 MaterialDefinition::~MaterialDefinition() {
-	auto backend = Renderer::get_backend();
-	backend->shader_free(shader);
-	backend->pipeline_free(pipeline);
+	auto device = Renderer::get_device();
+	device->shader_free(_shader);
+	device->pipeline_free(_pipeline);
 }
 
-Shader MaterialDefinition::get_shader() const { return shader; }
-Pipeline MaterialDefinition::get_pipeline() const { return pipeline; }
+Shader MaterialDefinition::get_shader() const { return _shader; }
+Pipeline MaterialDefinition::get_pipeline() const { return _pipeline; }
 
 const MaterialPipelineOptions& MaterialDefinition::get_pipeline_options() {
-	return pipeline_options;
+	return _pipeline_options;
 }
 
-const std::vector<ShaderUniformMetadata>& MaterialDefinition::get_uniforms() { return uniforms; }
+const std::vector<ShaderUniformMetadata>& MaterialDefinition::get_uniforms() { return _uniforms; }
 
-static std::optional<DataFormat> _get_attachment_by_render_image_id(const std::string& p_id) {
+static std::optional<DataFormat> _get_attachment_by_render_image_id(const std::string& id) {
 	auto renderer = Application::get()->get_renderer();
 
-	std::optional<Image> image = renderer->get_render_image(p_id);
+	std::optional<Image> image = renderer->get_render_image(id);
 	if (!image) {
 		return std::nullopt;
 	}
 
-	return renderer->get_backend()->image_get_format(*image);
+	return renderer->get_device()->image_get_format(*image).value();
 }
 
 std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
-		const std::vector<std::string> p_color_attachment_ids,
-		const std::string& p_depth_attachment_id, MaterialShaderLoadInfo p_shader_info,
-		std::vector<ShaderUniformMetadata> p_uniforms, MaterialPipelineOptions p_pipeline_options) {
+		const std::vector<std::string> color_attachment_ids, const std::string& depth_attachment_id,
+		MaterialShaderLoadInfo shader_info, std::vector<ShaderUniformMetadata> uniforms,
+		MaterialPipelineOptions pipeline_options) {
 	// Spirvv Data should be loaded using ShaderLibrary::get_bundled_spirv
 
 	std::vector<uint32_t> spirv_vert;
-	if (p_shader_info.vs_path.starts_with("glitch://")) {
+	if (shader_info.vs_path.starts_with("glitch://")) {
 		spirv_vert = ShaderLibrary::get_bundled_spirv(
-				p_shader_info.vs_path.substr(sizeof("glitch://") - 1).c_str());
+				shader_info.vs_path.substr(sizeof("glitch://") - 1).c_str());
 	} else {
-		const auto vs_path_abs = AssetSystem::get_absolute_path(p_shader_info.vs_path);
+		const auto vs_path_abs = AssetSystem::get_absolute_path(shader_info.vs_path);
 		if (!vs_path_abs) {
 			GL_LOG_ERROR(
 					"[MaterialDefinition::create] Path of fragment shader '{}' does not exist.",
-					p_shader_info.vs_path);
+					shader_info.vs_path);
 			return nullptr;
 		}
 
 		spirv_vert = ShaderLibrary::get_spirv_data(*vs_path_abs);
 	}
 	std::vector<uint32_t> spirv_frag;
-	if (p_shader_info.fs_path.starts_with("glitch://")) {
+	if (shader_info.fs_path.starts_with("glitch://")) {
 		spirv_frag = ShaderLibrary::get_bundled_spirv(
-				p_shader_info.fs_path.substr(sizeof("glitch://") - 1).c_str());
+				shader_info.fs_path.substr(sizeof("glitch://") - 1).c_str());
 	} else {
-		const auto fs_path_abs = AssetSystem::get_absolute_path(p_shader_info.fs_path);
+		const auto fs_path_abs = AssetSystem::get_absolute_path(shader_info.fs_path);
 		if (!fs_path_abs) {
 			GL_LOG_ERROR(
 					"[MaterialDefinition::create] Path of fragment shader '{}' does not exist.",
-					p_shader_info.fs_path);
+					shader_info.fs_path);
 			return nullptr;
 		}
 
@@ -74,15 +82,15 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
 
 	auto builder = PipelineBuilder();
 
-	const auto depth_attachment = _get_attachment_by_render_image_id(p_depth_attachment_id);
+	const auto depth_attachment = _get_attachment_by_render_image_id(depth_attachment_id);
 	if (!depth_attachment || !is_depth_format(*depth_attachment)) {
 		GL_LOG_ERROR("[MaterialDefinition::create] Unable to find depth attachment '{}' in "
 					 "renderer context.",
-				p_depth_attachment_id);
+				depth_attachment_id);
 		return nullptr;
 	}
 
-	for (const auto& id : p_color_attachment_ids) {
+	for (const auto& id : color_attachment_ids) {
 		const auto color_attachment = _get_attachment_by_render_image_id(id);
 		if (!color_attachment) {
 			GL_LOG_ERROR("[MaterialDefinition::create] Unable to find color attachment '{}' in "
@@ -95,36 +103,36 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::create(
 	}
 
 	builder.set_depth_attachment(depth_attachment)
-			.add_shader_stage(ShaderStage::VERTEX, spirv_vert)
-			.add_shader_stage(ShaderStage::FRAGMENT, spirv_frag)
+			.add_shader_stage(SHADER_STAGE_VERTEX_BIT, spirv_vert)
+			.add_shader_stage(SHADER_STAGE_FRAGMENT_BIT, spirv_frag)
 			.with_multisample(Application::get()->get_renderer()->get_msaa_samples(), true)
-			.set_render_primitive(p_pipeline_options.primitive);
+			.set_render_primitive(pipeline_options.primitive);
 
-	if (p_pipeline_options.depth_test) {
-		builder.with_depth_test(p_pipeline_options.compare_op, p_pipeline_options.depth_write);
+	if (pipeline_options.depth_test) {
+		builder.with_depth_test(pipeline_options.compare_op, pipeline_options.depth_write);
 	}
 
-	if (p_pipeline_options.blend) {
+	if (pipeline_options.blend) {
 		builder.with_blend();
 	}
 
 	const auto [shader, pipeline] = builder.build();
 
 	std::shared_ptr<MaterialDefinition> definition = std::make_shared<MaterialDefinition>();
-	definition->shader = shader;
-	definition->pipeline = pipeline;
-	definition->color_attachment_ids = p_color_attachment_ids;
-	definition->depth_attachment_id = p_depth_attachment_id;
-	definition->shader_info = p_shader_info;
-	definition->pipeline_options = p_pipeline_options;
-	definition->uniforms = p_uniforms;
+	definition->_shader = shader;
+	definition->_pipeline = pipeline;
+	definition->_color_attachment_ids = color_attachment_ids;
+	definition->_depth_attachment_id = depth_attachment_id;
+	definition->_shader_info = shader_info;
+	definition->_pipeline_options = pipeline_options;
+	definition->_uniforms = uniforms;
 
 	return definition;
 }
 
-bool MaterialDefinition::save(
-		const fs::path& p_metadata_path, std::shared_ptr<MaterialDefinition> p_definition) {
-	if (!p_definition || !p_definition) {
+bool MaterialDefinition::save(const std::filesystem::path& metadata_path,
+		std::shared_ptr<MaterialDefinition> definition) {
+	if (!definition || !definition) {
 		GL_LOG_ERROR(
 				"[MaterialDefinition::save] Unable to save MaterialDefinition to path, invalid "
 				"MaterialDefinition object.");
@@ -132,20 +140,20 @@ bool MaterialDefinition::save(
 	}
 
 	json j;
-	j["shader"]["vs"] = p_definition->shader_info.vs_path;
-	j["shader"]["fs"] = p_definition->shader_info.fs_path;
+	j["shader"]["vs"] = definition->_shader_info.vs_path;
+	j["shader"]["fs"] = definition->_shader_info.fs_path;
 
-	j["color_attachments"] = p_definition->color_attachment_ids;
-	j["depth_attachment"] = p_definition->depth_attachment_id;
+	j["color_attachments"] = definition->_color_attachment_ids;
+	j["depth_attachment"] = definition->_depth_attachment_id;
 
-	j["pipeline"]["depth_test"] = p_definition->pipeline_options.depth_test;
-	j["pipeline"]["compare_op"] = p_definition->pipeline_options.compare_op;
-	j["pipeline"]["depth_write"] = p_definition->pipeline_options.depth_write;
-	j["pipeline"]["blend"] = p_definition->pipeline_options.blend;
-	j["pipeline"]["primitive"] = p_definition->pipeline_options.primitive;
+	j["pipeline"]["depth_test"] = definition->_pipeline_options.depth_test;
+	j["pipeline"]["compare_op"] = definition->_pipeline_options.compare_op;
+	j["pipeline"]["depth_write"] = definition->_pipeline_options.depth_write;
+	j["pipeline"]["blend"] = definition->_pipeline_options.blend;
+	j["pipeline"]["primitive"] = definition->_pipeline_options.primitive;
 
 	j["uniforms"] = json::array();
-	for (const auto& uniform : p_definition->uniforms) {
+	for (const auto& uniform : definition->_uniforms) {
 		json u;
 		u["name"] = uniform.name;
 		u["binding"] = uniform.binding;
@@ -153,7 +161,7 @@ bool MaterialDefinition::save(
 		j["uniforms"].push_back(u);
 	}
 
-	const auto res = json_save(p_metadata_path.string(), j);
+	const auto res = json_save(metadata_path.string(), j);
 	if (res != JSONLoadError::NONE) {
 		if (res == JSONLoadError::FILE_OPEN_ERROR) {
 			GL_LOG_ERROR("[MaterialDefinition::save] Unable to save Material metadata to path, "
@@ -168,14 +176,14 @@ bool MaterialDefinition::save(
 	return true;
 }
 
-std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_path) {
-	if (!fs::exists(p_path)) {
+std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const std::filesystem::path& path) {
+	if (!std::filesystem::exists(path)) {
 		GL_LOG_ERROR("[MaterialDefinition::load] Unable to load material, given metadata path do "
 					 "not exists.");
 		return nullptr;
 	}
 
-	const auto res = json_load(p_path.string());
+	const auto res = json_load(path.string());
 	if (!res) {
 		GL_LOG_ERROR("[MaterialDefinition::load] Unable to load material, error while parsing "
 					 "metadata.");
@@ -260,7 +268,7 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_p
 					!uniform.contains("type")) {
 				GL_LOG_WARNING("[MaterialDefinition::load] Unable to parse uniform data from path "
 							   "'{}'. See 'doc/conventions/material.json'",
-						p_path.string());
+						path.string());
 				continue;
 			}
 
@@ -277,29 +285,28 @@ std::shared_ptr<MaterialDefinition> MaterialDefinition::load(const fs::path& p_p
 }
 
 Material::~Material() {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+	Device* device = Renderer::get_device();
 
-	backend->device_wait();
-
-	backend->uniform_set_free(material_set);
-	backend->buffer_free(material_data_buffer);
+	device->device_wait();
+	device->uniform_set_free(_material_set);
+	device->buffer_free(_material_data_buffer);
 }
 
-std::shared_ptr<MaterialDefinition> Material::get_definition() const { return definition; }
+std::shared_ptr<MaterialDefinition> Material::get_definition() const { return _definition; }
 
-Pipeline Material::get_pipeline() const { return definition->get_pipeline(); }
+Pipeline Material::get_pipeline() const { return _definition->get_pipeline(); }
 
-Shader Material::get_shader() const { return definition->get_shader(); }
+Shader Material::get_shader() const { return _definition->get_shader(); }
 
-UniformSet Material::get_set() const { return material_set; }
+UniformSet Material::get_set() const { return _material_set; }
 
 const std::vector<ShaderUniformMetadata>& Material::get_uniforms() const {
-	return definition->get_uniforms();
+	return _definition->get_uniforms();
 }
 
-std::optional<ShaderUniformVariable> Material::get_param(const std::string& p_name) {
-	const auto it = params.find(p_name);
-	if (it == params.end()) {
+std::optional<ShaderUniformVariable> Material::get_param(const std::string& name) {
+	const auto it = _params.find(name);
+	if (it == _params.end()) {
 		return {};
 	}
 
@@ -307,21 +314,21 @@ std::optional<ShaderUniformVariable> Material::get_param(const std::string& p_na
 	return value;
 }
 
-bool Material::set_param(const std::string& p_name, ShaderUniformVariable p_value) {
-	const auto it = params.find(p_name);
-	if (it == params.end()) {
+bool Material::set_param(const std::string& name, ShaderUniformVariable value) {
+	const auto it = _params.find(name);
+	if (it == _params.end()) {
 		return false;
 	}
 
-	auto& [_, value] = it->second;
-	value = p_value;
+	auto& [_, current_value] = it->second;
+	current_value = value;
 
-	dirty = true;
+	_dirty = true;
 
 	return true;
 }
 
-bool Material::is_dirty() const { return dirty; }
+bool Material::is_dirty() const { return _dirty; }
 
 static AssetHandle _get_default_texture() {
 	static AssetHandle s_default_texture = INVALID_ASSET_HANDLE;
@@ -349,8 +356,8 @@ static constexpr size_t _get_uniform_size(ShaderUniformVariableType type) {
 	}
 };
 
-static size_t _uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
-	switch (p_type) {
+static size_t _uniform_type_std140_alignment(ShaderUniformVariableType type) {
+	switch (type) {
 		case ShaderUniformVariableType::INT:
 			return 4;
 		case ShaderUniformVariableType::FLOAT:
@@ -369,18 +376,16 @@ static size_t _uniform_type_std140_alignment(ShaderUniformVariableType p_type) {
 bool Material::upload() {
 	GL_PROFILE_SCOPE;
 
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
-
-	if (!definition) {
+	if (!_definition) {
 		GL_LOG_ERROR("[MaterialInstance::upload] Definition must not be null "
 					 "while uploading data.");
 		return false;
 	}
 
 	// Initialize params
-	for (const auto& meta : definition->get_uniforms()) {
-		auto it = params.find(meta.name);
-		if (it != params.end()) {
+	for (const auto& meta : _definition->get_uniforms()) {
+		auto it = _params.find(meta.name);
+		if (it != _params.end()) {
 			continue;
 		}
 
@@ -394,20 +399,20 @@ bool Material::upload() {
 				value = float(0.0);
 				break;
 			case ShaderUniformVariableType::VEC2:
-				value = glm::vec2();
+				value = Vec2f();
 				break;
 			case ShaderUniformVariableType::VEC3:
-				value = glm::vec3();
+				value = Vec3f();
 				break;
 			case ShaderUniformVariableType::VEC4:
-				value = glm::vec4();
+				value = Vec4f();
 				break;
 			case ShaderUniformVariableType::TEXTURE:
 				value = _get_default_texture();
 				break;
 		}
 
-		params[meta.name] = std::make_pair(meta, value);
+		_params[meta.name] = std::make_pair(meta, value);
 	}
 
 	// Texture, binding
@@ -415,7 +420,7 @@ bool Material::upload() {
 
 	std::vector<std::byte> cpu_buffer;
 
-	for (const auto& [name, pair] : params) {
+	for (const auto& [name, pair] : _params) {
 		const auto& [meta, value] = pair;
 
 		if (meta.type == ShaderUniformVariableType::TEXTURE) {
@@ -440,7 +445,7 @@ bool Material::upload() {
 
 		// Determine data size
 		// We try to use the variant size if it exists, otherwise fallback to type size
-		const auto it = params.find(meta.name);
+		const auto it = _params.find(meta.name);
 		const size_t data_size = _get_uniform_size(meta.type);
 
 		// Resize buffer to fit the new data
@@ -460,20 +465,24 @@ bool Material::upload() {
 				value);
 	}
 
+	auto device = Renderer::get_device();
+
 	// Create GPU buffer if doesn't exists
-	if (!material_data_buffer /* TODO: backend->buffer_size(material_data_buffer) <= cpu_buffer.size() */) {
+	if (!_material_data_buffer /* TODO: device->buffer_size(material_data_buffer) <= cpu_buffer.size() */) {
 		// Recreate if too small or non-existent
 		// Note: Ideally we might want to keep the old one if it fits, but resizing requires
 		// recreation usually
-		material_data_buffer = backend->buffer_create(cpu_buffer.size(),
-				BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
-				MemoryAllocationType::CPU);
+		_material_data_buffer =
+				device->buffer_create(cpu_buffer.size(),
+							  BUFFER_USAGE_UNIFORM_BUFFER_BIT | BUFFER_USAGE_TRANSFER_SRC_BIT,
+							  MemoryAllocationType::CPU)
+						.value();
 	}
 
 	// TODO: maybe do a persistent buffer to save time
-	void* gpu_ptr = backend->buffer_map(material_data_buffer);
+	void* gpu_ptr = device->buffer_map(_material_data_buffer).value();
 	std::memcpy(gpu_ptr, cpu_buffer.data(), cpu_buffer.size());
-	backend->buffer_unmap(material_data_buffer);
+	device->buffer_unmap(_material_data_buffer);
 
 	// Bind it to uniform set
 	std::vector<ShaderUniform> uniforms;
@@ -481,9 +490,9 @@ bool Material::upload() {
 
 	// 0 is the binding of UBO, see: `doc/shader-conventions.md` for more info
 	ShaderUniform material_data_uniform = {
-		.type = UNIFORM_TYPE_UNIFORM_BUFFER,
+		.type = ShaderUniformType::UNIFORM_BUFFER,
 		.binding = 0,
-		.data = { material_data_buffer },
+		.data = { _material_data_buffer },
 	};
 	uniforms.push_back(material_data_uniform);
 
@@ -493,36 +502,38 @@ bool Material::upload() {
 		uniforms.push_back(uniform);
 	}
 
-	if (material_set) {
-		backend->uniform_set_free(material_set);
+	if (_material_set) {
+		device->uniform_set_free(_material_set);
 	}
 
-	material_set = backend->uniform_set_create(uniforms, definition->get_shader(), 0);
+	_material_set = device->uniform_set_create(uniforms, _definition->get_shader(), 0).value();
 
-	dirty = false;
+	_dirty = false;
 
 	return true;
 }
 
-void Material::bind_uniform_set(CommandBuffer p_cmd) {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
-	backend->command_bind_uniform_sets(p_cmd, definition->get_shader(), 0, material_set);
+void Material::bind_uniform_set(CommandBuffer cmd) {
+	auto device = Renderer::get_device();
+	if (_material_set) {
+		device->command_bind_uniform_sets(cmd, _definition->get_shader(), 0, { &_material_set, 1 });
+	}
 }
 
-std::shared_ptr<Material> Material::create(const std::string& p_def_path) {
-	auto definition = AssetSystem::get_by_path<MaterialDefinition>(p_def_path);
+std::shared_ptr<Material> Material::create(const std::string& def_path) {
+	auto definition = AssetSystem::get_by_path<MaterialDefinition>(def_path);
 	if (!definition) {
-		if (const auto res = AssetSystem::load<MaterialDefinition>(p_def_path)) {
+		if (const auto res = AssetSystem::load<MaterialDefinition>(def_path)) {
 			definition = AssetSystem::get<MaterialDefinition>(*res);
 		} else {
 			GL_LOG_ERROR("[Material::create] Unable to load MaterialDefinition from path '{}'",
-					p_def_path);
+					def_path);
 			return nullptr;
 		}
 	}
 
 	std::shared_ptr<Material> material = std::make_shared<Material>();
-	material->definition = definition;
+	material->_definition = definition;
 
 	// Initialize material
 	material->upload();

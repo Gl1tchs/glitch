@@ -5,21 +5,25 @@
 
 #pragma once
 
+#include "glitch/core/defines.h"
+
+#include <glgpu/glgpu.h>
+
 namespace gl {
 
 struct GL_API Frustum {
-	glm::vec4 planes[6]; // left, right, bottom, top, near, far
+	Vec4f planes[6]; // left, right, bottom, top, near, far
 
-	static Frustum from_view_proj(const glm::mat4& p_view_proj);
+	static Frustum from_view_proj(const Mat4& view_proj);
 };
 
 struct GL_API AABB {
-	glm::vec3 min;
-	glm::vec3 max;
+	Vec3f min;
+	Vec3f max;
 
-	bool is_inside_frustum(const Frustum& p_frustum) const;
+	bool is_inside_frustum(const Frustum& frustum) const;
 
-	AABB transform(const glm::mat4& p_transform) const;
+	AABB transform(const Mat4& transform) const;
 };
 
 } //namespace gl

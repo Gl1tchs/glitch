@@ -2,50 +2,51 @@
     "version": 3,
     "cmakeMinimumRequired": {
         "major": 3,
-        "minor": 20,
+        "minor": 5,
         "patch": 0
     },
     "configurePresets": [
         {
-            "name": "debug",
-            "displayName": "Debug Configuration",
-            "description": "Configure for Debug build with dynamic libs off.",
+            "name": "base",
+            "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "GL_BUILD_DYNAMIC_LIBS": "0",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
             }
         },
         {
-            "name": "release",
-            "displayName": "Release Configuration",
-            "description": "Configure for Release build with dynamic libs off.",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build",
+            "name": "debug",
+            "inherits": "base",
+            "displayName": "Debug",
+            "description": "Debug build with symbols",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "GL_BUILD_DYNAMIC_LIBS": "0",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "1"
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release",
+            "inherits": "base",
+            "displayName": "Release",
+            "description": "Release build with optimizations",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
             }
         }
     ],
     "buildPresets": [
         {
-            "name": "build-debug",
-            "displayName": "Build (Debug)",
-            "description": "Build the project in Debug mode",
+            "name": "debug",
             "configurePreset": "debug",
+            "displayName": "Build Debug",
             "targets": [
                 "all"
             ]
         },
         {
-            "name": "build-release",
-            "displayName": "Build (Release)",
-            "description": "Build the project in Release mode",
+            "name": "release",
             "configurePreset": "release",
+            "displayName": "Build Release",
             "targets": [
                 "all"
             ]

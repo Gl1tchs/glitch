@@ -28,7 +28,7 @@ typedef std::function<void(void)> MainThreadFunc;
 
 class GL_API Application {
 public:
-	Application(const ApplicationCreateInfo& p_info);
+	Application(const ApplicationCreateInfo& info);
 	virtual ~Application();
 
 	void run();
@@ -36,17 +36,17 @@ public:
 	void quit();
 
 	template <typename T, typename... Args>
-	void push_layer(Args&&... p_args)
+	void push_layer(Args&&... args)
 		requires std::is_base_of_v<Layer, T>
 	{
-		layer_stack.push_layer<T>(std::forward<Args>(p_args)...);
+		_layer_stack.push_layer<T>(std::forward<Args>(args)...);
 	}
 
 	/**
 	 * Enqueue a function to be runned for the
 	 * next frame.
 	 */
-	static void enqueue_main_thread(MainThreadFunc p_function);
+	static void enqueue_main_thread(MainThreadFunc function);
 
 	std::shared_ptr<Window> get_window();
 
@@ -58,22 +58,22 @@ public:
 	static Application* get();
 
 private:
-	void _event_loop(float p_dt);
+	void _event_loop(float dt);
 
 	void _process_main_thread_queue();
 
 private:
-	bool running = true;
+	bool _running = true;
 
-	LayerStack layer_stack;
+	LayerStack _layer_stack;
 
-	std::shared_ptr<Window> window = nullptr;
-	std::shared_ptr<Renderer> renderer = nullptr;
+	std::shared_ptr<Window> _window = nullptr;
+	std::shared_ptr<Renderer> _renderer = nullptr;
 
-	std::vector<MainThreadFunc> main_thread_queue;
-	std::mutex main_thread_queue_mutex;
+	std::vector<MainThreadFunc> _main_thread_queue;
+	std::mutex _main_thread_queue_mutex;
 
-	ApplicationPerfStats perf_stats = {};
+	ApplicationPerfStats _perf_stats = {};
 };
 
 } //namespace gl

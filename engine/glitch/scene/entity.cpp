@@ -16,7 +16,7 @@ std::optional<Entity> Entity::get_parent() const {
 		return {};
 	}
 
-	return scene->find_by_id(parent_id);
+	return _scene->find_by_id(parent_id);
 }
 
 void Entity::set_parent(Entity parent) {
@@ -63,7 +63,7 @@ std::vector<Entity> Entity::get_children() const {
 
 	std::transform(children_ids.begin(), children_ids.end(), std::back_inserter(children),
 			[&](const auto& child_id) {
-				Entity entity = scene->find_by_id(child_id).value();
+				Entity entity = _scene->find_by_id(child_id).value();
 				return entity;
 			});
 
@@ -75,24 +75,24 @@ std::vector<Entity> Entity::get_children() const {
 	return children;
 }
 
-std::optional<Entity> Entity::find_child_by_id(UID p_uid) const {
+std::optional<Entity> Entity::find_child_by_id(UID uid) const {
 	const auto& children = get_relation().children_ids;
-	const auto it = std::find(children.begin(), children.end(), p_uid);
+	const auto it = std::find(children.begin(), children.end(), uid);
 	if (it == children.end()) {
 		return std::nullopt;
 	}
 
-	return scene->find_by_id(*it);
+	return _scene->find_by_id(*it);
 }
 
-std::optional<Entity> Entity::find_child_by_name(const std::string& p_name) const {
-	std::optional<Entity> child_to_find = scene->find_by_name(p_name);
+std::optional<Entity> Entity::find_child_by_name(const std::string& name) const {
+	std::optional<Entity> child_to_find = _scene->find_by_name(name);
 	if (!child_to_find) {
 		return std::nullopt;
 	}
 
 	std::optional<Entity> child_parent = child_to_find->get_parent();
-	if (!child_parent || (uint32_t)*child_parent != handle) {
+	if (!child_parent || (uint32_t)*child_parent != _handle) {
 		return std::nullopt;
 	}
 
@@ -149,22 +149,22 @@ const UID& Entity::get_uid() const { return get_component<IdComponent>()->id; }
 
 const std::string& Entity::get_name() const { return get_component<IdComponent>()->tag; }
 
-void Entity::set_name(const std::string& p_name) { get_component<IdComponent>()->tag = p_name; }
+void Entity::set_name(const std::string& name) { get_component<IdComponent>()->tag = name; }
 
 Transform& Entity::get_transform() { return *get_component<Transform>(); }
 
 const Transform& Entity::get_transform() const { return *get_component<Transform>(); }
 
-bool Entity::is_valid() const { return is_entity_valid(handle) && scene != nullptr; }
+bool Entity::is_valid() const { return is_entity_valid(_handle) && _scene != nullptr; }
 
 Entity::operator bool() const { return is_valid(); }
 
-Entity::operator EntityId() const { return handle; }
+Entity::operator EntityId() const { return _handle; }
 
-Entity::operator uint32_t() const { return (uint32_t)handle; }
+Entity::operator uint32_t() const { return (uint32_t)_handle; }
 
 bool Entity::operator==(const Entity& other) const {
-	return handle == other.handle && scene == other.scene;
+	return _handle == other._handle && _scene == other._scene;
 }
 
 bool Entity::operator!=(const Entity& other) const { return !(*this == other); }

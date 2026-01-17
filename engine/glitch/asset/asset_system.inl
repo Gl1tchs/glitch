@@ -15,11 +15,11 @@ template <IsReflectedAsset T> AssetRegistry<T>& AssetRegistry<T>::get() {
 }
 
 template <IsReflectedAsset T> size_t AssetRegistry<T>::get_asset_size() const {
-	return assets.size();
+	return _assets.size();
 }
 
 template <IsReflectedAsset T> void AssetRegistry<T>::collect_garbage() {
-	std::erase_if(assets, [](const auto& item) {
+	std::erase_if(_assets, [](const auto& item) {
 		// get_ref_count() == 1 means only the map holds it
 		// Only delete if it is NOT persistent
 		return item.first.get_ref_count() == 1 && !item.second.is_persistent;
@@ -27,30 +27,31 @@ template <IsReflectedAsset T> void AssetRegistry<T>::collect_garbage() {
 }
 
 template <IsReflectedAsset T>
-AssetHandle AssetRegistry<T>::register_asset(std::shared_ptr<T> p_asset, const std::string& p_path,
-		std::optional<AssetHandle> p_prev_handle) {
-	AssetHandle handle = p_prev_handle ? *p_prev_handle : AssetHandle();
+AssetHandle AssetRegistry<T>::register_asset(
+		std::shared_ptr<T> asset, const std::string& path, std::optional<AssetHandle> prev_handle) {
+	AssetHandle handle = prev_handle ? *prev_handle : AssetHandle();
 
-	assets.insert_or_assign(
-			handle, AssetEntry{ p_asset, !p_path.empty() ? p_path : _get_default_mem_path<T>() });
+	_assets.insert_or_assign(
+			handle, AssetEntry{ asset, !path.empty() ? path : _get_default_mem_path<T>() });
 
 	return handle;
 }
 
 template <IsReflectedAsset T>
 AssetHandle AssetRegistry<T>::register_asset_persistent(
-		std::shared_ptr<T> p_asset, const std::string& p_path) {
+		std::shared_ptr<T> asset, const std::string& path) {
 	AssetHandle handle = AssetHandle();
 
-	assets.insert_or_assign(handle,
-			AssetEntry{ p_asset, !p_path.empty() ? p_path : _get_default_mem_path<T>(), true });
+	_assets.insert_or_assign(
+			handle, AssetEntry{ asset, !path.empty() ? path : _get_default_mem_path<T>(), true });
 
 	return handle;
 }
 
-template <IsReflectedAsset T> std::shared_ptr<T> AssetRegistry<T>::get_asset(const AssetHandle& p_handle) {
-	const auto it = assets.find(p_handle);
-	if (it == assets.end()) {
+template <IsReflectedAsset T>
+std::shared_ptr<T> AssetRegistry<T>::get_asset(const AssetHandle& handle) {
+	const auto it = _assets.find(handle);
+	if (it == _assets.end()) {
 		return nullptr;
 	}
 
@@ -58,10 +59,10 @@ template <IsReflectedAsset T> std::shared_ptr<T> AssetRegistry<T>::get_asset(con
 }
 
 template <IsReflectedAsset T>
-std::shared_ptr<T> AssetRegistry<T>::get_asset_by_path(const std::string& p_path) {
-	const auto it = std::find_if(assets.begin(), assets.end(),
-			[&p_path](const auto& p_pair) { return p_pair.second.path == p_path; });
-	if (it == assets.end()) {
+std::shared_ptr<T> AssetRegistry<T>::get_asset_by_path(const std::string& path) {
+	const auto it = std::find_if(_assets.begin(), _assets.end(),
+			[&path](const auto& pair) { return pair.second.path == path; });
+	if (it == _assets.end()) {
 		return nullptr;
 	}
 
@@ -69,10 +70,10 @@ std::shared_ptr<T> AssetRegistry<T>::get_asset_by_path(const std::string& p_path
 }
 
 template <IsReflectedAsset T>
-std::optional<AssetHandle> AssetRegistry<T>::get_handle_by_path(const std::string& p_path) const {
-	const auto it = std::find_if(assets.begin(), assets.end(),
-			[&p_path](const auto& p_pair) { return p_pair.second.path == p_path; });
-	if (it == assets.end()) {
+std::optional<AssetHandle> AssetRegistry<T>::get_handle_by_path(const std::string& path) const {
+	const auto it = std::find_if(_assets.begin(), _assets.end(),
+			[&path](const auto& pair) { return pair.second.path == path; });
+	if (it == _assets.end()) {
 		return std::nullopt;
 	}
 
@@ -80,26 +81,26 @@ std::optional<AssetHandle> AssetRegistry<T>::get_handle_by_path(const std::strin
 }
 
 template <IsReflectedAsset T>
-std::optional<AssetMetadata> AssetRegistry<T>::get_metadata(const AssetHandle& p_handle) {
-	const auto it = assets.find(p_handle);
-	if (it == assets.end()) {
+std::optional<AssetMetadata> AssetRegistry<T>::get_metadata(const AssetHandle& handle) {
+	const auto it = _assets.find(handle);
+	if (it == _assets.end()) {
 		return std::nullopt;
 	}
 
-	return AssetMetadata{ T::get_type_name(), it->second.path };
+	return std::make_optional<AssetMetadata>(T::get_type_name(), it->second.path);
 }
 
-template <IsReflectedAsset T> bool AssetRegistry<T>::erase(AssetHandle p_handle) {
-	return assets.erase(p_handle) > 0;
+template <IsReflectedAsset T> bool AssetRegistry<T>::erase(AssetHandle handle) {
+	return _assets.erase(handle) > 0;
 }
 
-template <IsReflectedAsset T> void AssetRegistry<T>::clear() { assets.clear(); }
+template <IsReflectedAsset T> void AssetRegistry<T>::clear() { _assets.clear(); }
 
 template <IsReflectedAsset T> void AssetRegistry<T>::clear_non_persistent() {
-	for (auto it = assets.begin(); it != assets.end();) {
+	for (auto it = _assets.begin(); it != _assets.end();) {
 		// Only erase non persistent assets
 		if (!it->second.is_persistent) {
-			it = assets.erase(it);
+			it = _assets.erase(it);
 			continue;
 		}
 		it++;
@@ -109,9 +110,9 @@ template <IsReflectedAsset T> void AssetRegistry<T>::clear_non_persistent() {
 template <IsReflectedAsset T>
 std::unordered_map<AssetHandle, AssetMetadata> AssetRegistry<T>::get_asset_metadata() const {
 	std::unordered_map<AssetHandle, AssetMetadata> result;
-	result.reserve(assets.size());
+	result.reserve(_assets.size());
 
-	for (auto& [handle, entry] : assets) {
+	for (auto& [handle, entry] : _assets) {
 		result.emplace(handle, AssetMetadata{ T::get_type_name(), entry.path });
 	}
 
@@ -120,30 +121,30 @@ std::unordered_map<AssetHandle, AssetMetadata> AssetRegistry<T>::get_asset_metad
 
 template <IsReflectedAsset T> void AssetRegistry<T>::reload_all() {
 	if constexpr (IsLoadableAsset<T>) {
-		auto it = assets.begin();
-		while (it != assets.end()) {
+		auto it = _assets.begin();
+		while (it != _assets.end()) {
 			const auto path = AssetSystem::get_absolute_path(it->second.path);
 			if (!path) {
 				it++;
 				continue;
 			}
 
-			if (const auto instance = T::load(path.get_value())) {
+			if (const auto instance = T::load(*path)) {
 				it->second.instance = instance;
 
 				it++;
 			} else {
-				it = assets.erase(it);
+				it = _assets.erase(it);
 			}
 		}
 	}
 }
 
-template <IsReflectedAsset T> void AssetRegistry<T>::serialize(json& p_json) const {
+template <IsReflectedAsset T> void AssetRegistry<T>::serialize(json& j) const {
 	// Only loadable assets can be (de)serialized
 	if constexpr (IsLoadableAsset<T>) {
-		json j;
-		for (auto& [handle, entry] : assets) {
+		json sub_j;
+		for (auto& [handle, entry] : _assets) {
 			// Do not serialize uninitialized assets
 			if (!entry.instance) {
 				continue;
@@ -154,33 +155,33 @@ template <IsReflectedAsset T> void AssetRegistry<T>::serialize(json& p_json) con
 				// Serialize metadata
 				entry.instance->save(entry.path, entry.instance);
 
-				j.push_back(json{
+				sub_j.push_back(json{
 						{ "handle", handle },
 						{ "path", entry.path },
 				});
 			}
 		}
 
-		p_json = j.size() > 0 ? j : json(json::value_t::null);
+		j = sub_j.size() > 0 ? sub_j : json(json::value_t::null);
 	}
 }
 
-template <IsReflectedAsset T> void AssetRegistry<T>::deserialize(const json& p_in_json) {
+template <IsReflectedAsset T> void AssetRegistry<T>::deserialize(const json& in_json) {
 	// Only loadable assets can be (de)serialized
 	if constexpr (IsLoadableAsset<T>) {
-		if (!p_in_json.is_array()) {
+		if (!in_json.is_array()) {
 			GL_LOG_ERROR("Unable to deserialize Assets of type '{}'.", T::get_type_name());
 			return;
 		}
 
-		for (const auto& asset : p_in_json) {
+		for (const auto& asset : in_json) {
 			AssetHandle handle;
 			AssetEntry entry;
 
 			asset["handle"].get_to(handle);
 			asset["path"].get_to(entry.path);
 
-			assets[handle] = entry;
+			_assets[handle] = entry;
 		}
 	}
 }
@@ -188,9 +189,9 @@ template <IsReflectedAsset T> void AssetRegistry<T>::deserialize(const json& p_i
 template <IsReflectedAsset T>
 	requires IsLoadableAsset<T>
 Result<AssetHandle, AssetLoadingError> AssetSystem::load(
-		const std::string& p_path, std::optional<AssetHandle> p_prev_handle) {
-	const auto absolute_path = get_absolute_path(p_path);
-	if (absolute_path.has_error()) {
+		const std::string& path, std::optional<AssetHandle> prev_handle) {
+	const auto absolute_path = get_absolute_path(path);
+	if (absolute_path.is_error()) {
 		return make_err<AssetHandle>(AssetLoadingError::FILE_ERROR);
 	}
 
@@ -199,7 +200,7 @@ Result<AssetHandle, AssetLoadingError> AssetSystem::load(
 	std::shared_ptr<T> asset = nullptr;
 
 	// If asset already exists then use that
-	if (const auto old_handle = registry.get_handle_by_path(p_path)) {
+	if (const auto old_handle = registry.get_handle_by_path(path)) {
 		asset = AssetSystem::get<T>(*old_handle);
 	}
 
@@ -211,13 +212,13 @@ Result<AssetHandle, AssetLoadingError> AssetSystem::load(
 		}
 	}
 
-	return registry.register_asset(asset, p_path, p_prev_handle);
+	return registry.register_asset(asset, path, prev_handle);
 }
 
 template <IsReflectedAsset T, typename... Args>
 	requires IsCreatableAsset<T> || IsCreatableAsset<T, Args...>
-std::optional<AssetHandle> AssetSystem::create(Args&&... p_args) {
-	const std::shared_ptr<T> asset = T::create(std::forward<Args>(p_args)...);
+std::optional<AssetHandle> AssetSystem::create(Args&&... args) {
+	const std::shared_ptr<T> asset = T::create(std::forward<Args>(args)...);
 	if (!asset) {
 		return std::nullopt;
 	}
@@ -226,40 +227,39 @@ std::optional<AssetHandle> AssetSystem::create(Args&&... p_args) {
 	return registry.register_asset(asset, _get_default_mem_path<T>());
 }
 
-template <IsReflectedAsset T> std::shared_ptr<T> AssetSystem::get(const AssetHandle& p_handle) {
+template <IsReflectedAsset T> std::shared_ptr<T> AssetSystem::get(const AssetHandle& handle) {
 	auto& registry = get_registry<T>();
-	return registry.get_asset(p_handle);
+	return registry.get_asset(handle);
+}
+
+template <IsReflectedAsset T> std::shared_ptr<T> AssetSystem::get_by_path(const std::string& path) {
+	auto& registry = get_registry<T>();
+	return registry.get_asset_by_path(path);
 }
 
 template <IsReflectedAsset T>
-std::shared_ptr<T> AssetSystem::get_by_path(const std::string& p_path) {
+std::optional<AssetMetadata> AssetSystem::get_metadata(const AssetHandle& handle) {
 	auto& registry = get_registry<T>();
-	return registry.get_asset_by_path(p_path);
+	return registry.get_metadata(handle);
 }
 
 template <IsReflectedAsset T>
-std::optional<AssetMetadata> AssetSystem::get_metadata(const AssetHandle& p_handle) {
+AssetHandle AssetSystem::register_asset(
+		std::shared_ptr<T> asset, const std::string& path, std::optional<AssetHandle> prev_handle) {
 	auto& registry = get_registry<T>();
-	return registry.get_metadata(p_handle);
-}
-
-template <IsReflectedAsset T>
-AssetHandle AssetSystem::register_asset(std::shared_ptr<T> p_asset, const std::string& p_path,
-		std::optional<AssetHandle> p_prev_handle) {
-	auto& registry = get_registry<T>();
-	return registry.register_asset(p_asset, p_path, p_prev_handle);
+	return registry.register_asset(asset, path, prev_handle);
 }
 
 template <IsReflectedAsset T>
 AssetHandle AssetSystem::register_asset_persistent(
-		std::shared_ptr<T> p_asset, const std::string& p_path) {
+		std::shared_ptr<T> asset, const std::string& path) {
 	auto& registry = get_registry<T>();
-	return registry.register_asset_persistent(p_asset, p_path);
+	return registry.register_asset_persistent(asset, path);
 }
 
-template <IsReflectedAsset T> bool AssetSystem::free(const AssetHandle& p_handle) {
+template <IsReflectedAsset T> bool AssetSystem::free(const AssetHandle& handle) {
 	auto& registry = get_registry<T>();
-	return registry.erase(p_handle);
+	return registry.erase(handle);
 }
 
 template <IsReflectedAsset T> AssetRegistry<T>& AssetSystem::get_registry() {

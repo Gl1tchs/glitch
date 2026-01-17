@@ -4,6 +4,13 @@
 
 #pragma once
 
+#include "glitch/core/defines.h"
+
+#include <glgpu/glgpu.h>
+
+#include <cstdint>
+#include <string_view>
+
 struct GLFWwindow;
 
 namespace gl {
@@ -25,21 +32,21 @@ struct WindowCreateInfo {
 
 class GL_API Window {
 public:
-	Window(WindowCreateInfo p_info);
+	Window(WindowCreateInfo info);
 	~Window();
 
 	void poll_events() const;
 
 	bool is_open() const;
 
-	glm::uvec2 get_size() const;
+	Vec2u get_size() const;
 
 	float get_aspect_ratio() const;
 
-	void set_title(std::string_view p_title);
+	void set_title(std::string_view title);
 
 	WindowCursorMode get_cursor_mode() const;
-	void set_cursor_mode(WindowCursorMode p_mode);
+	void set_cursor_mode(WindowCursorMode mode);
 
 	WindowHandle* get_native_window();
 
@@ -47,9 +54,8 @@ private:
 	void _assign_event_delegates();
 
 private:
-	WindowHandle* window;
-
-	WindowCursorMode cursor_mode = WINDOW_CURSOR_MODE_NORMAL;
+	WindowHandle* _window;
+	WindowCursorMode _cursor_mode = WINDOW_CURSOR_MODE_NORMAL;
 };
 
 } //namespace gl

@@ -9,26 +9,28 @@
 #include "glitch/core/ref_counted.h"
 #include "glitch/core/uid.h"
 
+#include <functional>
+
 namespace gl {
 
 // Counted atomic reference for GC system.
 class AssetHandle : public RefCounted<UID> {
 public:
 	AssetHandle() : RefCounted<UID>(UID()) {}
-	AssetHandle(UID p_id) : RefCounted<UID>(std::move(p_id)) {}
+	AssetHandle(UID id) : RefCounted<UID>(std::move(id)) {}
 
-	AssetHandle(const AssetHandle& p_rhs) : RefCounted<UID>(p_rhs) {}
-	AssetHandle(AssetHandle&& p_rhs) noexcept : RefCounted<UID>(std::move(p_rhs)) {}
+	AssetHandle(const AssetHandle& rhs) : RefCounted<UID>(rhs) {}
+	AssetHandle(AssetHandle&& rhs) noexcept : RefCounted<UID>(std::move(rhs)) {}
 
 	virtual ~AssetHandle() override = default;
 
-	AssetHandle& operator=(const AssetHandle& p_rhs) {
-		RefCounted<UID>::operator=(p_rhs);
+	AssetHandle& operator=(const AssetHandle& rhs) {
+		RefCounted<UID>::operator=(rhs);
 		return *this;
 	}
 
-	AssetHandle& operator=(AssetHandle&& p_rhs) noexcept {
-		RefCounted<UID>::operator=(std::move(p_rhs));
+	AssetHandle& operator=(AssetHandle&& rhs) noexcept {
+		RefCounted<UID>::operator=(std::move(rhs));
 		return *this;
 	}
 };
@@ -61,8 +63,8 @@ struct IAssetRegistry {
 
 	virtual void reload_all() = 0;
 
-	virtual void serialize(json& p_out_json) const = 0;
-	virtual void deserialize(const json& p_in_json) = 0;
+	virtual void serialize(json& out_json) const = 0;
+	virtual void deserialize(const json& in_json) = 0;
 };
 
 template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
@@ -72,7 +74,7 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 		bool is_persistent = false;
 	};
 
-	std::unordered_map<AssetHandle, AssetEntry> assets;
+	std::unordered_map<AssetHandle, AssetEntry> _assets;
 
 	virtual ~AssetRegistry() = default;
 
@@ -89,25 +91,24 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 	 * @param p_path Path of the asset to be registered
 	 * @param p_prev_handle Handle of the asset to be registered. Default is a random UID
 	 */
-	AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path,
-			std::optional<AssetHandle> p_prev_handle = std::nullopt);
+	AssetHandle register_asset(std::shared_ptr<T> asset, const std::string& path,
+			std::optional<AssetHandle> prev_handle = std::nullopt);
 
 	/**
 	 * Registers an asset that will live for the lifetime of the application.
 	 * Garbage collection will skip this asset even if the reference count is 1.
 	 */
-	AssetHandle register_asset_persistent(
-			std::shared_ptr<T> p_asset, const std::string& p_path = "");
+	AssetHandle register_asset_persistent(std::shared_ptr<T> asset, const std::string& path = "");
 
-	std::shared_ptr<T> get_asset(const AssetHandle& p_handle);
+	std::shared_ptr<T> get_asset(const AssetHandle& handle);
 
-	std::shared_ptr<T> get_asset_by_path(const std::string& p_path);
+	std::shared_ptr<T> get_asset_by_path(const std::string& path);
 
-	std::optional<AssetHandle> get_handle_by_path(const std::string& p_path) const;
+	std::optional<AssetHandle> get_handle_by_path(const std::string& path) const;
 
-	std::optional<AssetMetadata> get_metadata(const AssetHandle& p_handle);
+	std::optional<AssetMetadata> get_metadata(const AssetHandle& handle);
 
-	bool erase(AssetHandle p_handle);
+	bool erase(AssetHandle handle);
 
 	void clear() override;
 	void clear_non_persistent() override;
@@ -116,9 +117,9 @@ template <IsReflectedAsset T> struct AssetRegistry : public IAssetRegistry {
 
 	void reload_all() override;
 
-	void serialize(json& p_out_json) const override;
+	void serialize(json& out_json) const override;
 
-	void deserialize(const json& p_in_json) override;
+	void deserialize(const json& in_json) override;
 };
 
 enum class PathProcessError {
@@ -162,21 +163,21 @@ public:
 	template <IsReflectedAsset T>
 		requires IsLoadableAsset<T>
 	static Result<AssetHandle, AssetLoadingError> load(
-			const std::string& p_path, std::optional<AssetHandle> p_prev_handle = std::nullopt);
+			const std::string& path, std::optional<AssetHandle> prev_handle = std::nullopt);
 
 	// Creates and registers the asset to the compatible registry
 	template <IsReflectedAsset T, typename... Args>
 		requires IsCreatableAsset<T> || IsCreatableAsset<T, Args...>
-	static std::optional<AssetHandle> create(Args&&... p_args);
+	static std::optional<AssetHandle> create(Args&&... args);
 
 	// Retrieve asset from registry
-	template <IsReflectedAsset T> static std::shared_ptr<T> get(const AssetHandle& p_handle);
+	template <IsReflectedAsset T> static std::shared_ptr<T> get(const AssetHandle& handle);
 
-	template <IsReflectedAsset T> static std::shared_ptr<T> get_by_path(const std::string& p_path);
+	template <IsReflectedAsset T> static std::shared_ptr<T> get_by_path(const std::string& path);
 
 	// Retrieve asset metadata from registry
 	template <IsReflectedAsset T>
-	static std::optional<AssetMetadata> get_metadata(const AssetHandle& p_handle);
+	static std::optional<AssetMetadata> get_metadata(const AssetHandle& handle);
 
 	/**
 	 * Registers an asset type to the registry, type is guaranteed to get destroyed if no other
@@ -185,18 +186,18 @@ public:
 	 * @param p_prev_handle Handle of the asset to be registered. Default is a random UID.
 	 */
 	template <IsReflectedAsset T>
-	static AssetHandle register_asset(std::shared_ptr<T> p_asset, const std::string& p_path = "",
-			std::optional<AssetHandle> p_prev_handle = std::nullopt);
+	static AssetHandle register_asset(std::shared_ptr<T> asset, const std::string& path = "",
+			std::optional<AssetHandle> prev_handle = std::nullopt);
 
 	/**
 	 * Registers an asset type to the registry that persists through garbage collection.
 	 */
 	template <IsReflectedAsset T>
 	static AssetHandle register_asset_persistent(
-			std::shared_ptr<T> p_asset, const std::string& p_path = "");
+			std::shared_ptr<T> asset, const std::string& path = "");
 
 	// Release given asset handle from registry.
-	template <IsReflectedAsset T> static bool free(const AssetHandle& p_handle);
+	template <IsReflectedAsset T> static bool free(const AssetHandle& handle);
 
 	template <IsReflectedAsset T> static AssetRegistry<T>& get_registry();
 
@@ -204,10 +205,10 @@ public:
 	static std::unordered_map<AssetHandle, AssetMetadata> get_asset_metadata();
 
 	// Transforms engine path format with suffix 'res://' to absolute path
-	static Result<fs::path, PathProcessError> get_absolute_path(std::string_view p_path);
+	static Result<std::filesystem::path, PathProcessError> get_absolute_path(std::string_view path);
 
-	static void serialize(json& p_json);
-	static void deserialize(const json& p_json);
+	static void serialize(json& j);
+	static void deserialize(const json& j);
 
 private:
 	// type_name, registry map
@@ -218,11 +219,11 @@ private:
 
 namespace std {
 template <> struct hash<gl::AssetHandle> {
-	size_t operator()(const gl::AssetHandle& p_handle) const { // Check for null pointer first
-		if (p_handle.get_ref_count() == 0) {
+	size_t operator()(const gl::AssetHandle& handle) const { // Check for null pointer first
+		if (handle.get_ref_count() == 0) {
 			return 0;
 		}
-		return std::hash<gl::UID>{}(p_handle.get_value());
+		return std::hash<gl::UID>{}(handle.get_value());
 	}
 };
 } //namespace std

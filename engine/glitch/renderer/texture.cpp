@@ -4,78 +4,86 @@
 #include "glitch/core/hash.h"
 #include "glitch/core/json.h"
 #include "glitch/renderer/renderer.h"
-#include "glitch/renderer/types.h"
-#include <filesystem>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+#include <filesystem>
+
 namespace gl {
 
 Texture::~Texture() {
-	auto backend = Renderer::get_backend();
+	auto device = Renderer::get_device();
 
-	backend->image_free(image);
-	backend->sampler_free(sampler);
+	device->image_free(_image);
+	device->sampler_free(_sampler);
 }
 
 std::shared_ptr<Texture> Texture::create(
-		const Color& p_color, const glm::uvec2& p_size, TextureSamplerOptions p_sampler) {
-	auto backend = Renderer::get_backend();
+		const Color& color, const Vec2u& size, TextureSamplerOptions sampler) {
+	auto device = Renderer::get_device();
 
-	const uint32_t color_data = p_color.as_uint();
+	const uint32_t color_data = color.as_uint();
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
-	tx->format = DataFormat::R8G8B8A8_UNORM;
-	tx->size = p_size;
-	tx->image = backend->image_create(
-			DataFormat::R8G8B8A8_UNORM, p_size, &color_data, IMAGE_USAGE_SAMPLED_BIT, true);
-	tx->sampler =
-			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter, p_sampler.wrap_u,
-					p_sampler.wrap_v, p_sampler.wrap_w, backend->image_get_mip_levels(tx->image));
+	tx->_format = DataFormat::R8G8B8A8_UNORM;
+	tx->_size = size;
+	tx->_image = device->image_create(ImageCreateInfo{ DataFormat::R8G8B8A8_UNORM, size,
+											  &color_data, IMAGE_USAGE_SAMPLED_BIT, true })
+						 .value();
+	tx->_sampler =
+			device->sampler_create(SamplerCreateInfo{ sampler.min_filter, sampler.mag_filter,
+										   sampler.wrap_u, sampler.wrap_v, sampler.wrap_w,
+										   device->image_get_mip_levels(tx->_image).value() })
+					.value();
+	tx->_sampler_options = sampler;
 
 	return tx;
 }
 
-std::shared_ptr<Texture> Texture::create(DataFormat p_format, const glm::uvec2& p_size,
-		const void* p_data, TextureSamplerOptions p_sampler) {
-	auto backend = Renderer::get_backend();
+std::shared_ptr<Texture> Texture::create(
+		DataFormat format, const Vec2u& size, const void* data, TextureSamplerOptions sampler) {
+	auto device = Renderer::get_device();
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
-	tx->format = p_format;
-	tx->size = p_size;
-	tx->image = backend->image_create(p_format, p_size, p_data, IMAGE_USAGE_SAMPLED_BIT, true);
-	tx->sampler =
-			backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter, p_sampler.wrap_u,
-					p_sampler.wrap_v, p_sampler.wrap_w, backend->image_get_mip_levels(tx->image));
-	tx->sampler_options = p_sampler;
-	tx->asset_path = "";
+	tx->_format = format;
+	tx->_size = size;
+	tx->_image = device->image_create(
+							   ImageCreateInfo{ format, size, data, IMAGE_USAGE_SAMPLED_BIT, true })
+						 .value();
+	tx->_sampler =
+			device->sampler_create(SamplerCreateInfo{ sampler.min_filter, sampler.mag_filter,
+										   sampler.wrap_u, sampler.wrap_v, sampler.wrap_w,
+										   device->image_get_mip_levels(tx->_image).value() })
+					.value();
+	tx->_sampler_options = sampler;
+	tx->_asset_path = "";
 
 	return tx;
 }
 
-bool Texture::save(const fs::path& p_metadata_path, std::shared_ptr<Texture> p_texture) {
-	if (!p_texture) {
+bool Texture::save(const std::filesystem::path& metadata_path, std::shared_ptr<Texture> texture) {
+	if (!texture) {
 		GL_LOG_ERROR(
 				"[Texture::save] Unable to save Texture metadata to path, invalid texture object.");
 		return false;
 	}
 
-	if (p_texture->asset_path.empty()) {
+	if (texture->_asset_path.empty()) {
 		GL_LOG_ERROR("[Texture::save] Unable to save Texture metadata to path, asset path should "
 					 "not be empty.");
 		return false;
 	}
 
 	json j;
-	j["path"] = p_texture->asset_path;
-	j["min_filter"] = p_texture->sampler_options.min_filter;
-	j["mag_filter"] = p_texture->sampler_options.mag_filter;
-	j["wrap_u"] = p_texture->sampler_options.wrap_u;
-	j["wrap_v"] = p_texture->sampler_options.wrap_v;
-	j["wrap_w"] = p_texture->sampler_options.wrap_w;
+	j["path"] = texture->_asset_path;
+	j["min_filter"] = texture->_sampler_options.min_filter;
+	j["mag_filter"] = texture->_sampler_options.mag_filter;
+	j["wrap_u"] = texture->_sampler_options.wrap_u;
+	j["wrap_v"] = texture->_sampler_options.wrap_v;
+	j["wrap_w"] = texture->_sampler_options.wrap_w;
 
-	const auto res = json_save(p_metadata_path.string(), j);
+	const auto res = json_save(metadata_path.string(), j);
 	if (res != JSONLoadError::NONE) {
 		if (res == JSONLoadError::FILE_OPEN_ERROR) {
 			GL_LOG_ERROR(
@@ -89,7 +97,7 @@ bool Texture::save(const fs::path& p_metadata_path, std::shared_ptr<Texture> p_t
 	return true;
 }
 
-std::shared_ptr<Texture> Texture::load(const fs::path& p_path) {
+std::shared_ptr<Texture> Texture::load(const std::filesystem::path& path) {
 	/**
 	 * Example metadata reference:
 	 * {
@@ -102,12 +110,12 @@ std::shared_ptr<Texture> Texture::load(const fs::path& p_path) {
 	 * }
 	 */
 
-	if (!fs::exists(p_path)) {
+	if (!std::filesystem::exists(path)) {
 		GL_LOG_ERROR("[Texture::load] Unable to load texture, given metadata path do not exists.");
 		return nullptr;
 	}
 
-	const auto res = json_load(p_path.string());
+	const auto res = json_load(path.string());
 	if (!res) {
 		GL_LOG_ERROR("[Texture::load] Unable to load texture, error while parsing metadata.");
 		return nullptr;
@@ -122,7 +130,7 @@ std::shared_ptr<Texture> Texture::load(const fs::path& p_path) {
 
 	const auto asset_path_rel = j["path"].get<std::string>();
 	const auto asset_path = AssetSystem::get_absolute_path(asset_path_rel);
-	if (!asset_path || !fs::exists(*asset_path)) {
+	if (!asset_path || !std::filesystem::exists(*asset_path)) {
 		GL_LOG_ERROR("[Texture::load] Unable to load texture, invalid textue path in metadata.");
 		return nullptr;
 	}
@@ -148,58 +156,63 @@ std::shared_ptr<Texture> Texture::load(const fs::path& p_path) {
 }
 
 std::shared_ptr<Texture> Texture::load_from_file(
-		const fs::path& p_asset_path, const TextureSamplerOptions& p_sampler) {
-	if (!fs::exists(p_asset_path)) {
+		const std::filesystem::path& asset_path, const TextureSamplerOptions& sampler) {
+	if (!std::filesystem::exists(asset_path)) {
 		GL_LOG_ERROR(
 				"[Texture::load_from_file] Unable to load texture from file, file do not exist.");
 		return nullptr;
 	}
 
-	auto backend = Renderer::get_backend();
+	auto device = Renderer::get_device();
 
 	int w, h;
-	stbi_uc* data = stbi_load(p_asset_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
+	stbi_uc* data = stbi_load(asset_path.string().c_str(), &w, &h, nullptr, STBI_rgb_alpha);
 
 	std::shared_ptr<Texture> tx = std::make_shared<Texture>();
-	tx->format = DataFormat::R8G8B8A8_UNORM;
-	tx->size = { w, h };
-	tx->image =
-			backend->image_create(DataFormat::R8G8B8A8_UNORM, { (uint32_t)w, (uint32_t)h }, data);
-	tx->sampler = backend->sampler_create(p_sampler.min_filter, p_sampler.mag_filter,
-			p_sampler.wrap_u, p_sampler.wrap_v, p_sampler.wrap_w);
-	tx->sampler_options = p_sampler;
-	tx->asset_path = p_asset_path.string();
+	tx->_format = DataFormat::R8G8B8A8_UNORM;
+	tx->_size = { (uint32_t)w, (uint32_t)h };
+	tx->_image = device->image_create(ImageCreateInfo{ DataFormat::R8G8B8A8_UNORM,
+											  { (uint32_t)w, (uint32_t)h }, data,
+											  IMAGE_USAGE_SAMPLED_BIT, true })
+						 .value();
+	tx->_sampler =
+			device->sampler_create(SamplerCreateInfo{ sampler.min_filter, sampler.mag_filter,
+										   sampler.wrap_u, sampler.wrap_v, sampler.wrap_w,
+										   device->image_get_mip_levels(tx->_image).value() })
+					.value();
+	tx->_sampler_options = sampler;
+	tx->_asset_path = asset_path.string();
 
 	stbi_image_free(data);
 
 	return tx;
 }
 
-ShaderUniform Texture::get_uniform(uint32_t p_binding) const {
+ShaderUniform Texture::get_uniform(uint32_t binding) const {
 	ShaderUniform uniform;
-	uniform.type = UNIFORM_TYPE_SAMPLER_WITH_TEXTURE;
-	uniform.binding = p_binding;
-	uniform.data.push_back(sampler);
-	uniform.data.push_back(image);
+	uniform.type = ShaderUniformType::SAMPLER_WITH_TEXTURE;
+	uniform.binding = binding;
+	uniform.data.push_back(_sampler);
+	uniform.data.push_back(_image);
 
 	return uniform;
 }
 
-DataFormat Texture::get_format() const { return format; }
+DataFormat Texture::get_format() const { return _format; }
 
-const glm::uvec2 Texture::get_size() const { return size; }
+const Vec2u Texture::get_size() const { return _size; }
 
-const Image Texture::get_image() const { return image; }
+const Image Texture::get_image() const { return _image; }
 
-const Sampler Texture::get_sampler() const { return sampler; }
+const Sampler Texture::get_sampler() const { return _sampler; }
 
-const std::string& Texture::get_path() const { return asset_path; }
+const std::string& Texture::get_path() const { return _asset_path; }
 
-template <> size_t hash64(const Texture& p_texture) {
+template <> size_t hash64(const Texture& texture) {
 	size_t seed = 0;
-	hash_combine(seed, static_cast<int>(p_texture.get_format()));
-	hash_combine(seed, p_texture.get_image());
-	hash_combine(seed, p_texture.get_sampler());
+	hash_combine(seed, static_cast<int>(texture.get_format()));
+	hash_combine(seed, texture.get_image());
+	hash_combine(seed, texture.get_sampler());
 	return seed;
 }
 

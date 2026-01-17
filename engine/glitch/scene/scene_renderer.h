@@ -33,24 +33,24 @@ class GL_API SceneRenderer {
 public:
 	using RenderFunc = std::function<void(CommandBuffer)>;
 
-	SceneRenderer(const SceneRendererSpecification& p_specs);
+	SceneRenderer(const SceneRendererSpecification& specs);
 	~SceneRenderer();
 
-	void submit(const DrawingContext& p_ctx);
+	void submit(const DrawingContext& ctx);
 
 	/**
 	 * Push a rendering function into stack using a render pass
 	 */
-	void submit_func(RenderFunc&& p_func);
+	void submit_func(RenderFunc&& func);
 
 private:
-	std::shared_ptr<Renderer> renderer;
-	std::shared_ptr<RenderBackend> backend;
+	std::shared_ptr<Renderer> _renderer;
+	Device* _device;
 
-	std::shared_ptr<ClearPass> clear_pass;
-	std::shared_ptr<MeshPass> mesh_pass;
+	std::shared_ptr<ClearPass> _clear_pass;
+	std::shared_ptr<MeshPass> _mesh_pass;
 
-	std::vector<RenderFunc> render_funcs;
+	std::vector<RenderFunc> _render_funcs;
 };
 
 } //namespace gl

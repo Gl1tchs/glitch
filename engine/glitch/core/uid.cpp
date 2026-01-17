@@ -2,39 +2,36 @@
 
 namespace gl {
 
-static std::random_device random_device;
+static uint32_t s_counter = 0;
 
-static thread_local std::mt19937_64 engine(random_device());
-static thread_local std::uniform_int_distribution<uint32_t> uniform_distribution;
+UID::UID() : value(++s_counter) {}
 
-UID::UID() : value(uniform_distribution(engine)) {}
+UID::UID(const uint32_t& uid) : value(uid) {}
 
-UID::UID(const uint32_t& p_uuid) : value(p_uuid) {}
+UID::UID(uint32_t&& uid) : value(std::move(uid)) {}
 
-UID::UID(uint32_t&& p_uuid) : value(std::move(p_uuid)) {}
-
-UID& UID::operator=(const UID& p_other) {
-	value = (uint32_t)p_other;
+UID& UID::operator=(const UID& other) {
+	value = (uint32_t)other;
 	return *this;
 }
 
-UID& UID::operator=(UID&& p_other) {
-	value = (uint32_t)p_other;
+UID& UID::operator=(UID&& other) {
+	value = (uint32_t)other;
 	return *this;
 }
 
-UID& UID::operator=(const uint32_t& p_other) {
-	value = p_other;
+UID& UID::operator=(const uint32_t& other) {
+	value = other;
 	return *this;
 }
 
-UID& UID::operator=(uint32_t&& p_other) {
-	value = p_other;
+UID& UID::operator=(uint32_t&& other) {
+	value = other;
 	return *this;
 }
 
-void to_json(json& p_json, const UID& p_uid) { p_json = p_uid.value; }
+void to_json(json& j, const UID& uid) { j = uid.value; }
 
-void from_json(const json& p_json, UID& p_uid) { p_json.get_to(p_uid.value); }
+void from_json(const json& j, UID& uid) { j.get_to(uid.value); }
 
 } //namespace gl

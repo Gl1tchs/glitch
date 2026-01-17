@@ -1,10 +1,12 @@
 #include "glitch/core/transform.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <glgpu/math.h>
+
+#include <memory>
 
 namespace gl {
 
-glm::vec3 Transform::get_position() const {
+Vec3f Transform::get_position() const {
 	if (parent) {
 		return local_position + parent->get_position();
 	} else {
@@ -12,7 +14,7 @@ glm::vec3 Transform::get_position() const {
 	}
 }
 
-glm::vec3 Transform::get_rotation() const {
+Vec3f Transform::get_rotation() const {
 	if (parent) {
 		return local_rotation + parent->get_rotation();
 	} else {
@@ -20,39 +22,39 @@ glm::vec3 Transform::get_rotation() const {
 	}
 }
 
-glm::vec3 Transform::get_scale() const {
+Vec3f Transform::get_scale() const {
 	if (parent) {
-		return local_scale * parent->get_scale();
+		const Vec3f parent_scale = parent->get_scale();
+		return Vec3f(local_scale.x * parent_scale.x, local_scale.y * parent_scale.y,
+				local_scale.z * parent_scale.z);
 	} else {
 		return local_scale;
 	}
 }
 
-void Transform::translate(const glm::vec3& p_translation) { local_position += p_translation; }
+void Transform::translate(const Vec3f& translation) { local_position += translation; }
 
-void Transform::rotate(const float p_angle, const glm::vec3 p_axis) {
-	local_rotation += p_angle * p_axis;
+void Transform::rotate(const float angle, const Vec3f axis) { local_rotation = axis * angle; }
+
+Vec3f Transform::get_forward() const {
+	const Mat4 rot_mat = Mat4::from_euler_angles(local_rotation);
+	return Vec3f(rot_mat * Vec3f::forward()).normalize();
 }
 
-glm::vec3 Transform::get_forward() const {
-	glm::fquat orientation = glm::fquat(glm::radians(local_rotation));
-	return glm::normalize(orientation * VEC3_FORWARD);
+Vec3f Transform::get_right() const {
+	const Mat4 rot_mat = Mat4::from_euler_angles(local_rotation);
+	return Vec3f(rot_mat * Vec3f::right()).normalize();
 }
 
-glm::vec3 Transform::get_right() const {
-	glm::fquat orientation = glm::fquat(glm::radians(local_rotation));
-	return glm::normalize(orientation * VEC3_RIGHT);
+Vec3f Transform::get_up() const {
+	const Mat4 rot_mat = Mat4::from_euler_angles(local_rotation);
+	return Vec3f(rot_mat * Vec3f::up()).normalize();
 }
 
-glm::vec3 Transform::get_up() const {
-	glm::fquat orientation = glm::fquat(glm::radians(local_rotation));
-	return glm::normalize(orientation * VEC3_UP);
-}
-
-glm::mat4 Transform::to_mat4() const {
-	glm::mat4 transform = glm::translate(glm::mat4(1.0f), local_position);
-	transform *= glm::toMat4(glm::fquat(glm::radians(local_rotation)));
-	transform = glm::scale(transform, local_scale);
+Mat4 Transform::to_mat4() const {
+	Mat4 transform = Mat4::translate(local_position);
+	transform = transform * Mat4::from_euler_angles(local_rotation);
+	transform = transform * Mat4::scale(local_scale);
 
 	if (parent) {
 		transform = parent->to_mat4() * transform;

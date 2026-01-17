@@ -1,4 +1,4 @@
-#include <doctest/doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "glitch/asset/asset.h"
 #include "glitch/asset/asset_system.h"
@@ -26,22 +26,23 @@ struct MockLoadableAsset {
 	GL_REFLECT_ASSET("MockLoadableAsset");
 
 	int value;
-	fs::path loaded_from;
+	std::filesystem::path loaded_from;
 	inline static bool s_force_load_failure = false;
 
-	MockLoadableAsset(int v, const fs::path& p) : value(v), loaded_from(p) {}
+	MockLoadableAsset(int v, const std::filesystem::path& p) : value(v), loaded_from(p) {}
 
-	static bool save(const fs::path& p_metadata_path, std::shared_ptr<MockLoadableAsset> p_asset) {
+	static bool save(const std::filesystem::path& p_metadata_path,
+			std::shared_ptr<MockLoadableAsset> p_asset) {
 		return !s_force_load_failure;
 	}
 
-	static std::shared_ptr<MockLoadableAsset> load(const fs::path& p_path) {
+	static std::shared_ptr<MockLoadableAsset> load(const std::filesystem::path& p_path) {
 		if (s_force_load_failure) {
 			return nullptr; // simulate a parsing error
 		}
 
 		// Simulate a successful load only for a specific path
-		if (p_path == fs::path("/home/glitch/test_asset.dat")) {
+		if (p_path == std::filesystem::path("/home/glitch/test_asset.dat")) {
 			return std::make_shared<MockLoadableAsset>(0, p_path);
 		}
 
@@ -61,18 +62,18 @@ struct MockSerializedAsset {
 	GL_REFLECT_ASSET("MockSerializedAsset");
 
 	std::string data;
-	fs::path loaded_path;
+	std::filesystem::path loaded_path;
 
-	MockSerializedAsset(std::string p_data, fs::path p_path) :
+	MockSerializedAsset(std::string p_data, std::filesystem::path p_path) :
 			data(std::move(p_data)), loaded_path(std::move(p_path)) {}
 
-	static bool save(
-			const fs::path& p_metadata_path, std::shared_ptr<MockSerializedAsset> p_asset) {
+	static bool save(const std::filesystem::path& p_metadata_path,
+			std::shared_ptr<MockSerializedAsset> p_asset) {
 		return true;
 	}
 
 	// The deserialize method in AssetRegistry expects this signature
-	static std::shared_ptr<MockSerializedAsset> load(const fs::path& p_path) {
+	static std::shared_ptr<MockSerializedAsset> load(const std::filesystem::path& p_path) {
 		// Simulate file reading based on path
 		if (p_path == "/home/glitch/save_data.json") {
 			return std::make_shared<MockSerializedAsset>("Restored Data", p_path);
@@ -90,27 +91,27 @@ static_assert(IsLoadableAsset<MockSerializedAsset>);
 // --- Test Cases ---
 
 TEST_CASE("Test asset path conversion") {
-	CHECK(os::setenv("GL_WORKING_DIR", "/home/glitch"));
+	REQUIRE(os::setenv("GL_WORKING_DIR", "/home/glitch"));
 
 	auto path_res = AssetSystem::get_absolute_path("res://script.lua");
-	REQUIRE(path_res.has_value());
-	CHECK(path_res.get_value() == "/home/glitch/script.lua");
+	REQUIRE(path_res.is_ok());
+	REQUIRE(path_res.value() == "/home/glitch/script.lua");
 
-	CHECK(AssetSystem::get_absolute_path("").get_error() == PathProcessError::EMPTY_PATH);
-	CHECK(AssetSystem::get_absolute_path("ref://script.lua").get_error() ==
+	REQUIRE(AssetSystem::get_absolute_path("").error() == PathProcessError::EMPTY_PATH);
+	REQUIRE(AssetSystem::get_absolute_path("ref://script.lua").error() ==
 			PathProcessError::INVALID_IDENTIFIER);
 
-	CHECK(os::setenv("GL_WORKING_DIR", ""));
+	REQUIRE(os::setenv("GL_WORKING_DIR", ""));
 
-	CHECK(AssetSystem::get_absolute_path("res://script.lua").get_error() ==
+	REQUIRE(AssetSystem::get_absolute_path("res://script.lua").error() ==
 			PathProcessError::UNDEFINED_WORKING_DIR);
 
 	// Cleanup env
-	CHECK(os::setenv("GL_WORKING_DIR", "/home/glitch"));
+	REQUIRE(os::setenv("GL_WORKING_DIR", "/home/glitch"));
 }
 
 TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
-	CHECK(os::setenv("GL_WORKING_DIR", "/home/glitch"));
+	REQUIRE(os::setenv("GL_WORKING_DIR", "/home/glitch"));
 
 	// Reset mock asset static flags
 	MockLoadableAsset::s_force_load_failure = false;
@@ -119,76 +120,76 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 	AssetHandle h_create_valid;
 	AssetHandle h_load_valid;
 
-	SUBCASE("Create and Get") {
+	SECTION("Create and Get") {
 		std::optional<AssetHandle> handle_opt = AssetSystem::create<MockCreatableAsset>(42);
 		REQUIRE(handle_opt.has_value());
 		h_create_valid = *handle_opt;
-		CHECK(h_create_valid.is_valid());
+		REQUIRE(h_create_valid.is_valid());
 
 		auto asset_create = AssetSystem::get<MockCreatableAsset>(h_create_valid);
 		REQUIRE(asset_create != nullptr);
-		CHECK(asset_create->value == 42);
+		REQUIRE(asset_create->value == 42);
 	}
 
-	SUBCASE("Create Failure") {
+	SECTION("Create Failure") {
 		MockCreatableAsset::s_force_create_failure = true;
 		auto handle_opt = AssetSystem::create<MockCreatableAsset>(99);
-		CHECK(!handle_opt.has_value());
+		REQUIRE(!handle_opt.has_value());
 		MockCreatableAsset::s_force_create_failure = false; // reset flag
 	}
 
-	SUBCASE("Load and Get") {
+	SECTION("Load and Get") {
 		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset.dat");
-		REQUIRE(handle_res.has_value());
+		REQUIRE(handle_res.is_ok());
 		h_load_valid = *handle_res;
-		CHECK(h_load_valid.is_valid());
+		REQUIRE(h_load_valid.is_valid());
 
 		auto asset_load = AssetSystem::get<MockLoadableAsset>(h_load_valid);
 		REQUIRE(asset_load != nullptr);
-		CHECK(asset_load->value == 0);
-		CHECK(asset_load->loaded_from == fs::path("/home/glitch/test_asset.dat"));
+		REQUIRE(asset_load->value == 0);
+		REQUIRE(asset_load->loaded_from == std::filesystem::path("/home/glitch/test_asset.dat"));
 	}
 
-	SUBCASE("Load Failure (Path Error)") {
+	SECTION("Load Failure (Path Error)") {
 		auto handle_res = AssetSystem::load<MockLoadableAsset>("bad://path.dat");
-		REQUIRE(handle_res.has_error());
-		CHECK(handle_res.get_error() == AssetLoadingError::FILE_ERROR);
+		REQUIRE(handle_res.is_error());
+		REQUIRE(handle_res.error() == AssetLoadingError::FILE_ERROR);
 	}
 
-	SUBCASE("Load Failure (Parsing Error)") {
+	SECTION("Load Failure (Parsing Error)") {
 		MockLoadableAsset::s_force_load_failure = true;
 		auto handle_res = AssetSystem::load<MockLoadableAsset>("res://test_asset2.dat");
-		REQUIRE(handle_res.has_error());
-		CHECK(handle_res.get_error() == AssetLoadingError::PARSING_ERROR);
+		REQUIRE(handle_res.is_error());
+		REQUIRE(handle_res.error() == AssetLoadingError::PARSING_ERROR);
 		MockLoadableAsset::s_force_load_failure = false; // reset
 	}
 
-	SUBCASE("Get Failure (Invalid Handle)") {
+	SECTION("Get Failure (Invalid Handle)") {
 		AssetHandle invalid_handle; // Default, invalid UID
 		auto asset_invalid = AssetSystem::get<MockCreatableAsset>(invalid_handle);
-		CHECK(asset_invalid == nullptr);
+		REQUIRE(asset_invalid == nullptr);
 	}
 
-	SUBCASE("Get Failure (Wrong Type)") {
+	SECTION("Get Failure (Wrong Type)") {
 		auto h_opt = AssetSystem::create<MockCreatableAsset>(10);
 		REQUIRE(h_opt.has_value());
 		// Try to get as a different asset type
 		auto asset_wrong_type = AssetSystem::get<AnotherMockAsset>(*h_opt);
-		CHECK(asset_wrong_type == nullptr);
+		REQUIRE(asset_wrong_type == nullptr);
 	}
 
-	SUBCASE("Register Asset (Manual)") {
+	SECTION("Register Asset (Manual)") {
 		auto manual_asset = std::make_shared<MockCreatableAsset>(777);
 		AssetHandle h_manual = AssetSystem::register_asset(manual_asset);
-		CHECK(h_manual.is_valid());
+		REQUIRE(h_manual.is_valid());
 
 		auto asset_manual_get = AssetSystem::get<MockCreatableAsset>(h_manual);
 		REQUIRE(asset_manual_get != nullptr);
-		CHECK(asset_manual_get->value == 777);
-		CHECK(asset_manual_get.get() == manual_asset.get()); // Same pointer
+		REQUIRE(asset_manual_get->value == 777);
+		REQUIRE(asset_manual_get.get() == manual_asset.get()); // Same pointer
 	}
 
-	SUBCASE("Free Asset") {
+	SECTION("Free Asset") {
 		auto h_free_opt = AssetSystem::create<MockCreatableAsset>(1);
 		REQUIRE(h_free_opt.has_value());
 		AssetHandle h_free = *h_free_opt;
@@ -197,19 +198,19 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 		REQUIRE(asset_free_check != nullptr); // Check it's there
 
 		bool freed = AssetSystem::free<MockCreatableAsset>(h_free);
-		CHECK(freed == true);
+		REQUIRE(freed == true);
 
 		asset_free_check = AssetSystem::get<MockCreatableAsset>(h_free);
-		CHECK(asset_free_check == nullptr); // Check it's gone
+		REQUIRE(asset_free_check == nullptr); // Check it's gone
 	}
 
-	SUBCASE("Free Failure (Invalid Handle)") {
+	SECTION("Free Failure (Invalid Handle)") {
 		AssetHandle invalid_handle;
 		bool freed_invalid = AssetSystem::free<MockCreatableAsset>(invalid_handle);
-		CHECK(freed_invalid == false);
+		REQUIRE(freed_invalid == false);
 	}
 
-	SUBCASE("Garbage Collection") {
+	SECTION("Garbage Collection") {
 		// Create an asset and hold a reference to it
 		auto h_gc_keep_opt = AssetSystem::create<MockCreatableAsset>(100);
 		REQUIRE(h_gc_keep_opt.has_value());
@@ -230,11 +231,11 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 
 		// Check assets
 		auto asset_gc_keep = AssetSystem::get<MockCreatableAsset>(h_gc_keep);
-		CHECK(asset_gc_keep != nullptr); // Should still be there
-		CHECK(asset_gc_keep->value == 100);
+		REQUIRE(asset_gc_keep != nullptr); // Should still be there
+		REQUIRE(asset_gc_keep->value == 100);
 
 		auto asset_gc_remove = AssetSystem::get<MockCreatableAsset>(*h_gc_remove);
-		CHECK(asset_gc_remove == nullptr); // Should be gone
+		REQUIRE(asset_gc_remove == nullptr); // Should be gone
 
 		// Release our reference and GC again
 		asset_gc_keep.reset();
@@ -245,10 +246,10 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 		AssetSystem::collect_garbage();
 
 		asset_gc_keep = AssetSystem::get<MockCreatableAsset>(h_gc_keep);
-		CHECK(asset_gc_keep == nullptr); // Now it should be gone
+		REQUIRE(asset_gc_keep == nullptr); // Now it should be gone
 	}
 
-	SUBCASE("Shutdown") {
+	SECTION("Shutdown") {
 		// Create one last asset
 		auto h_shutdown_opt = AssetSystem::create<AnotherMockAsset>();
 		REQUIRE(h_shutdown_opt.has_value());
@@ -262,21 +263,21 @@ TEST_CASE("AssetSystem Lifecycle (Load, Create, Get, Free, GC, Shutdown)") {
 
 		// Check if asset is gone
 		asset_shutdown_check = AssetSystem::get<AnotherMockAsset>(h_shutdown);
-		CHECK(asset_shutdown_check == nullptr);
+		REQUIRE(asset_shutdown_check == nullptr);
 
 		// Check if assets from other subcases are also gone
 		auto asset_create_after_shutdown = AssetSystem::get<MockCreatableAsset>(h_create_valid);
-		CHECK(asset_create_after_shutdown == nullptr);
+		REQUIRE(asset_create_after_shutdown == nullptr);
 	}
 
-	CHECK(os::setenv("GL_WORKING_DIR", "")); // Reset env
+	REQUIRE(os::setenv("GL_WORKING_DIR", "")); // Reset env
 }
 
 TEST_CASE("AssetSystem Serialization") {
 	AssetSystem::clear();
 	os::setenv("GL_WORKING_DIR", "/home/glitch");
 
-	SUBCASE("Serialize and Deserialize Loadable Assets") {
+	SECTION("Serialize and Deserialize Loadable Assets") {
 		AssetHandle original_handle;
 
 		{
@@ -296,29 +297,29 @@ TEST_CASE("AssetSystem Serialization") {
 		AssetSystem::serialize(serialized_data);
 
 		// Verify JSON structure
-		CHECK(serialized_data.contains("MockSerializedAsset"));
-		CHECK(serialized_data["MockSerializedAsset"].is_array());
-		CHECK(serialized_data["MockSerializedAsset"].size() == 1);
-		CHECK(serialized_data["MockSerializedAsset"][0]["path"] == "/home/glitch/save_data.json");
+		REQUIRE(serialized_data.contains("MockSerializedAsset"));
+		REQUIRE(serialized_data["MockSerializedAsset"].is_array());
+		REQUIRE(serialized_data["MockSerializedAsset"].size() == 1);
+		REQUIRE(serialized_data["MockSerializedAsset"][0]["path"] == "/home/glitch/save_data.json");
 
 		AssetHandle saved_handle = serialized_data["MockSerializedAsset"][0]["handle"];
-		CHECK(saved_handle == original_handle);
+		REQUIRE(saved_handle == original_handle);
 
 		//  Reset: Shutdown AssetSystem to clear memory
 		AssetSystem::clear();
 
 		// Verify asset is gone
-		CHECK(AssetSystem::get<MockSerializedAsset>(original_handle) == nullptr);
+		REQUIRE(AssetSystem::get<MockSerializedAsset>(original_handle) == nullptr);
 
 		AssetSystem::deserialize(serialized_data);
 
 		auto restored_asset = AssetSystem::get<MockSerializedAsset>(original_handle);
 		REQUIRE(restored_asset != nullptr);
-		CHECK(restored_asset->data == "Restored Data"); // Value set by static load()
-		CHECK(restored_asset->loaded_path == "/home/glitch/save_data.json");
+		REQUIRE(restored_asset->data == "Restored Data"); // Value set by static load()
+		REQUIRE(restored_asset->loaded_path == "/home/glitch/save_data.json");
 	}
 
-	SUBCASE("Non-Loadable Assets are NOT Serialized") {
+	SECTION("Non-Loadable Assets are NOT Serialized") {
 		// MockCreatableAsset is creatable but not loadable (no static load(path) fn)
 		// or simply has no path associated in registry.
 
@@ -331,10 +332,10 @@ TEST_CASE("AssetSystem Serialization") {
 		// AssetRegistry::serialize checks 'if constexpr (IsLoadableAsset<T>)'
 		// Even if it did, assets created via create() usually have empty paths.
 		// The MockCreatableAsset shouldn't appear in the output.
-		CHECK_FALSE(serialized_data.contains("MockCreatableAsset"));
+		REQUIRE_FALSE(serialized_data.contains("MockCreatableAsset"));
 	}
 
-	SUBCASE("Memory-only Assets are NOT Serialized") {
+	SECTION("Memory-only Assets are NOT Serialized") {
 		// Manually register a loadable asset but with a "mem://" path
 		auto asset =
 				std::make_shared<MockSerializedAsset>("Mem Data", "mem://MockSerializedAsset/test");
@@ -345,13 +346,13 @@ TEST_CASE("AssetSystem Serialization") {
 
 		// Logic in AssetRegistry::serialize skips "mem://" prefix
 		if (serialized_data.contains("MockSerializedAsset")) {
-			CHECK(serialized_data["MockSerializedAsset"].empty());
+			REQUIRE(serialized_data["MockSerializedAsset"].empty());
 		} else {
-			CHECK(!serialized_data.contains("MockSerializedAsset"));
+			REQUIRE(!serialized_data.contains("MockSerializedAsset"));
 		}
 	}
 
-	SUBCASE("Deserialization skips missing files") {
+	SECTION("Deserialization skips missing files") {
 		// create JSON manually to simulate a save file pointing to a non-existent asset
 		json fake_save;
 		fake_save["MockSerializedAsset"] = json::array({
@@ -365,7 +366,7 @@ TEST_CASE("AssetSystem Serialization") {
 
 		// Iterate registries to see if anything was added
 		const auto metadata = AssetSystem::get_asset_metadata();
-		CHECK(metadata.empty());
+		REQUIRE(metadata.empty());
 	}
 
 	// Cleanup

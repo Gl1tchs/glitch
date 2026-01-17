@@ -1,4 +1,4 @@
-#include <doctest/doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "glitch/core/transform.h"
 #include "glitch/scene/component_lookup.h"
@@ -11,8 +11,7 @@ struct TestComponent1 {
 	int b;
 	int c;
 
-	friend bool operator==(
-			const TestComponent1& lhs, const TestComponent1& rhs) {
+	friend bool operator==(const TestComponent1& lhs, const TestComponent1& rhs) {
 		return std::tie(lhs.a, lhs.b, lhs.c) == std::tie(rhs.a, rhs.b, rhs.c);
 	}
 };
@@ -24,64 +23,61 @@ struct TestComponent2 {
 TEST_CASE("Registry entity creation and destruction") {
 	Registry scene;
 
-	SUBCASE("Create new entities") {
+	SECTION("Create new entities") {
 		EntityId e1 = scene.spawn();
 		EntityId e2 = scene.spawn();
 
-		CHECK(e1 != e2); // Each entity should have a unique ID
-		CHECK(scene.is_valid(e1));
-		CHECK(scene.is_valid(e2));
+		REQUIRE(e1 != e2); // Each entity should have a unique ID
+		REQUIRE(scene.is_valid(e1));
+		REQUIRE(scene.is_valid(e2));
 	}
 
-	SUBCASE("Destroy entities and reuse IDs") {
+	SECTION("Destroy entities and reuse IDs") {
 		EntityId e1 = scene.spawn();
 		scene.despawn(e1);
 
-		CHECK_FALSE(scene.is_valid(e1)); // e1 should no longer be valid
+		REQUIRE_FALSE(scene.is_valid(e1)); // e1 should no longer be valid
 
 		EntityId e2 = scene.spawn();
-		CHECK(scene.is_valid(e2));
-		CHECK(get_entity_index(e2) ==
-				get_entity_index(e1)); // ID of e1 should be reused
+		REQUIRE(scene.is_valid(e2));
+		REQUIRE(get_entity_index(e2) == get_entity_index(e1)); // ID of e1 should be reused
 	}
 
-	SUBCASE("Destroy and spawn multiple entities") {
+	SECTION("Destroy and spawn multiple entities") {
 		EntityId e1 = scene.spawn();
 		EntityId e2 = scene.spawn();
 		scene.despawn(e1);
 		scene.despawn(e2);
 
-		CHECK_FALSE(scene.is_valid(e1));
-		CHECK_FALSE(scene.is_valid(e2));
+		REQUIRE_FALSE(scene.is_valid(e1));
+		REQUIRE_FALSE(scene.is_valid(e2));
 
 		EntityId e3 = scene.spawn();
 		EntityId e4 = scene.spawn();
 
-		CHECK(scene.is_valid(e3));
-		CHECK(scene.is_valid(e4));
+		REQUIRE(scene.is_valid(e3));
+		REQUIRE(scene.is_valid(e4));
 
-		CHECK((get_entity_index(e3) == get_entity_index(e1) ||
+		REQUIRE((get_entity_index(e3) == get_entity_index(e1) ||
 				get_entity_index(e3) ==
-						get_entity_index(
-								e2))); // e3 should reuse one of the deleted IDs
-		CHECK((get_entity_index(e4) == get_entity_index(e1) ||
+						get_entity_index(e2))); // e3 should reuse one of the deleted IDs
+		REQUIRE((get_entity_index(e4) == get_entity_index(e1) ||
 				get_entity_index(e4) ==
-						get_entity_index(
-								e2))); // e4 should reuse the other deleted ID
+						get_entity_index(e2))); // e4 should reuse the other deleted ID
 
-		CHECK(get_entity_version(e3) == 1);
-		CHECK(get_entity_version(e4) == 1);
+		REQUIRE(get_entity_version(e3) == 1);
+		REQUIRE(get_entity_version(e4) == 1);
 	}
 
-	SUBCASE("Check invalid entities") {
+	SECTION("Check invalid entities") {
 		EntityId e1 = scene.spawn();
-		CHECK(scene.is_valid(e1));
+		REQUIRE(scene.is_valid(e1));
 
 		EntityId invalid_entity = e1 + 1000;
-		CHECK_FALSE(scene.is_valid(invalid_entity));
+		REQUIRE_FALSE(scene.is_valid(invalid_entity));
 
 		scene.despawn(e1);
-		CHECK_FALSE(scene.is_valid(e1));
+		REQUIRE_FALSE(scene.is_valid(e1));
 	}
 }
 
@@ -105,52 +101,51 @@ TEST_CASE("Registry Copy") {
 
 	// Entities and their components has to be copied as they are
 
-	CHECK(scene2.has<TestComponent1>(e1));
-	CHECK(scene2.has<TestComponent2>(e1));
+	REQUIRE(scene2.has<TestComponent1>(e1));
+	REQUIRE(scene2.has<TestComponent2>(e1));
 
 	TestComponent1* t1_copy = scene2.get<TestComponent1>(e1);
-	CHECK(t1_copy != t1); // they are not pointing to the same memory
-	CHECK(*t1_copy == *t1); // but inside are the same
+	REQUIRE(t1_copy != t1); // they are not pointing to the same memory
+	REQUIRE(*t1_copy == *t1); // but inside are the same
 
-	CHECK(scene2.has<TestComponent1>(e2));
+	REQUIRE(scene2.has<TestComponent1>(e2));
 }
 
 TEST_CASE("Components") {
-	SUBCASE("Component ids") {
+	SECTION("Component ids") {
 		uint32_t transform_id = get_component_id<Transform>();
 		uint32_t test_component1_id = get_component_id<TestComponent1>();
 		uint32_t test_component2_id = get_component_id<TestComponent2>();
 
-		CHECK(transform_id != test_component1_id);
-		CHECK(transform_id != test_component2_id);
-		CHECK(test_component1_id != test_component2_id);
+		REQUIRE(transform_id != test_component1_id);
+		REQUIRE(transform_id != test_component2_id);
+		REQUIRE(test_component1_id != test_component2_id);
 	}
 
-	SUBCASE("Component assign and remove") {
+	SECTION("Component assign and remove") {
 		Registry scene;
 
 		EntityId e1 = scene.spawn();
 		EntityId e2 = scene.spawn();
 
 		{
-			TestComponent1* t1 =
-					scene.assign<TestComponent1>(e1, 6.0f, 3.0f, 9.0f);
+			TestComponent1* t1 = scene.assign<TestComponent1>(e1, 6.0f, 3.0f, 9.0f);
 
-			CHECK(t1 == scene.get<TestComponent1>(e1));
+			REQUIRE(t1 == scene.get<TestComponent1>(e1));
 
-			CHECK(t1->a == 6.0f);
-			CHECK(t1->b == 3.0f);
-			CHECK(t1->c == 9.0f);
+			REQUIRE(t1->a == 6.0f);
+			REQUIRE(t1->b == 3.0f);
+			REQUIRE(t1->c == 9.0f);
 		}
 		{
 			TestComponent2* t1 = scene.assign<TestComponent2>(e2, 9.0f);
 
-			CHECK(t1 == scene.get<TestComponent2>(e2));
-			CHECK(t1->x == 9.0f);
+			REQUIRE(t1 == scene.get<TestComponent2>(e2));
+			REQUIRE(t1->x == 9.0f);
 
 			scene.remove<TestComponent2>(e2);
 
-			CHECK_FALSE(scene.get<TestComponent2>(e2));
+			REQUIRE_FALSE(scene.get<TestComponent2>(e2));
 		}
 	}
 }
@@ -170,52 +165,52 @@ TEST_CASE("Registry views") {
 	{
 		auto it = view1.begin();
 
-		CHECK(*it == e1);
+		REQUIRE(*it == e1);
 
 		++it;
 
-		CHECK(*it == e2);
+		REQUIRE(*it == e2);
 
 		++it;
 
-		CHECK(*it == e3);
+		REQUIRE(*it == e3);
 
 		++it;
 
-		CHECK(it == view1.end());
+		REQUIRE(it == view1.end());
 	}
 
 	const auto view2 = scene.view<TestComponent2>();
 	{
 		auto it = view2.begin();
 
-		CHECK(*it == e1);
+		REQUIRE(*it == e1);
 
 		++it;
 
-		CHECK(*it == e2);
+		REQUIRE(*it == e2);
 
 		++it;
 
-		CHECK(it == view2.end());
+		REQUIRE(it == view2.end());
 	}
 
 	const auto view3 = scene.view();
 	{
 		auto it = view3.begin();
 
-		CHECK(*it == e1);
+		REQUIRE(*it == e1);
 
 		++it;
 
-		CHECK(*it == e2);
+		REQUIRE(*it == e2);
 
 		++it;
 
-		CHECK(*it == e3);
+		REQUIRE(*it == e3);
 
 		++it;
 
-		CHECK(it == view3.end());
+		REQUIRE(it == view3.end());
 	}
 }

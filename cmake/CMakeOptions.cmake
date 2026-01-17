@@ -8,6 +8,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_options(-Wno-nullability-completeness -Wno-c99-designator -Wno-deprecated-literal-operator)
 endif()
 
+# Platform definitions
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_compile_definitions(GL_PLATFORM_LINUX)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_compile_definitions(GL_PLATFORM_WINDOWS)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    add_compile_definitions(GL_PLATFORM_MACOS)
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(GL_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/bin/debug)
     add_compile_definitions(GL_DEBUG_BUILD)

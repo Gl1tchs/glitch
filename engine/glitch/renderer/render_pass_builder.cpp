@@ -1,21 +1,20 @@
 #include "glitch/renderer/render_pass_builder.h"
 
-#include "glitch/renderer/render_backend.h"
 #include "glitch/renderer/renderer.h"
 
 namespace gl {
 
 RenderPassBuilder::RenderPassBuilder() {}
 
-RenderPassBuilder& RenderPassBuilder::add_attachment(RenderPassAttachment p_attachment) {
-	attachments.push_back(p_attachment);
+RenderPassBuilder& RenderPassBuilder::add_attachment(RenderPassAttachment attachment) {
+	_attachments.push_back(attachment);
 
 	return *this;
 }
 
-RenderPassBuilder& RenderPassBuilder::add_color_attachment(DataFormat p_attachment) {
-	attachments.push_back({
-			.format = p_attachment,
+RenderPassBuilder& RenderPassBuilder::add_color_attachment(DataFormat attachment) {
+	_attachments.push_back({
+			.format = attachment,
 			.load_op = AttachmentLoadOp::CLEAR,
 			.store_op = AttachmentStoreOp::STORE,
 	});
@@ -23,9 +22,9 @@ RenderPassBuilder& RenderPassBuilder::add_color_attachment(DataFormat p_attachme
 	return *this;
 }
 
-RenderPassBuilder& RenderPassBuilder::add_depth_attachment(DataFormat p_attachment) {
-	attachments.push_back({
-			.format = p_attachment,
+RenderPassBuilder& RenderPassBuilder::add_depth_attachment(DataFormat attachment) {
+	_attachments.push_back({
+			.format = attachment,
 			.load_op = AttachmentLoadOp::CLEAR,
 			.store_op = AttachmentStoreOp::STORE,
 			.is_depth_attachment = true,
@@ -34,15 +33,15 @@ RenderPassBuilder& RenderPassBuilder::add_depth_attachment(DataFormat p_attachme
 	return *this;
 }
 
-RenderPassBuilder& RenderPassBuilder::add_subpass(const SubpassInfo& p_attachments) {
-	subpasses.push_back(p_attachments);
+RenderPassBuilder& RenderPassBuilder::add_subpass(const SubpassInfo& attachments) {
+	_subpasses.push_back(attachments);
 
 	return *this;
 }
 
 RenderPass RenderPassBuilder::build() {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
-	return backend->render_pass_create(attachments, subpasses);
+	auto device = Renderer::get_device();
+	return device->render_pass_create(_attachments, _subpasses).value();
 }
 
 } //namespace gl

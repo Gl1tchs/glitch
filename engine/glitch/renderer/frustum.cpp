@@ -1,12 +1,16 @@
 #include "glitch/renderer/frustum.h"
 
+#include <glgpu/math.h>
+
+#include <limits>
+
 namespace gl {
 
-Frustum Frustum::from_view_proj(const glm::mat4& p_view_proj) {
+Frustum Frustum::from_view_proj(const Mat4& view_proj) {
 	Frustum frustum;
 
-	// Transpose because GLM matrices are column-major
-	glm::mat4 m = glm::transpose(p_view_proj);
+	// Transpose the matrix (glgpu matrices are already column-major like GLM)
+	Mat4 m = view_proj.transpose();
 
 	// Left
 	frustum.planes[0] = m[3] + m[0];
@@ -23,26 +27,27 @@ Frustum Frustum::from_view_proj(const glm::mat4& p_view_proj) {
 
 	// Normalize
 	for (int i = 0; i < 6; ++i) {
-		float length = glm::length(glm::vec3(frustum.planes[i]));
-		frustum.planes[i] /= length;
+		Vec3f plane_normal = Vec3f(frustum.planes[i].x, frustum.planes[i].y, frustum.planes[i].z);
+		float length = plane_normal.length();
+		frustum.planes[i] = frustum.planes[i] / length;
 	}
 
 	return frustum;
 }
 
-bool AABB::is_inside_frustum(const Frustum& p_frustum) const {
+bool AABB::is_inside_frustum(const Frustum& frustum) const {
 	for (int i = 0; i < 6; ++i) {
-		const glm::vec4& plane = p_frustum.planes[i];
+		const Vec4f& plane = frustum.planes[i];
 
 		// Calculate the positive vertex (furthest point in direction of normal)
-		glm::vec3 p = {
+		Vec3f p = {
 			plane.x >= 0 ? max.x : min.x,
 			plane.y >= 0 ? max.y : min.y,
 			plane.z >= 0 ? max.z : min.z,
 		};
 
 		// Plane equation: ax + by + cz + d > 0 is inside
-		if (glm::dot(glm::vec3(plane), p) + plane.w < 0) {
+		if (Vec3f(plane.x, plane.y, plane.z).dot(p) + plane.w < 0) {
 			// fully outside
 			return false;
 		}
@@ -50,9 +55,9 @@ bool AABB::is_inside_frustum(const Frustum& p_frustum) const {
 	return true;
 }
 
-AABB AABB::transform(const glm::mat4& p_transform) const {
+AABB AABB::transform(const Mat4& transform) const {
 	// Transform 8 corners and re-construct AABB
-	glm::vec3 corners[8] = {
+	Vec3f corners[8] = {
 		{ min.x, min.y, min.z },
 		{ max.x, min.y, min.z },
 		{ min.x, max.y, min.z },
@@ -64,15 +69,17 @@ AABB AABB::transform(const glm::mat4& p_transform) const {
 	};
 
 	AABB result = {
-		.min = glm::vec3(std::numeric_limits<float>::max()),
-		.max = glm::vec3(std::numeric_limits<float>::lowest()),
+		.min = Vec3f(std::numeric_limits<float>::max()),
+		.max = Vec3f(std::numeric_limits<float>::lowest()),
 	};
 
 	for (int i = 0; i < 8; ++i) {
-		const glm::vec3 transformed =
-				glm::vec3(p_transform * glm::vec4(corners[i], 1.0f));
-		result.min = glm::min(result.min, transformed);
-		result.max = glm::max(result.max, transformed);
+		const Vec4f homogeneous_corner = Vec4f(corners[i], 1.0f);
+		const Vec4f transformed_homogeneous = transform * homogeneous_corner;
+		const Vec3f transformed = Vec3f(
+				transformed_homogeneous.x, transformed_homogeneous.y, transformed_homogeneous.z);
+		result.min = math::min(result.min, transformed);
+		result.max = math::max(result.max, transformed);
 	}
 
 	return result;

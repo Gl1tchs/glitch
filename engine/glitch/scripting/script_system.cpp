@@ -2,6 +2,8 @@
 
 #include "glitch/scripting/script.h"
 
+#include <mutex>
+
 namespace gl {
 
 static std::mutex s_scene_mutex;
@@ -11,7 +13,7 @@ Scene* ScriptSystem::get_scene() { return s_scene; }
 
 bool ScriptSystem::is_running() { return s_scene != nullptr; }
 
-void ScriptSystem::on_runtime_start(Scene* p_scene) { s_scene = p_scene; }
+void ScriptSystem::on_runtime_start(Scene* scene) { s_scene = scene; }
 
 void ScriptSystem::on_runtime_stop() { s_scene = nullptr; }
 
@@ -56,7 +58,7 @@ void ScriptSystem::invoke_on_create() {
 	}
 }
 
-void ScriptSystem::invoke_on_update(float p_dt) {
+void ScriptSystem::invoke_on_update(float dt) {
 	std::scoped_lock<std::mutex> lock(s_scene_mutex);
 
 	if (!s_scene) {
@@ -68,7 +70,7 @@ void ScriptSystem::invoke_on_update(float p_dt) {
 		Script* sc = entity.get_component<Script>();
 
 		const ScriptResult result =
-				ScriptEngine::exec_function(sc->script, "on_update", entity.get_uid().value, p_dt);
+				ScriptEngine::exec_function(sc->script, "on_update", entity.get_uid().value, dt);
 
 		if (result == ScriptResult::FUNCTION_NOT_FOUND) {
 			GL_LOG_WARNING("[ScriptSystem::invoke_on_update] Script for Entity '{}' has no "

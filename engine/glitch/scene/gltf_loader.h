@@ -41,7 +41,7 @@ enum class GLTFLoadError {
  *
  */
 struct GL_API GLTFLoader {
-	static GLTFLoadError load(std::shared_ptr<Scene> p_scene, const std::string& p_path);
+	static GLTFLoadError load(std::shared_ptr<Scene> scene, const std::string& path);
 };
 
 } //namespace gl

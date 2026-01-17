@@ -28,9 +28,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CMakeOptions)
 
-set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR}/third_party)
-
-find_package(Vulkan REQUIRED)
+set(VENDOR_DIR ${CMAKE_CURRENT_LIST_DIR}/external)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	find_package(X11 REQUIRED)
@@ -38,10 +36,10 @@ else()
 	set(X11_LIBRARIES)
 endif()
 
-
 add_subdirectory(programs)
 add_subdirectory(shaders)
-add_subdirectory(third_party)
+add_subdirectory(external)
+add_subdirectory(external/glgpu)
 
 # Configure lua bindings
 set(FFI_PATH "${CMAKE_CURRENT_SOURCE_DIR}/engine/glitch/scripting/ffi.lua")
@@ -84,7 +82,6 @@ elseif(UNIX)
 endif()
 
 list(APPEND SOURCES ${IMGUI_FILES})
-list(APPEND SOURCES ${SPIRV_REFLECT_FILES})
 
 if (GL_BUILD_DYNAMIC_LIBS)
 	add_library(glitch SHARED ${SOURCES})
@@ -98,30 +95,23 @@ target_include_directories(glitch
 	PUBLIC
 	${CMAKE_CURRENT_LIST_DIR}/engine
 	${GLM_INCLUDES}
-	${VENDOR_DIR}/include/public # public header only libraries
+	${VENDOR_DIR}/json
   PRIVATE
-	${VENDOR_DIR}/include/private # private header only libraries
 	${GL_OUTPUT_DIR}/include
+	${VENDOR_DIR}/glgpu/include
+	${VENDOR_DIR}/stb
 	${GLFW_INCLUDES}
-	${SPIRV_REFLECT_INCLUDES}
 	${TINY_GLTF_INCLUDES}
 	${IMGUI_INCLUDES}
 	${LUA_INCLUDES}
-	${Vulkan_INCLUDE_DIRS}
 )
-
 
 target_link_libraries(glitch
 	PUBLIC
 	${GLFW_LIBS}
-	${VK_BOOTSTRAP_LIBS}
 	${LUA_LIBS}
-	${Vulkan_LIBRARIES}
 	${X11_LIBRARIES} # Required for GLFW on linux platform
-)
-
-target_precompile_headers(glitch PUBLIC
-	${CMAKE_CURRENT_LIST_DIR}/engine/glitch/pch.h
+	glgpu
 )
 
 target_compile_definitions(glitch PRIVATE

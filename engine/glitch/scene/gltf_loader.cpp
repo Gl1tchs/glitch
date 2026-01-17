@@ -7,6 +7,7 @@
 #include "glitch/scene/components.h"
 #include "glitch/scene/scene_renderer.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -25,34 +26,34 @@ struct GLTFLoadContext {
 	std::shared_ptr<Scene> scene;
 	const tinygltf::Model* model;
 	size_t model_hash;
-	fs::path base_path;
+	std::filesystem::path base_path;
 	UID model_id;
 	std::unordered_map<size_t, AssetHandle> loaded_textures;
 	std::unordered_map<int, AssetHandle> loaded_materials;
 };
 
-static size_t _hash_gltf_model(const tinygltf::Model& p_model);
+static size_t _hash_gltf_model(const tinygltf::Model& model);
 
-static void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent);
+static void _parse_gltf_node(GLTFLoadContext& ctx, int node_idx, Entity parent);
 
-static std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primitive,
-		const tinygltf::Mesh* p_mesh, GLTFLoadContext& p_ctx);
+static std::shared_ptr<StaticMesh> _load_static_mesh(
+		const tinygltf::Primitive* primitive, const tinygltf::Mesh* mesh, GLTFLoadContext& ctx);
 
-static AssetHandle _load_material(int material_index, GLTFLoadContext& p_ctx);
+static AssetHandle _load_material(int material_index, GLTFLoadContext& ctx);
 
-static AssetHandle _load_texture(int texture_index, GLTFLoadContext& p_ctx);
+static AssetHandle _load_texture(int texture_index, GLTFLoadContext& ctx);
 
 static AssetHandle s_default_texture = INVALID_ASSET_HANDLE;
 static AssetHandle s_default_material = INVALID_ASSET_HANDLE;
 
-GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string& p_path) {
-	const auto abs_path_result = AssetSystem::get_absolute_path(p_path);
+GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> scene, const std::string& path) {
+	const auto abs_path_result = AssetSystem::get_absolute_path(path);
 	if (!abs_path_result) {
 		GL_LOG_ERROR("[GLTFLoader::load] Unable to parse relative format.");
 		return GLTFLoadError::PATH_ERROR;
 	}
 
-	const fs::path abs_path = abs_path_result.get_value();
+	const std::filesystem::path abs_path = abs_path_result.value();
 
 	// TODO: better validation
 	if (!abs_path.has_extension() ||
@@ -92,13 +93,13 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 	}
 #endif
 
-	Entity base_entity = p_scene->create(abs_path.filename().string());
+	Entity base_entity = scene->create(abs_path.filename().string());
 	// Add GLTFSourceComponent for scene (de)serialization
 	const GLTFSourceComponent* gltf_sc =
-			base_entity.add_component<GLTFSourceComponent>(UID(), p_path);
+			base_entity.add_component<GLTFSourceComponent>(UID(), path);
 
 	GLTFLoadContext ctx;
-	ctx.scene = p_scene;
+	ctx.scene = scene;
 	ctx.model = &model;
 	ctx.model_hash = _hash_gltf_model(model);
 	ctx.base_path = abs_path.parent_path();
@@ -111,7 +112,7 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 	}
 	if (!s_default_material || !AssetSystem::get<Material>(s_default_material)) {
 		auto mat = Material::create(DEFINITION_PATH_PBR_STANDARD);
-		mat->set_param("base_color", VEC3_ONE);
+		mat->set_param("base_color", Vec3f::one());
 		mat->set_param("metallic", 0.5f);
 		mat->set_param("roughness", 0.5f);
 		mat->set_param("u_diffuse_texture", s_default_texture);
@@ -130,64 +131,71 @@ GLTFLoadError GLTFLoader::load(std::shared_ptr<Scene> p_scene, const std::string
 	return GLTFLoadError::NONE;
 }
 
-void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
-	const tinygltf::Node& gltf_node = p_ctx.model->nodes[p_node_idx];
+void _parse_gltf_node(GLTFLoadContext& ctx, int node_idx, Entity parent) {
+	const tinygltf::Node& gltf_node = ctx.model->nodes[node_idx];
 
-	Entity entity = p_ctx.scene->create(gltf_node.name, p_parent);
+	Entity entity = ctx.scene->create(gltf_node.name, parent);
 
 	if (gltf_node.matrix.size() == 16) {
 		glm::mat4 mat = glm::make_mat4(gltf_node.matrix.data());
 
-		glm::vec3 skew;
+		glm::vec3 scale_glm, position_glm, skew;
 		glm::vec4 perspective;
 		glm::fquat rotation_quat;
 
-		glm::decompose(mat, entity.get_transform().local_scale, rotation_quat,
-				entity.get_transform().local_position, skew, perspective);
+		glm::decompose(mat, scale_glm, rotation_quat, position_glm, skew, perspective);
 
-		entity.get_transform().get_rotation() = glm::degrees(glm::eulerAngles(rotation_quat));
+		entity.get_transform().local_scale = Vec3f(scale_glm.x, scale_glm.y, scale_glm.z);
+		entity.get_transform().local_position =
+				Vec3f(position_glm.x, position_glm.y, position_glm.z);
+
+		glm::vec3 rotation_euler = glm::degrees(glm::eulerAngles(rotation_quat));
+		entity.get_transform().local_rotation =
+				Vec3f(rotation_euler.x, rotation_euler.y, rotation_euler.z);
 	} else {
 		if (gltf_node.translation.size() == 3) {
-			entity.get_transform().local_position = glm::vec3(
+			entity.get_transform().local_position = Vec3f(
 					gltf_node.translation[0], gltf_node.translation[1], gltf_node.translation[2]);
 		}
 
 		if (gltf_node.rotation.size() == 4) {
-			entity.get_transform().local_rotation =
+			glm::vec3 rotation_euler =
 					glm::degrees(glm::eulerAngles(glm::fquat(gltf_node.rotation[3],
 							gltf_node.rotation[0], gltf_node.rotation[1], gltf_node.rotation[2])));
+			entity.get_transform().local_rotation =
+					Vec3f(rotation_euler.x, rotation_euler.y, rotation_euler.z);
 		}
 
 		if (gltf_node.scale.size() == 3) {
 			entity.get_transform().local_scale =
-					glm::vec3(gltf_node.scale[0], gltf_node.scale[1], gltf_node.scale[2]);
+					Vec3f(gltf_node.scale[0], gltf_node.scale[1], gltf_node.scale[2]);
 		}
 	}
 
 	// Load mesh
 	if (gltf_node.mesh >= 0) {
-		entity.add_component<GLTFInstanceComponent>(p_ctx.model_id, gltf_node.mesh);
+		entity.add_component<GLTFInstanceComponent>(ctx.model_id, gltf_node.mesh);
 
-		const tinygltf::Mesh& gltf_mesh = p_ctx.model->meshes[gltf_node.mesh];
+		const tinygltf::Mesh& gltf_mesh = ctx.model->meshes[gltf_node.mesh];
 
 		// Lambda to attach components to an entity
 		const auto attach_mesh_components =
 				[&](Entity target_entity, const tinygltf::Primitive& primitive, int prim_index) {
 					// Load Geometry
 					const std::shared_ptr<StaticMesh> static_mesh =
-							_load_static_mesh(&primitive, &gltf_mesh, p_ctx);
+							_load_static_mesh(&primitive, &gltf_mesh, ctx);
 
 					MeshComponent* mc = target_entity.add_component<MeshComponent>();
 					// Register unique mesh asset
 					mc->mesh = AssetSystem::register_asset(static_mesh,
 							std::format("mem://Mesh/GLTF/?node={}&&prim={}&&model={}",
-									p_ctx.model_hash, gltf_node.name, prim_index));
+									ctx.model_hash, gltf_node.name, prim_index));
 					mc->visible = true;
 
 					// Load/Attach Material
 					MaterialComponent* mat_comp = target_entity.add_component<MaterialComponent>();
 					mat_comp->definition_path = DEFINITION_PATH_PBR_STANDARD;
-					mat_comp->handle = _load_material(primitive.material, p_ctx);
+					mat_comp->handle = _load_material(primitive.material, ctx);
 				};
 
 		// If single primitive, attach to the main Node entity
@@ -198,19 +206,19 @@ void _parse_gltf_node(GLTFLoadContext& p_ctx, int p_node_idx, Entity p_parent) {
 		else {
 			for (size_t i = 0; i < gltf_mesh.primitives.size(); ++i) {
 				Entity prim_entity =
-						p_ctx.scene->create(std::format("{}_prim_{}", gltf_node.name, i), entity);
+						ctx.scene->create(std::format("{}_prim_{}", gltf_node.name, i), entity);
 				attach_mesh_components(prim_entity, gltf_mesh.primitives[i], i);
 			}
 		}
 	}
 
 	for (int child_node_idx : gltf_node.children) {
-		_parse_gltf_node(p_ctx, child_node_idx, entity);
+		_parse_gltf_node(ctx, child_node_idx, entity);
 	}
 }
 
-static ImageFiltering _gltf_to_image_filtering(int p_gltf_filter) {
-	switch (p_gltf_filter) {
+static ImageFiltering _gltf_to_image_filtering(int gltf_filter) {
+	switch (gltf_filter) {
 		case TINYGLTF_TEXTURE_FILTER_NEAREST:
 		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST:
 		case TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR:
@@ -224,8 +232,8 @@ static ImageFiltering _gltf_to_image_filtering(int p_gltf_filter) {
 	}
 }
 
-static ImageWrappingMode _gltf_to_image_wrapping(int p_gltf_wrap) {
-	switch (p_gltf_wrap) {
+static ImageWrappingMode _gltf_to_image_wrapping(int gltf_wrap) {
+	switch (gltf_wrap) {
 		case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
 			return ImageWrappingMode::CLAMP_TO_EDGE;
 		case TINYGLTF_TEXTURE_WRAP_MIRRORED_REPEAT:
@@ -238,9 +246,9 @@ static ImageWrappingMode _gltf_to_image_wrapping(int p_gltf_wrap) {
 }
 
 static int _get_extension_texture_index(
-		const tinygltf::Value& p_extension, const std::string& p_field_name) {
-	if (p_extension.Has(p_field_name)) {
-		const auto& texture_value = p_extension.Get(p_field_name);
+		const tinygltf::Value& extension, const std::string& field_name) {
+	if (extension.Has(field_name)) {
+		const auto& texture_value = extension.Get(field_name);
 		if (texture_value.IsObject() && texture_value.Has("index")) {
 			int texture_index = texture_value.Get("index").Get<int>();
 			if (texture_index >= 0) {
@@ -251,28 +259,28 @@ static int _get_extension_texture_index(
 	return -1;
 }
 
-std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primitive,
-		const tinygltf::Mesh* p_mesh, GLTFLoadContext& p_ctx) {
+static std::shared_ptr<StaticMesh> _load_static_mesh(
+		const tinygltf::Primitive* primitive, const tinygltf::Mesh* mesh, GLTFLoadContext& ctx) {
 	uint16_t parsing_flags = 0;
 
-	const auto& pos_accessor = p_ctx.model->accessors[p_primitive->attributes.at("POSITION")];
-	const auto& pos_view = p_ctx.model->bufferViews[pos_accessor.bufferView];
-	const auto& pos_buffer = p_ctx.model->buffers[pos_view.buffer];
+	const auto& pos_accessor = ctx.model->accessors[primitive->attributes.at("POSITION")];
+	const auto& pos_view = ctx.model->bufferViews[pos_accessor.bufferView];
+	const auto& pos_buffer = ctx.model->buffers[pos_view.buffer];
 
-	const auto& index_accessor = p_ctx.model->accessors[p_primitive->indices];
-	const auto& index_view = p_ctx.model->bufferViews[index_accessor.bufferView];
-	const auto& index_buffer = p_ctx.model->buffers[index_view.buffer];
+	const auto& index_accessor = ctx.model->accessors[primitive->indices];
+	const auto& index_view = ctx.model->bufferViews[index_accessor.bufferView];
+	const auto& index_buffer = ctx.model->buffers[index_view.buffer];
 
 	uint32_t uv_accessor_offset;
 	uint32_t uv_view_offset;
 	const tinygltf::Buffer* uv_buffer = nullptr;
-	if (p_primitive->attributes.find("TEXCOORD_0") != p_primitive->attributes.end()) {
-		const auto& uv_accessor = p_ctx.model->accessors[p_primitive->attributes.at("TEXCOORD_0")];
-		const auto& uv_view = p_ctx.model->bufferViews[uv_accessor.bufferView];
+	if (primitive->attributes.find("TEXCOORD_0") != primitive->attributes.end()) {
+		const auto& uv_accessor = ctx.model->accessors[primitive->attributes.at("TEXCOORD_0")];
+		const auto& uv_view = ctx.model->bufferViews[uv_accessor.bufferView];
 
 		uv_accessor_offset = uv_accessor.byteOffset;
 		uv_view_offset = uv_view.byteOffset;
-		uv_buffer = &p_ctx.model->buffers[uv_view.buffer];
+		uv_buffer = &ctx.model->buffers[uv_view.buffer];
 	} else {
 		parsing_flags |= GLTF_PARSING_FLAG_NO_UV;
 	}
@@ -280,13 +288,13 @@ std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primi
 	uint32_t normal_accessor_offset;
 	uint32_t normal_view_offset;
 	const tinygltf::Buffer* normal_buffer = nullptr;
-	if (p_primitive->attributes.find("NORMAL") != p_primitive->attributes.end()) {
-		const auto& normal_accessor = p_ctx.model->accessors[p_primitive->attributes.at("NORMAL")];
-		const auto& normal_view = p_ctx.model->bufferViews[normal_accessor.bufferView];
+	if (primitive->attributes.find("NORMAL") != primitive->attributes.end()) {
+		const auto& normal_accessor = ctx.model->accessors[primitive->attributes.at("NORMAL")];
+		const auto& normal_view = ctx.model->bufferViews[normal_accessor.bufferView];
 
 		normal_accessor_offset = normal_accessor.byteOffset;
 		normal_view_offset = normal_view.byteOffset;
-		normal_buffer = &p_ctx.model->buffers[normal_view.buffer];
+		normal_buffer = &ctx.model->buffers[normal_view.buffer];
 	} else {
 		parsing_flags |= GLTF_PARSING_FLAG_NO_NORMALS;
 	}
@@ -312,9 +320,9 @@ std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primi
 								  ->data[normal_view_offset + normal_accessor_offset + i * 12]);
 
 		prim_vertices[i] = {
-			glm::vec3(pos[0], pos[1], pos[2]),
+			Vec3f(pos[0], pos[1], pos[2]),
 			uv[0],
-			glm::vec3(normal[0], normal[1], normal[2]),
+			Vec3f(normal[0], normal[1], normal[2]),
 			uv[1],
 		};
 	}
@@ -348,18 +356,17 @@ std::shared_ptr<StaticMesh> _load_static_mesh(const tinygltf::Primitive* p_primi
 	return StaticMesh::create(prim_vertices, prim_indices);
 }
 
-AssetHandle _load_material(int p_material_index, GLTFLoadContext& p_ctx) {
-	if (p_material_index < 0 || p_material_index >= p_ctx.model->materials.size()) {
+AssetHandle _load_material(int material_index, GLTFLoadContext& ctx) {
+	if (material_index < 0 || material_index >= ctx.model->materials.size()) {
 		return s_default_material;
 	}
 
 	// Check Cache
-	if (auto it = p_ctx.loaded_materials.find(p_material_index);
-			it != p_ctx.loaded_materials.end()) {
+	if (auto it = ctx.loaded_materials.find(material_index); it != ctx.loaded_materials.end()) {
 		return it->second;
 	}
 
-	const tinygltf::Material& gltf_material = p_ctx.model->materials[p_material_index];
+	const tinygltf::Material& gltf_material = ctx.model->materials[material_index];
 
 	std::optional<AssetHandle> handle_opt =
 			AssetSystem::create<Material>(DEFINITION_PATH_PBR_STANDARD);
@@ -387,21 +394,21 @@ AssetHandle _load_material(int p_material_index, GLTFLoadContext& p_ctx) {
 					  tinygltf::Value(1.0), tinygltf::Value(1.0) };
 
 		material->set_param("base_color",
-				glm::vec4(float(diffuse_factor[0].GetNumberAsDouble()),
+				Vec4f(float(diffuse_factor[0].GetNumberAsDouble()),
 						float(diffuse_factor[1].GetNumberAsDouble()),
 						float(diffuse_factor[2].GetNumberAsDouble()),
 						float(diffuse_factor[3].GetNumberAsDouble())));
 
 		const int diffuse_texture_index = _get_extension_texture_index(specGloss, "diffuseTexture");
 		AssetHandle diffuse_texture = (diffuse_texture_index >= 0)
-				? _load_texture(diffuse_texture_index, p_ctx)
+				? _load_texture(diffuse_texture_index, ctx)
 				: s_default_texture;
 		material->set_param("u_diffuse_texture", diffuse_texture);
 
 		const int specular_texture_index =
 				_get_extension_texture_index(specGloss, "specularGlossinessTexture");
 		AssetHandle specular_texture = (specular_texture_index >= 0)
-				? _load_texture(specular_texture_index, p_ctx)
+				? _load_texture(specular_texture_index, ctx)
 				: s_default_texture;
 		material->set_param("u_metallic_roughness_texture", specular_texture);
 
@@ -409,8 +416,8 @@ AssetHandle _load_material(int p_material_index, GLTFLoadContext& p_ctx) {
 		material->set_param("roughness", 1.0f);
 	} else {
 		const auto& base_color = gltf_material.pbrMetallicRoughness.baseColorFactor;
-		material->set_param("base_color",
-				glm::vec4(base_color[0], base_color[1], base_color[2], base_color[3]));
+		material->set_param(
+				"base_color", Vec4f(base_color[0], base_color[1], base_color[2], base_color[3]));
 
 		material->set_param(
 				"metallic", static_cast<float>(gltf_material.pbrMetallicRoughness.metallicFactor));
@@ -419,14 +426,14 @@ AssetHandle _load_material(int p_material_index, GLTFLoadContext& p_ctx) {
 
 		const int albedo_texture_index = gltf_material.pbrMetallicRoughness.baseColorTexture.index;
 		AssetHandle albedo_texture = (albedo_texture_index >= 0)
-				? _load_texture(albedo_texture_index, p_ctx)
+				? _load_texture(albedo_texture_index, ctx)
 				: s_default_texture;
 		material->set_param("u_diffuse_texture", albedo_texture);
 
 		const int metallic_roughness_texture_index =
 				gltf_material.pbrMetallicRoughness.metallicRoughnessTexture.index;
 		AssetHandle metallic_roughness_texture = (metallic_roughness_texture_index >= 0)
-				? _load_texture(metallic_roughness_texture_index, p_ctx)
+				? _load_texture(metallic_roughness_texture_index, ctx)
 				: s_default_texture;
 		material->set_param("u_metallic_roughness_texture", metallic_roughness_texture);
 	}
@@ -434,34 +441,34 @@ AssetHandle _load_material(int p_material_index, GLTFLoadContext& p_ctx) {
 	// Common maps
 	const int norm_index = gltf_material.normalTexture.index;
 	material->set_param("u_normal_texture",
-			(norm_index >= 0) ? _load_texture(norm_index, p_ctx) : s_default_texture);
+			(norm_index >= 0) ? _load_texture(norm_index, ctx) : s_default_texture);
 
 	const int occ_index = gltf_material.occlusionTexture.index;
 	material->set_param("u_ambient_occlusion_texture",
-			(occ_index >= 0) ? _load_texture(occ_index, p_ctx) : s_default_texture);
+			(occ_index >= 0) ? _load_texture(occ_index, ctx) : s_default_texture);
 
 	material->upload();
 
 	// Cache and return
-	p_ctx.loaded_materials[p_material_index] = handle;
+	ctx.loaded_materials[material_index] = handle;
 	return handle;
 }
 
-AssetHandle _load_texture(int p_texture_index, GLTFLoadContext& p_ctx) {
+AssetHandle _load_texture(int texture_index, GLTFLoadContext& ctx) {
 	size_t hash = 0;
-	hash_combine(hash, p_texture_index);
-	hash_combine(hash, p_ctx.model_hash);
+	hash_combine(hash, texture_index);
+	hash_combine(hash, ctx.model_hash);
 
-	if (auto it = p_ctx.loaded_textures.find(hash); it != p_ctx.loaded_textures.end()) {
+	if (auto it = ctx.loaded_textures.find(hash); it != ctx.loaded_textures.end()) {
 		return it->second;
 	}
 
-	const tinygltf::Texture& gltf_texture = p_ctx.model->textures[p_texture_index];
-	const tinygltf::Image& gltf_image = p_ctx.model->images[gltf_texture.source];
+	const tinygltf::Texture& gltf_texture = ctx.model->textures[texture_index];
+	const tinygltf::Image& gltf_image = ctx.model->images[gltf_texture.source];
 
 	TextureSamplerOptions sampler_options = {};
 	if (gltf_texture.sampler >= 0) {
-		const tinygltf::Sampler& sampler = p_ctx.model->samplers[gltf_texture.sampler];
+		const tinygltf::Sampler& sampler = ctx.model->samplers[gltf_texture.sampler];
 
 		sampler_options.mag_filter = _gltf_to_image_filtering(sampler.magFilter);
 		sampler_options.min_filter = _gltf_to_image_filtering(sampler.minFilter);
@@ -493,12 +500,11 @@ AssetHandle _load_texture(int p_texture_index, GLTFLoadContext& p_ctx) {
 		}
 
 		texture_handle = AssetSystem::register_asset(
-				Texture::create(format, glm::uvec2(gltf_image.width, gltf_image.height),
+				Texture::create(format, Vec2u(gltf_image.width, gltf_image.height),
 						gltf_image.image.data(), sampler_options),
-				std::format(
-						"mem://Texture/GLTF/?id={}&&model={}", p_ctx.model_hash, p_texture_index));
+				std::format("mem://Texture/GLTF/?id={}&&model={}", ctx.model_hash, texture_index));
 	} else {
-		const fs::path texture_path = p_ctx.base_path / gltf_image.uri;
+		const std::filesystem::path texture_path = ctx.base_path / gltf_image.uri;
 
 		auto texture = Texture::load_from_file(texture_path, sampler_options);
 		if (!texture) {
@@ -508,26 +514,26 @@ AssetHandle _load_texture(int p_texture_index, GLTFLoadContext& p_ctx) {
 		}
 
 		texture_handle = AssetSystem::register_asset(texture,
-				std::format("mem://Texture/GLTF/?path={}&&model={}", p_ctx.model_hash,
+				std::format("mem://Texture/GLTF/?path={}&&model={}", ctx.model_hash,
 						texture_path.string()));
 	}
 
-	p_ctx.loaded_textures[hash] = texture_handle;
+	ctx.loaded_textures[hash] = texture_handle;
 
 	return texture_handle;
 }
 
-size_t _hash_gltf_model(const tinygltf::Model& p_model) {
+size_t _hash_gltf_model(const tinygltf::Model& model) {
 	size_t seed = 0;
 
-	for (const auto& buffer : p_model.buffers) {
+	for (const auto& buffer : model.buffers) {
 		if (!buffer.data.empty()) {
 			hash_combine(
 					seed, hash64(buffer.data.data(), std::min<size_t>(buffer.data.size(), 1024)));
 		}
 	}
 
-	for (const auto& mesh : p_model.meshes) {
+	for (const auto& mesh : model.meshes) {
 		for (const auto& primitive : mesh.primitives) {
 			for (const auto& attr : primitive.attributes) {
 				hash_combine(seed, hash64(attr.first));
@@ -537,14 +543,14 @@ size_t _hash_gltf_model(const tinygltf::Model& p_model) {
 		}
 	}
 
-	for (const auto& material : p_model.materials) {
+	for (const auto& material : model.materials) {
 		hash_combine(seed, hash64(material.name));
 		hash_combine(seed, hash64(material.pbrMetallicRoughness.baseColorFactor));
 		hash_combine(seed, hash64(material.pbrMetallicRoughness.metallicFactor));
 		hash_combine(seed, hash64(material.pbrMetallicRoughness.roughnessFactor));
 	}
 
-	for (const auto& image : p_model.images) {
+	for (const auto& image : model.images) {
 		hash_combine(seed, hash64(image.name));
 		hash_combine(seed, hash64(image.image.size()));
 	}

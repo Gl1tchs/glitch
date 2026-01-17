@@ -5,7 +5,10 @@
 
 #pragma once
 
-#include "glitch/core/debug/assert.h"
+#include "glitch/core/defines.h"
 #include "glitch/core/json.h"
 #include "glitch/core/memory/memory.h"
-#include "glitch/core/templates/result.h"
+
+#include <glgpu/assert.h>
+#include <glgpu/glgpu.h>
+#include <glgpu/log.h>

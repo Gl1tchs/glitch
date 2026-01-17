@@ -4,6 +4,11 @@
 
 #pragma once
 
+#include <bitset>
+#include <cstdint>
+#include <memory>
+#include <vector>
+
 namespace gl {
 
 inline constexpr uint32_t MAX_ENTITIES = 1000; // TODO: dynamically allocate
@@ -45,17 +50,22 @@ template <class T> inline uint32_t get_component_id() {
 
 class ComponentPool {
 public:
-	ComponentPool(size_t p_element_size) : element_size(p_element_size) {
-		data = new uint8_t[element_size * MAX_ENTITIES];
-	}
+	static constexpr size_t PAGE_SIZE = 1024;
 
-	~ComponentPool() { delete[] data; }
+	ComponentPool(size_t element_size);
+	~ComponentPool();
 
-	void* get(size_t p_index) { return data + p_index * element_size; }
+	ComponentPool(const ComponentPool& other);
+
+	size_t get_size() const;
+
+	void* get(size_t idx);
+
+	template <std::default_initializable T> T* add(uint32_t idx);
 
 private:
-	uint8_t* data = nullptr;
-	size_t element_size = 0;
+	std::vector<std::unique_ptr<uint8_t[]>> _pages;
+	size_t _element_size = 0;
 };
 
 } //namespace gl

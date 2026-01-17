@@ -4,12 +4,12 @@ namespace gl {
 
 ScriptResult Script::load() {
 	const Result<ScriptRef, ScriptResult> res = ScriptEngine::load_script_file(script_path);
-	if (res.has_error()) {
+	if (res.is_error()) {
 		is_loaded = false;
-		return res.get_error();
+		return res.error();
 	}
 
-	script = res.get_value();
+	script = res.value();
 	is_loaded = true;
 
 	if (!metadata) {

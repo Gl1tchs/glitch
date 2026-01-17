@@ -25,8 +25,8 @@ static void debug_log(const char* message);
 static EntityUID entity_create(const char* name);
 static void entity_destroy(EntityUID self);
 static int entity_is_valid(EntityUID self);
-static EntityUID entity_find_by_id(EntityUID p_id);
-static EntityUID entity_find_by_name(const char* p_name);
+static EntityUID entity_find_by_id(EntityUID id);
+static EntityUID entity_find_by_name(const char* name);
 static const char* entity_get_name(EntityUID self);
 static void entity_set_name(EntityUID self, const char* name);
 static EntityUID entity_get_parent(EntityUID self);
@@ -37,10 +37,10 @@ static Transform* entity_get_transform(EntityUID self);
 
 // --- Transform API ---
 
-static void transform_rotate(Transform* transform, float angle, glm::vec3 axis);
-static glm::vec3 transform_get_forward(Transform* transform);
-static glm::vec3 transform_get_right(Transform* transform);
-static glm::vec3 transform_get_up(Transform* transform);
+static void transform_rotate(Transform* transform, float angle, Vec3f axis);
+static Vec3f transform_get_forward(Transform* transform);
+static Vec3f transform_get_right(Transform* transform);
+static Vec3f transform_get_up(Transform* transform);
 
 // --- Input API ---
 
@@ -54,23 +54,23 @@ static int input_get_mouse_up(int mouse_code);
 static void window_set_title(const char* title);
 static int window_set_cursor_mode();
 static void Window_SetCursorMode(int mode);
-static glm::vec2 window_set_size();
+static Vec2u window_set_size();
 
 } // extern "C"
 
-static void run_string(lua_State* L, const char* p_code) {
-	if (luaL_dostring(L, p_code) != LUA_OK) {
+static void run_string(lua_State* L, const char* code) {
+	if (luaL_dostring(L, code) != LUA_OK) {
 		GL_LOG_ERROR("[LUA] FFI Bind Error: {}", lua_tostring(L, -1));
 		lua_pop(L, 1);
 		GL_ASSERT(false); // FFI scripts must compile
 	}
 }
 
-static void run_string(lua_State* L, const std::string& p_code) { run_string(L, p_code.c_str()); }
+static void run_string(lua_State* L, const std::string& code) { run_string(L, code.c_str()); }
 
 static void bind_function(
-		lua_State* L, const char* p_func_path, const char* p_func_def, uintptr_t p_fnptr) {
-	run_string(L, std::format("{} = ffi.cast('{}', {}ULL)", p_func_path, p_func_def, p_fnptr));
+		lua_State* L, const char* func_path, const char* func_def, uintptr_t fnptr) {
+	run_string(L, std::format("{} = ffi.cast('{}', {}ULL)", func_path, func_def, fnptr));
 }
 
 void register_ffi_bindings(lua_State* L) {
@@ -142,25 +142,25 @@ extern "C" {
 
 void debug_log(const char* message) { GL_LOG_INFO("[LUA] {}", message); }
 
-EntityUID entity_find_by_id(EntityUID p_id) {
+EntityUID entity_find_by_id(EntityUID id) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
 		GL_LOG_ERROR("[LUA] [entity_find_by_id] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
-	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(p_id);
-	return entity ? p_id : 0;
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_id(id);
+	return entity ? id : 0;
 }
 
-EntityUID entity_find_by_name(const char* p_name) {
+EntityUID entity_find_by_name(const char* name) {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 	if (!ScriptSystem::is_running()) {
 		GL_LOG_ERROR("[LUA] [entity_find_by_name] No Scene bound to the ScriptSystem.");
 		return 0;
 	}
 
-	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_name(p_name);
+	std::optional<Entity> entity = ScriptSystem::get_scene()->find_by_name(name);
 	return entity ? (*entity).get_uid().value : 0;
 }
 
@@ -333,37 +333,37 @@ EntityUID entity_find_child_by_name(EntityUID self, const char* name) {
 	return child->get_uid().value;
 }
 
-void transform_rotate(Transform* transform, float angle, glm::vec3 axis) {
+void transform_rotate(Transform* transform, float angle, Vec3f axis) {
 	if (!transform) {
 		GL_LOG_ERROR("[LUA] [transform_rotate]: Given transform instance is invalid.");
 		return;
 	}
 
-	transform->rotate(angle, glm::normalize(axis));
+	transform->rotate(angle, axis.normalize());
 }
 
-glm::vec3 transform_get_forward(Transform* transform) {
+Vec3f transform_get_forward(Transform* transform) {
 	if (!transform) {
 		GL_LOG_ERROR("[LUA] [transform_get_forward]: Given transform instance is invalid.");
-		return VEC3_ZERO;
+		return Vec3f::zero();
 	}
 
 	return transform->get_forward();
 }
 
-glm::vec3 transform_get_right(Transform* transform) {
+Vec3f transform_get_right(Transform* transform) {
 	if (!transform) {
 		GL_LOG_ERROR("[LUA] [transform_get_right]: Given transform instance is invalid.");
-		return VEC3_ZERO;
+		return Vec3f::zero();
 	}
 
 	return transform->get_right();
 }
 
-glm::vec3 transform_get_up(Transform* transform) {
+Vec3f transform_get_up(Transform* transform) {
 	if (!transform) {
 		GL_LOG_ERROR("[LUA] [transform_get_up]: Given transform instance is invalid.");
-		return VEC3_ZERO;
+		return Vec3f::zero();
 	}
 
 	return transform->get_up();
@@ -415,7 +415,7 @@ void Window_SetCursorMode(int mode) {
 	app->get_window()->set_cursor_mode(static_cast<WindowCursorMode>(mode));
 }
 
-glm::vec2 window_set_size() {
+Vec2u window_set_size() {
 	std::lock_guard<std::mutex> lock(g_script_mutex);
 
 	Application* app = Application::get();

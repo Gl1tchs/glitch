@@ -4,17 +4,20 @@
 
 #include "glitch/platform/os.h"
 
+#include <cstdlib>
+#include <cstring>
+
 namespace gl {
 namespace os {
 
-const char* getenv(const char* p_var) { return ::getenv(p_var); }
+const char* getenv(const char* var) { return ::getenv(var); }
 
-bool setenv(const char* p_name, const char* p_value) {
-	if (!p_value || strcmp(p_value, "") == 0) {
-		return ::unsetenv(p_name) == 0;
+bool setenv(const char* name, const char* value) {
+	if (!value || strcmp(value, "") == 0) {
+		return ::unsetenv(name) == 0;
 	}
 
-	return ::setenv(p_name, p_value, 1) == 0;
+	return ::setenv(name, value, 1) == 0;
 }
 
 } //namespace os

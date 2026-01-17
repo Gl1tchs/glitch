@@ -184,7 +184,7 @@ void EditorLayer::_render_menubar() {
 		if (ImGui::BeginMenu("File")) {
 			if (!is_running) {
 				if (ImGui::MenuItem("Save Scene")) {
-					if (scene_path && fs::exists(*scene_path)) {
+					if (scene_path && std::filesystem::exists(*scene_path)) {
 						if (!Scene::serialize(scene_path->string(), scene)) {
 							GL_LOG_ERROR("Unable to serialize scene");
 						}
@@ -193,7 +193,7 @@ void EditorLayer::_render_menubar() {
 						if (const char* path = tinyfd_saveFileDialog(
 									"Save Scene", "", 1, &filter, "JSON")) {
 							if (Scene::serialize(path, scene))
-								scene_path = fs::path(path);
+								scene_path = std::filesystem::path(path);
 						}
 					}
 				}
@@ -202,7 +202,7 @@ void EditorLayer::_render_menubar() {
 					if (const char* path = tinyfd_openFileDialog(
 								"Load Scene", "", 1, &filter, "JSON", 0)) {
 						if (Scene::deserialize(path, scene)) {
-							scene_path = fs::path(path);
+							scene_path = std::filesystem::path(path);
 						}
 					}
 				}
@@ -453,13 +453,13 @@ void EditorLayer::_render_inspector(Entity& p_entity) {
 											k_filter_patterns, "Image Files", 0);
 
 									if (path) {
-										const auto fs_path = fs::path(path);
+										const auto fs_path = std::filesystem::path(path);
 										const auto metadata_path = fs_path.parent_path() /
 												fs_path.filename().replace_extension(std::format(
 														"{}.gltex", fs_path.extension().string()));
 
 										// If metadata exists load it from there
-										if (fs::exists(metadata_path)) {
+										if (std::filesystem::exists(metadata_path)) {
 											if (auto res = AssetSystem::load<Texture>(
 														metadata_path.string())) {
 												arg = *res;

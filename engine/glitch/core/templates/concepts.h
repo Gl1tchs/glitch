@@ -4,6 +4,11 @@
 
 #pragma once
 
+#include "glitch/core/json.h"
+
+#include <concepts>
+#include <type_traits>
+
 namespace gl {
 
 template <typename... Ts>

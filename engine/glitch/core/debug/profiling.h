@@ -9,7 +9,7 @@
 #include <tracy/Tracy.hpp>
 
 #define GL_PROFILE_SCOPE ZoneScoped
-#define GL_PROFILE_SCOPE_N(p_X) ZoneScopedN(p_X)
+#define GL_PROFILE_SCOPE_N(name) ZoneScopedN(name)
 #else
 #define GL_PROFILE_SCOPE
 #define GL_PROFILE_SCOPE_N(X)

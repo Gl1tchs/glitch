@@ -9,6 +9,8 @@
 #include "glitch/scene/entity.h"
 #include "glitch/scene/registry.h"
 
+#include <unordered_map>
+
 namespace gl {
 
 template <typename... TComponents> class EntityView;
@@ -21,19 +23,19 @@ public:
 	Scene() = default;
 	virtual ~Scene() = default;
 
-	void copy_to(Scene& p_dest);
+	void copy_to(Scene& dest);
 
 	// Scene logic
 
 	void start();
 
-	void update(float p_dt);
+	void update(float dt);
 
 	void stop();
 
-	void set_paused(bool p_paused);
+	void set_paused(bool paused);
 
-	void step(uint32_t p_frames = 1);
+	void step(uint32_t frames = 1);
 
 	bool is_running() const;
 
@@ -41,16 +43,16 @@ public:
 
 	// ECS
 
-	Entity create(const std::string& p_name, Entity p_parent = INVALID_ENTITY);
-	Entity create(UID p_uid, const std::string& p_name, Entity p_parent = INVALID_ENTITY);
+	Entity create(const std::string& name, Entity parent = INVALID_ENTITY);
+	Entity create(UID uid, const std::string& name, Entity parent = INVALID_ENTITY);
 
-	void destroy(Entity p_entity);
-	void destroy(UID p_uid);
+	void destroy(Entity entity);
+	void destroy(UID uid);
 
-	bool exists(UID p_uid) const;
+	bool exists(UID uid) const;
 
-	std::optional<Entity> find_by_id(UID p_uid);
-	std::optional<Entity> find_by_name(const std::string& p_name);
+	std::optional<Entity> find_by_id(UID uid);
+	std::optional<Entity> find_by_name(const std::string& name);
 
 	/**
 	 * Get entities with specified components,
@@ -58,15 +60,15 @@ public:
 	 */
 	template <typename... TComponents> EntityView<TComponents...> view();
 
-	static bool serialize(std::string_view p_path, const std::shared_ptr<Scene> p_scene);
-	static bool deserialize(std::string_view p_path, std::shared_ptr<Scene> p_scene);
+	static bool serialize(std::string_view path, const std::shared_ptr<Scene> scene);
+	static bool deserialize(std::string_view path, std::shared_ptr<Scene> scene);
 
 private:
-	std::unordered_map<UID, Entity> entity_map;
+	std::unordered_map<UID, Entity> _entity_map;
 
-	bool running = false;
-	bool paused = false;
-	int step_frames = 0;
+	bool _running = false;
+	bool _paused = false;
+	int _step_frames = 0;
 };
 
 } //namespace gl

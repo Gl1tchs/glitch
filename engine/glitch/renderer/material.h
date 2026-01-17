@@ -7,12 +7,19 @@
 
 #include "glitch/asset/asset.h"
 #include "glitch/asset/asset_system.h"
-#include "glitch/renderer/types.h"
+#include "glitch/core/core.h"
+
+#include <glgpu/glgpu.h>
+
+#include <map>
+#include <type_traits>
+#include <variant>
+#include <vector>
 
 namespace gl {
 
 using ShaderUniformVariable =
-		std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, AssetHandle /*  Texture */>;
+		std::variant<int, float, Vec2f, Vec3f, Vec4f, AssetHandle /*  Texture */>;
 
 enum class ShaderUniformVariableType : int {
 	INT,
@@ -66,24 +73,24 @@ public:
 	const std::vector<ShaderUniformMetadata>& get_uniforms();
 
 	static std::shared_ptr<MaterialDefinition> create(
-			const std::vector<std::string> p_color_attachment_ids,
-			const std::string& p_depth_attachment_id, MaterialShaderLoadInfo p_shader_info,
-			std::vector<ShaderUniformMetadata> p_uniforms,
-			MaterialPipelineOptions p_pipeline_options = {});
+			const std::vector<std::string> color_attachment_ids,
+			const std::string& depth_attachment_id, MaterialShaderLoadInfo shader_info,
+			std::vector<ShaderUniformMetadata> uniforms,
+			MaterialPipelineOptions pipeline_options = {});
 
-	static bool save(
-			const fs::path& p_metadata_path, std::shared_ptr<MaterialDefinition> p_material);
-	static std::shared_ptr<MaterialDefinition> load(const fs::path& p_path);
+	static bool save(const std::filesystem::path& metadata_path,
+			std::shared_ptr<MaterialDefinition> material);
+	static std::shared_ptr<MaterialDefinition> load(const std::filesystem::path& path);
 
 private:
-	Shader shader;
-	Pipeline pipeline;
+	Shader _shader;
+	Pipeline _pipeline;
 
-	std::vector<std::string> color_attachment_ids;
-	std::string depth_attachment_id;
-	MaterialShaderLoadInfo shader_info;
-	MaterialPipelineOptions pipeline_options;
-	std::vector<ShaderUniformMetadata> uniforms;
+	std::vector<std::string> _color_attachment_ids;
+	std::string _depth_attachment_id;
+	MaterialShaderLoadInfo _shader_info;
+	MaterialPipelineOptions _pipeline_options;
+	std::vector<ShaderUniformMetadata> _uniforms;
 };
 
 static_assert(IsCreatableAsset<MaterialDefinition, std::vector<std::string>, std::string,
@@ -104,7 +111,7 @@ public:
 
 	const std::vector<ShaderUniformMetadata>& get_uniforms() const;
 
-	std::optional<ShaderUniformVariable> get_param(const std::string& p_name);
+	std::optional<ShaderUniformVariable> get_param(const std::string& name);
 
 	/**
 	 * Set material parameter
@@ -112,26 +119,26 @@ public:
 	 * @return `false` if parameter not found (uninitialized material)
 	 * @return `true` by success
 	 */
-	bool set_param(const std::string& p_name, ShaderUniformVariable p_value);
+	bool set_param(const std::string& name, ShaderUniformVariable value);
 
 	bool is_dirty() const;
 
 	bool upload(); // upload to GPU buffer, descriptor sets, etc.
 
 	// Binds descriptors for set = 0 index = 0
-	void bind_uniform_set(CommandBuffer p_cmd);
+	void bind_uniform_set(CommandBuffer cmd);
 
 	// Creates and registers Material to the AssetRegistry
-	static std::shared_ptr<Material> create(const std::string& p_def_path);
+	static std::shared_ptr<Material> create(const std::string& def_path);
 
 private:
-	std::shared_ptr<MaterialDefinition> definition;
+	std::shared_ptr<MaterialDefinition> _definition;
 
-	Buffer material_data_buffer = GL_NULL_HANDLE;
-	UniformSet material_set = GL_NULL_HANDLE;
+	Buffer _material_data_buffer = GL_NULL_HANDLE;
+	UniformSet _material_set = GL_NULL_HANDLE;
 
-	std::map<std::string, std::pair<ShaderUniformMetadata, ShaderUniformVariable>> params;
-	bool dirty = false;
+	std::map<std::string, std::pair<ShaderUniformMetadata, ShaderUniformVariable>> _params;
+	bool _dirty = false;
 };
 
 static_assert(IsCreatableAsset<Material, std::string>);

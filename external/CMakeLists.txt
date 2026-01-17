@@ -1,20 +1,5 @@
 include(FetchContent)
 
-# ------------------- doctest -------------------
-if (GL_BUILD_TESTS)
-	FetchContent_Declare(
-		doctest
-		GIT_REPOSITORY https://github.com/doctest/doctest.git
-		GIT_TAG v2.4.12
-	)
-
-	set(DOCTEST_NO_INSTALL ON CACHE BOOL "" FORCE)
-	FetchContent_MakeAvailable(doctest)
-
-	set(DOCTEST_INCLUDES ${doctest_SOURCE_DIR}/doctest CACHE INTERNAL "")
-	set(DOCTEST_LIBS doctest::doctest CACHE INTERNAL "")
-endif()
-
 # ------------------- Tracy profiler -------------------
 if (GL_ENABLE_PROFILING)
 	FetchContent_Declare(
@@ -80,22 +65,6 @@ set(IMGUI_FILES
 	CACHE INTERNAL ""
 )
 
-# ------------------- SPIRV-Reflect -------------------
-FetchContent_Declare(
-	spirv_reflect
-	GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Reflect.git
-	GIT_TAG main
-)
-
-FetchContent_MakeAvailable(spirv_reflect)
-
-set(SPIRV_REFLECT_INCLUDES ${spirv_reflect_SOURCE_DIR} CACHE INTERNAL "")
-set(SPIRV_REFLECT_FILES
-	"${spirv_reflect_SOURCE_DIR}/spirv_reflect.h"
-	"${spirv_reflect_SOURCE_DIR}/spirv_reflect.cpp"
-	CACHE INTERNAL ""
-)
-
 # ------------------- TinyGLTF -------------------
 FetchContent_Declare(
 	tinygltf
@@ -106,20 +75,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(tinygltf)
 
 set(TINY_GLTF_INCLUDES ${tinygltf_SOURCE_DIR} CACHE INTERNAL "")
-
-# ------------------- VkBootstrap -------------------
-FetchContent_Declare(
-	vkbootstrap
-	GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
-	GIT_TAG main
-)
-set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
-set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
-set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ${GL_BUILD_DYNAMIC_LIBS} CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(vkbootstrap)
-
-set(VK_BOOTSTRAP_INCLUDES ${vkbootstrap_SOURCE_DIR}/src CACHE INTERNAL "")
-set(VK_BOOTSTRAP_LIBS vk-bootstrap::vk-bootstrap CACHE INTERNAL "")
 
 # ------------------- tinyfiledialogs -------------------
 add_subdirectory(tinyfiledialogs)

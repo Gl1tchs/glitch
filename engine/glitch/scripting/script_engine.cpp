@@ -6,45 +6,45 @@
 
 namespace gl {
 
-void to_json(json& p_json, const ScriptMetadata& p_metadata) {
-	for (const auto& [name, field] : p_metadata.fields) {
-		json j;
-		j["name"] = name;
+void to_json(json& j, const ScriptMetadata& metadata) {
+	for (const auto& [name, field] : metadata.fields) {
+		json sub_j;
+		sub_j["name"] = name;
 		std::visit(VariantOverloaded{
-						   [&](const double& arg) { j["value"] = arg; },
-						   [&](const std::string& arg) { j["value"] = arg; },
-						   [&](const bool& arg) { j["value"] = arg; },
+						   [&](const double& arg) { sub_j["value"] = arg; },
+						   [&](const std::string& arg) { sub_j["value"] = arg; },
+						   [&](const bool& arg) { sub_j["value"] = arg; },
 				   },
 				field);
 
-		p_json["fields"].push_back(j);
+		j["fields"].push_back(sub_j);
 	}
 }
 
-void from_json(const json& p_json, ScriptMetadata& p_metadata) {
-	for (const auto& j : p_json["fields"]) {
-		if (!j.contains("name") || !j.contains("value")) {
+void from_json(const json& j, ScriptMetadata& metadata) {
+	for (const auto& sub_j : j["fields"]) {
+		if (!sub_j.contains("name") || !sub_j.contains("value")) {
 			GL_LOG_ERROR("[from_json] Unable to deserialize field: name or value does not exist "
 						 "in json.");
 			continue;
 		}
 
-		std::string name = j["name"].get<std::string>();
+		std::string name = sub_j["name"].get<std::string>();
 		ScriptValueType value;
 		// TODO use an enum maybe
-		if (j["value"].is_number()) {
-			value = j["value"].get<double>();
-		} else if (j["value"].is_string()) {
-			value = j["value"].get<std::string>();
-		} else if (j["value"].is_boolean()) {
-			value = j["value"].get<bool>();
+		if (sub_j["value"].is_number()) {
+			value = sub_j["value"].get<double>();
+		} else if (sub_j["value"].is_string()) {
+			value = sub_j["value"].get<std::string>();
+		} else if (sub_j["value"].is_boolean()) {
+			value = sub_j["value"].get<bool>();
 		} else {
 			GL_LOG_ERROR("[from_json] Unable to deserialize field '{}' for type '{}'", name,
-					j["value"].type_name());
+					sub_j["value"].type_name());
 			continue;
 		}
 
-		p_metadata.fields[name] = value;
+		metadata.fields[name] = value;
 	}
 }
 
@@ -67,19 +67,19 @@ void ScriptEngine::init() {
 
 void ScriptEngine::shutdown() { lua_close(s_lua); }
 
-Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(const fs::path& p_path) {
+Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(const std::filesystem::path& path) {
 	// check the file
-	if (!fs::exists(p_path)) {
+	if (!std::filesystem::exists(path)) {
 		GL_LOG_ERROR(
 				"[LUA] [ScriptEngine::load_script_file] Script file at path '{}' does not exists.",
-				p_path.string());
+				path.string());
 		return make_err<ScriptRef>(ScriptResult::INVALID_SCRIPT_FILE);
 	}
 
 	// load the script file
-	if (luaL_loadfile(s_lua, p_path.string().c_str()) != LUA_OK) {
+	if (luaL_loadfile(s_lua, path.string().c_str()) != LUA_OK) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script_file] Error loading script {}: {}",
-				p_path.string(), lua_tostring(s_lua, -1));
+				path.string(), lua_tostring(s_lua, -1));
 		lua_pop(s_lua, 1); // pop error message
 
 		return make_err<ScriptRef>(ScriptResult::LOAD_ERROR);
@@ -88,7 +88,7 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(const fs::path& p
 	// now, execute the loaded chunk.
 	if (lua_pcall(s_lua, 0, 1, 0) != LUA_OK) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script_file] Error running script {}: {}",
-				p_path.string(), lua_tostring(s_lua, -1));
+				path.string(), lua_tostring(s_lua, -1));
 		lua_pop(s_lua, 1); // pop error message
 
 		return make_err<ScriptRef>(ScriptResult::EXECUTION_ERROR);
@@ -98,7 +98,7 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(const fs::path& p
 	if (!lua_istable(s_lua, -1)) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script_file] Script at path '{}' did not return a "
 					 "table.",
-				p_path.string());
+				path.string());
 
 		return make_err<ScriptRef>(ScriptResult::INVALID_TABLE);
 	}
@@ -107,9 +107,9 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script_file(const fs::path& p
 	return luaL_ref(s_lua, LUA_REGISTRYINDEX);
 }
 
-Result<ScriptRef, ScriptResult> ScriptEngine::load_script(const std::string& p_script) {
+Result<ScriptRef, ScriptResult> ScriptEngine::load_script(const std::string& script) {
 	// load and run the script
-	if (luaL_dostring(s_lua, p_script.c_str()) != LUA_OK) {
+	if (luaL_dostring(s_lua, script.c_str()) != LUA_OK) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::load_script] Error running string: {}",
 				lua_tostring(s_lua, -1));
 		lua_pop(s_lua, 1); // pop error message
@@ -128,52 +128,52 @@ Result<ScriptRef, ScriptResult> ScriptEngine::load_script(const std::string& p_s
 	return luaL_ref(s_lua, LUA_REGISTRYINDEX);
 }
 
-void ScriptEngine::push_script(ScriptRef p_ref) { lua_rawgeti(s_lua, LUA_REGISTRYINDEX, p_ref); }
+void ScriptEngine::push_script(ScriptRef ref) { lua_rawgeti(s_lua, LUA_REGISTRYINDEX, ref); }
 
-void ScriptEngine::unload_script(ScriptRef p_ref) {
-	if (p_ref != LUA_NOREF) {
-		luaL_unref(s_lua, LUA_REGISTRYINDEX, p_ref);
+void ScriptEngine::unload_script(ScriptRef ref) {
+	if (ref != LUA_NOREF) {
+		luaL_unref(s_lua, LUA_REGISTRYINDEX, ref);
 	}
 }
 
-bool ScriptEngine::has_function(const char* p_func_name) {
-	const bool res = push_function(p_func_name);
+bool ScriptEngine::has_function(const char* func_name) {
+	const bool res = push_function(func_name);
 	pop_stack(1);
 	return res;
 }
 
-bool ScriptEngine::push_function(const char* p_func_name) {
-	lua_getfield(s_lua, -1, p_func_name);
+bool ScriptEngine::push_function(const char* func_name) {
+	lua_getfield(s_lua, -1, func_name);
 	if (!lua_isfunction(s_lua, -1)) {
 		return false;
 	}
 	return true;
 }
 
-void ScriptEngine::push_value(int p_idx) { lua_pushvalue(s_lua, p_idx); }
+void ScriptEngine::push_value(int idx) { lua_pushvalue(s_lua, idx); }
 
-void ScriptEngine::push_arg(int p_value) { lua_pushinteger(s_lua, p_value); }
+void ScriptEngine::push_arg(int value) { lua_pushinteger(s_lua, value); }
 
-void ScriptEngine::push_arg(uint32_t p_value) { lua_pushinteger(s_lua, p_value); }
+void ScriptEngine::push_arg(uint32_t value) { lua_pushinteger(s_lua, value); }
 
-void ScriptEngine::push_arg(float p_value) { lua_pushnumber(s_lua, p_value); }
+void ScriptEngine::push_arg(float value) { lua_pushnumber(s_lua, value); }
 
-void ScriptEngine::push_arg(double p_value) { lua_pushnumber(s_lua, p_value); }
+void ScriptEngine::push_arg(double value) { lua_pushnumber(s_lua, value); }
 
-void ScriptEngine::push_arg(bool p_value) { lua_pushboolean(s_lua, p_value); }
+void ScriptEngine::push_arg(bool value) { lua_pushboolean(s_lua, value); }
 
-void ScriptEngine::push_arg(const char* p_value) { lua_pushstring(s_lua, p_value); }
+void ScriptEngine::push_arg(const char* value) { lua_pushstring(s_lua, value); }
 
-void ScriptEngine::pop_stack(int p_n) { lua_pop(s_lua, p_n); }
+void ScriptEngine::pop_stack(int n) { lua_pop(s_lua, n); }
 
-bool ScriptEngine::call_function(int p_nargs) { return lua_pcall(s_lua, p_nargs, 0, 0) == LUA_OK; }
+bool ScriptEngine::call_function(int nargs) { return lua_pcall(s_lua, nargs, 0, 0) == LUA_OK; }
 
-ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
-	if (p_ref == 0) {
+ScriptMetadata ScriptEngine::get_metadata(ScriptRef ref) {
+	if (ref == 0) {
 		return {};
 	}
 
-	push_script(p_ref); // Stack: [table]
+	push_script(ref); // Stack: [table]
 
 	if (!lua_istable(s_lua, -1)) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::get_metadata] Reference is not a table.");
@@ -232,14 +232,14 @@ ScriptMetadata ScriptEngine::get_metadata(ScriptRef p_ref) {
 	return metadata;
 }
 
-ScriptResult ScriptEngine::set_metadata(ScriptRef p_ref, const ScriptMetadata& p_metadata) {
-	if (p_ref == 0) {
+ScriptResult ScriptEngine::set_metadata(ScriptRef ref, const ScriptMetadata& metadata) {
+	if (ref == 0) {
 		return {};
 	}
 
-	push_script(p_ref); // Stack: [table]
+	push_script(ref); // Stack: [table]
 
-	for (const auto& [name, field] : p_metadata.fields) {
+	for (const auto& [name, field] : metadata.fields) {
 		std::visit(VariantOverloaded{
 						   [&](const double& arg) { lua_pushnumber(s_lua, arg); },
 						   [&](const std::string& arg) { lua_pushstring(s_lua, arg.c_str()); },
@@ -257,14 +257,14 @@ ScriptResult ScriptEngine::set_metadata(ScriptRef p_ref, const ScriptMetadata& p
 	return ScriptResult::SUCCESS;
 }
 
-std::optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char* p_field_name) {
-	if (p_ref == 0) {
+std::optional<double> ScriptEngine::get_number_field(ScriptRef ref, const char* field_name) {
+	if (ref == 0) {
 		return {};
 	}
 
-	push_script(p_ref);
+	push_script(ref);
 
-	lua_getfield(s_lua, -1, p_field_name);
+	lua_getfield(s_lua, -1, field_name);
 
 	if (lua_isnumber(s_lua, -1)) {
 		const float value = (float)lua_tonumber(s_lua, -1);
@@ -277,15 +277,14 @@ std::optional<double> ScriptEngine::get_number_field(ScriptRef p_ref, const char
 	return {};
 }
 
-std::optional<std::string> ScriptEngine::get_string_field(
-		ScriptRef p_ref, const char* p_field_name) {
-	if (p_ref == 0) {
+std::optional<std::string> ScriptEngine::get_string_field(ScriptRef ref, const char* field_name) {
+	if (ref == 0) {
 		return {};
 	}
 
-	push_script(p_ref);
+	push_script(ref);
 
-	lua_getfield(s_lua, -1, p_field_name);
+	lua_getfield(s_lua, -1, field_name);
 
 	if (lua_isstring(s_lua, -1)) {
 		std::string value = lua_tostring(s_lua, -1);
@@ -298,14 +297,14 @@ std::optional<std::string> ScriptEngine::get_string_field(
 	return {};
 }
 
-std::optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_field_name) {
-	if (p_ref == 0) {
+std::optional<bool> ScriptEngine::get_bool_field(ScriptRef ref, const char* field_name) {
+	if (ref == 0) {
 		return {};
 	}
 
-	push_script(p_ref);
+	push_script(ref);
 
-	lua_getfield(s_lua, -1, p_field_name);
+	lua_getfield(s_lua, -1, field_name);
 
 	if (lua_isboolean(s_lua, -1)) {
 		const bool value = (bool)lua_toboolean(s_lua, -1);
@@ -318,74 +317,70 @@ std::optional<bool> ScriptEngine::get_bool_field(ScriptRef p_ref, const char* p_
 	return {};
 }
 
-bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, ScriptValueType p_value) {
+bool ScriptEngine::set_field(ScriptRef ref, const char* field_name, ScriptValueType value) {
 	bool result;
-	std::visit(VariantOverloaded{ [&](double& arg) {
-									 result = ScriptEngine::set_field(p_ref, p_field_name, arg);
-								 },
+	std::visit(VariantOverloaded{
+					   [&](double& arg) { result = ScriptEngine::set_field(ref, field_name, arg); },
 					   [&](std::string& arg) {
-						   result = ScriptEngine::set_field(p_ref, p_field_name, arg);
+						   result = ScriptEngine::set_field(ref, field_name, arg);
 					   },
-					   [&](bool& arg) {
-						   result = ScriptEngine::set_field(p_ref, p_field_name, arg);
-					   } },
-			p_value);
+					   [&](bool& arg) { result = ScriptEngine::set_field(ref, field_name, arg); } },
+			value);
 
 	return result;
 }
 
-bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, double p_value) {
-	if (p_ref == 0) {
+bool ScriptEngine::set_field(ScriptRef ref, const char* field_name, double value) {
+	if (ref == 0) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::set_field] Script reference is not set.");
 		return false;
 	}
 
-	push_script(p_ref); // Push the script table (index -1)
+	push_script(ref); // Push the script table (index -1)
 
-	lua_pushnumber(s_lua, p_value); // Push the new value (index -1)
+	lua_pushnumber(s_lua, value); // Push the new value (index -1)
 
 	// Set the field: table[field_name] = value
 	// This pops the value but leaves the table.
-	lua_setfield(s_lua, -2, p_field_name);
+	lua_setfield(s_lua, -2, field_name);
 
 	pop_stack(1); // pop the table
 
 	return true;
 }
 
-bool ScriptEngine::set_field(
-		ScriptRef p_ref, const char* p_field_name, const std::string& p_value) {
-	if (p_ref == 0) {
+bool ScriptEngine::set_field(ScriptRef ref, const char* field_name, const std::string& value) {
+	if (ref == 0) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::set_field] Script reference is not set.");
 		return false;
 	}
 
-	push_script(p_ref); // Push the script table (index -1)
+	push_script(ref); // Push the script table (index -1)
 
-	lua_pushstring(s_lua, p_value.c_str()); // Push the new value (index -1)
+	lua_pushstring(s_lua, value.c_str()); // Push the new value (index -1)
 
 	// Set the field: table[field_name] = value
 	// This pops the value but leaves the table.
-	lua_setfield(s_lua, -2, p_field_name);
+	lua_setfield(s_lua, -2, field_name);
 
 	pop_stack(1); // pop the table
 
 	return true;
 }
 
-bool ScriptEngine::set_field(ScriptRef p_ref, const char* p_field_name, bool p_value) {
-	if (p_ref == 0) {
+bool ScriptEngine::set_field(ScriptRef ref, const char* field_name, bool value) {
+	if (ref == 0) {
 		GL_LOG_ERROR("[LUA] [ScriptEngine::set_field] Script reference is not set.");
 		return false;
 	}
 
-	push_script(p_ref); // Push the script table (index -1)
+	push_script(ref); // Push the script table (index -1)
 
-	lua_pushboolean(s_lua, p_value); // Push the new value (index -1)
+	lua_pushboolean(s_lua, value); // Push the new value (index -1)
 
 	// Set the field: table[field_name] = value
 	// This pops the value but leaves the table.
-	lua_setfield(s_lua, -2, p_field_name);
+	lua_setfield(s_lua, -2, field_name);
 
 	pop_stack(1); // pop the table
 

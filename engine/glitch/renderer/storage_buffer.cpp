@@ -2,58 +2,70 @@
 
 #include "glitch/renderer/renderer.h"
 
+#include <cstring>
+
 namespace gl {
 
 StorageBuffer::~StorageBuffer() {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
-	backend->buffer_free(buffer);
+	Device* device = Renderer::get_device();
+	device->buffer_free(_buffer);
 }
 
-std::shared_ptr<StorageBuffer> StorageBuffer::create(size_t p_size, const void* p_data) {
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+std::shared_ptr<StorageBuffer> StorageBuffer::create(size_t size, const void* data) {
+	Device* device = Renderer::get_device();
 
-	Buffer buffer = backend->buffer_create(p_size,
+	auto buffer_result = device->buffer_create(size,
 			BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
 					BUFFER_USAGE_TRANSFER_DST_BIT,
 			MemoryAllocationType::GPU);
 
-	std::shared_ptr<StorageBuffer> sbo = std::make_shared<StorageBuffer>();
-	sbo->buffer = buffer;
-	sbo->size = p_size;
-	sbo->gpu_addr = backend->buffer_get_device_address(buffer);
+	if (!buffer_result) {
+		return nullptr;
+	}
 
-	if (p_data) {
-		sbo->upload(p_data);
+	std::shared_ptr<StorageBuffer> sbo = std::make_shared<StorageBuffer>();
+	sbo->_buffer = buffer_result.value();
+	sbo->_size = size;
+	sbo->_gpu_addr = device->buffer_get_device_address(buffer_result.value()).value();
+
+	if (data) {
+		sbo->upload(data);
 	}
 
 	return sbo;
 }
 
-void StorageBuffer::upload(const void* p_data) {
-	GL_ASSERT(p_data != nullptr);
+void StorageBuffer::upload(const void* data) {
+	GL_ASSERT(data != nullptr);
 
-	std::shared_ptr<RenderBackend> backend = Renderer::get_backend();
+	Device* device = Renderer::get_device();
 
-	Buffer staging_buffer =
-			backend->buffer_create(size, BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
+	auto staging_buffer_result =
+			device->buffer_create(_size, BUFFER_USAGE_TRANSFER_SRC_BIT, MemoryAllocationType::CPU);
 
-	void* staging_data = backend->buffer_map(staging_buffer);
-	memcpy(staging_data, p_data, size);
-	backend->buffer_unmap(staging_buffer);
+	if (!staging_buffer_result) {
+		return;
+	}
+
+	auto staging_buffer = staging_buffer_result.value();
+
+	uint8_t* staging_data = device->buffer_map(staging_buffer).value();
+	memcpy(staging_data, data, _size);
+	device->buffer_unmap(staging_buffer);
 
 	// TODO: async data upload
-	backend->command_immediate_submit([&](CommandBuffer cmd) {
+	device->command_immediate_submit([&](CommandBuffer cmd) {
 		BufferCopyRegion copy = {};
 		copy.src_offset = 0;
 		copy.dst_offset = 0;
-		copy.size = size;
+		copy.size = _size;
 
-		backend->command_copy_buffer(cmd, staging_buffer, buffer, copy);
+		device->command_copy_buffer(cmd, staging_buffer, _buffer, copy);
 	});
 
-	backend->buffer_free(staging_buffer);
+	device->buffer_free(staging_buffer);
 }
 
-BufferDeviceAddress StorageBuffer::get_device_address() const { return gpu_addr; }
+BufferDeviceAddress StorageBuffer::get_device_address() const { return _gpu_addr; }
 
 } //namespace gl

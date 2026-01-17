@@ -19,12 +19,12 @@ public:
 
 	static bool is_running();
 
-	static void on_runtime_start(Scene* p_scene);
+	static void on_runtime_start(Scene* scene);
 	static void on_runtime_stop();
 
 	static void invoke_on_create();
 
-	static void invoke_on_update(float p_dt);
+	static void invoke_on_update(float dt);
 
 	static void invoke_on_destroy();
 };

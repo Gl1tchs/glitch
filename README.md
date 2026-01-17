@@ -25,5 +25,5 @@ Glitch uses CMakeFetch content to retrieve some third party dependencies. So thi
 git clone https://github.com/Gl1tchs/glitch.git
 cd glitch
 cmake --preset release
-cmake --build --preset build-release
+cmake --build --preset release
 ```

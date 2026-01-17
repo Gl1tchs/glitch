@@ -1,7 +1,13 @@
 #pragma once
 
+#include "glitch/core/core.h"
 #include "glitch/core/event/key_code.h"
 #include "glitch/core/event/mouse_button.h"
+
+#include <glgpu/glgpu.h>
+
+#include <functional>
+#include <vector>
 
 namespace gl {
 
@@ -18,11 +24,11 @@ struct KeyTypeEvent {
 };
 
 struct MouseMoveEvent {
-	glm::vec2 position;
+	Vec2f position;
 };
 
 struct MouseScrollEvent {
-	glm::vec2 offset;
+	Vec2f offset;
 };
 
 struct MousePressEvent {
@@ -34,7 +40,7 @@ struct MouseReleaseEvent {
 };
 
 struct WindowResizeEvent {
-	glm::ivec2 size;
+	Vec2u size;
 };
 
 struct WindowCloseEvent {};
@@ -45,17 +51,17 @@ namespace event {
 
 template <typename T> inline auto g_callbacks = std::vector<EventCallbackFunc<T>>();
 
-template <typename T> inline void subscribe(const EventCallbackFunc<T>& p_callback) {
-	g_callbacks<T>.push_back(p_callback);
+template <typename T> inline void subscribe(const EventCallbackFunc<T>& callback) {
+	g_callbacks<T>.push_back(callback);
 }
 
 template <typename T> inline void unsubscribe() { g_callbacks<T>.clear(); }
 
 template <typename T> inline void pop() { g_callbacks<T>.pop_back(); }
 
-template <typename T> inline void notify(T& p_event) {
+template <typename T> inline void notify(T& event) {
 	for (const auto& callback : g_callbacks<T>) {
-		callback(p_event);
+		callback(event);
 	}
 }
 

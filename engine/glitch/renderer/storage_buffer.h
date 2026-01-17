@@ -5,7 +5,11 @@
 
 #pragma once
 
-#include "glitch/renderer/types.h"
+#include "glitch/core/defines.h"
+
+#include <glgpu/glgpu.h>
+
+#include <memory>
 
 namespace gl {
 
@@ -16,16 +20,16 @@ class GL_API StorageBuffer {
 public:
 	~StorageBuffer();
 
-	static std::shared_ptr<StorageBuffer> create(size_t p_size, const void* p_data = nullptr);
+	static std::shared_ptr<StorageBuffer> create(size_t size, const void* data = nullptr);
 
-	void upload(const void* p_data);
+	void upload(const void* data);
 
 	BufferDeviceAddress get_device_address() const;
 
 private:
-	Buffer buffer;
-	size_t size;
-	BufferDeviceAddress gpu_addr;
+	Buffer _buffer;
+	size_t _size;
+	BufferDeviceAddress _gpu_addr;
 };
 
 } //namespace gl

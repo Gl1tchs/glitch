@@ -1,17 +1,19 @@
 #pragma once
 
+#include "glitch/core/defines.h"
+
 namespace gl {
 
 namespace os {
 
-GL_API const char* getenv(const char* p_name);
+GL_API const char* getenv(const char* name);
 
 /**
- * Sets environment variable if `p_name` or `p_value` is not null,
- * if `p_name` is not null and `p_value` is null then the variable
+ * Sets environment variable if `name` or `value` is not null,
+ * if `name` is not null and `value` is null then the variable
  * is going to be unsetted.
  */
-GL_API bool setenv(const char* p_name, const char* p_value);
+GL_API bool setenv(const char* name, const char* value);
 
 } //namespace os
 

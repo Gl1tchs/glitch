@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include "glitch/core/defines.h"
+
+#include <chrono>
+
 namespace gl {
 
 class GL_API Timer {
@@ -19,7 +23,7 @@ public:
 	float get_delta_time();
 
 private:
-	std::chrono::time_point<Clock> last_frame_time;
+	std::chrono::time_point<Clock> _last_frame_time;
 };
 
 } //namespace gl

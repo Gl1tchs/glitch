@@ -13,35 +13,35 @@ namespace gl {
  */
 template <typename... TComponents> class SceneView {
 public:
-	SceneView(EntityContainer* p_entities) : entities(p_entities) {
+	SceneView(EntityContainer* entities) : _entities(entities) {
 		if constexpr (sizeof...(TComponents) == 0) {
-			all = true;
+			_all = true;
 		} else {
 			// unpack the parameter list and set the component mask accordingly
 			const uint32_t component_ids[] = { get_component_id<TComponents>()... };
 			for (int i = 0; i < sizeof...(TComponents); i++) {
-				component_mask.set(component_ids[i]);
+				_component_mask.set(component_ids[i]);
 			}
 		}
 	}
 
 	class Iterator {
 	public:
-		Iterator(EntityContainer* p_entities, uint32_t p_index, ComponentMask p_mask, bool p_all) :
-				entities(p_entities), index(p_index), mask(p_mask), all(p_all) {}
+		Iterator(EntityContainer* entities, uint32_t index, ComponentMask mask, bool all) :
+				_entities(entities), _index(index), _mask(mask), _all(all) {}
 
-		EntityId operator*() const { return entities->at(index).id; }
+		EntityId operator*() const { return _entities->at(_index).id; }
 
-		bool operator==(const Iterator& p_other) const {
-			return index == p_other.index || index == entities->size();
+		bool operator==(const Iterator& other) const {
+			return _index == other._index || _index == _entities->size();
 		}
 
 		bool operator!=(const Iterator& p_other) const { return !(*this == p_other); }
 
 		Iterator operator++() {
 			do {
-				index++;
-			} while (index < entities->size() && !_is_index_valid());
+				_index++;
+			} while (_index < _entities->size() && !_is_index_valid());
 
 			return *this;
 		}
@@ -50,37 +50,39 @@ public:
 		bool _is_index_valid() {
 			return
 					// It's a valid entity ID
-					is_entity_valid(entities->at(index).id) &&
+					is_entity_valid(_entities->at(_index).id) &&
 					// It has the correct component mask
-					(all || mask == (mask & entities->at(index).mask));
+					(_all || _mask == (_mask & _entities->at(_index).mask));
 		}
 
 	private:
-		EntityContainer* entities;
+		EntityContainer* _entities;
 
-		uint32_t index;
-		ComponentMask mask;
+		uint32_t _index;
+		ComponentMask _mask;
 
-		bool all = false;
+		bool _all = false;
 	};
 
 	const Iterator begin() const {
 		uint32_t first_index = 0;
-		while (first_index < entities->size() &&
-				(component_mask != (component_mask & entities->at(first_index).mask) ||
-						!is_entity_valid(entities->at(first_index).id))) {
+		while (first_index < _entities->size() &&
+				(_component_mask != (_component_mask & _entities->at(first_index).mask) ||
+						!is_entity_valid(_entities->at(first_index).id))) {
 			first_index++;
 		}
 
-		return Iterator(entities, first_index, component_mask, all);
+		return Iterator(_entities, first_index, _component_mask, _all);
 	}
 
-	const Iterator end() const { return Iterator(entities, entities->size(), component_mask, all); }
+	const Iterator end() const {
+		return Iterator(_entities, _entities->size(), _component_mask, _all);
+	}
 
 private:
-	EntityContainer* entities = nullptr;
-	ComponentMask component_mask;
-	bool all = false;
+	EntityContainer* _entities = nullptr;
+	ComponentMask _component_mask;
+	bool _all = false;
 };
 
 } //namespace gl

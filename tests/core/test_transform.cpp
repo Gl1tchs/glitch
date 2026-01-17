@@ -1,4 +1,4 @@
-#include <doctest/doctest.h>
+#include <catch2/catch_test_macros.hpp>
 
 #include "glitch/core/transform.h"
 
@@ -7,37 +7,37 @@ using namespace gl;
 TEST_CASE("Transform initialization") {
 	Transform t;
 
-	CHECK(t.local_position == VEC3_ZERO);
-	CHECK(t.local_scale == VEC3_ONE);
-	CHECK(t.local_rotation == VEC3_ZERO);
+	REQUIRE(t.local_position == Vec3f::zero());
+	REQUIRE(t.local_scale == Vec3f::one());
+	REQUIRE(t.local_rotation == Vec3f::zero());
 }
 
 TEST_CASE("Translate transform") {
 	Transform t;
-	glm::vec3 translation(1.0f, 2.0f, 3.0f);
+	Vec3f translation(1.0f, 2.0f, 3.0f);
 	t.translate(translation);
 
-	CHECK(t.local_position == translation);
+	REQUIRE(t.local_position == translation);
 }
 
 TEST_CASE("Rotate transform") {
 	Transform t;
-	t.rotate(90.0f, VEC3_UP);
+	t.rotate(90.0f, Vec3f::up());
 
-	CHECK(t.local_rotation == glm::vec3{ 0.0f, 90.0f, 0.0f });
+	REQUIRE(t.local_rotation == Vec3f{ 0.0f, 90.0f, 0.0f });
 }
 
 TEST_CASE("Transform directions") {
 	Transform t;
 
-	CHECK(t.get_forward() == VEC3_FORWARD);
-	CHECK(t.get_right() == VEC3_RIGHT);
-	CHECK(t.get_up() == VEC3_UP);
+	REQUIRE(t.get_forward() == Vec3f::forward());
+	REQUIRE(t.get_right() == Vec3f::right());
+	REQUIRE(t.get_up() == Vec3f::up());
 }
 
 TEST_CASE("Transform matrix") {
 	Transform t;
-	glm::mat4 matrix = t.to_mat4();
+	Mat4 matrix = t.to_mat4();
 
-	CHECK(matrix == glm::mat4(1.0f));
+	REQUIRE(matrix == Mat4(1.0f));
 }

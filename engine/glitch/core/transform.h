@@ -4,37 +4,34 @@
 
 #pragma once
 
+#include "glitch/core/core.h"
+
+#include <glgpu/glgpu.h>
+
 namespace gl {
 
-inline constexpr glm::vec3 VEC3_UP(0.0f, 1.0f, 0.0f);
-inline constexpr glm::vec3 VEC3_RIGHT(1.0f, 0.0f, 0.0f);
-inline constexpr glm::vec3 VEC3_FORWARD(0.0f, 0.0f, -1.0f);
-
-inline constexpr glm::vec3 VEC3_ZERO(0.0f, 0.0f, 0.0f);
-inline constexpr glm::vec3 VEC3_ONE(1.0f, 1.0f, 1.0f);
-
-inline constexpr glm::vec3 WORLD_UP = VEC3_UP;
+inline constexpr Vec3f WORLD_UP = Vec3f::up();
 
 struct GL_API Transform {
 	const Transform* parent = nullptr;
 
-	glm::vec3 local_position = VEC3_ZERO;
-	glm::vec3 local_rotation = VEC3_ZERO;
-	glm::vec3 local_scale = VEC3_ONE;
+	Vec3f local_position = Vec3f::zero();
+	Vec3f local_rotation = Vec3f::zero();
+	Vec3f local_scale = Vec3f::one();
 
-	glm::vec3 get_position() const;
-	glm::vec3 get_rotation() const;
-	glm::vec3 get_scale() const;
+	Vec3f get_position() const;
+	Vec3f get_rotation() const;
+	Vec3f get_scale() const;
 
-	void translate(const glm::vec3& p_translation);
+	void translate(const Vec3f& translation);
 
-	void rotate(float p_angle, glm::vec3 p_axis);
+	void rotate(float angle, Vec3f axis);
 
-	glm::vec3 get_forward() const;
-	glm::vec3 get_right() const;
-	glm::vec3 get_up() const;
+	Vec3f get_forward() const;
+	Vec3f get_right() const;
+	Vec3f get_up() const;
 
-	glm::mat4 to_mat4() const;
+	Mat4 to_mat4() const;
 };
 
 inline constexpr Transform DEFAULT_TRANSFORM{};

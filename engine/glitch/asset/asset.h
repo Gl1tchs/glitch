@@ -5,6 +5,11 @@
 
 #pragma once
 
+#include <concepts>
+#include <filesystem>
+#include <memory>
+#include <utility>
+
 namespace gl {
 
 /**
@@ -14,9 +19,9 @@ namespace gl {
 template <typename T, typename... Args>
 concept IsLoadableAsset = requires {
 	{
-		T::save(std::declval<const fs::path&>(), std::declval<std::shared_ptr<T>>())
+		T::save(std::declval<const std::filesystem::path&>(), std::declval<std::shared_ptr<T>>())
 	} -> std::same_as<bool>;
-	{ T::load(std::declval<const fs::path&>()) } -> std::same_as<std::shared_ptr<T>>;
+	{ T::load(std::declval<const std::filesystem::path&>()) } -> std::same_as<std::shared_ptr<T>>;
 };
 
 /**

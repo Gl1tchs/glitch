@@ -2,6 +2,12 @@
 
 #include "shader_bundle.gen.h"
 
+#include <cstring>
+#include <fstream>
+#include <vector>
+
+#include <glgpu/log.h>
+
 namespace gl {
 
 ShaderLibrary& ShaderLibrary::get() {
@@ -9,13 +15,13 @@ ShaderLibrary& ShaderLibrary::get() {
 	return s_shader_library;
 }
 
-std::vector<uint32_t> ShaderLibrary::get_bundled_spirv(const char* p_path) {
+std::vector<uint32_t> ShaderLibrary::get_bundled_spirv(const char* path) {
 	BundleFileData shader_data = {};
 	bool shader_found = false;
 
 	for (int i = 0; i < BUNDLE_FILE_COUNT; i++) {
 		BundleFileData data = BUNDLE_FILES[i];
-		if (strcmp(data.path, p_path) == 0) {
+		if (strcmp(data.path, path) == 0) {
 			shader_data = data;
 			shader_found = true;
 			break;
@@ -31,13 +37,13 @@ std::vector<uint32_t> ShaderLibrary::get_bundled_spirv(const char* p_path) {
 	return std::vector<uint32_t>(bundle_data, bundle_data + shader_data.size);
 }
 
-std::vector<uint32_t> ShaderLibrary::get_spirv_data(const fs::path& p_filepath) {
-	size_t file_size = fs::file_size(p_filepath);
+std::vector<uint32_t> ShaderLibrary::get_spirv_data(const std::filesystem::path& filepath) {
+	size_t file_size = std::filesystem::file_size(filepath);
 
-	std::ifstream file(p_filepath, std::ios::in | std::ios::binary);
+	std::ifstream file(filepath, std::ios::in | std::ios::binary);
 	if (!file.is_open()) {
 		GL_LOG_ERROR("[ShaderLibrary::get_spirv_data] Unable to open SPIRV file at path: '{}'.",
-				p_filepath.string());
+				filepath.string());
 		return {};
 	}
 
